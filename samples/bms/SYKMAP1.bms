@@ -1,0 +1,24 @@
+*----------------------------------------------------------------*
+* MAPSET SYKMAP1 ／ MAP SYKM01                                     *
+* 受注データ検証(SYK008)の疑似会話画面で使用する受注番号入力画面。 *
+* フィールド: ORDNO(受注番号入力)、MSG(メッセージ表示)             *
+*----------------------------------------------------------------*
+
+SYKMAP1  DFHMSD TYPE=&SYSPARM,                                         X
+               MODE=INOUT,                                             X
+               LANG=COBOL,                                             X
+               STORAGE=AUTO,                                           X
+               TIOAPFX=YES
+
+SYKM01   DFHMDI SIZE=(24,80)
+
+ORDNO    DFHMDF POS=(3,10),                                            X
+               LENGTH=8,                                               X
+               ATTRB=(UNPROT,NUM)
+
+MSG      DFHMDF POS=(22,5),                                            X
+               LENGTH=40,                                              X
+               ATTRB=(PROT,BRT)
+
+         DFHMSD TYPE=FINAL
+         END
