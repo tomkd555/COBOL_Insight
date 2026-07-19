@@ -103,9 +103,10 @@ class SemanticModelTest {
 
     @Test
     void procedureHoldsKindAndStatements() {
-        Procedure p = new Procedure("MAIN-RTN", ProcedureKind.PARAGRAPH,
+        Procedure p = new Procedure("MAIN-RTN", ProcedureKind.PARAGRAPH, Optional.of("MAIN-SEC"),
                 List.of(new SimpleStatement("DISPLAY", "DISPLAY 'X'", range(40))), range(40));
         assertEquals(ProcedureKind.PARAGRAPH, p.kind());
+        assertEquals("MAIN-SEC", p.sectionName().orElseThrow());
         assertThrows(UnsupportedOperationException.class, () -> p.statements().clear());
     }
 

@@ -1,0 +1,7 @@
+jp.cobolinsight.rules.syntax.UnusedDataItemRule
+jp.cobolinsight.rules.syntax.BinarySubscriptRule
+jp.cobolinsight.rules.syntax.PerformSingleParagraphRule
+jp.cobolinsight.rules.syntax.EvaluateWhenOtherRule
+jp.cobolinsight.rules.syntax.DuplicateProcedureNameRule
+jp.cobolinsight.rules.syntax.CopyReplacingRule
+jp.cobolinsight.rules.syntax.HardcodedCredentialRule

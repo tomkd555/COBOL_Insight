@@ -199,6 +199,21 @@ public final class PersistenceDao {
         update("DELETE FROM CALL_EDGE WHERE to_node = ? AND kind = ?", nodeId, kind);
     }
 
+    /** 指定ID以上のノードを一括削除する。呼出関係グラフ層(ソース非対応ノード)の入替に使う。 */
+    public void deleteNodesIdAtLeast(long idFloor) {
+        update("DELETE FROM NODE WHERE id >= ?", idFloor);
+    }
+
+    /** 指定ID以上のエッジを一括削除する。呼出関係グラフ層のエッジの入替に使う。 */
+    public void deleteCallEdgesIdAtLeast(long idFloor) {
+        update("DELETE FROM CALL_EDGE WHERE id >= ?", idFloor);
+    }
+
+    /** 指定ID以上のfindingを一括削除する。linker由来findingの入替に使う。 */
+    public void deleteFindingsIdAtLeast(long idFloor) {
+        update("DELETE FROM FINDING WHERE id >= ?", idFloor);
+    }
+
     /** 再帰CTEにより、指定ノードから到達可能なノードID集合を返す(始点自身は循環時のみ含む)。 */
     public Set<Long> reachableFrom(long nodeId) {
         String sql = """

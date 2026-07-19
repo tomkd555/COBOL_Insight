@@ -59,7 +59,15 @@ dependencies {
     // コンパイル依存とする。
     implementation(project(":engine:persistence"))
     implementation(project(":engine:bms-frontend"))
+    // linkerは呼出関係グラフ構築の直接呼出のため、コンパイル依存とする。
+    implementation(project(":engine:linker"))
+    // rulesはlintのSourceTextIndex受け渡しとSARIF整形の直接呼出のため、コンパイル依存とする。
+    implementation(project(":engine:rules"))
     implementation("info.picocli:picocli:4.7.7")
+    // callgraphのSVG/PNG生成。graphviz-javaのJVM内実行(viz.js)にJSエンジンとしてGraalJSを使う
+    // (graphviz-javaのNashorn経路はJava 15以降で使えないため、JDK 21ではGraalJS経路が必須)。
+    implementation("guru.nidi:graphviz-java:0.18.1")
+    runtimeOnly("org.graalvm.js:js:24.2.1")
 
     // ServiceLoaderがパイプラインを成立させるため、実装各モジュールを実行時クラスパスへ同梱する。
     runtimeOnly(project(":engine:encoding"))
@@ -67,8 +75,6 @@ dependencies {
     runtimeOnly(project(":engine:jcl-frontend"))
     runtimeOnly(project(":engine:sql-frontend"))
     runtimeOnly(project(":engine:dataflow"))
-    runtimeOnly(project(":engine:linker"))
-    runtimeOnly(project(":engine:rules"))
     runtimeOnly(project(":engine:transpile"))
     runtimeOnly(project(":engine:fix"))
 }

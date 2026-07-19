@@ -1,0 +1,100 @@
+package jp.cobolinsight.rules.syntax;
+
+import jp.cobolinsight.engineapi.finding.Finding;
+import jp.cobolinsight.engineapi.finding.FindingLevel;
+import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
+import jp.cobolinsight.engineapi.spi.AnalysisContext;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/** R002 未使用データ項目の合成fixture検証。 */
+class UnusedDataItemRuleTest {
+
+    @TempDir
+    Path tempDir;
+
+    private static final String SOURCE = String.join("\n",
+            /*  1 */ "       IDENTIFICATION DIVISION.",
+            /*  2 */ "       PROGRAM-ID.  FIX002.",
+            /*  3 */ "       ENVIRONMENT DIVISION.",
+            /*  4 */ "       INPUT-OUTPUT SECTION.",
+            /*  5 */ "       FILE-CONTROL.",
+            /*  6 */ "           SELECT OPT-FILE ASSIGN TO OPTF",
+            /*  7 */ "               FILE STATUS IS WS-ENV-ONLY-ITEM.",
+            /*  8 */ "       DATA DIVISION.",
+            /*  9 */ "       FILE SECTION.",
+            /* 10 */ "       FD  OPT-FILE.",
+            /* 11 */ "       01  OPT-REC.",
+            /* 12 */ "           05  OPT-UNUSED-FIELD        PIC X(10).",
+            /* 13 */ "       WORKING-STORAGE SECTION.",
+            /* 14 */ "       01  WS-GROUP.",
+            /* 15 */ "           05  WS-USED-CHILD           PIC 9(03).",
+            /* 16 */ "           05  WS-UNUSED-CHILD         PIC 9(03).",
+            /* 17 */ "       01  WS-FLAG                     PIC X(01).",
+            /* 18 */ "           88  WS-FLAG-ON              VALUE '1'.",
+            /* 19 */ "       01  WS-UNUSED-ALONE             PIC X(05).",
+            /* 20 */ "       01  WS-COND-FLAG                PIC X(01).",
+            /* 21 */ "           88  WS-COND-ON              VALUE '1'.",
+            /* 22 */ "       01  WS-ENV-ONLY-ITEM            PIC X(02).",
+            /* 23 */ "       LINKAGE SECTION.",
+            /* 24 */ "       01  LK-PARM                     PIC X(05).",
+            /* 25 */ "       PROCEDURE DIVISION USING LK-PARM.",
+            /* 26 */ "       0000-MAIN.",
+            /* 27 */ "           MOVE 1 TO WS-USED-CHILD",
+            /* 28 */ "           IF WS-FLAG-ON",
+            /* 29 */ "               CONTINUE",
+            /* 30 */ "           END-IF",
+            /* 31 */ "           GOBACK.",
+            "");
+
+    @Test
+    void detectsUnusedWorkingStorageItemsAndSkipsLinkage() {
+        CobolSemanticModel model = Fixtures.parse(tempDir, "FIX002.cbl", SOURCE);
+        AnalysisContext context = Fixtures.context(List.of(model),
+                Map.of(model.sourceFile(), SOURCE));
+
+        List<Finding> findings = new UnusedDataItemRule().evaluate(context);
+
+        assertEquals(2, findings.size(), () -> "検出: " + findings);
+        Finding child = findings.stream()
+                .filter(f -> f.message().contains("WS-UNUSED-CHILD")).findFirst().orElseThrow();
+        assertEquals(16, child.location().line());
+        assertEquals(FindingLevel.NOTE, child.level());
+        assertEquals("R002", child.ruleId());
+        Finding alone = findings.stream()
+                .filter(f -> f.message().contains("WS-UNUSED-ALONE")).findFirst().orElseThrow();
+        assertEquals(19, alone.location().line());
+        assertTrue(findings.stream().noneMatch(f -> f.message().contains("LK-PARM")),
+                "LINKAGE SECTIONの項目は対象外であること");
+        assertTrue(findings.stream().noneMatch(f -> f.message().contains("WS-FLAG")),
+                "88レベル条件名で参照される項目は使用済みであること");
+        assertTrue(findings.stream().noneMatch(f -> f.message().contains("WS-GROUP ")),
+                "子が参照される集団項目は使用済みであること");
+        assertTrue(findings.stream().noneMatch(f -> f.message().contains("WS-COND-FLAG")),
+                "88レベル条件名を宣言する項目は対象外であること");
+        assertTrue(findings.stream().noneMatch(f -> f.message().contains("WS-ENV-ONLY-ITEM")),
+                "ENVIRONMENT DIVISION(FILE STATUS句)でのみ参照される項目は検出しないこと");
+        assertTrue(findings.stream().noneMatch(f -> f.message().contains("OPT-REC")
+                        || f.message().contains("OPT-UNUSED-FIELD")),
+                "FILE SECTION(FD配下)の未参照レコード項目は対象外であること");
+    }
+
+    @Test
+    void returnsNothingWithoutSourceTextIndex() {
+        CobolSemanticModel model = Fixtures.parse(tempDir, "FIX002B.cbl",
+                SOURCE.replace("FIX002", "FIX002B"));
+        AnalysisContext context = jp.cobolinsight.engineapi.spi.AnalysisContext.of(
+                List.of(model), List.of(), List.of(), List.of(),
+                java.util.Optional.empty(), Map.of());
+
+        assertEquals(List.of(), new UnusedDataItemRule().evaluate(context),
+                "ソーステキスト索引が無い場合は検出しない(誤検出よりも未検出を選ぶ)こと");
+    }
+}

@@ -200,24 +200,27 @@ final class SemanticModelMapper {
 
     private List<Procedure> mapProcedureDivision(ProgramNode program) {
         List<Procedure> procedures = new ArrayList<>();
-        collectProcedures(program, procedures);
+        collectProcedures(program, procedures, Optional.empty());
         return procedures;
     }
 
-    private void collectProcedures(Node parent, List<Procedure> out) {
+    private void collectProcedures(Node parent, List<Procedure> out, Optional<String> section) {
         for (Node child : parent.getChildren()) {
-            if (child instanceof ProcedureSectionNode section) {
-                out.add(mapProcedure(section, section.getName(), ProcedureKind.SECTION));
-                collectProcedures(child, out);
+            if (child instanceof ProcedureSectionNode sectionNode) {
+                out.add(mapProcedure(sectionNode, sectionNode.getName(), ProcedureKind.SECTION,
+                        Optional.empty()));
+                collectProcedures(child, out, Optional.of(sectionNode.getName()));
             } else if (child instanceof ParagraphNode paragraph) {
-                out.add(mapProcedure(paragraph, paragraph.getName(), ProcedureKind.PARAGRAPH));
+                out.add(mapProcedure(paragraph, paragraph.getName(), ProcedureKind.PARAGRAPH,
+                        section));
             } else {
-                collectProcedures(child, out);
+                collectProcedures(child, out, section);
             }
         }
     }
 
-    private Procedure mapProcedure(Node block, String name, ProcedureKind kind) {
+    private Procedure mapProcedure(Node block, String name, ProcedureKind kind,
+            Optional<String> section) {
         List<Statement> statements = new ArrayList<>();
         for (Node child : block.getChildren()) {
             if (child instanceof SentenceNode sentence) {
@@ -228,7 +231,7 @@ final class SemanticModelMapper {
                 }
             }
         }
-        return new Procedure(name, kind, statements, rangeOf(block.getLocality()));
+        return new Procedure(name, kind, section, statements, rangeOf(block.getLocality()));
     }
 
     private Statement mapStatement(Node node, String procedureName) {

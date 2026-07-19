@@ -73,6 +73,10 @@ class ScanIncrementalTest {
             long execution = 0;
             for (var source : dao.findAllSources()) {
                 for (var edge : dao.findEdgesFrom(source.id())) {
+                    // M2の呼出関係グラフ層(ID下限以上)は対象外。scanの増分用エッジのみ数える
+                    if (edge.id() >= ScanRunner.GRAPH_ID_BASE) {
+                        continue;
+                    }
                     if ("COPY".equals(edge.kind())) {
                         copy++;
                     } else if ("EXECUTION".equals(edge.kind())) {

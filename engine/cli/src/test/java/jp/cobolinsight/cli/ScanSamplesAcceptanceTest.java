@@ -227,6 +227,10 @@ class ScanSamplesAcceptanceTest {
         Set<String> pairs = new TreeSet<>();
         for (SourceRecord source : dao.findAllSources()) {
             for (CallEdgeRecord edge : dao.findEdgesFrom(source.id())) {
+                // M2の呼出関係グラフ層(ID下限以上)は対象外。ここではscanの増分用エッジのみ数える
+                if (edge.id() >= ScanRunner.GRAPH_ID_BASE) {
+                    continue;
+                }
                 if (kind.equals(edge.kind())) {
                     pairs.add(pathById.get(edge.fromNode()) + "->" + pathById.get(edge.toNode()));
                 }
