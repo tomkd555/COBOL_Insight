@@ -1,0 +1,226 @@
+package jp.cobolinsight.rules.cfg;
+
+import jp.cobolinsight.engineapi.cfg.CfgNode;
+import jp.cobolinsight.engineapi.cfg.ControlFlowGraph;
+import jp.cobolinsight.engineapi.cfg.ControlFlowGraphs;
+import jp.cobolinsight.engineapi.finding.Finding;
+import jp.cobolinsight.engineapi.finding.Severity;
+import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
+import jp.cobolinsight.engineapi.semantic.CompoundStatement;
+import jp.cobolinsight.engineapi.semantic.SimpleStatement;
+import jp.cobolinsight.engineapi.source.SourcePosition;
+import jp.cobolinsight.engineapi.spi.AnalysisContext;
+import jp.cobolinsight.engineapi.spi.AnalysisPhase;
+import jp.cobolinsight.engineapi.spi.Rule;
+import jp.cobolinsight.rules.SourceTextIndex;
+
+import java.util.ArrayList;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * R017 ファイルステータス未検査。record-access I/O(READ/WRITE/REWRITE/DELETE)の実行後、次の
+ * 同一ファイル I/O に達するまでの前方経路で、その FD の FILE STATUS 変数を条件参照しない箇所を
+ * 検出する。AT END・INVALID KEY 句の存在は検査とみなさない。FILE STATUS 変数名は意味モデルに
+ * 無いため、SourceTextIndex の原ソース(および COPY 先コピー句)から SELECT・FD の記述で解決する。
+ */
+public final class FileStatusUncheckedRule implements Rule {
+
+    private static final String NAME = "[\\p{L}\\p{N}$#_-]+";
+    private static final Pattern SELECT_STATUS = Pattern.compile(
+            "(?is)\\bSELECT\\s+(" + NAME + ")[^.]*?FILE\\s+STATUS\\s+IS\\s+(" + NAME + ")");
+    private static final Pattern FD_HEADER = Pattern.compile("(?is)\\bFD\\s+(" + NAME + ")");
+    private static final Pattern SECTION_BREAK = Pattern.compile(
+            "(?is)\\bFD\\s+" + NAME + "|\\bWORKING-STORAGE\\b|\\bLOCAL-STORAGE\\b|\\bLINKAGE\\b"
+                    + "|\\bPROCEDURE\\s+DIVISION\\b");
+    private static final Pattern LEVEL_01 = Pattern.compile("(?im)^\\s*01\\s+(" + NAME + ")");
+    private static final Pattern COPY_CLAUSE = Pattern.compile(
+            "(?is)\\bCOPY\\s+(" + NAME + ")(?:\\s+REPLACING\\s+LEADING\\s+==\\s*(.+?)\\s*=="
+                    + "\\s+BY\\s+==\\s*(.+?)\\s*==)?");
+
+    private static final Set<String> IO_VERBS = Set.of("READ", "WRITE", "REWRITE", "DELETE");
+
+    @Override
+    public String id() {
+        return "R017";
+    }
+
+    @Override
+    public Severity defaultSeverity() {
+        return Severity.HIGH;
+    }
+
+    @Override
+    public AnalysisPhase phase() {
+        return AnalysisPhase.CONTROL_FLOW;
+    }
+
+    @Override
+    public List<Finding> evaluate(AnalysisContext context) {
+        ControlFlowGraphs cfgs = context.artifact(ControlFlowGraphs.class).orElse(null);
+        SourceTextIndex index = context.artifact(SourceTextIndex.class).orElse(null);
+        if (cfgs == null || index == null) {
+            return List.of();
+        }
+        List<Finding> findings = new ArrayList<>();
+        for (CobolSemanticModel model : context.cobolPrograms()) {
+            cfgs.of(model).ifPresent(cfg -> evaluate(model, cfg, index, findings));
+        }
+        return findings;
+    }
+
+    private void evaluate(CobolSemanticModel model, ControlFlowGraph cfg, SourceTextIndex index,
+            List<Finding> findings) {
+        String source = index.textOf(model.sourceFile()).orElse(null);
+        if (source == null) {
+            return;
+        }
+        Map<String, String> fdToVar = fdToVar(source);
+        Map<String, String> recordToFd = recordToFd(source, index);
+
+        // 各 I/O ノードの FD(解決できたもののみ)。境界判定に使う。
+        Map<CfgNode, String> ioFd = new IdentityHashMap<>();
+        for (CfgNode node : cfg.nodes()) {
+            SimpleStatement io = ioStatement(node);
+            if (io == null) {
+                continue;
+            }
+            String fd = fdOf(io, recordToFd);
+            if (fd != null) {
+                ioFd.put(node, fd);
+            }
+        }
+
+        for (Map.Entry<CfgNode, String> entry : ioFd.entrySet()) {
+            CfgNode node = entry.getKey();
+            String fd = entry.getValue();
+            String var = fdToVar.get(fd);
+            if (var == null) {
+                continue;
+            }
+            boolean checked = CfgSupport.forwardHasMatch(cfg, node,
+                    other -> other != node && fd.equals(ioFd.get(other)),
+                    other -> referencesStatusVar(other, var));
+            if (!checked) {
+                SimpleStatement io = (SimpleStatement) node.statement().orElseThrow();
+                findings.add(Finding.of(id(), defaultSeverity().toLevel(),
+                        CfgSupport.upper(io.verb()) + " " + fd
+                                + " の実行後、FILE STATUS 変数 " + var + " を検査していない。"
+                                + "入出力異常が後続処理で検知されない。",
+                        new SourcePosition(model.sourceFile(), io.range().start().line(), 1,
+                                SourcePosition.UNKNOWN_BYTE_OFFSET)));
+            }
+        }
+    }
+
+    private static SimpleStatement ioStatement(CfgNode node) {
+        return node.statement()
+                .filter(SimpleStatement.class::isInstance)
+                .map(SimpleStatement.class::cast)
+                .filter(simple -> IO_VERBS.contains(CfgSupport.upper(simple.verb())))
+                .orElse(null);
+    }
+
+    /** I/O 文の対象 FD。READ/DELETE は operand が FD 名、WRITE/REWRITE は operand がレコード名。 */
+    private static String fdOf(SimpleStatement io, Map<String, String> recordToFd) {
+        String verb = CfgSupport.upper(io.verb());
+        String operand = firstOperand(io.text(), verb);
+        if (operand == null) {
+            return null;
+        }
+        String key = operand.toUpperCase(Locale.ROOT);
+        if (verb.equals("WRITE") || verb.equals("REWRITE")) {
+            return recordToFd.get(key);
+        }
+        return key;
+    }
+
+    private static String firstOperand(String text, String verb) {
+        String trimmed = text.trim();
+        String rest = trimmed.length() >= verb.length()
+                ? trimmed.substring(verb.length()) : "";
+        Matcher matcher = Pattern.compile(NAME).matcher(rest);
+        return matcher.find() ? matcher.group() : null;
+    }
+
+    private static boolean referencesStatusVar(CfgNode node, String var) {
+        return node.statement()
+                .map(statement -> statement instanceof CompoundStatement compound
+                        && mentionsWord(compound.conditionText(), var))
+                .orElse(false);
+    }
+
+    private static boolean mentionsWord(String text, String word) {
+        Matcher matcher = Pattern.compile(
+                "(?i)(?<![\\p{L}\\p{N}$#_-])" + Pattern.quote(word) + "(?![\\p{L}\\p{N}$#_-])")
+                .matcher(text);
+        return matcher.find();
+    }
+
+    private static Map<String, String> fdToVar(String source) {
+        Map<String, String> map = new java.util.HashMap<>();
+        Matcher matcher = SELECT_STATUS.matcher(source);
+        while (matcher.find()) {
+            map.put(matcher.group(1).toUpperCase(Locale.ROOT),
+                    matcher.group(2).toUpperCase(Locale.ROOT));
+        }
+        return map;
+    }
+
+    private static Map<String, String> recordToFd(String source, SourceTextIndex index) {
+        Map<String, String> map = new java.util.HashMap<>();
+        Matcher header = FD_HEADER.matcher(source);
+        while (header.find()) {
+            String fd = header.group(1).toUpperCase(Locale.ROOT);
+            int bodyStart = header.end();
+            int bodyEnd = nextBreak(source, bodyStart);
+            String body = source.substring(bodyStart, bodyEnd);
+            String record = recordOf(body, index);
+            if (record != null) {
+                map.put(record.toUpperCase(Locale.ROOT), fd);
+            }
+        }
+        return map;
+    }
+
+    private static int nextBreak(String source, int from) {
+        Matcher matcher = SECTION_BREAK.matcher(source);
+        if (matcher.find(from)) {
+            return matcher.start();
+        }
+        return source.length();
+    }
+
+    /** FD 本体のレコード名。まず literal 01、無ければ COPY 先コピー句の 01 を解決する。 */
+    private static String recordOf(String fdBody, SourceTextIndex index) {
+        Matcher literal = LEVEL_01.matcher(fdBody);
+        if (literal.find()) {
+            return literal.group(1);
+        }
+        Matcher copy = COPY_CLAUSE.matcher(fdBody);
+        if (!copy.find()) {
+            return null;
+        }
+        String copybookText = index.textOfBaseName(copy.group(1)).orElse(null);
+        if (copybookText == null) {
+            return null;
+        }
+        Matcher record = LEVEL_01.matcher(copybookText);
+        if (!record.find()) {
+            return null;
+        }
+        String name = record.group(1);
+        String from = copy.group(2);
+        String to = copy.group(3);
+        if (from != null && to != null
+                && name.toUpperCase(Locale.ROOT).startsWith(from.toUpperCase(Locale.ROOT))) {
+            return to + name.substring(from.length());
+        }
+        return name;
+    }
+}

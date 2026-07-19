@@ -1,5 +1,13 @@
 package jp.cobolinsight.cli;
 
+import jp.cobolinsight.bmsfrontend.BmsModelMapper;
+import jp.cobolinsight.bmsfrontend.BmsParseError;
+import jp.cobolinsight.bmsfrontend.BmsParseResult;
+import jp.cobolinsight.bmsfrontend.BmsSourceParser;
+import jp.cobolinsight.dataflow.CfgBuilder;
+import jp.cobolinsight.engineapi.bms.BmsMapset;
+import jp.cobolinsight.engineapi.cfg.ControlFlowGraph;
+import jp.cobolinsight.engineapi.cfg.ControlFlowGraphs;
 import jp.cobolinsight.engineapi.finding.Finding;
 import jp.cobolinsight.engineapi.finding.FindingLevel;
 import jp.cobolinsight.engineapi.json.JsonWriter;
@@ -33,9 +41,10 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 /**
- * `lint` の中核処理。資産フォルダのCOBOL・コピー句を復号→パースし、構文段階
- * (AnalysisPhase.SYNTAX)のルールを実行して findings を返す。復号失敗・パース失敗も
- * errorレベルの finding として合流させる。出力は決定論とする: findings は
+ * `lint` の中核処理。資産フォルダのCOBOL・コピー句・BMSを復号し、COBOLをパースして
+ * 制御フローグラフを構築し、BMSをマップモデルへ写像したうえで、構文段階(AnalysisPhase.SYNTAX)と
+ * 制御フロー段階(AnalysisPhase.CONTROL_FLOW)のルールを実行して findings を返す。復号失敗・
+ * パース失敗も errorレベルの finding として合流させる。出力は決定論とする: findings は
  * (ファイル・行・桁・ルールID・メッセージ)の昇順に正規化し、位置のファイルは
  * 入力フォルダからの相対パスへ揃える。
  */
@@ -78,7 +87,18 @@ public final class LintRunner {
         }
     }
 
-    private record LintFile(String relPath, Path absPath, boolean cobol) {
+    /** lint対象の種別。COBOLはパース、COPYBOOKはテキスト索引のみ、BMSはマップモデルへ写像する。 */
+    private enum LintKind {
+        COBOL(".cbl"), COPYBOOK(".cpy"), BMS(".bms");
+
+        final String extension;
+
+        LintKind(String extension) {
+            this.extension = extension;
+        }
+    }
+
+    private record LintFile(String relPath, Path absPath, LintKind kind) {
     }
 
     private LintRunner() {
@@ -121,7 +141,7 @@ public final class LintRunner {
         List<String> analyzed = new ArrayList<>();
         for (LintFile file : files) {
             DecodedSource decoded = decodedByRel.get(file.relPath());
-            if (!file.cobol() || decoded == null) {
+            if (file.kind() != LintKind.COBOL || decoded == null) {
                 continue;
             }
             ParseOutcome<CobolSemanticModel> outcome =
@@ -134,9 +154,33 @@ public final class LintRunner {
             analyzed.add(file.relPath());
         }
 
-        AnalysisContext context = AnalysisContext.of(models, List.of(), List.of(), List.of(),
-                Optional.empty(), Map.of(SourceTextIndex.class, new SourceTextIndex(textByPath)));
-        List<Rule> activeRules = services.rules(AnalysisPhase.SYNTAX).stream()
+        List<BmsMapset> mapsets = new ArrayList<>();
+        BmsSourceParser bmsParser = new BmsSourceParser();
+        for (LintFile file : files) {
+            DecodedSource decoded = decodedByRel.get(file.relPath());
+            if (file.kind() != LintKind.BMS || decoded == null) {
+                continue;
+            }
+            BmsParseResult parseResult = bmsParser.parse(decoded.text());
+            for (BmsParseError error : parseResult.errors()) {
+                findings.add(Finding.parseFailure(
+                        new SourcePosition(file.relPath(), Math.max(1, error.line()),
+                                error.column() + 1, SourcePosition.UNKNOWN_BYTE_OFFSET),
+                        error.message()));
+            }
+            mapsets.addAll(BmsModelMapper.toEngineApi(parseResult, file.relPath()));
+        }
+
+        List<ControlFlowGraph> graphs = models.stream().map(CfgBuilder::build).toList();
+        ControlFlowGraphs cfgs = new ControlFlowGraphs(graphs);
+
+        AnalysisContext context = AnalysisContext.of(models, List.of(), List.of(), mapsets,
+                Optional.empty(),
+                Map.of(SourceTextIndex.class, new SourceTextIndex(textByPath),
+                        ControlFlowGraphs.class, cfgs));
+        List<Rule> activeRules = Stream.concat(
+                        services.rules(AnalysisPhase.SYNTAX).stream(),
+                        services.rules(AnalysisPhase.CONTROL_FLOW).stream())
                 .filter(rule -> !options.disabledRuleIds().contains(rule.id()))
                 .toList();
         for (Rule rule : activeRules) {
@@ -159,19 +203,20 @@ public final class LintRunner {
         return implementations.get(0);
     }
 
-    /** scan と同じフォルダ規約で、lint対象のCOBOL本体とコピー句を発見する(相対パスの辞書順)。 */
+    /** scan と同じフォルダ規約で、lint対象のCOBOL本体・コピー句・BMSを発見する(相対パスの辞書順)。 */
     private static List<LintFile> discover(Path inputDir) {
-        Map<String, Boolean> cobolByDir = new LinkedHashMap<>();
-        cobolByDir.put("cobol", true);
-        cobolByDir.put("copy", false);
-        cobolByDir.put("copybook", false);
+        Map<String, LintKind> kindByDir = new LinkedHashMap<>();
+        kindByDir.put("bms", LintKind.BMS);
+        kindByDir.put("cobol", LintKind.COBOL);
+        kindByDir.put("copy", LintKind.COPYBOOK);
+        kindByDir.put("copybook", LintKind.COPYBOOK);
         List<LintFile> files = new ArrayList<>();
-        for (Map.Entry<String, Boolean> entry : cobolByDir.entrySet()) {
+        for (Map.Entry<String, LintKind> entry : kindByDir.entrySet()) {
             Path dir = inputDir.resolve(entry.getKey());
             if (!Files.isDirectory(dir)) {
                 continue;
             }
-            String extension = entry.getValue() ? ".cbl" : ".cpy";
+            String extension = entry.getValue().extension;
             try (Stream<Path> children = Files.list(dir)) {
                 children.filter(Files::isRegularFile)
                         .filter(p -> p.getFileName().toString().toLowerCase(Locale.ROOT)

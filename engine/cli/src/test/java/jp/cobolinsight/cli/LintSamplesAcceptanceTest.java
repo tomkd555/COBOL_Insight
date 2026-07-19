@@ -16,10 +16,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * M3受入回帰テスト(05_開発計画.md §3.3)。samples/ 全体の lint が、M3対応の欠陥
- * (期待結果.md No.8 の使われない変数)をファイル・行番号どおりに検出し、samplesに意図的欠陥の
- * 無いルールが誤検出を出さないことを突合する。R008は仕様(THRUなしの単独段落PERFORMを検出)
- * どおりの検出が全件出ること、およびそれ以外の検出が無いことを行番号の完全一致で確認する。
+ * samples/ 全体の lint 受入回帰テスト(05_開発計画.md §3.3)。構文段階(SYNTAX)と制御フロー段階
+ * (CONTROL_FLOW)の両段を実行し、期待結果.md の欠陥をファイル・行番号どおりに検出し、samplesに
+ * 意図的欠陥の無いルールが誤検出を出さないことを突合する。第1段のR002(未使用変数)・R008(THRUなし
+ * 単独段落PERFORM)に加え、第2段のR007/R011/R017/R018/R021/R022/R031の検出と、samplesが
+ * ERRORレベルの検出を含むため終了コードが2であることを確認する。R017は path-sensitive な忠実
+ * 実装のため付随検出を許容し、必須2件の包含とOPEN/CLOSE非検出のみを表明する。
  */
 class LintSamplesAcceptanceTest {
 
@@ -35,6 +37,18 @@ class LintSamplesAcceptanceTest {
 
     private static List<Finding> byRule(String ruleId) {
         return result.findings().stream().filter(f -> f.ruleId().equals(ruleId)).toList();
+    }
+
+    /** 指定ルールの検出位置を "cobol/ファイル:行" 集合として返す。 */
+    private static Set<String> fileLines(String ruleId) {
+        return byRule(ruleId).stream()
+                .map(f -> f.location().file() + ":" + f.location().line())
+                .collect(Collectors.toCollection(TreeSet::new));
+    }
+
+    private static boolean allLevel(String ruleId, FindingLevel level) {
+        return !byRule(ruleId).isEmpty()
+                && byRule(ruleId).stream().allMatch(f -> f.level() == level);
     }
 
     @Test
@@ -58,7 +72,8 @@ class LintSamplesAcceptanceTest {
 
     @Test
     void rulesWithoutIntendedDefectsProduceNoFindingsOnSamples() {
-        for (String ruleId : List.of("R006", "R013", "R023", "R024", "R026")) {
+        for (String ruleId : List.of("R006", "R009", "R010", "R013", "R014", "R019",
+                "R023", "R024", "R026", "R029", "R030")) {
             assertEquals(List.of(), byRule(ruleId),
                     ruleId + " はsamplesに該当欠陥が無いため検出しないこと");
         }
@@ -84,10 +99,81 @@ class LintSamplesAcceptanceTest {
     }
 
     @Test
-    void exitCodeIsWarningsBecauseSamplesHaveNoErrorLevelFindings() {
-        assertEquals(0, result.countByLevel(FindingLevel.ERROR));
-        assertTrue(result.countByLevel(FindingLevel.WARNING) > 0);
-        assertEquals(1, result.exitCode(), "警告あり=1で分岐すること");
+    void exitCodeIsErrorsBecauseSamplesHaveErrorLevelFindings() {
+        assertTrue(result.countByLevel(FindingLevel.ERROR) > 0,
+                "samplesはERRORレベルの検出(R007/R017/R018/R021/R031)を含むこと");
+        assertEquals(2, result.exitCode(), "エラーあり=2で分岐すること");
+    }
+
+    @Test
+    void r007DetectsExactlyTheGoToIntoThruRange() {
+        assertEquals(Set.of("cobol/SYK002.cbl:124"), fileLines("R007"),
+                "R007は期待結果.md No.7のGO TO 1件だけ検出すること");
+        assertTrue(allLevel("R007", FindingLevel.ERROR));
+    }
+
+    @Test
+    void r011DetectsExactlyTheUnreachableAndUnusedParagraphs() {
+        assertEquals(Set.of("cobol/SYK004.cbl:47", "cobol/SYK005.cbl:40"), fileLines("R011"),
+                "R011は未使用段落(SYK004:47)と到達不能コード(SYK005:40)の2件を検出すること");
+        assertTrue(allLevel("R011", FindingLevel.WARNING));
+    }
+
+    @Test
+    void r018DetectsExactlyTheUncheckedDataDml() {
+        assertEquals(Set.of("cobol/SYK006.cbl:119", "cobol/SYK007.cbl:89"), fileLines("R018"),
+                "R018は未検査のデータ変更DML2件(END-EXEC行)を検出すること");
+        assertTrue(allLevel("R018", FindingLevel.ERROR));
+    }
+
+    @Test
+    void r021DetectsExactlyTheCicsWithoutResp() {
+        assertEquals(Set.of("cobol/SYK008.cbl:38"), fileLines("R021"),
+                "R021はRESP/RESP2を持たないEXEC CICS 1件(END-EXEC行)を検出すること");
+        assertTrue(allLevel("R021", FindingLevel.ERROR));
+    }
+
+    @Test
+    void r022DetectsExactlyTheCicsProgramWithoutReturn() {
+        assertEquals(Set.of("cobol/SYK009.cbl:21"), fileLines("R022"),
+                "R022はRETURN TRANSIDを持たないCICS参加プログラム1件(GOBACK行)を検出すること");
+        assertTrue(allLevel("R022", FindingLevel.WARNING));
+    }
+
+    @Test
+    void r031DetectsExactlyTheSendMapWithoutBmsField() {
+        assertEquals(Set.of("cobol/SYK008.cbl:56"), fileLines("R031"),
+                "R031はBMSに存在しないマップへのSEND MAP 1件(動詞行)を検出すること");
+        assertTrue(allLevel("R031", FindingLevel.ERROR));
+    }
+
+    /**
+     * R017は path-sensitive な忠実実装のため付随検出を許容し、集合の完全一致は表明しない
+     * (裁定A4)。必須のオラクル2件(SYK001:85 READ・SYK002:130 REWRITE)の包含と、
+     * 全件ERROR、およびOPEN/CLOSE行を検出しないことのみを表明する。
+     * 実測の検出は9件(全件error): SYK001:85/126/130、SYK002:73/107/130、SYK006:87/172、
+     * SYK007:60。必須2件を除く7件は、FILE STATUS変数が後続で参照されない構造同一の真の未検査
+     * (record-access I/O)であり忠実実装が検出するため、集合固定はしない。
+     */
+    @Test
+    void r017ContainsMandatoryUncheckedRecordIoAndNeverOpenOrClose() {
+        Set<String> detected = fileLines("R017");
+        assertTrue(detected.contains("cobol/SYK001.cbl:85"),
+                "R017はSYK001:85(READ)を含むこと: " + detected);
+        assertTrue(detected.contains("cobol/SYK002.cbl:130"),
+                "R017はSYK002:130(REWRITE)を含むこと: " + detected);
+        assertTrue(allLevel("R017", FindingLevel.ERROR), "R017は全件ERRORであること");
+
+        Set<String> openCloseLines = Set.of(
+                "cobol/SYK001.cbl:79", "cobol/SYK001.cbl:80", "cobol/SYK001.cbl:81",
+                "cobol/SYK001.cbl:134", "cobol/SYK001.cbl:135", "cobol/SYK001.cbl:136",
+                "cobol/SYK002.cbl:68", "cobol/SYK002.cbl:69",
+                "cobol/SYK002.cbl:136", "cobol/SYK002.cbl:137",
+                "cobol/SYK006.cbl:82", "cobol/SYK006.cbl:83", "cobol/SYK006.cbl:151",
+                "cobol/SYK006.cbl:156", "cobol/SYK006.cbl:176", "cobol/SYK006.cbl:177",
+                "cobol/SYK007.cbl:56", "cobol/SYK007.cbl:92");
+        assertTrue(detected.stream().noneMatch(openCloseLines::contains),
+                "R017はOPEN/CLOSE行を検出しないこと: " + detected);
     }
 
     @Test

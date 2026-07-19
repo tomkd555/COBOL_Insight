@@ -5,3 +5,16 @@ jp.cobolinsight.rules.syntax.EvaluateWhenOtherRule
 jp.cobolinsight.rules.syntax.DuplicateProcedureNameRule
 jp.cobolinsight.rules.syntax.CopyReplacingRule
 jp.cobolinsight.rules.syntax.HardcodedCredentialRule
+jp.cobolinsight.rules.cfg.PerformThruInterruptGoToRule
+jp.cobolinsight.rules.cfg.GoToStructureDeviationRule
+jp.cobolinsight.rules.cfg.AlterStatementRule
+jp.cobolinsight.rules.cfg.UnreachableCodeRule
+jp.cobolinsight.rules.cfg.SectionFallThroughRule
+jp.cobolinsight.rules.cfg.FileStatusUncheckedRule
+jp.cobolinsight.rules.cfg.SqlCodeUncheckedRule
+jp.cobolinsight.rules.cfg.CursorNotClosedRule
+jp.cobolinsight.rules.cfg.CicsResponseUncheckedRule
+jp.cobolinsight.rules.cfg.CicsReturnMissingRule
+jp.cobolinsight.rules.cfg.ReturnCodeUncheckedRule
+jp.cobolinsight.rules.cfg.JclCondUncheckedRule
+jp.cobolinsight.rules.cfg.UndefinedBmsMapReferenceRule

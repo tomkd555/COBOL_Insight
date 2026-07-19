@@ -36,7 +36,8 @@ final class BmsModelBuilder {
                 case BmsMapLexer.DFHMSD -> onMapset(label, line, params);
                 case BmsMapLexer.DFHMDI -> onMap(label, line, params);
                 case BmsMapLexer.DFHMDF -> onField(label, line, params);
-                default -> throw new IllegalStateException(macro.kind.getText());
+                default -> errors.add(new BmsParseError(line, macro.kind.getCharPositionInLine(),
+                        "認識できないマクロ: " + macro.kind.getText()));
             }
         }
         closeMapset();
