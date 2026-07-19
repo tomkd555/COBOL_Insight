@@ -1,0 +1,114 @@
+package jp.cobolinsight.sqlfrontend;
+
+import jp.cobolinsight.engineapi.finding.FindingLevel;
+import jp.cobolinsight.engineapi.semantic.EmbeddedBlock;
+import jp.cobolinsight.engineapi.semantic.EmbeddedBlockKind;
+import jp.cobolinsight.engineapi.source.SourcePosition;
+import jp.cobolinsight.engineapi.source.SourceRange;
+import jp.cobolinsight.engineapi.spi.ParseOutcome;
+import jp.cobolinsight.engineapi.sql.HostVariableBinding;
+import jp.cobolinsight.engineapi.sql.SqlStatementModel;
+import org.junit.jupiter.api.Test;
+
+import java.util.Map;
+import java.util.ServiceLoader;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/** engine-api の SqlParser SPI への写像の検証。 */
+class JsqlSqlParserTest {
+
+    private final JsqlSqlParser parser = new JsqlSqlParser();
+
+    private static EmbeddedBlock sqlBlock(String text) {
+        SourcePosition start = new SourcePosition("SYK006.cbl", 100, 12, -1);
+        SourcePosition end = new SourcePosition("SYK006.cbl", 103, 20, -1);
+        return new EmbeddedBlock(EmbeddedBlockKind.SQL, text, Map.of(),
+                new SourceRange(start, end));
+    }
+
+    @Test
+    void selectIntoWithHyphenatedHostVariablesIsMapped() {
+        EmbeddedBlock block = sqlBlock(
+                "SELECT STK_QTY INTO :WS-STK-QTY FROM STOCK WHERE ITEM_CD = :WS-ITEM-CD");
+
+        ParseOutcome<SqlStatementModel> outcome = parser.parse(block);
+
+        SqlStatementModel model = outcome.value().orElseThrow();
+        assertEquals(jp.cobolinsight.engineapi.sql.SqlStatementKind.SELECT, model.kind());
+        assertEquals(block.text(), model.originalText());
+        assertTrue(model.mangledText().contains(":HV1"));
+        assertTrue(model.mangledText().contains(":HV2"));
+        assertEquals(2, model.hostVariables().size());
+        HostVariableBinding first = model.hostVariables().get(0);
+        assertEquals("WS-STK-QTY", first.originalName());
+        assertEquals("HV1", first.mangledName());
+        assertTrue(first.indicatorName().isEmpty());
+        assertEquals("WS-ITEM-CD", model.hostVariables().get(1).originalName());
+        assertTrue(model.referencedTables().contains("STOCK"));
+        assertEquals(block.range(), model.range());
+    }
+
+    @Test
+    void indicatorVariableIsCarriedIntoTheBinding() {
+        EmbeddedBlock block = sqlBlock(
+                "UPDATE STOCK SET STK_QTY = :WS-QTY:WS-QTY-IND WHERE ITEM_CD = :WS-ITEM-CD");
+
+        SqlStatementModel model = parser.parse(block).value().orElseThrow();
+
+        HostVariableBinding first = model.hostVariables().get(0);
+        assertEquals("WS-QTY", first.originalName());
+        assertEquals("WS-QTY-IND", first.indicatorName().orElseThrow());
+        assertEquals(jp.cobolinsight.engineapi.sql.SqlStatementKind.UPDATE, model.kind());
+    }
+
+    @Test
+    void cursorStatementKindsAreMappedToEngineApiKinds() {
+        assertEquals(jp.cobolinsight.engineapi.sql.SqlStatementKind.DECLARE_CURSOR,
+                kindOf("DECLARE CUR1 CURSOR FOR SELECT ITEM_CD FROM STOCK"));
+        assertEquals(jp.cobolinsight.engineapi.sql.SqlStatementKind.OPEN, kindOf("OPEN CUR1"));
+        assertEquals(jp.cobolinsight.engineapi.sql.SqlStatementKind.FETCH,
+                kindOf("FETCH CUR1 INTO :WS-ITEM-CD"));
+        assertEquals(jp.cobolinsight.engineapi.sql.SqlStatementKind.CLOSE, kindOf("CLOSE CUR1"));
+    }
+
+    private jp.cobolinsight.engineapi.sql.SqlStatementKind kindOf(String sql) {
+        return parser.parse(sqlBlock(sql)).value().orElseThrow().kind();
+    }
+
+    @Test
+    void execSqlWrapperIsStrippedBeforeAnalysis() {
+        EmbeddedBlock block = sqlBlock("""
+                EXEC SQL
+                    SELECT STK_QTY INTO :WS-STK-QTY
+                      FROM STOCK
+                     WHERE ITEM_CD = :WS-ITEM-CD
+                END-EXEC.""");
+
+        SqlStatementModel model = parser.parse(block).value().orElseThrow();
+
+        assertEquals(jp.cobolinsight.engineapi.sql.SqlStatementKind.SELECT, model.kind());
+        assertTrue(model.referencedTables().contains("STOCK"));
+        assertEquals(block.text(), model.originalText(), "原文は抽出テキストのまま保持すること");
+    }
+
+    @Test
+    void unparseableSqlBecomesAnErrorLevelParseFailure() {
+        EmbeddedBlock block = sqlBlock("SELECT FROM WHERE");
+
+        ParseOutcome<SqlStatementModel> outcome = parser.parse(block);
+
+        var finding = outcome.failureFinding().orElseThrow();
+        assertEquals(FindingLevel.ERROR, finding.level());
+        assertEquals("SYK006.cbl", finding.location().file());
+        assertEquals(100, finding.location().line());
+    }
+
+    @Test
+    void serviceLoaderDiscoversTheParser() {
+        boolean found = ServiceLoader.load(jp.cobolinsight.engineapi.spi.SqlParser.class).stream()
+                .anyMatch(p -> p.type() == JsqlSqlParser.class);
+        assertTrue(found, "META-INF/services に JsqlSqlParser が登録されていること");
+    }
+}

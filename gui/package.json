@@ -1,0 +1,38 @@
+{
+  "name": "cobol-insight-gui",
+  "version": "0.1.0",
+  "private": true,
+  "description": "COBOL InsightのElectron GUIシェル(配布構成の先行検証用の最小骨格)",
+  "main": "dist/app/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "npm run build && electron .",
+    "dist": "npm run build && electron-builder"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.0",
+    "typescript": "^5.6.0"
+  },
+  "build": {
+    "appId": "jp.cobolinsight.gui",
+    "productName": "COBOL Insight",
+    "files": [
+      "dist/app/**/*",
+      "index.html",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist/installer"
+    },
+    "win": {
+      "target": "nsis",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

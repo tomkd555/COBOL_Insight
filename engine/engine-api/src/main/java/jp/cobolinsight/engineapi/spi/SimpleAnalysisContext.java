@@ -1,0 +1,69 @@
+package jp.cobolinsight.engineapi.spi;
+
+import jp.cobolinsight.engineapi.bms.BmsMapset;
+import jp.cobolinsight.engineapi.callgraph.CallGraph;
+import jp.cobolinsight.engineapi.jcl.JclJobModel;
+import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
+import jp.cobolinsight.engineapi.sql.SqlStatementModel;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+
+final class SimpleAnalysisContext implements AnalysisContext {
+
+    private final List<CobolSemanticModel> cobolPrograms;
+    private final List<JclJobModel> jclJobs;
+    private final List<SqlStatementModel> sqlStatements;
+    private final List<BmsMapset> bmsMapsets;
+    private final Optional<CallGraph> callGraph;
+    private final Map<Class<?>, Object> artifacts;
+
+    SimpleAnalysisContext(List<CobolSemanticModel> cobolPrograms, List<JclJobModel> jclJobs,
+            List<SqlStatementModel> sqlStatements, List<BmsMapset> bmsMapsets,
+            Optional<CallGraph> callGraph, Map<Class<?>, Object> artifacts) {
+        this.cobolPrograms = List.copyOf(cobolPrograms);
+        this.jclJobs = List.copyOf(jclJobs);
+        this.sqlStatements = List.copyOf(sqlStatements);
+        this.bmsMapsets = List.copyOf(bmsMapsets);
+        this.callGraph = Objects.requireNonNull(callGraph, "callGraph");
+        this.artifacts = Map.copyOf(artifacts);
+        for (Map.Entry<Class<?>, Object> entry : this.artifacts.entrySet()) {
+            if (!entry.getKey().isInstance(entry.getValue())) {
+                throw new IllegalArgumentException("artifact value is not an instance of its key type: "
+                        + entry.getKey().getName());
+            }
+        }
+    }
+
+    @Override
+    public List<CobolSemanticModel> cobolPrograms() {
+        return cobolPrograms;
+    }
+
+    @Override
+    public List<JclJobModel> jclJobs() {
+        return jclJobs;
+    }
+
+    @Override
+    public List<SqlStatementModel> sqlStatements() {
+        return sqlStatements;
+    }
+
+    @Override
+    public List<BmsMapset> bmsMapsets() {
+        return bmsMapsets;
+    }
+
+    @Override
+    public Optional<CallGraph> callGraph() {
+        return callGraph;
+    }
+
+    @Override
+    public <T> Optional<T> artifact(Class<T> type) {
+        return Optional.ofNullable(artifacts.get(type)).map(type::cast);
+    }
+}

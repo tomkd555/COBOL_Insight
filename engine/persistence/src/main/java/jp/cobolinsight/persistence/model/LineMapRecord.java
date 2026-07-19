@@ -1,0 +1,18 @@
+package jp.cobolinsight.persistence.model;
+
+/** LINE_MAP表の1行(COBOL行と生成行の対応)。 */
+public record LineMapRecord(long id, long cobolSourceId, int cobolLineStart, int cobolLineEnd,
+        String genFile, int genLineStart, int genLineEnd, String kind, String anchorId) {
+
+    public LineMapRecord {
+        if (genFile == null || genFile.isBlank()) {
+            throw new IllegalArgumentException("genFile must not be blank");
+        }
+        if (kind == null || kind.isBlank()) {
+            throw new IllegalArgumentException("kind must not be blank");
+        }
+        if (anchorId == null || anchorId.isBlank()) {
+            throw new IllegalArgumentException("anchorId must not be blank");
+        }
+    }
+}

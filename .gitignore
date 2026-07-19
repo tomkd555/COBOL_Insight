@@ -1,0 +1,18 @@
+# Gradle
+.gradle/
+build/
+
+# IDE
+.idea/
+*.iml
+
+# 上流OSS clone(vendor配下)は追跡しない
+vendor/
+
+# Node(Electron GUI)
+node_modules/
+
+# 修正案の既定出力先(リポジトリ直下のみ)
+/fix/
+
+*.class

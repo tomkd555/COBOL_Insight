@@ -1,0 +1,1561 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&amp;family=BIZ+UDGothic:wght@400;700&amp;display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;padding:0;background:#ECEEF1;}
+  a{color:#005FB8;} a:hover{color:#004A8F;}
+  @keyframes ci-spin{to{transform:rotate(360deg);}}
+  @keyframes ci-bar{0%{background-position:0 0;}100%{background-position:28px 0;}}
+</style>
+</helmet>
+<div style="display:flex;flex-direction:column;height:100vh;min-width:1280px;font-family:'BIZ UDPGothic','Yu Gothic UI','Meiryo',sans-serif;color:#1F2328;background:#ECEEF1;font-size:13px;">
+
+  <div style="display:flex;align-items:center;gap:10px;height:44px;padding:0 14px;background:#FFFFFF;border-bottom:1px solid #D9DDE3;flex:none;">
+    
+    <div style="display:flex;align-items:baseline;gap:8px;">
+      <div style="font-size:14px;font-weight:700;">COBOL Insight</div>
+      
+    </div>
+    <div style="flex:1;"></div>
+    <sc-if value="{{isRunning}}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;gap:8px;background:#EFF6FD;border:1px solid #BDD8F0;border-radius:5px;padding:4px 10px;">
+        <div style="width:14px;height:14px;border:2px solid #BDD8F0;border-top-color:#005FB8;border-radius:50%;animation:ci-spin .9s linear infinite;"></div>
+        <div style="font-size:11.5px;color:#0B4E8F;">解析実行中 ― {{runFile}}（{{runCount}}）</div>
+        <button onClick="{{onCancel}}" style="font-size:11px;padding:2px 9px;background:#FFFFFF;border:1px solid #C9CFD6;border-radius:4px;cursor:pointer;font-family:inherit;" style-hover="background:#F2F5F8;">キャンセル</button>
+      </div>
+    </sc-if>
+    <sc-if value="{{showStateBar}}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <div style="font-size:10.5px;color:#8A94A0;">表示状態（確認用）</div>
+        <div style="display:flex;border:1px solid #C9CFD6;border-radius:5px;overflow:hidden;">
+          <sc-for list="{{stateItems}}" as="s" hint-placeholder-count="4">
+            <button onClick="{{s.onClick}}" style="font-size:11px;padding:4px 10px;border:none;cursor:pointer;font-family:inherit;border-right:1px solid #E2E6EA;background:{{s.bg}};color:{{s.c}};font-weight:{{s.fw}};">{{s.label}}</button>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+
+  <div style="display:flex;align-items:flex-end;background:#F3F4F6;border-bottom:1px solid #D9DDE3;padding:0 10px;flex:none;">
+    <sc-for list="{{navItems}}" as="t" hint-placeholder-count="8">
+      <button onClick="{{t.onClick}}" style="font-size:12.5px;padding:8px 15px;border:none;border-right:1px solid #E4E7EB;cursor:pointer;font-family:inherit;border-top:2px solid {{t.top}};background:{{t.bg}};color:{{t.c}};font-weight:{{t.fw}};">{{t.label}}</button>
+    </sc-for>
+  </div>
+
+  <sc-if value="{{isRunning}}" hint-placeholder-val="{{ false }}">
+    <div style="height:4px;flex:none;background:repeating-linear-gradient(45deg,#3E8FD6 0 8px,#7FB3E3 8px 16px);background-size:28px 4px;animation:ci-bar 1s linear infinite;"></div>
+  </sc-if>
+
+  <div style="flex:1;min-height:0;position:relative;">
+
+    <sc-if value="{{scExp}}" hint-placeholder-val="{{ true }}">
+      <div data-screen-label="資産エクスプローラー" style="position:absolute;inset:0;display:flex;min-height:0;">
+        <div style="flex:1;display:flex;flex-direction:column;min-width:0;background:#FFFFFF;border-right:1px solid #D9DDE3;">
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #E4E7EB;flex:none;flex-wrap:wrap;">
+            <button onClick="{{onImport}}" style="font-size:12px;padding:5px 13px;background:#FFFFFF;border:1px solid #C9CFD6;border-radius:4px;cursor:pointer;font-family:inherit;" style-hover="background:#F2F5F8;">＋ インポート</button>
+            <input value="{{aSearch}}" onChange="{{onASearch}}" placeholder="名前でフィルタ" style="font-size:12px;padding:5px 9px;border:1px solid #C9CFD6;border-radius:4px;width:170px;font-family:inherit;">
+            <div style="display:flex;gap:4px;">
+              <sc-for list="{{typeChips}}" as="ch" hint-placeholder-count="6">
+                <button onClick="{{ch.onClick}}" style="font-size:11px;padding:3px 10px;border-radius:10px;cursor:pointer;font-family:inherit;border:1px solid {{ch.bd}};background:{{ch.bg}};color:{{ch.c}};">{{ch.label}}</button>
+              </sc-for>
+            </div>
+            <div style="flex:1;"></div>
+            <button onClick="{{onRun}}" style="font-size:12px;font-weight:700;padding:6px 16px;background:#005FB8;color:#FFFFFF;border:none;border-radius:4px;cursor:pointer;font-family:inherit;" style-hover="background:#096CC6;">▶ 解析実行</button>
+          </div>
+          <sc-if value="{{isError}}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:8px;margin:8px 12px 0;padding:7px 12px;background:#FDECEA;border:1px solid #E7B4AE;border-radius:5px;flex:none;">
+              <div style="width:16px;height:16px;background:#C50F1F;color:#FFFFFF;border-radius:3px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none;">!</div>
+              <div style="font-size:12px;color:#7A1C13;">1 件の資産で構文解析に失敗しました。失敗した資産は一覧に表示され、他の資産の結果は利用できます（部分的な結果）。</div>
+            </div>
+          </sc-if>
+          <sc-if value="{{isRunning}}" hint-placeholder-val="{{ false }}">
+            <div style="margin:8px 12px 0;padding:9px 12px;background:#EFF6FD;border:1px solid #BDD8F0;border-radius:5px;flex:none;">
+              <div style="display:flex;justify-content:space-between;font-size:11.5px;color:#0B4E8F;margin-bottom:6px;">
+                <div>解析中: {{runFile}} ― 構文解析 → 制御フロー → データフロー</div>
+                <div>{{runCount}}</div>
+              </div>
+              <div style="height:7px;background:#DCE7F2;border-radius:4px;overflow:hidden;">
+                <div style="width:62%;height:100%;background:repeating-linear-gradient(45deg,#3E8FD6 0 8px,#5CA3E0 8px 16px);background-size:28px 8px;animation:ci-bar 1s linear infinite;border-radius:4px;"></div>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{expEmpty}}" hint-placeholder-val="{{ false }}">
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+              <div style="width:470px;border:2px dashed #C9CFD6;border-radius:8px;padding:38px 30px;text-align:center;background:#FBFCFD;">
+                <div style="width:48px;height:48px;margin:0 auto 14px;border-radius:8px;background:#E4F0FB;color:#005FB8;font-size:24px;font-weight:700;display:flex;align-items:center;justify-content:center;">＋</div>
+                <div style="font-size:14px;font-weight:700;margin-bottom:6px;">資産がまだインポートされていません</div>
+                <div style="font-size:12px;color:#5C6670;line-height:1.7;margin-bottom:16px;">フォルダまたはファイルを取り込み、文字コードを確認してから解析を実行します。<br>対応資産: COBOL / JCL / コピー句 / BMSマップ / データセット定義</div>
+                <button onClick="{{onImport}}" style="font-size:12.5px;font-weight:700;padding:8px 22px;background:#005FB8;color:#FFFFFF;border:none;border-radius:4px;cursor:pointer;font-family:inherit;" style-hover="background:#096CC6;">フォルダ／ファイルをインポート</button>
+                <div style="font-size:11px;color:#8A94A0;margin-top:12px;">文字コードは自動判定（Shift_JIS / UTF-8）または推定（EBCDIC CP930/939）。取込直後にデコードプレビューで確認できます。</div>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{expList}}" hint-placeholder-val="{{ true }}">
+            <div style="display:grid;grid-template-columns:minmax(220px,1fr) 92px 158px 96px 64px;padding:5px 12px;background:#F6F7F9;border-bottom:1px solid #D9DDE3;font-size:11px;color:#5C6670;flex:none;margin-top:8px;">
+              <div>名前</div><div>種別</div><div>文字コード</div><div>解析</div><div style="text-align:right;">指摘</div>
+            </div>
+            <div style="flex:1;overflow:auto;min-height:0;">
+              <sc-for list="{{assetRows}}" as="r" hint-placeholder-count="10">
+                <div style="display:{{r.gD}};padding:6px 12px 3px;font-size:11px;font-weight:700;color:#5C6670;background:#FAFBFC;border-bottom:1px solid #EEF0F3;">▾ {{r.dir}}　<span style="font-weight:400;color:#8A94A0;">{{r.count}} ファイル</span></div>
+                <div onClick="{{r.onSelect}}" style="display:{{r.fD}};grid-template-columns:minmax(220px,1fr) 92px 158px 96px 64px;align-items:center;padding:{{r.pad}};border-bottom:1px solid #F1F3F5;cursor:pointer;font-size:12px;background:{{r.bg}};" style-hover="background:#F4F8FC;">
+                  <div style="font-family:'BIZ UDGothic','MS Gothic',monospace;padding-left:16px;">{{r.name}}</div>
+                  <div><span style="font-size:10.5px;padding:1px 8px;border-radius:9px;background:{{r.tyBg}};color:{{r.tyC}};">{{r.ty}}</span></div>
+                  <div style="font-size:11.5px;color:#5C6670;">{{r.enc}}</div>
+                  <div style="font-size:11.5px;color:{{r.stC}};">{{r.st}}</div>
+                  <div style="text-align:right;font-size:11.5px;color:{{r.fnC}};padding-right:2px;">{{r.fn}}</div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+        <div style="width:330px;flex:none;display:flex;flex-direction:column;background:#FBFCFD;overflow:auto;">
+          <div style="padding:10px 14px 8px;font-size:12.5px;font-weight:700;color:#3A4149;border-bottom:1px solid #E4E7EB;">資産の詳細と文字コード</div>
+          <sc-if value="{{hasSel}}" hint-placeholder-val="{{ true }}">
+            <div style="padding:12px 14px;display:flex;flex-direction:column;gap:10px;">
+              <div>
+                <div style="font-family:'BIZ UDGothic','MS Gothic',monospace;font-size:13px;font-weight:700;">{{selName}}</div>
+                <div style="font-size:11px;color:#8A94A0;margin-top:2px;">{{selPath}}</div>
+              </div>
+              <div style="display:flex;gap:14px;font-size:11.5px;color:#5C6670;">
+                <div>種別: <span style="color:#1F2328;">{{selType}}</span></div>
+                <div>解析: <span style="color:{{selStC}};">{{selSt}}</span></div>
+                <div>指摘: <span style="color:#1F2328;">{{selFind}}</span></div>
+              </div>
+              <div>
+                <div style="font-size:11.5px;color:#5C6670;margin-bottom:4px;">文字コード（手動指定が自動判定より優先）</div>
+                <select value="{{selEnc}}" onChange="{{onEnc}}" style="width:100%;font-size:12px;padding:5px 8px;border:1px solid #C9CFD6;border-radius:4px;font-family:inherit;background:#FFFFFF;">
+                  <sc-for list="{{encOpts}}" as="o" hint-placeholder-count="4">
+                    <option value="{{o}}">{{o}}</option>
+                  </sc-for>
+                </select>
+              </div>
+              <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                  <div style="font-size:11.5px;color:#5C6670;">デコードプレビュー</div>
+                  <div style="font-size:10.5px;color:#8A94A0;">先頭 5 行</div>
+                </div>
+                <div style="border:1px solid {{prevBd}};border-radius:5px;background:#FFFFFF;padding:8px 10px;font-family:'BIZ UDGothic','MS Gothic',monospace;font-size:11.5px;line-height:1.65;overflow:auto;color:{{prevC}};">
+                  <sc-for list="{{prevLines}}" as="pl" hint-placeholder-count="5">
+                    <div style="white-space:pre;">{{pl.t}}</div>
+                  </sc-for>
+                </div>
+                <sc-if value="{{prevBad}}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:6px;font-size:11.5px;color:#7A1C13;background:#FDECEA;border:1px solid #E7B4AE;border-radius:4px;padding:6px 9px;line-height:1.6;">デコード結果が不正の可能性があります。コードページを指定し直して内容を確認してください。</div>
+                </sc-if>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{noSel}}" hint-placeholder-val="{{ false }}">
+            <div style="padding:24px 14px;font-size:12px;color:#8A94A0;text-align:center;line-height:1.8;">資産を選択すると詳細と<br>デコードプレビューを表示します</div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{scGraph}}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="呼出関係図ビュー" style="position:absolute;inset:0;display:flex;flex-direction:column;min-height:0;">
+        <div style="display:flex;align-items:center;gap:6px;padding:7px 12px;background:#FFFFFF;border-bottom:1px solid #D9DDE3;flex:none;flex-wrap:wrap;">
+          <div style="font-size:11px;color:#5C6670;margin-right:2px;">ノード種別:</div>
+          <sc-for list="{{gFilters}}" as="gf" hint-placeholder-count="9">
+            <button onClick="{{gf.onT}}" style="display:flex;align-items:center;gap:5px;font-size:11px;padding:3px 9px;border-radius:10px;cursor:pointer;font-family:inherit;border:1px solid {{gf.bd}};background:{{gf.bg}};color:{{gf.c}};">
+              <span style="width:8px;height:8px;border-radius:2px;background:{{gf.dot}};border:1px solid {{gf.dotBd}};"></span>{{gf.label}}
+            </button>
+          </sc-for>
+          <div style="flex:1;"></div>
+          <div style="font-size:11px;color:#8A94A0;">{{gCount}}</div>
+          <button onClick="{{onExpSvg}}" style="font-size:11.5px;padding:4px 12px;background:#FFFFFF;border:1px solid #C9CFD6;border-radius:4px;cursor:pointer;font-family:inherit;" style-hover="background:#F2F5F8;">SVG 出力</button>
+          <button onClick="{{onExpPng}}" style="font-size:11.5px;padding:4px 12px;background:#FFFFFF;border:1px solid #C9CFD6;border-radius:4px;cursor:pointer;font-family:inherit;" style-hover="background:#F2F5F8;">PNG 出力</button>
+        </div>
+        <sc-if value="{{gEmpty}}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+            <div style="text-align:center;">
+              <div style="font-size:14px;font-weight:700;margin-bottom:6px;">解析結果がありません</div>
+              <div style="font-size:12px;color:#5C6670;margin-bottom:14px;">資産をインポートして解析を実行すると、JCL → プログラム → サブルーチン → データセットの呼出関係を表示できます。</div>
+              <button onClick="{{onGoExp}}" style="font-size:12px;padding:6px 16px;background:#FFFFFF;border:1px solid #C9CFD6;border-radius:4px;cursor:pointer;font-family:inherit;" style-hover="background:#F2F5F8;">資産エクスプローラーへ</button>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{gRunning}}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+            <div style="display:flex;align-items:center;gap:12px;background:#FFFFFF;border:1px solid #D9DDE3;border-radius:6px;padding:18px 26px;">
+              <div style="width:22px;height:22px;border:3px solid #C9D9EA;border-top-color:#005FB8;border-radius:50%;animation:ci-spin .9s linear infinite;"></div>
+              <div>
+                <div style="font-size:13px;font-weight:700;">呼出関係を構築しています…</div>
+                <div style="font-size:11.5px;color:#5C6670;margin-top:2px;">CALL の解決基盤（定数由来 / データフロー由来 / 未解決）を判定中</div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{gShow}}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;min-height:0;">
+            <div style="flex:1;overflow:auto;min-width:0;background:#FBFCFD;position:relative;">
+              <sc-if value="{{isError}}" hint-placeholder-val="{{ false }}">
+                <div style="position:sticky;top:0;left:0;z-index:5;margin:8px;display:inline-flex;align-items:center;gap:7px;background:#FDECEA;border:1px solid #E7B4AE;border-radius:5px;padding:5px 11px;">
+                  <div style="width:14px;height:14px;background:#C50F1F;color:#FFFFFF;border-radius:3px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;">!</div>
+                  <div style="font-size:11.5px;color:#7A1C13;">解析不能の資産はグラフから除外せず「解析不能」ノードとして表示しています</div>
+                </div>
+              </sc-if>
+              <div style="position:relative;width:1160px;height:1000px;">
+                {{gSvg}}
+                <sc-for list="{{gCaptions}}" as="cp" hint-placeholder-count="4">
+                  <div style="position:absolute;left:{{cp.x}}px;top:{{cp.y}}px;font-size:11px;font-weight:700;color:#7C8692;">{{cp.t}}</div>
+                </sc-for>
+                <sc-for list="{{gNodes}}" as="n" hint-placeholder-count="10">
+                  <div onClick="{{n.onClick}}" style="position:absolute;left:{{n.x}}px;top:{{n.y}}px;width:{{n.w}}px;height:46px;background:{{n.bg}};border:1.5px {{n.bds}} {{n.bd}};border-radius:5px;padding:3px 8px;cursor:pointer;box-sizing:border-box;box-shadow:{{n.ring}};">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;">
+                      <span style="font-size:9px;color:{{n.capC}};">{{n.cap}}</span>
+                      <span style="display:{{n.bdgD}};font-size:9px;background:#FDECEA;color:#C50F1F;border:1px solid #E7B4AE;border-radius:8px;padding:0 5px;line-height:12px;">{{n.badge}}</span>
+                      <button onClick="{{n.onColl}}" style="display:{{n.clD}};align-items:center;justify-content:center;width:14px;height:14px;font-size:10px;line-height:1;border:1px solid #C9CFD6;background:#FFFFFF;border-radius:3px;cursor:pointer;padding:0;color:#5C6670;">{{n.clTxt}}</button>
+                    </div>
+                    <div style="font-family:'BIZ UDGothic','MS Gothic',monospace;font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{n.l}}</div>
+                    <div style="font-size:9.5px;color:#5C6670;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{n.s}}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="width:252px;flex:none;display:flex;flex-direction:column;background:#FBFCFD;border-left:1px solid #D9DDE3;overflow:auto;">
+              <div style="padding:10px 13px 8px;font-size:12.5px;font-weight:700;color:#3A4149;border-bottom:1px solid #E4E7EB;">ノード情報</div>
+              <sc-if value="{{selN}}" hint-placeholder-val="{{ false }}">
+                <div style="padding:11px 13px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid #E4E7EB;">
+                  <div>
+                    <span style="font-size:10px;padding:1px 8px;border-radius:8px;background:{{snTyBg}};color:{{snTyC}};border:1px solid {{snTyBd}};">{{snType}}</span>
+                  </div>
+                  <div style="font-family:'BIZ UDGothic','MS Gothic',monospace;font-size:13px;font-weight:700;word-break:break-all;">{{snName}}</div>
+                  <div style="font-size:11.5px;color:#5C6670;line-height:1.65;">{{snDesc}}</div>
+                  <div style="font-size:11.5px;color:#5C6670;">指摘: <span style="color:#C50F1F;">{{snFind}}</span></div>
+                  <button onClick="{{onOpenSrc}}" style="display:{{snOpenD}};font-size:11.5px;padding:5px 12px;background:#005FB8;color:#FFFFFF;border:none;border-radius:4px;cursor:pointer;font-family:inherit;" style-hover="background:#096CC6;">ソースを開く →</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{noSelN}}" hint-placeholder-val="{{ true }}">
+                <div style="padding:14px 13px;font-size:11.5px;color:#8A94A0;border-bottom:1px solid #E4E7EB;line-height:1.7;">ノードを選択すると詳細を表示します。ジョブ／トランザクションのノードは −/＋ で展開・折りたたみできます。</div>
+              </sc-if>
+              <div style="padding:10px 13px 6px;font-size:11.5px;font-weight:700;color:#3A4149;">凡例 ― ノード</div>
+              <div style="padding:0 13px 8px;display:grid;grid-template-columns:1fr 1fr;gap:3px 8px;">
+                <sc-for list="{{legendN}}" as="ln" hint-placeholder-count="10">
+                  <div style="display:flex;align-items:center;gap:6px;font-size:10.5px;color:#454C55;">
+                    <span style="width:11px;height:11px;border-radius:3px;background:{{ln.bg}};border:1.5px {{ln.bds}} {{ln.bd}};flex:none;"></span>{{ln.t}}
+                  </div>
+                </sc-for>
+              </div>
+              <div style="padding:4px 13px 6px;font-size:11.5px;font-weight:700;color:#3A4149;">凡例 ― エッジ</div>
+              <div style="padding:0 13px 14px;display:flex;flex-direction:column;gap:4px;">
+                <sc-for list="{{legendE}}" as="le" hint-placeholder-count="9">
+                  <div style="display:flex;align-items:center;gap:7px;font-size:10.5px;color:#454C55;">
+                    <span style="width:26px;border-top:2px {{le.dash}} {{le.c}};flex:none;"></span>{{le.t}}
+                  </div>
+                </sc-for>
+                <div style="font-size:10px;color:#8A94A0;line-height:1.6;margin-top:4px;">破線＝動的・条件付き・未確定。未解決の動的CALLや JCL の COND/IF 分岐は「可能経路」として明示し、完全解決を装いません。</div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{scFind}}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="指摘一覧ビュー" style="position:absolute;inset:0;display:flex;flex-direction:column;min-height:0;background:#FFFFFF;">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #E4E7EB;flex:none;flex-wrap:wrap;">
+          <div style="display:flex;gap:4px;">
+            <sc-for list="{{sevChips}}" as="sv" hint-placeholder-count="4">
+              <button onClick="{{sv.onT}}" style="display:flex;align-items:center;gap:5px;font-size:11px;padding:3px 10px;border-radius:10px;cursor:pointer;font-family:inherit;border:1px solid {{sv.bd}};background:{{sv.bg}};color:{{sv.c}};">
+                <span style="color:{{sv.shC}};font-size:10px;">{{sv.shape}}</span>{{sv.label}}<span style="color:#8A94A0;">{{sv.count}}</span>
+              </button>
+            </sc-for>
+          </div>
+          <select value="{{fRule}}" onChange="{{onFRule}}" style="font-size:11.5px;padding:4px 7px;border:1px solid #C9CFD6;border-radius:4px;font-family:inherit;background:#FFFFFF;max-width:230px;">
+            <sc-for list="{{ruleOpts}}" as="o" hint-placeholder-count="5">
+              <option value="{{o.v}}">{{o.t}}</option>
+            </sc-for>
+          </select>
+          <select value="{{fFile}}" onChange="{{onFFile}}" style="font-size:11.5px;padding:4px 7px;border:1px solid #C9CFD6;border-radius:4px;font-family:inherit;background:#FFFFFF;">
+            <sc-for list="{{fileOpts}}" as="o" hint-placeholder-count="5">
+              <option value="{{o.v}}">{{o.t}}</option>
+            </sc-for>
+          </select>
+          <input value="{{fText}}" onChange="{{onFText}}" placeholder="内容で検索" style="font-size:12px;padding:4px 9px;border:1px solid #C9CFD6;border-radius:4px;width:150px;font-family:inherit;">
+          <div style="flex:1;"></div>
+          <div style="font-size:11.5px;color:#5C6670;">{{fSummary}}</div>
+          <button onClick="{{onGoReport}}" style="font-size:11.5px;padding:5px 13px;background:#FFFFFF;border:1px solid #C9CFD6;border-radius:4px;cursor:pointer;font-family:inherit;" style-hover="background:#F2F5F8;">レポート出力 →</button>
+        </div>
+        <sc-if value="{{fEmpty}}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;">
+            <div style="display:flex;border:1px solid #C9CFD6;border-radius:5px;overflow:hidden;">
+              <button onClick="{{onEV0}}" style="font-size:11px;padding:4px 12px;border:none;cursor:pointer;font-family:inherit;background:{{ev0Bg}};color:{{ev0C}};">未解析の場合</button>
+              <button onClick="{{onEV1}}" style="font-size:11px;padding:4px 12px;border:none;border-left:1px solid #E2E6EA;cursor:pointer;font-family:inherit;background:{{ev1Bg}};color:{{ev1C}};">指摘 0 件の場合</button>
+            </div>
+            <sc-if value="{{evNoRun}}" hint-placeholder-val="{{ true }}">
+              <div style="text-align:center;">
+                <div style="font-size:14px;font-weight:700;margin-bottom:6px;">解析がまだ実行されていません</div>
+                <div style="font-size:12px;color:#5C6670;margin-bottom:14px;">資産をインポートして解析を実行すると、31 種のバグ検出ルール(R001〜R031)による指摘を一覧できます。</div>
+                <button onClick="{{onGoExp}}" style="font-size:12px;padding:6px 16px;background:#FFFFFF;border:1px solid #C9CFD6;border-radius:4px;cursor:pointer;font-family:inherit;" style-hover="background:#F2F5F8;">資産エクスプローラーへ</button>
+              </div>
+            </sc-if>
+            <sc-if value="{{evZero}}" hint-placeholder-val="{{ false }}">
+              <div style="text-align:center;">
+                <div style="width:44px;height:44px;margin:0 auto 10px;border-radius:50%;background:#EAF2EA;color:#2F6D45;font-size:22px;font-weight:700;display:flex;align-items:center;justify-content:center;">✓</div>
+                <div style="font-size:14px;font-weight:700;margin-bottom:6px;">指摘はありません</div>
+                <div style="font-size:12px;color:#5C6670;">解析は正常に完了し、有効なルールに該当する箇所は検出されませんでした。</div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+        <sc-if value="{{fRunning}}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+            <div style="display:flex;align-items:center;gap:12px;background:#FBFCFD;border:1px solid #D9DDE3;border-radius:6px;padding:18px 26px;">
+              <div style="width:22px;height:22px;border:3px solid #C9D9EA;border-top-color:#005FB8;border-radius:50%;animation:ci-spin .9s linear infinite;"></div>
+              <div>
+                <div style="font-size:13px;font-weight:700;">バグ検出を実行しています…</div>
+                <div style="font-size:11.5px;color:#5C6670;margin-top:2px;">第1段(構文) → 第2段(制御フロー) → 第3段(データフロー)</div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{fShow}}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid;grid-template-columns:96px 224px 158px 56px 1fr 76px;padding:5px 12px;background:#F6F7F9;border-bottom:1px solid #D9DDE3;font-size:11px;color:#5C6670;flex:none;">
+            <button onClick="{{onSortSev}}" style="all:unset;cursor:pointer;font-size:11px;color:#5C6670;">重大度 {{arSev}}</button>
+            <div>ルール</div>
+            <button onClick="{{onSortFile}}" style="all:unset;cursor:pointer;font-size:11px;color:#5C6670;">ファイル {{arFile}}</button>
+            <button onClick="{{onSortLine}}" style="all:unset;cursor:pointer;font-size:11px;color:#5C6670;">行 {{arLine}}</button>
+            <div>内容（根拠）</div>
+            <div>修正案</div>
+          </div>
+          <div style="flex:1;overflow:auto;min-height:0;">
+            <sc-for list="{{fRows}}" as="f" hint-placeholder-count="10">
+              <div onClick="{{f.onJump}}" title="クリックでソースの該当行へジャンプ" style="display:grid;grid-template-columns:96px 224px 158px 56px 1fr 76px;align-items:start;padding:{{f.pad}};border-bottom:1px solid #F1F3F5;cursor:pointer;font-size:12px;background:{{f.bg}};" style-hover="background:#F4F8FC;">
+                <div style="display:flex;align-items:center;gap:5px;"><span style="color:{{f.shC}};font-size:10px;">{{f.shape}}</span><span style="font-weight:700;color:{{f.shC}};">{{f.sev}}</span></div>
+                <div style="padding-right:8px;"><span style="font-family:'BIZ UDGothic','MS Gothic',monospace;color:#5C6670;">{{f.rule}}</span> <span style="font-size:11.5px;">{{f.rname}}</span></div>
+                <div style="font-family:'BIZ UDGothic','MS Gothic',monospace;font-size:11.5px;">{{f.file}}</div>
+                <div style="font-family:'BIZ UDGothic','MS Gothic',monospace;font-size:11.5px;color:#005FB8;">{{f.line}}</div>
+                <div style="font-size:11.5px;color:#454C55;line-height:1.55;padding-right:10px;">{{f.note}}</div>
+                <div><span style="display:{{f.fixD}};font-size:10px;padding:1px 7px;border-radius:8px;background:#E4F0FB;color:#084B85;border:1px solid #BDD8F0;">diff あり</span></div>
+              </div>
+            </sc-for>
+            <sc-if value="{{fNoHit}}" hint-placeholder-val="{{ false }}">
+              <div style="padding:26px;text-align:center;font-size:12px;color:#8A94A0;">現在のフィルタ条件に一致する指摘はありません</div>
+            </sc-if>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{scSrc}}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="ソースビューア" style="position:absolute;inset:0;display:flex;flex-direction:column;min-height:0;background:#FFFFFF;">
+        <div style="display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid #E4E7EB;flex:none;flex-wrap:wrap;">
+          <select value="{{vFile}}" onChange="{{onVFile}}" style="font-size:12px;padding:4px 8px;border:1px solid #C9CFD6;border-radius:4px;font-family:'BIZ UDGothic','MS Gothic',monospace;background:#FFFFFF;">
+            <sc-for list="{{vFileOpts}}" as="o" hint-placeholder-count="5">
+              <option value="{{o}}">{{o}}</option>
+            </sc-for>
+          </select>
+          <sc-if value="{{vFromShow}}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:11px;background:#E4F0FB;color:#084B85;border:1px solid #BDD8F0;border-radius:10px;padding:2px 10px;">{{vFrom}}</div>
+          </sc-if>
+          <div style="flex:1;"></div>
+          <div style="display:flex;align-items:center;gap:9px;font-size:10.5px;color:#5C6670;">
+            <span><span style="color:#C50F1F;">●</span> 高</span><span><span style="color:#B25B00;">◆</span> 中</span><span><span style="color:#005FB8;">■</span> 低</span><span><span style="color:#5F6B7A;">▲</span> 警告</span>
+            <span style="display:inline-block;width:11px;height:11px;background:#FFF3D0;border:1px solid #E3CE8E;border-radius:2px;"></span><span>対応行リンク</span>
+          </div>
+        </div>
+        <sc-if value="{{vEmpty}}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+            <div style="text-align:center;">
+              <div style="font-size:14px;font-weight:700;margin-bottom:6px;">ファイルが選択されていません</div>
+              <div style="font-size:12px;color:#5C6670;line-height:1.8;">この画面は通常、呼出関係図・指摘一覧・SQL助言からの<br>「該当行へジャンプ」で開きます。上のファイル選択からも表示できます。</div>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{vRunning}}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+            <div style="display:flex;align-items:center;gap:12px;background:#FBFCFD;border:1px solid #D9DDE3;border-radius:6px;padding:18px 26px;">
+              <div style="width:22px;height:22px;border:3px solid #C9D9EA;border-top-color:#005FB8;border-radius:50%;animation:ci-spin .9s linear infinite;"></div>
+              <div>
+                <div style="font-size:13px;font-weight:700;">この資産の解析・対訳生成が完了していません</div>
+                <div style="font-size:11.5px;color:#5C6670;margin-top:2px;">解析完了後にハイライトと対訳ペインを表示します</div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{vShow}}" hint-placeholder-val="{{ false }}">
+          <sc-if value="{{isError}}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:8px;margin:8px 12px 0;padding:6px 12px;background:#FDECEA;border:1px solid #E7B4AE;border-radius:5px;flex:none;">
+              <div style="width:14px;height:14px;background:#C50F1F;color:#FFFFFF;border-radius:3px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;">!</div>
+              <div style="font-size:11.5px;color:#7A1C13;">一部資産の解析に失敗しています。表示中の結果は部分的な解析結果です（SYKENC1_SJIS.cbl は構文解析失敗）。</div>
+            </div>
+          </sc-if>
+          <div style="flex:1;display:flex;min-height:0;padding:8px 12px 12px;gap:10px;">
+            <div style="flex:1.25;display:flex;flex-direction:column;min-width:0;border:1px solid #D9DDE3;border-radius:6px;overflow:hidden;">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:#F6F7F9;border-bottom:1px solid #D9DDE3;flex:none;">
+                <div style="font-size:11.5px;font-weight:700;color:#3A4149;">COBOL ソース（固定形式 80 桁）― {{vFile}}</div>
+                <div style="font-size:10px;color:#8A94A0;">{{vFindCount}}</div>
+              </div>
+              <div style="display:flex;font-family:'BIZ UDGothic','MS Gothic',monospace;font-size:12px;background:#FAFBFC;border-bottom:1px solid #E4E7EB;flex:none;overflow:hidden;">
+                <div style="width:46px;flex:none;background:#F6F7F9;border-right:1px solid #E4E7EB;"></div>
+                <div style="width:14px;flex:none;"></div>
+                <div style="white-space:pre;color:#8A94A0;font-size:9px;line-height:15px;">
+                  <div><span style="display:inline-block;width:6ch;text-align:center;background:#EEF0F3;">1-6 一連</span><span style="display:inline-block;width:1ch;text-align:center;background:#E4E7EB;">7</span><span style="display:inline-block;width:65ch;text-align:center;">8 ─────────── 本体（A/B 領域） ─────────── 72</span><span style="display:inline-block;width:8ch;text-align:center;background:#EEF0F3;">73-80</span></div>
+                </div>
+              </div>
+              <div ref="{{srcRef}}" style="flex:1;overflow:auto;min-height:0;">
+                <div style="position:relative;min-width:max-content;font-family:'BIZ UDGothic','MS Gothic',monospace;font-size:12px;">
+                  <sc-for list="{{vRows}}" as="r" hint-placeholder-count="14">
+                    <div onMouseEnter="{{r.onE}}" onMouseLeave="{{r.onL}}" title="{{r.tip}}" style="display:flex;align-items:stretch;background:{{r.bg}};height:19px;">
+                      <div style="width:46px;flex:none;text-align:right;padding-right:6px;color:#9AA4B1;font-size:11px;line-height:19px;background:#F6F7F9;border-right:1px solid #E4E7EB;">{{r.no}}</div>
+                      <div style="width:14px;flex:none;text-align:center;font-size:10px;line-height:19px;color:{{r.mkC}};">{{r.mk}}</div>
+                      <div style="white-space:pre;line-height:19px;color:{{r.c}};">{{r.text}}</div>
+                      <button onClick="{{r.onBtn}}" style="display:{{r.btnD}};font-size:10px;margin:1.5px 8px;padding:0 8px;background:#E4F0FB;border:1px solid #7FB3E3;color:#084B85;border-radius:3px;cursor:pointer;font-family:'BIZ UDPGothic',sans-serif;flex:none;line-height:14px;">{{r.btn}}</button>
+                      <div style="display:{{r.orgD}};font-size:10px;color:#6E8B57;padding:0 10px;line-height:19px;flex:none;font-family:'BIZ UDPGothic',sans-serif;">{{r.org}}</div>
+                    </div>
+                  </sc-for>
+                  <div style="position:absolute;top:0;bottom:0;left:calc(60px + 6ch);width:0;border-left:1px solid rgba(0,0,0,.06);pointer-events:none;"></div>
+                  <div style="position:absolute;top:0;bottom:0;left:calc(60px + 7ch);width:0;border-left:1px solid rgba(0,0,0,.06);pointer-events:none;"></div>
+                  <div style="position:absolute;top:0;bottom:0;left:calc(60px + 72ch);width:0;border-left:1px dashed rgba(197,15,31,.18);pointer-events:none;"></div>
+                </div>
+              </div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;min-width:0;border:1px solid #D9DDE3;border-radius:6px;overflow:hidden;">
+              <div style="display:flex;align-items:center;gap:6px;padding:4px 10px;background:#F6F7F9;border-bottom:1px solid #D9DDE3;flex:none;">
+                <div style="font-size:11.5px;font-weight:700;color:#3A4149;margin-right:6px;">逐語対訳</div>
+                <button onClick="{{onPy}}" style="font-size:11px;padding:3px 12px;border:1px solid {{pyBd}};background:{{pyBg}};color:{{pyC}};border-radius:4px;cursor:pointer;font-family:inherit;">Python</button>
+                <button onClick="{{onJv}}" style="font-size:11px;padding:3px 12px;border:1px solid {{jvBd}};background:{{jvBg}};color:{{jvC}};border-radius:4px;cursor:pointer;font-family:inherit;">Java</button>
+                <div style="flex:1;"></div>
+                <div style="font-size:10px;color:#8A94A0;">行の対応は多対一・一対多 ― ホバーで相互ハイライト</div>
+              </div>
+              <sc-if value="{{tAvail}}" hint-placeholder-val="{{ true }}">
+                <div style="flex:1;overflow:auto;min-height:0;font-family:'BIZ UDGothic','MS Gothic',monospace;font-size:12px;">
+                  <sc-for list="{{tRows}}" as="tr" hint-placeholder-count="14">
+                    <div onMouseEnter="{{tr.onE}}" onMouseLeave="{{tr.onL}}" style="display:flex;align-items:center;background:{{tr.bg}};height:19px;">
+                      <div style="white-space:pre;line-height:19px;padding-left:10px;color:#1F2328;">{{tr.t}}</div>
+                      <div style="display:{{tr.tagD}};font-size:9.5px;color:#8A6D1F;background:#F5EFE0;border:1px solid #E0D3A8;border-radius:3px;padding:0 6px;margin-left:10px;line-height:13px;flex:none;font-family:'BIZ UDPGothic',sans-serif;">{{tr.tag}}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{tNone}}" hint-placeholder-val="{{ false }}">
+                <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+                  <div style="text-align:center;font-size:11.5px;color:#8A94A0;line-height:1.8;">このファイルの対訳サンプルは本モックに未収録です。<br>SYK001.cbl を選択すると対訳ペインの動作を確認できます。</div>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{scSql}}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="SQL助言ビュー" style="position:absolute;inset:0;display:flex;flex-direction:column;min-height:0;background:#FFFFFF;">
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid #E4E7EB;flex:none;">
+          <div style="font-size:12px;color:#5C6670;">埋め込み Db2 SQL（EXEC SQL … END-EXEC）を抽出し、構文レベルの最適化助言（S001〜S006）を提示します。実行計画やカタログには依存しません。</div>
+          <div style="flex:1;"></div>
+          <div style="font-size:11.5px;color:#5C6670;">{{qSummary}}</div>
+        </div>
+        <sc-if value="{{qEmpty}}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+            <div style="text-align:center;">
+              <div style="font-size:14px;font-weight:700;margin-bottom:6px;">表示できる SQL がありません</div>
+              <div style="font-size:12px;color:#5C6670;line-height:1.8;">解析がまだ実行されていないか、解析対象に埋め込み SQL が見つかりませんでした。</div>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{qRunning}}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+            <div style="display:flex;align-items:center;gap:12px;background:#FBFCFD;border:1px solid #D9DDE3;border-radius:6px;padding:18px 26px;">
+              <div style="width:22px;height:22px;border:3px solid #C9D9EA;border-top-color:#005FB8;border-radius:50%;animation:ci-spin .9s linear infinite;"></div>
+              <div>
+                <div style="font-size:13px;font-weight:700;">SQL 助言を計算しています…</div>
+                <div style="font-size:11.5px;color:#5C6670;margin-top:2px;">SQL 構文木の走査による判定（S001〜S006）</div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{qShow}}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;min-height:0;">
+            <div style="width:470px;flex:none;overflow:auto;border-right:1px solid #D9DDE3;">
+              <sc-for list="{{qRows}}" as="q" hint-placeholder-count="6">
+                <div onClick="{{q.onSel}}" style="padding:9px 14px;border-bottom:1px solid #F1F3F5;cursor:pointer;background:{{q.bg}};border-left:3px solid {{q.lbd}};" style-hover="background:#F4F8FC;">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:10.5px;font-weight:700;padding:1px 8px;border-radius:8px;background:{{q.kBg}};color:{{q.kC}};">{{q.kind}}</span>
+                    <span style="font-family:'BIZ UDGothic','MS Gothic',monospace;font-size:11.5px;color:#5C6670;">{{q.loc}}</span>
+                    <div style="flex:1;"></div>
+                    <span style="font-size:10.5px;color:{{q.aC}};">{{q.aTxt}}</span>
+                  </div>
+                  <div style="font-family:'BIZ UDGothic','MS Gothic',monospace;font-size:11.5px;color:#454C55;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{q.ex}}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="flex:1;overflow:auto;min-width:0;background:#FBFCFD;">
+              <div style="padding:14px 18px;display:flex;flex-direction:column;gap:12px;max-width:760px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <div style="font-size:13.5px;font-weight:700;">{{qdTitle}}</div>
+                  <div style="font-family:'BIZ UDGothic','MS Gothic',monospace;font-size:11.5px;color:#5C6670;">{{qdLoc}}</div>
+                  <div style="flex:1;"></div>
+                  <button onClick="{{onQdJump}}" style="font-size:11.5px;padding:5px 13px;background:#005FB8;color:#FFFFFF;border:none;border-radius:4px;cursor:pointer;font-family:inherit;" style-hover="background:#096CC6;">該当ソース行へ →</button>
+                </div>
+                <sc-if value="{{qdPerr}}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;align-items:center;gap:8px;padding:7px 12px;background:#FDECEA;border:1px solid #E7B4AE;border-radius:5px;">
+                    <div style="width:14px;height:14px;background:#C50F1F;color:#FFFFFF;border-radius:3px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;">!</div>
+                    <div style="font-size:11.5px;color:#7A1C13;">この SQL は構文解析できなかったため、助言判定の対象外です。</div>
+                  </div>
+                </sc-if>
+                <div style="border:1px solid #D9DDE3;border-radius:6px;background:#FFFFFF;overflow:hidden;">
+                  <div style="padding:5px 12px;background:#F6F7F9;border-bottom:1px solid #E4E7EB;font-size:11px;color:#5C6670;">SQL 文</div>
+                  <div style="padding:10px 14px;font-family:'BIZ UDGothic','MS Gothic',monospace;font-size:12px;line-height:1.7;overflow:auto;">
+                    <sc-for list="{{qdSql}}" as="ql" hint-placeholder-count="4">
+                      <div style="white-space:pre;">{{ql.t}}</div>
+                    </sc-for>
+                  </div>
+                </div>
+                <sc-if value="{{qdHasAdv}}" hint-placeholder-val="{{ true }}">
+                  <div style="font-size:12px;font-weight:700;color:#3A4149;">最適化助言 {{qdAdvCount}}</div>
+                  <sc-for list="{{qdAdv}}" as="ad" hint-placeholder-count="3">
+                    <div style="border:1px solid #D9DDE3;border-radius:6px;background:#FFFFFF;padding:11px 14px;">
+                      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                        <span style="font-family:'BIZ UDGothic','MS Gothic',monospace;font-size:11.5px;font-weight:700;color:#5C6670;">{{ad.id}}</span>
+                        <span style="font-size:12px;font-weight:700;">{{ad.name}}</span>
+                        <div style="flex:1;"></div>
+                        <span style="color:{{ad.shC}};font-size:10px;">{{ad.shape}}</span><span style="font-size:11.5px;font-weight:700;color:{{ad.shC}};">{{ad.sev}}</span>
+                      </div>
+                      <div style="font-size:12px;color:#454C55;line-height:1.7;">{{ad.desc}}</div>
+                      <div style="display:{{ad.fixD}};margin-top:8px;padding:7px 11px;background:#F2F7F3;border:1px solid #CBDFCE;border-radius:4px;font-family:'BIZ UDGothic','MS Gothic',monospace;font-size:11.5px;color:#2F6D45;white-space:pre-wrap;">改善例: {{ad.fix}}</div>
+                    </div>
+                  </sc-for>
+                </sc-if>
+                <sc-if value="{{qdNoAdv}}" hint-placeholder-val="{{ false }}">
+                  <div style="padding:12px 14px;border:1px dashed #C9CFD6;border-radius:6px;font-size:12px;color:#8A94A0;background:#FFFFFF;">この SQL 文に対する助言はありません（S001〜S006 のいずれにも該当せず）。</div>
+                </sc-if>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{scDiff}}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="diffビュー" style="position:absolute;inset:0;display:flex;flex-direction:column;min-height:0;background:#FFFFFF;">
+        <sc-if value="{{xEmpty}}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+            <div style="text-align:center;">
+              <div style="font-size:14px;font-weight:700;margin-bottom:6px;">修正案が選択されていません</div>
+              <div style="font-size:12px;color:#5C6670;line-height:1.8;">修正案は R004（ON SIZE ERROR 追加）・R017（FILE STATUS 検査挿入）・<br>R018（SQLCODE 検査挿入）・R021（CICS RESP 検査挿入）の 4 ルールに対して生成されます。<br>その他の指摘は助言のみで、diff はありません。</div>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{xRunning}}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+            <div style="display:flex;align-items:center;gap:12px;background:#FBFCFD;border:1px solid #D9DDE3;border-radius:6px;padding:18px 26px;">
+              <div style="width:22px;height:22px;border:3px solid #C9D9EA;border-top-color:#005FB8;border-radius:50%;animation:ci-spin .9s linear infinite;"></div>
+              <div>
+                <div style="font-size:13px;font-weight:700;">修正案を生成・検証しています…</div>
+                <div style="font-size:11.5px;color:#5C6670;margin-top:2px;">修正後ソースの再構文解析による妥当性確認を含みます</div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{xShow}}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;min-height:0;">
+            <div style="width:300px;flex:none;display:flex;flex-direction:column;border-right:1px solid #D9DDE3;">
+              <div style="padding:9px 13px;font-size:12px;font-weight:700;color:#3A4149;border-bottom:1px solid #E4E7EB;flex:none;">修正案 {{xCount}}</div>
+              <div style="flex:1;overflow:auto;">
+                <sc-for list="{{xRows}}" as="x" hint-placeholder-count="7">
+                  <div onClick="{{x.onSel}}" style="padding:9px 13px;border-bottom:1px solid #F1F3F5;cursor:pointer;background:{{x.bg}};border-left:3px solid {{x.lbd}};" style-hover="background:#F4F8FC;">
+                    <div style="display:flex;align-items:center;gap:6px;">
+                      <span style="font-family:'BIZ UDGothic','MS Gothic',monospace;font-size:11px;font-weight:700;color:#5C6670;">{{x.rule}}</span>
+                      <span style="font-family:'BIZ UDGothic','MS Gothic',monospace;font-size:11.5px;">{{x.loc}}</span>
+                      <div style="flex:1;"></div>
+                      <span style="display:{{x.cpyD}};font-size:9.5px;padding:1px 6px;border-radius:7px;background:#F5EFE0;color:#8A6D1F;border:1px solid #E0D3A8;">コピー句</span>
+                      <span style="display:{{x.errD}};font-size:9.5px;padding:1px 6px;border-radius:7px;background:#FDECEA;color:#C50F1F;border:1px solid #E7B4AE;">検証失敗</span>
+                    </div>
+                    <div style="font-size:11.5px;color:#454C55;margin-top:3px;">{{x.title}}</div>
+                    <div style="font-size:10.5px;color:{{x.decC}};margin-top:2px;">{{x.dec}}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="padding:9px 13px;border-top:1px solid #E4E7EB;font-size:10.5px;color:#8A94A0;line-height:1.65;flex:none;">元ソースは変更されません。「適用」は fix/ ディレクトリへ相対パス構造を保って書き出します。採用/棄却は常に人の判断です。</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+              <div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid #E4E7EB;flex:none;flex-wrap:wrap;">
+                <div>
+                  <div style="font-size:13px;font-weight:700;">{{xTitle}}</div>
+                  <div style="font-size:11px;color:#5C6670;margin-top:2px;">{{xDesc}}</div>
+                </div>
+                <div style="flex:1;"></div>
+                <div style="display:flex;border:1px solid #C9CFD6;border-radius:5px;overflow:hidden;">
+                  <button onClick="{{onModeP}}" style="font-size:11.5px;padding:5px 14px;border:none;cursor:pointer;font-family:inherit;background:{{mpBg}};color:{{mpC}};font-weight:{{mpF}};">プレビュー（確認）</button>
+                  <button onClick="{{onModeA}}" style="font-size:11.5px;padding:5px 14px;border:none;border-left:1px solid #E2E6EA;cursor:pointer;font-family:inherit;background:{{maBg}};color:{{maC}};font-weight:{{maF}};">適用（書き出し）</button>
+                </div>
+                <button onClick="{{onAccept}}" style="font-size:11.5px;font-weight:700;padding:6px 16px;background:#2F6D45;color:#FFFFFF;border:none;border-radius:4px;cursor:pointer;font-family:inherit;" style-hover="background:#38804F;">✓ 採用</button>
+                <button onClick="{{onReject}}" style="font-size:11.5px;padding:6px 14px;background:#FFFFFF;border:1px solid #C9CFD6;border-radius:4px;cursor:pointer;font-family:inherit;color:#7A1C13;" style-hover="background:#FDF3F2;">✗ 棄却</button>
+              </div>
+              <sc-if value="{{xErrBanner}}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:center;gap:8px;margin:8px 14px 0;padding:7px 12px;background:#FDECEA;border:1px solid #E7B4AE;border-radius:5px;flex:none;">
+                  <div style="width:14px;height:14px;background:#C50F1F;color:#FFFFFF;border-radius:3px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;">!</div>
+                  <div style="font-size:11.5px;color:#7A1C13;">この修正案は再解析による検証に失敗しました。自動では適用されません。内容を確認のうえ棄却するか、手動で修正してください。</div>
+                </div>
+              </sc-if>
+              <sc-if value="{{impShow}}" hint-placeholder-val="{{ false }}">
+                <div style="margin:8px 14px 0;padding:8px 12px;background:#F5EFE0;border:1px solid #E0D3A8;border-radius:5px;flex:none;">
+                  <div style="font-size:11.5px;font-weight:700;color:#8A6D1F;margin-bottom:3px;">コピー句内の修正 ― 影響範囲: この変更は当該コピー句を取り込む全プログラムに波及します</div>
+                  <div style="font-size:11.5px;color:#6B5518;font-family:'BIZ UDGothic','MS Gothic',monospace;">取込プログラム: {{impProgs}}</div>
+                </div>
+              </sc-if>
+              <sc-if value="{{applyShow}}" hint-placeholder-val="{{ false }}">
+                <div style="margin:8px 14px 0;padding:9px 12px;background:#EFF6FD;border:1px solid #BDD8F0;border-radius:5px;flex:none;display:flex;align-items:center;gap:10px;">
+                  <div style="font-size:11.5px;color:#0B4E8F;">書き出し先（元ソースは変更しません）:</div>
+                  <div style="font-family:'BIZ UDGothic','MS Gothic',monospace;font-size:11.5px;color:#0B4E8F;background:#FFFFFF;border:1px solid #BDD8F0;border-radius:4px;padding:3px 9px;">{{applyPath}}</div>
+                  <div style="flex:1;"></div>
+                  <button onClick="{{onWriteFix}}" style="font-size:11.5px;font-weight:700;padding:5px 15px;background:#005FB8;color:#FFFFFF;border:none;border-radius:4px;cursor:pointer;font-family:inherit;" style-hover="background:#096CC6;">修正版を書き出す</button>
+                </div>
+              </sc-if>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;padding:5px 14px 0;flex:none;">
+                <div style="font-size:11px;color:#5C6670;padding:4px 8px;background:#F6F7F9;border:1px solid #D9DDE3;border-bottom:none;border-radius:5px 0 0 0;">修正前（元ソース ― 変更されません）</div>
+                <div style="font-size:11px;color:#5C6670;padding:4px 8px;background:#F6F7F9;border:1px solid #D9DDE3;border-bottom:none;border-left:none;border-radius:0 5px 0 0;">修正後（{{applyPath}}）</div>
+              </div>
+              <div style="flex:1;overflow:auto;min-height:0;margin:0 14px 14px;border:1px solid #D9DDE3;border-radius:0 0 5px 5px;">
+                <sc-for list="{{dRows}}" as="d" hint-placeholder-count="8">
+                  <div style="display:grid;grid-template-columns:40px 1fr 40px 1fr;font-family:'BIZ UDGothic','MS Gothic',monospace;font-size:12px;line-height:19px;">
+                    <div style="text-align:right;padding-right:6px;color:#9AA4B1;font-size:11px;background:#F6F7F9;border-right:1px solid #E4E7EB;">{{d.lno}}</div>
+                    <div style="white-space:pre;background:{{d.lbg}};padding-left:8px;border-right:1px solid #E4E7EB;">{{d.lt}}</div>
+                    <div style="text-align:right;padding-right:6px;color:#9AA4B1;font-size:11px;background:#F6F7F9;border-right:1px solid #E4E7EB;">{{d.rno}}</div>
+                    <div style="white-space:pre;background:{{d.rbg}};padding-left:8px;">{{d.rt}}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{scRep}}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="レポート出力" style="position:absolute;inset:0;display:flex;min-height:0;background:#FFFFFF;">
+        <sc-if value="{{rEmpty}}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+            <div style="text-align:center;">
+              <div style="font-size:14px;font-weight:700;margin-bottom:6px;">出力できる解析結果がまだありません</div>
+              <div style="font-size:12px;color:#5C6670;">解析を実行すると、呼出関係サマリ・指摘一覧・SQL助言をレポートとして書き出せます。</div>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{rRunning}}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+            <div style="display:flex;align-items:center;gap:12px;background:#FBFCFD;border:1px solid #D9DDE3;border-radius:6px;padding:18px 26px;">
+              <div style="width:22px;height:22px;border:3px solid #C9D9EA;border-top-color:#005FB8;border-radius:50%;animation:ci-spin .9s linear infinite;"></div>
+              <div>
+                <div style="font-size:13px;font-weight:700;">解析結果がまだ揃っていません</div>
+                <div style="font-size:11.5px;color:#5C6670;margin-top:2px;">解析完了後にレポートを出力できます</div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{rShow}}" hint-placeholder-val="{{ false }}">
+          <div style="width:400px;flex:none;display:flex;flex-direction:column;border-right:1px solid #D9DDE3;overflow:auto;">
+            <div style="padding:12px 16px;display:flex;flex-direction:column;gap:14px;">
+              <div style="font-size:13px;font-weight:700;color:#3A4149;">レポート出力</div>
+              <sc-if value="{{repErr}}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 12px;background:#FDECEA;border:1px solid #E7B4AE;border-radius:5px;">
+                  <div style="width:14px;height:14px;background:#C50F1F;color:#FFFFFF;border-radius:3px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none;margin-top:1px;">!</div>
+                  <div style="font-size:11.5px;color:#7A1C13;line-height:1.6;">書き込みに失敗しました: 出力先フォルダに書き込み権限がありません（C:\COBOL_Insight\reports\）。別のフォルダを指定してください。</div>
+                </div>
+              </sc-if>
+              <div>
+                <div style="font-size:11.5px;color:#5C6670;margin-bottom:5px;">出力形式</div>
+                <div style="display:flex;border:1px solid #C9CFD6;border-radius:5px;overflow:hidden;width:max-content;">
+                  <button onClick="{{onFmtH}}" style="font-size:11.5px;padding:5px 18px;border:none;cursor:pointer;font-family:inherit;background:{{fhBg}};color:{{fhC}};font-weight:{{fhF}};">HTML</button>
+                  <button onClick="{{onFmtT}}" style="font-size:11.5px;padding:5px 18px;border:none;border-left:1px solid #E2E6EA;cursor:pointer;font-family:inherit;background:{{ftBg}};color:{{ftC}};font-weight:{{ftF}};">テキスト</button>
+                </div>
+              </div>
+              <div>
+                <div style="font-size:11.5px;color:#5C6670;margin-bottom:5px;">出力範囲</div>
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                  <sc-for list="{{scopeItems}}" as="sp" hint-placeholder-count="3">
+                    <button onClick="{{sp.onT}}" style="all:unset;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:#1F2328;">
+                      <span style="width:15px;height:15px;border:1px solid {{sp.bxBd}};background:{{sp.bxBg}};color:#FFFFFF;border-radius:3px;font-size:11px;line-height:15px;text-align:center;flex:none;">{{sp.chk}}</span>
+                      {{sp.label}}<span style="font-size:11px;color:#8A94A0;">{{sp.sub}}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+              <div>
+                <div style="font-size:11.5px;color:#5C6670;margin-bottom:5px;">出力先フォルダ</div>
+                <input value="{{repPath}}" onChange="{{onRepPath}}" style="width:100%;box-sizing:border-box;font-size:12px;padding:6px 9px;border:1px solid {{repPathBd}};border-radius:4px;font-family:'BIZ UDGothic','MS Gothic',monospace;">
+              </div>
+              <button onClick="{{onWriteRep}}" style="font-size:12.5px;font-weight:700;padding:8px 0;background:#005FB8;color:#FFFFFF;border:none;border-radius:4px;cursor:pointer;font-family:inherit;" style-hover="background:#096CC6;">レポートを書き出す</button>
+              <div style="font-size:10.5px;color:#8A94A0;line-height:1.7;">レポートは呼出関係サマリ・指摘一覧・SQL助言を 1 つの文書に束ねてローカルへ保存します。ネットワーク送信は行いません。</div>
+            </div>
+          </div>
+          <div style="flex:1;overflow:auto;min-width:0;background:#ECEEF1;">
+            <div style="padding:16px;display:flex;flex-direction:column;gap:8px;">
+              <div style="font-size:11px;color:#5C6670;">プレビュー ― {{prName}}</div>
+              <sc-if value="{{prHtml}}" hint-placeholder-val="{{ true }}">
+                <div style="background:#FFFFFF;border:1px solid #D9DDE3;border-radius:6px;box-shadow:0 1px 4px rgba(31,35,40,.06);padding:26px 30px;max-width:720px;">
+                  <div style="font-size:17px;font-weight:700;border-bottom:2px solid #005FB8;padding-bottom:8px;">COBOL Insight 解析レポート</div>
+                  <div style="font-size:11px;color:#5C6670;margin-top:6px;">解析日時: 2026-07-18 09:24 ／ 対象: 19 資産（samples/）／ 生成: COBOL Insight v1.0.0（ローカル解析）</div>
+                  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px;">
+                    <div style="border:1px solid #E4E7EB;border-radius:5px;padding:8px 10px;"><div style="font-size:10.5px;color:#5C6670;">資産</div><div style="font-size:18px;font-weight:700;">19</div></div>
+                    <div style="border:1px solid #E4E7EB;border-radius:5px;padding:8px 10px;"><div style="font-size:10.5px;color:#5C6670;">指摘</div><div style="font-size:18px;font-weight:700;color:#C50F1F;">{{prFindN}}</div></div>
+                    <div style="border:1px solid #E4E7EB;border-radius:5px;padding:8px 10px;"><div style="font-size:10.5px;color:#5C6670;">SQL助言</div><div style="font-size:18px;font-weight:700;color:#B25B00;">6</div></div>
+                    <div style="border:1px solid #E4E7EB;border-radius:5px;padding:8px 10px;"><div style="font-size:10.5px;color:#5C6670;">修正案</div><div style="font-size:18px;font-weight:700;color:#005FB8;">7</div></div>
+                  </div>
+                  <sc-if value="{{prG}}" hint-placeholder-val="{{ true }}">
+                    <div style="font-size:13px;font-weight:700;margin-top:18px;border-left:3px solid #005FB8;padding-left:8px;">1. 呼出関係サマリ</div>
+                    <div style="font-size:11.5px;color:#454C55;line-height:1.8;margin-top:6px;">ジョブ 3（SYKD010 / SYKD020 / SYKD030）、ステップ 6、プログラム 9、サブプログラム 3、データセット 8、Db2表 2、CICS トランザクション 1、BMSマップ 1。未解決参照 1 件（SYKM99）。ステップ間データセット連携 3 件、ジョブ間連携 1 件（ORDER.ERROR → SYKD030）。</div>
+                  </sc-if>
+                  <sc-if value="{{prF}}" hint-placeholder-val="{{ true }}">
+                    <div style="font-size:13px;font-weight:700;margin-top:16px;border-left:3px solid #005FB8;padding-left:8px;">2. 指摘一覧（抜粋）</div>
+                    <div style="display:grid;grid-template-columns:64px 70px 130px 44px 1fr;font-size:10.5px;margin-top:6px;border:1px solid #E4E7EB;border-radius:4px;overflow:hidden;">
+                      <div style="background:#F6F7F9;padding:4px 8px;color:#5C6670;">重大度</div><div style="background:#F6F7F9;padding:4px 8px;color:#5C6670;">ルール</div><div style="background:#F6F7F9;padding:4px 8px;color:#5C6670;">ファイル</div><div style="background:#F6F7F9;padding:4px 8px;color:#5C6670;">行</div><div style="background:#F6F7F9;padding:4px 8px;color:#5C6670;">内容</div>
+                      <sc-for list="{{prRows}}" as="pr" hint-placeholder-count="5">
+                        <div style="padding:4px 8px;border-top:1px solid #F1F3F5;color:{{pr.c}};font-weight:700;">{{pr.sev}}</div>
+                        <div style="padding:4px 8px;border-top:1px solid #F1F3F5;font-family:'BIZ UDGothic','MS Gothic',monospace;">{{pr.rule}}</div>
+                        <div style="padding:4px 8px;border-top:1px solid #F1F3F5;font-family:'BIZ UDGothic','MS Gothic',monospace;">{{pr.file}}</div>
+                        <div style="padding:4px 8px;border-top:1px solid #F1F3F5;">{{pr.line}}</div>
+                        <div style="padding:4px 8px;border-top:1px solid #F1F3F5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{pr.note}}</div>
+                      </sc-for>
+                    </div>
+                    <div style="font-size:10.5px;color:#8A94A0;margin-top:4px;">… ほか {{prMoreN}} 件（実出力には全件を含みます）</div>
+                  </sc-if>
+                  <sc-if value="{{prS}}" hint-placeholder-val="{{ true }}">
+                    <div style="font-size:13px;font-weight:700;margin-top:16px;border-left:3px solid #005FB8;padding-left:8px;">3. SQL 助言（抜粋）</div>
+                    <div style="font-size:11.5px;color:#454C55;line-height:1.8;margin-top:6px;">S001 SELECT * の回避（SYK006.cbl:145）、S002 非SARGable述語（SYK007.cbl:66）、S003 インデックス列への関数適用（SYK007.cbl:84）、S004 カーソル宣言（SYK006.cbl:145）ほか。</div>
+                  </sc-if>
+                </div>
+              </sc-if>
+              <sc-if value="{{prText}}" hint-placeholder-val="{{ false }}">
+                <div style="background:#FFFFFF;border:1px solid #D9DDE3;border-radius:6px;padding:18px 22px;max-width:720px;font-family:'BIZ UDGothic','MS Gothic',monospace;font-size:11.5px;line-height:1.75;white-space:pre;overflow:auto;color:#1F2328;">{{prTextBody}}</div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{scSet}}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="設定" style="position:absolute;inset:0;overflow:auto;background:#ECEEF1;">
+        <div style="max-width:920px;margin:0 auto;padding:16px 20px 30px;display:flex;flex-direction:column;gap:12px;">
+          <sc-if value="{{setRO}}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 13px;background:#EFF6FD;border:1px solid #BDD8F0;border-radius:5px;">
+              <div style="width:14px;height:14px;border:2px solid #BDD8F0;border-top-color:#005FB8;border-radius:50%;animation:ci-spin .9s linear infinite;"></div>
+              <div style="font-size:11.5px;color:#0B4E8F;">解析の実行中は設定を変更できません（読み取り専用）。</div>
+            </div>
+          </sc-if>
+          <div style="opacity:{{setOp}};pointer-events:{{setPE}};display:flex;flex-direction:column;gap:12px;">
+            <div style="background:#FFFFFF;border:1px solid #D9DDE3;border-radius:6px;padding:14px 18px;">
+              <div style="font-size:13px;font-weight:700;color:#3A4149;margin-bottom:4px;">既定の文字コード</div>
+              <div style="font-size:11.5px;color:#5C6670;margin-bottom:8px;">インポート時の既定値です。資産ごとの手動指定（資産エクスプローラー）が常に優先されます。</div>
+              <select value="{{encDef}}" onChange="{{onEncDef}}" style="font-size:12px;padding:6px 9px;border:1px solid #C9CFD6;border-radius:4px;font-family:inherit;background:#FFFFFF;width:340px;">
+                <sc-for list="{{encDefOpts}}" as="o" hint-placeholder-count="4">
+                  <option value="{{o}}">{{o}}</option>
+                </sc-for>
+              </select>
+            </div>
+            <div style="background:#FFFFFF;border:1px solid #D9DDE3;border-radius:6px;padding:14px 18px;">
+              <div style="font-size:13px;font-weight:700;color:#3A4149;margin-bottom:4px;">コピー句検索パス</div>
+              <div style="font-size:11.5px;color:#5C6670;margin-bottom:10px;">上から順に検索します。同名のコピー句が複数ある場合、先に見つかったものが使われます。</div>
+              <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:9px;">
+                <sc-for list="{{pathRows}}" as="p" hint-placeholder-count="2">
+                  <div style="display:flex;align-items:center;gap:7px;">
+                    <div style="width:20px;text-align:center;font-size:11px;color:#8A94A0;">{{p.idx}}</div>
+                    <div style="flex:1;font-family:'BIZ UDGothic','MS Gothic',monospace;font-size:12px;padding:6px 10px;border:1px solid {{p.bd}};border-radius:4px;background:{{p.bg}};color:{{p.c}};">{{p.path}}</div>
+                    <button onClick="{{p.onUp}}" style="font-size:11px;width:26px;height:26px;background:#FFFFFF;border:1px solid #C9CFD6;border-radius:4px;cursor:pointer;" style-hover="background:#F2F5F8;">↑</button>
+                    <button onClick="{{p.onDown}}" style="font-size:11px;width:26px;height:26px;background:#FFFFFF;border:1px solid #C9CFD6;border-radius:4px;cursor:pointer;" style-hover="background:#F2F5F8;">↓</button>
+                    <button onClick="{{p.onDel}}" style="font-size:11px;width:26px;height:26px;background:#FFFFFF;border:1px solid #C9CFD6;border-radius:4px;cursor:pointer;color:#7A1C13;" style-hover="background:#FDF3F2;">✕</button>
+                  </div>
+                </sc-for>
+              </div>
+              <sc-if value="{{pathErrShow}}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:11.5px;color:#7A1C13;margin-bottom:9px;">2 番目のパスが存在しません。修正するか削除してください。</div>
+              </sc-if>
+              <div style="display:flex;gap:7px;">
+                <input value="{{newPath}}" onChange="{{onNewPath}}" placeholder="追加するフォルダパス（例: D:\資産\copylib2）" style="flex:1;font-size:12px;padding:6px 10px;border:1px solid #C9CFD6;border-radius:4px;font-family:'BIZ UDGothic','MS Gothic',monospace;">
+                <button onClick="{{onAddPath}}" style="font-size:11.5px;padding:6px 16px;background:#FFFFFF;border:1px solid #C9CFD6;border-radius:4px;cursor:pointer;font-family:inherit;" style-hover="background:#F2F5F8;">＋ 追加</button>
+              </div>
+            </div>
+            <div style="background:#FFFFFF;border:1px solid #D9DDE3;border-radius:6px;padding:14px 18px;">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+                <div style="font-size:13px;font-weight:700;color:#3A4149;">検出ルールの有効 / 無効</div>
+                <div style="font-size:11.5px;color:#5C6670;">{{ruleCount}}</div>
+                <div style="flex:1;"></div>
+                <input value="{{ruleSearch}}" onChange="{{onRuleSearch}}" placeholder="ルールを検索（ID / 名称 / カテゴリ）" style="font-size:12px;padding:5px 10px;border:1px solid #C9CFD6;border-radius:4px;width:250px;font-family:inherit;">
+              </div>
+              <div style="font-size:11.5px;color:#5C6670;margin-bottom:8px;">バグ検出 31 件（R001〜R031）と SQL 最適化助言 6 件（S001〜S006）。すべて既定で有効です。</div>
+              <div style="border:1px solid #E4E7EB;border-radius:5px;overflow:hidden;">
+                <sc-for list="{{ruleRows}}" as="r" hint-placeholder-count="10">
+                  <div style="display:{{r.gD}};padding:5px 12px;background:#F6F7F9;border-bottom:1px solid #E4E7EB;font-size:11px;font-weight:700;color:#5C6670;">{{r.cat}}</div>
+                  <div style="display:{{r.fD}};align-items:center;gap:10px;padding:{{r.pad}};border-bottom:1px solid #F1F3F5;">
+                    <button onClick="{{r.onT}}" style="all:unset;cursor:pointer;width:30px;height:16px;border-radius:9px;background:{{r.trBg}};flex:none;position:relative;transition:background .15s;">
+                      <span style="position:absolute;top:2px;left:{{r.knL}};width:12px;height:12px;border-radius:50%;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .15s;"></span>
+                    </button>
+                    <div style="font-family:'BIZ UDGothic','MS Gothic',monospace;font-size:11.5px;color:#5C6670;width:40px;flex:none;">{{r.id}}</div>
+                    <div style="font-size:12px;color:{{r.nameC}};flex:1;">{{r.name}}</div>
+                    <span style="display:{{r.fixD}};font-size:9.5px;padding:1px 6px;border-radius:7px;background:#E4F0FB;color:#084B85;border:1px solid #BDD8F0;flex:none;">修正案</span>
+                    <div style="font-size:10.5px;color:#8A94A0;width:74px;flex:none;">{{r.stage}}</div>
+                    <div style="display:flex;align-items:center;gap:4px;width:52px;flex:none;"><span style="color:{{r.shC}};font-size:10px;">{{r.shape}}</span><span style="font-size:11.5px;font-weight:700;color:{{r.shC}};">{{r.sev}}</span></div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="background:#FFFFFF;border:1px solid #D9DDE3;border-radius:6px;padding:14px 18px;">
+              <div style="font-size:13px;font-weight:700;color:#3A4149;margin-bottom:4px;">表示する重大度のしきい値</div>
+              <div style="font-size:11.5px;color:#5C6670;margin-bottom:10px;">選択した重大度以上の指摘・助言を各画面に表示します。</div>
+              <div style="display:flex;gap:6px;">
+                <sc-for list="{{sevThItems}}" as="sti" hint-placeholder-count="4">
+                  <button onClick="{{sti.onT}}" style="display:flex;align-items:center;gap:6px;font-size:12px;padding:6px 15px;border-radius:5px;cursor:pointer;font-family:inherit;border:1px solid {{sti.bd}};background:{{sti.bg}};color:{{sti.c}};font-weight:{{sti.fw}};">
+                    <span style="color:{{sti.shC}};font-size:10px;">{{sti.shape}}</span>{{sti.label}}
+                  </button>
+                </sc-for>
+              </div>
+              <div style="font-size:11px;color:#8A94A0;margin-top:8px;">{{sevThNote}}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+  </div>
+
+  <div style="display:flex;align-items:center;gap:14px;height:24px;padding:0 12px;background:#005FB8;color:#DCEBFA;font-size:11px;flex:none;">
+    <div>{{statusLeft}}</div>
+    <div style="flex:1;"></div>
+    <div>{{statusCounts}}</div>
+  </div>
+
+  <sc-if value="{{toastShow}}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:#2B3138;color:#F2F5F8;font-size:12px;padding:8px 18px;border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:50;">{{toast}}</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;initialScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;資産エクスプローラー&quot;,&quot;呼出関係図&quot;,&quot;指摘一覧&quot;,&quot;ソースビューア&quot;,&quot;SQL助言&quot;,&quot;diff&quot;,&quot;レポート出力&quot;,&quot;設定&quot;],&quot;default&quot;:&quot;資産エクスプローラー&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;表示&quot;},&quot;initialState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;空&quot;,&quot;実行中&quot;,&quot;結果あり&quot;,&quot;エラー&quot;],&quot;default&quot;:&quot;結果あり&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;表示&quot;},&quot;density&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;標準&quot;,&quot;コンパクト&quot;],&quot;default&quot;:&quot;標準&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;表示&quot;},&quot;showStateSwitcher&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;表示&quot;}}">
+class Component extends DCLogic {
+  state = {
+    mode: 'results', screen: 'explorer',
+    aSearch: '', aType: 'すべて', selAsset: 'SYK001.cbl', encSel: {},
+    gTypes: { job: true, step: true, prog: true, sub: true, ds: true, db: true, txn: true, bms: true, unres: true },
+    gColl: {}, selNode: null,
+    fSev: { '高': true, '中': true, '低': true, '警告': true }, fRule: 'all', fFile: 'all', fText: '', fSort: 'sev', emptyVariant: 0,
+    srcFile: 'SYK001.cbl', srcLine: null, srcFrom: null, copyOpen: false, lang: 'py', linkC: [], linkP: [],
+    sqlSel: 0,
+    fixSel: 0, diffMode: 'preview', decisions: {},
+    repFmt: 'HTML', repG: true, repF: true, repS: true, repPath: 'C:\\COBOL_Insight\\reports\\',
+    ruleSearch: '', rulesOff: {}, sevTh: '警告', encDef: '自動判定（Shift_JIS / UTF-8）',
+    cpyPaths: ['C:\\資産\\copybook', 'C:\\資産\\共通\\copylib'], newPath: '',
+    toastMsg: null
+  };
+  constructor(props) { super(props); this.srcRef = React.createRef(); this._t = null; this._tt = null; }
+  componentDidMount() {
+    const sm = { '資産エクスプローラー': 'explorer', '呼出関係図': 'graph', '指摘一覧': 'findings', 'ソースビューア': 'viewer', 'SQL助言': 'sql', 'diff': 'diff', 'レポート出力': 'report', '設定': 'settings' };
+    const mm = { '空': 'empty', '実行中': 'running', '結果あり': 'results', 'エラー': 'error' };
+    const up = {};
+    if (sm[this.props.initialScreen]) up.screen = sm[this.props.initialScreen];
+    if (mm[this.props.initialState]) up.mode = mm[this.props.initialState];
+    if (Object.keys(up).length) this.setState(up);
+  }
+  pop(msg) { clearTimeout(this._tt); this.setState({ toastMsg: msg }); this._tt = setTimeout(() => this.setState({ toastMsg: null }), 2600); }
+  get SEV() { return { '高': { c: '#C50F1F', s: '●' }, '中': { c: '#B25B00', s: '◆' }, '低': { c: '#005FB8', s: '■' }, '警告': { c: '#5F6B7A', s: '▲' } }; }
+  get D() { if (!this._D) this._D = this.makeData(); return this._D; }
+  makeData() {
+    const R = (id, name, cat, sev, st, fx) => ({ id, name, cat, sev, st, fx: !!fx });
+    const RULES = [
+      R('R001','未初期化変数の参照','データフロー','高',3), R('R002','未使用データ項目','データフロー','低',1),
+      R('R003','MOVEによる桁落ち・切り捨て','データ移動','高',3), R('R004','ON SIZE ERROR句の欠如','例外処理','高',3,1),
+      R('R005','添字・指標のOCCURS範囲外アクセス','添字・指標','高',3), R('R006','添字への二進項目未使用','添字・指標','低',1),
+      R('R007','PERFORM THRUの範囲不整合','制御フロー','高',2), R('R008','PERFORM単独段落名の直接指定','制御フロー','中',1),
+      R('R009','GO TO文による構造化フローからの逸脱','制御フロー','警告',2), R('R010','ALTER文による遷移先の動的変更','制御フロー','高',2),
+      R('R011','到達不能コード','制御フロー','中',2), R('R012','終了条件が更新されないPERFORM UNTILループ','制御フロー','高',3),
+      R('R013','EVALUATE文のWHEN OTHER欠如','制御フロー','中',1), R('R014','セクション末尾のEXIT文欠如','制御フロー','中',2),
+      R('R015','REDEFINESによる項目長・境界の不一致','データ定義','高',3), R('R016','STRING/UNSTRING文の受信領域あふれ','データ移動','高',3),
+      R('R017','ファイル状態(FILE STATUS)未検査','例外処理','高',2,1), R('R018','SQLCODE/SQLSTATE未検査','例外処理','高',2,1),
+      R('R019','SQLカーソルのCLOSE漏れ','SQL','中',2), R('R020','動的SQL文への外部入力の未検証組み込み','SQL','高',3),
+      R('R021','CICS応答コード(RESP/RESP2)未検査','例外処理','高',2,1), R('R022','CICS RETURN文欠如による疑似会話の途絶','制御フロー','中',2),
+      R('R023','パラグラフ・セクション名の重複','制御フロー','中',1), R('R024','COPY REPLACINGによる置換漏れ','データ定義','中',1),
+      R('R025','二項演算子の両辺が同一の式','データフロー','警告',3), R('R026','ハードコードされたパスワード・認証情報','セキュリティ','高',1),
+      R('R027','機密データ項目のマスキングなし出力','セキュリティ','中',3), R('R028','符号なし前提の数値項目への負値算出','データ移動','中',3),
+      R('R029','呼出先の戻りコード(RETURN-CODE)未検査','制御フロー','中',2), R('R030','JCLステップ間の条件コード(COND)未検査','JCL制御','中',2),
+      R('R031','存在しないBMSマップ・フィールドの参照','CICS','高',2),
+      R('S001','SELECT * の回避','SQL最適化助言','中',0), R('S002','非SARGableな述語の検出','SQL最適化助言','高',0),
+      R('S003','インデックス列への関数適用の検出','SQL最適化助言','高',0), R('S004','カーソルの適切な宣言・後始末の確認','SQL最適化助言','中',0),
+      R('S005','FETCH FIRST句によるフェッチ件数制限の検討','SQL最適化助言','低',0), R('S006','OPTIMIZE FOR句によるアクセスパス最適化の検討','SQL最適化助言','低',0)
+    ];
+    const F = (file, line, rule, note, fix) => ({ file, line, rule, note, fix: !!fix });
+    const FINDINGS = [
+      F('SYK001.cbl',121,'R001','「WS-検証金額」(VALUE句なし)は処理区分=取消の経路では値が設定されないまま、IF文で無条件に参照される。'),
+      F('SYK001.cbl',128,'R003','PIC S9(09)V99 COMP-3 から PIC 9(06) へのMOVE。小数部2桁が失われ、100万円以上で上位桁が切り捨てられる。'),
+      F('SYK001.cbl',114,'R005','「ORD1-明細件数」を上限チェックせずにループ終了条件へ使用。OCCURS 10 を超える不正レコードで範囲外参照。'),
+      F('SYK001.cbl',85,'R017','READ ORDIN は AT END のみで判定し、WS-ORDIN-STATUS を入出力異常(9x系)について検査していない。',1),
+      F('SYK001.cbl',82,'R008','PERFORM 2300-金額編集 が THRU 句で終端を明示していない。'),
+      F('SYK002.cbl',118,'R003','PIC S9(09)V99 COMP-3 から PIC 9(05) へのMOVE。小数部が失われ、整数部5桁超で上位桁が切り捨てられる。'),
+      F('SYK002.cbl',130,'R017','REWRITE に INVALID KEY 句がなく、実行後に WS-MASTER-STATUS も検査していない。更新失敗でも処理が継続する。',1),
+      F('SYK002.cbl',124,'R007','PERFORM THRU 範囲(4000-〜EXIT)の途中(4010-マスタ書込)へ、範囲外の段落から GO TO で直接分岐している。'),
+      F('SYK002.cbl',124,'R009','GO TO 文が PERFORM 階層に基づく構造化された呼出関係から外れる制御移動を行っている。'),
+      F('SYK003.cbl',20,'R002','「WS-旧チェック方式件数」は PROCEDURE DIVISION のどこからも参照されていない。'),
+      F('SYK004.cbl',41,'R001','「WS-在庫残数」(VALUE句なし)は LK-商品コード が空白の経路では未設定のまま LK-要求数量 と比較される。'),
+      F('SYK004.cbl',47,'R011','9999-未使用処理 はどの PERFORM 文・GO TO 文からも呼び出されず、いかなる経路からも到達しない。'),
+      F('SYK005.cbl',40,'R011','直前の GOBACK により、この DISPLAY 文はいかなる実行経路からも到達しない。'),
+      F('SYK006.cbl',119,'R018','EXEC SQL UPDATE 実行後に SQLCODE を検査していない。更新失敗でも後続処理が継続する。',1),
+      F('SYK006.cbl',139,'R005','「WS-エラー件数INDEX」を上限チェックなしで加算。エラー商品が21件以上で OCCURS 20 の範囲外参照。'),
+      F('SYK007.cbl',79,'R004','COMPUTE に ON SIZE ERROR 句がない。在庫数量=0 のゼロ除算と PIC S9(03)V99 超過のオーバーフローを検出できない。',1),
+      F('SYK007.cbl',89,'R018','EXEC SQL UPDATE 実行後に SQLCODE を検査していない。更新失敗でも後続処理が継続する。',1),
+      F('SYK008.cbl',38,'R021','EXEC CICS RECEIVE MAP に RESP/RESP2 句がなく、マップ受信の応答コードを検査していない。',1),
+      F('SYK008.cbl',56,'R031','SEND MAP が参照するマップ名 SYKM99 はマップセット SYKMAP1 に定義されていない(定義済は SYKM01 のみ)。'),
+      F('SYK009.cbl',21,'R022','EXEC CICS RETURN 文が存在せず、疑似会話トランザクション SYK8 の制御が CICS へ正しく戻らない。')
+    ];
+    const PARSEF = [
+      { file: 'SYKENC1_SJIS.cbl', line: 1, rule: 'PARSE', note: '文字コードの自動判定(Shift_JIS)でデコードした内容が COBOL 構文として解析できませんでした。コードページを手動指定して再解析してください。', fix: false, err: true }
+    ];
+    const A = (n, ty, enc, desc) => ({ n, ty, enc, desc });
+    const ASSETS = [
+      { dir: 'samples/jcl', files: [
+        A('SYKD010.jcl','JCL','自動判定: Shift_JIS','受注データ検証・登録 日次バッチ'),
+        A('SYKD020.jcl','JCL','自動判定: Shift_JIS','在庫更新・引当確定 日次バッチ'),
+        A('SYKD030.jcl','JCL','自動判定: Shift_JIS','受注データ エラー分再処理(リラン)') ] },
+      { dir: 'samples/cobol', files: [
+        A('SYK001.cbl','COBOL','自動判定: Shift_JIS','受注データ検証(QSAM入出力)'),
+        A('SYK002.cbl','COBOL','自動判定: Shift_JIS','受注データ登録(VSAM KSDS入出力)'),
+        A('SYK003.cbl','COBOL','自動判定: Shift_JIS','受注明細チェックサム検証(静的CALL先)'),
+        A('SYK004.cbl','COBOL','自動判定: Shift_JIS','在庫引当判定(動的CALL先)'),
+        A('SYK005.cbl','COBOL','自動判定: Shift_JIS','メッセージ編集・ログ出力共通処理'),
+        A('SYK006.cbl','COBOL','自動判定: Shift_JIS','在庫マスタ更新(Db2 カーソル/UPDATE/INSERT)'),
+        A('SYK007.cbl','COBOL','自動判定: Shift_JIS','在庫引当率算出・引当数量確定(Db2)'),
+        A('SYK008.cbl','COBOL','自動判定: Shift_JIS','受注番号入力画面処理(CICS 疑似会話)'),
+        A('SYK009.cbl','COBOL','自動判定: Shift_JIS','SYK008 からの XCTL 遷移先(CICS)') ] },
+      { dir: 'samples/copybook', files: [
+        A('SYKCPY1.cpy','コピー句','自動判定: Shift_JIS','受注明細レコード(REDEFINES/OCCURS/COMP-3/88)'),
+        A('SYKCPY2.cpy','コピー句','自動判定: Shift_JIS','受注マスタレコード(VSAM KSDS用)'),
+        A('SYKCPY3.cpy','コピー句','自動判定: Shift_JIS','在庫抽出レコード(SYK006→SYK007 中間ファイル)') ] },
+      { dir: 'samples/bms', files: [ A('SYKMAP1.bms','BMSマップ','自動判定: Shift_JIS','マップセットSYKMAP1(マップSYKM01)') ] },
+      { dir: 'samples/cics', files: [ A('トランザクション定義表.csv','定義表','自動判定: UTF-8','トランザクションID(SYK8)とプログラムの対応') ] },
+      { dir: 'samples/encoding', files: [
+        A('SYKENC1_UTF8.cbl','COBOL','自動判定: UTF-8','文字コード検証用サンプル(UTF-8)'),
+        A('SYKENC1_SJIS.cbl','COBOL','自動判定: Shift_JIS','同一内容の Shift_JIS 版') ] }
+    ];
+    const D = { RULES, FINDINGS, PARSEF, ASSETS };
+    const N2 = (id, ty, x, y, w, l, s, badge, file) => ({ id, ty, x, y, w, l, s, badge: badge || 0, file: file || null });
+    D.NTY = { job: ['ジョブ', '#E3EDF9', '#5B8BC4'], step: ['ステップ', '#EFF4FA', '#93AECB'], prog: ['プログラム', '#FFFFFF', '#5F6B7A'], sub: ['サブプログラム', '#FFFFFF', '#9AA4B1'], ds: ['データセット', '#F7F3E8', '#B3A05F'], db: ['Db2表', '#EAF4EE', '#5F9E7C'], txn: ['トランザクション', '#F1EBF8', '#8E6FB8'], bms: ['BMSマップ', '#FBF1E4', '#C0913F'], unres: ['未解決', '#FDEDED', '#C50F1F'], errn: ['解析不能', '#F2F2F2', '#8A8A8A'] };
+    D.GN = [
+      N2('J1','job',20,60,150,'SYKD010','受注検証・登録'), N2('S1','step',210,24,150,'STEP010','EXEC PGM=SYK001'), N2('S2','step',210,122,150,'STEP020','EXEC PGM=SYK002'),
+      N2('P1','prog',440,24,150,'SYK001','受注データ検証',5,'SYK001.cbl'), N2('P2','prog',440,122,150,'SYK002','受注データ登録',4,'SYK002.cbl'),
+      N2('B1','sub',670,24,150,'SYK003','チェックサム検証',1,'SYK003.cbl'), N2('B2','sub',670,122,150,'SYK004','在庫引当判定',2,'SYK004.cbl'),
+      N2('DS1','ds',890,0,240,'SYKT.D&CYCLE..ORDER.DAILY','QSAM'), N2('DS2','ds',890,64,240,'SYKW.D&CYCLE..ORDER.VALID','QSAM'),
+      N2('DS3','ds',890,128,240,'SYKW.D&CYCLE..ORDER.ERROR','QSAM'), N2('DS4','ds',890,192,240,'SYKV.ORDER.MASTER','VSAM KSDS'),
+      N2('J2','job',20,336,150,'SYKD020','在庫更新・引当確定'), N2('S3','step',210,300,150,'STEP010','EXEC PGM=SYK006'), N2('S4','step',210,398,150,'STEP020','PROC SYKPRC01→SYK007'),
+      N2('P3','prog',440,300,150,'SYK006','在庫マスタ更新',2,'SYK006.cbl'), N2('P4','prog',440,398,150,'SYK007','引当率算出・確定',2,'SYK007.cbl'),
+      N2('B3','sub',670,300,150,'SYK005','メッセージ編集',1,'SYK005.cbl'),
+      N2('DS5','ds',890,262,240,'SYKT.D&CYCLE..STOCK.DAILY','QSAM'), N2('DS6','ds',890,326,240,'SYKW.D&CYCLE..STOCK.EXTRACT','QSAM'),
+      N2('DB1','db',890,392,240,'SYKDB.ZAIKOM','在庫マスタ表'), N2('DB2','db',890,456,240,'SYKDB.SOKOM','倉庫マスタ表'),
+      N2('J3','job',20,596,150,'SYKD030','エラー分再処理(リラン)'), N2('S5','step',210,560,150,'STEP010','EXEC PGM=SYK001'), N2('S6','step',210,658,150,'STEP020','EXEC PGM=SYK002'),
+      N2('DS7','ds',890,560,240,'SYKW.D&CYCLE..ORDER.RERUN.VALID','QSAM'), N2('DS8','ds',890,624,240,'SYKW.D&CYCLE..ORDER.RERUN.ERROR','QSAM'),
+      N2('T1','txn',20,800,150,'SYK8','トランザクション'), N2('P5','prog',440,756,150,'SYK008','受注番号入力画面',2,'SYK008.cbl'), N2('P6','prog',440,856,150,'SYK009','XCTL遷移先',1,'SYK009.cbl'),
+      N2('M1','bms',890,730,240,'SYKMAP1 / SYKM01','BMSマップ'), N2('U1','unres',890,806,240,'SYKM99','未解決(SEND MAP 参照先)')
+    ];
+    D.GNERR = N2('E1','errn',670,880,200,'SYKENC1_SJIS.cbl','解析不能(文字コード不一致)');
+    const E2 = (a, b, k, l) => ({ a, b, k, l: l || '' });
+    D.GE = [
+      E2('J1','S1','exec'), E2('J1','S2','exec'), E2('S1','P1','exec','EXEC PGM'), E2('S2','P2','execc','COND=(4,LT,STEP010) 可能経路'),
+      E2('P1','B1','call','静的CALL(定数由来)'), E2('P2','B2','calld','動的CALL(データフロー由来)'),
+      E2('DS1','S1','data','入力'), E2('S1','DS2','data','出力'), E2('S1','DS3','data','出力(エラー)'),
+      E2('DS2','S2','data','入力 ― ステップ間連携'), E2('S2','DS4','data','入出力(VSAM)'),
+      E2('J2','S3','exec'), E2('J2','S4','exec'), E2('S3','P3','exec','EXEC PGM'), E2('S4','P4','exec','PROC SYKPRC01 経由'),
+      E2('P3','B3','call','静的CALL(定数由来)'),
+      E2('DS5','S3','data','入力'), E2('S3','DS6','data','出力'), E2('DS6','S4','data','入力 ― ステップ間連携'),
+      E2('P3','DB1','db','SELECT/UPDATE/INSERT'), E2('P4','DB1','db','UPDATE'), E2('P4','DB2','db','SELECT INTO'),
+      E2('J3','S5','exec'), E2('J3','S6','exec'), E2('S5','P1','exec','EXEC PGM(リラン)'), E2('S6','P2','execc','COND=(4,LT,STEP010) 可能経路'),
+      E2('DS3','S5','data','入力 ― ジョブ間連携'), E2('S5','DS7','data','出力'), E2('S5','DS8','data','出力'), E2('DS7','S6','data','入力 ― ステップ間連携'),
+      E2('T1','P5','txn','トランザクション起動'), E2('P5','P6','txn','XCTL'), E2('P5','T1','txnd','RETURN TRANSID(疑似会話)'),
+      E2('P5','M1','bms','SEND/RECEIVE MAP'), E2('P5','U1','err','SEND MAP(未定義マップ)')
+    ];
+    D.EK = { exec: ['#5F6B7A', ''], execc: ['#5F6B7A', '5 4'], call: ['#005FB8', ''], calld: ['#005FB8', '5 4'], data: ['#9C8A4E', ''], db: ['#4E8E6C', ''], txn: ['#8E6FB8', ''], txnd: ['#8E6FB8', '5 4'], bms: ['#C0913F', ''], err: ['#C50F1F', '5 4'] };
+    D.CLUST = { J1: ['S1','S2','DS1','DS2','DS3','DS4'], J2: ['S3','S4','DS5','DS6'], J3: ['S5','S6','DS7','DS8'], T1: ['P5','P6','M1','U1'] };
+    D.CAPS = [
+      { x: 20, y: 2, t: 'SYKD010.jcl ― 受注データ検証・登録（日次バッチ）' },
+      { x: 20, y: 278, t: 'SYKD020.jcl ― 在庫更新・引当確定（日次バッチ）' },
+      { x: 20, y: 538, t: 'SYKD030.jcl ― エラー分再処理（リラン専用）' },
+      { x: 20, y: 708, t: 'CICS オンライン（疑似会話）' }
+    ];
+    D.NINFO = {
+      J1: 'samples/jcl/SYKD010.jcl ― STEP010: SYK001 / STEP020: SYK002', J2: 'samples/jcl/SYKD020.jcl ― STEP010: SYK006 / STEP020: PROC経由 SYK007', J3: 'samples/jcl/SYKD030.jcl ― SYKD010 のエラー出力を再処理するリラン用ジョブ',
+      S1: 'SYKD010.jcl 14行目 ― EXEC PGM=SYK001', S2: 'SYKD010.jcl 27行目 ― COND=(4,LT,STEP010): 前段RCが4超ならスキップ(可能経路)', S3: 'SYKD020.jcl 22行目 ― EXEC PGM=SYK006,PARM=&CYCLE', S4: 'SYKD020.jcl 31行目 ― インストリームPROC SYKPRC01 経由で SYK007 を起動', S5: 'SYKD030.jcl 13行目 ― EXEC PGM=SYK001,PARM=&CYCLE,RERUN', S6: 'SYKD030.jcl 26行目 ― COND=(4,LT,STEP010): 可能経路',
+      P1: 'samples/cobol/SYK001.cbl ― 受注データ検証(QSAM)。明細検証時に SYK003 を静的CALL(110行目)', P2: 'samples/cobol/SYK002.cbl ― 受注データ登録(VSAM)。SYK004 を動的CALL(70行目で名前設定・113行目でCALL)', P3: 'samples/cobol/SYK006.cbl ― 在庫マスタ更新。カーソル SYKZAIKOCUR / SYK005 を静的CALL', P4: 'samples/cobol/SYK007.cbl ― 引当率算出・引当数量確定', P5: 'samples/cobol/SYK008.cbl ― 受注番号入力画面(疑似会話)。SYKM01 を SEND/RECEIVE、SYK009 へ XCTL', P6: 'samples/cobol/SYK009.cbl ― SYK008 からの XCTL 遷移先(確認メッセージ編集)',
+      B1: 'samples/cobol/SYK003.cbl ― 受注明細チェックサム検証(LINKAGE+USING)', B2: 'samples/cobol/SYK004.cbl ― 在庫引当判定。CALL WS-PROG-NAME の値 \'SYK004\' はデータフロー解析で解決', B3: 'samples/cobol/SYK005.cbl ― メッセージ編集・ログ出力共通処理',
+      DS1: '受注データ(日次)。SYKD010 STEP010 の入力', DS2: 'STEP010 の出力 = STEP020 の入力(ステップ間データセット連携)', DS3: 'STEP010 のエラー出力。SYKD030 STEP010 の入力(ジョブ間連携)', DS4: '受注マスタ(VSAM KSDS)。キーは受注番号', DS5: '在庫データ(日次)。SYKD020 STEP010 の入力', DS6: 'STEP010 の出力 = STEP020 の入力(ステップ間データセット連携)', DS7: 'リラン STEP010 の出力', DS8: 'リラン STEP010 のエラー出力', DB1: '在庫マスタ表。SYK006/SYK007 が更新', DB2: '倉庫マスタ表。SYK007 が SELECT INTO',
+      T1: 'トランザクション定義表.csv ― SYK8 → SYK008。RETURN TRANSID(SYK8) により疑似会話を継続', M1: 'samples/bms/SYKMAP1.bms ― フィールド: ORDNO(3,10) / MSG(22,5)', U1: 'マップセット SYKMAP1 に SYKM99 は定義されていません(SYK008.cbl 56行目の SEND MAP)。未解決参照として表示',
+      E1: '文字コードの自動判定と実際の符号化が一致せず、構文解析に失敗しました。グラフからは除外せず表示しています'
+    };
+    const seg = (start, lines) => ({ start, lines });
+    D.SRC = {
+      'SYK001.cbl': [
+        seg(30, [' FD  ORDIN.', ' 01  ORD1-受注レコードエリア.', '     COPY SYKCPY1 REPLACING LEADING ==SYK1== BY ==ORD1==.', ' FD  ORDVALID.', ' 01  ORDV-出力レコード          PIC X(256).']),
+        seg(45, [' WORKING-STORAGE SECTION.', ' 01  WS-制御エリア.', "     05  WS-EOF-FLG              PIC X(01) VALUE 'N'.", '     05  WS-処理件数             PIC 9(07) VALUE ZERO.', '     05  WS-ORDIN-STATUS         PIC X(02).', '     05  WS-VALID-STATUS         PIC X(02).', '     05  WS-IDX                  PIC 9(02).', '     05  WS-区分退避             PIC X(01).', '     05  WS-検証結果             PIC X(02).', '     05  WS-本日日付             PIC 9(08).', ' 01  WS-集計エリア.', '     05  WS-入力件数             PIC 9(07) VALUE ZERO.', '     05  WS-正常件数             PIC 9(07) VALUE ZERO.', '     05  WS-エラー件数           PIC 9(05) VALUE ZERO.', '     05  WS-検証金額             PIC S9(09)V99 COMP-3.', '     05  WS-印字用金額           PIC 9(06).', '     05  WS-明細金額計           PIC S9(09)V99 COMP-3.']),
+        seg(78, [' 2000-検証処理.', '     MOVE ORD1-処理区分 TO WS-区分退避', '     PERFORM 2100-区分別検証', '     PERFORM 2130-金額検査', '     PERFORM 2300-金額編集', '     .', ' 3000-入力読込.', '     READ ORDIN', '         AT END', "             MOVE 'Y' TO WS-EOF-FLG", '     END-READ', '     .', '*================================================================*', '*    区分別検証                                                  *', '*================================================================*', ' 2100-区分別検証.', '     EVALUATE ORD1-処理区分', "         WHEN '1'", '             PERFORM 2110-新規登録検証', "         WHEN '2'", '             PERFORM 2120-訂正検証', "         WHEN '3'", '*            取消は検証対象外', '             CONTINUE', '         WHEN OTHER', '             MOVE 8 TO RETURN-CODE', '     END-EVALUATE', '     .', ' 2110-新規登録検証.', '     IF ORD1-受注番号 = SPACES', '         ADD 1 TO WS-エラー件数 END-IF', '     MOVE ORD1-受注金額合計 TO WS-検証金額', "     CALL 'SYK003' USING ORD1-受注レコード WS-検証結果", '     MOVE ZERO TO WS-明細金額計', '     PERFORM VARYING WS-IDX FROM 1 BY 1', '         UNTIL WS-IDX > ORD1-明細件数', '         ADD ORD1-金額(WS-IDX) TO WS-明細金額計', '     END-PERFORM', '     .', ' 2120-訂正検証.', '     MOVE ORD1-受注金額合計 TO WS-検証金額', '     .', ' 2130-金額検査.', '     IF WS-検証金額 NOT = WS-明細金額計', '         ADD 1 TO WS-エラー件数', '         PERFORM 5000-エラー出力', '     END-IF', '     .', ' 2300-金額編集.', '*    帳票印字用に金額を編集する', '     MOVE ORD1-受注金額合計 TO WS-印字用金額', "     DISPLAY '受注金額: ' WS-印字用金額", '     .'])
+      ],
+      'SYK002.cbl': [ seg(112, [' 3030-更新登録処理.', '     CALL WS-PROG-NAME USING IN1-受注レコード WS-引当可否', "     IF WS-引当可否 = 'OK'", '         CONTINUE', '     END-IF', '     MOVE IN1-受注レコード TO SYK2-受注マスタレコード', '     MOVE SYK2-受注金額合計 TO WS-金額集計エリア', '     PERFORM 4000-マスタ更新処理 THRU 4000-マスタ更新処理-EXIT', '     ADD 1 TO WS-更新件数', '     .', ' 9000-緊急再更新処理.', "     MOVE '2' TO SYK2-状態区分", '     GO TO 4010-マスタ書込', '     .', ' 4000-マスタ更新処理.', '     MOVE WS-本日日付 TO SYK2-更新日', '     .', ' 4010-マスタ書込.', '     REWRITE SYK2-受注マスタレコード', '     .', ' 4000-マスタ更新処理-EXIT.', '     EXIT.']) ],
+      'SYK003.cbl': [ seg(17, [' 01  WS-カウンタ.', '     05  WS-検証件数             PIC 9(07) VALUE ZERO.', '     05  WS-不一致件数           PIC 9(05) VALUE ZERO.', '     05  WS-旧チェック方式件数   PIC 9(05) VALUE ZERO.', ' LINKAGE SECTION.', ' 01  LK-受注レコードエリア.', '     COPY SYKCPY1.', ' 01  LK-検証結果                 PIC X(02).']) ],
+      'SYK004.cbl': [ seg(35, [' 1000-在庫確認.', '     IF LK-商品コード NOT = SPACES', '         PERFORM 1100-残数取得', '     END-IF', '     .', ' 2000-引当判定.', '     IF WS-在庫残数 < LK-要求数量', "         MOVE 'NG' TO LK-引当可否", '     ELSE', "         MOVE 'OK' TO LK-引当可否", '     END-IF', '     .', ' 9999-未使用処理.', '     MOVE SPACE TO LK-引当可否', '     .']) ],
+      'SYK005.cbl': [ seg(36, [' 1000-エラーメッセージ編集.', "     STRING WS-メッセージID '-' LK-メッセージ本文", '         DELIMITED BY SIZE INTO WS-出力メッセージ END-STRING', '     GOBACK', "     DISPLAY 'このメッセージは出力されない'", '     .']) ],
+      'SYK006.cbl': [ seg(112, [' 2100-在庫数更新.', '     EXEC SQL', '         UPDATE SYKDB.ZAIKOM', '            SET 在庫数量 = 在庫数量 + :HOST-入庫数量', '          WHERE 商品コード = :HOST-商品コード', '     END-EXEC', '     MOVE STKIN-商品コード TO STKEXTR-商品コード', '     ADD 1 TO WS-更新件数', '     .']), seg(136, [' 2900-エラー商品登録.', '*    SELECT エラーとなった商品を退避する', '     ADD 1 TO WS-エラー件数INDEX', '     MOVE HOST-商品コード TO WS-エラー商品(WS-エラー件数INDEX)', "     CALL 'SYK005' USING WS-メッセージエリア", '     MOVE SPACE TO WS-メッセージエリア', '     .']) ],
+      'SYK007.cbl': [ seg(76, [' 2100-引当率計算.', '*    在庫に対する引当可能率を算出する', '     MOVE ZERO TO WS-引当率', '     COMPUTE WS-引当率 =', '         (SYK3-引当可能数量 * 100) / SYK3-在庫数量', '     .', ' 2200-引当数量更新.', '     MOVE SYK3-商品コード TO HOST-商品コード', '     EXEC SQL', '         UPDATE SYKDB.ZAIKOM', '            SET 引当数量 = :HOST-引当数量', '          WHERE CAST(商品コード AS CHAR(8)) = :HOST-商品コード', '     END-EXEC', '     ADD 1 TO WS-確定件数', '     .']) ],
+      'SYK008.cbl': [ seg(32, [' 0000-メイン処理.', '     MOVE LOW-VALUE TO WS-受注入力マップ', '     EXEC CICS RECEIVE', "         MAP('SYKM01')", "         MAPSET('SYKMAP1')", '         INTO(WS-受注入力マップ)', '     END-EXEC', '     PERFORM 1000-受注番号検査', "     IF WS-検査結果 = 'NG'", '         PERFORM 2000-エラーメッセージ表示', '     END-IF', '     PERFORM 3000-次画面遷移', '     .']), seg(54, [' 2000-エラーメッセージ表示.', '     EXEC CICS SEND', "         MAP('SYKM99')", "         MAPSET('SYKMAP1')", '         FROM(WS-エラーマップ)', '         ERASE', '     END-EXEC', '     .']) ],
+      'SYK009.cbl': [ seg(16, [' 01  WS-確認メッセージ            PIC X(40).', ' PROCEDURE DIVISION.', '*    SYK008 からの XCTL 遷移先', ' 0000-メイン処理.', "     MOVE '受注を受け付けました' TO WS-確認メッセージ", '     GOBACK']) ]
+    };
+    D.CPY1 = [' 01  ORD1-受注レコード.', '     05  ORD1-受注番号           PIC X(08).', '     05  ORD1-受注日             PIC 9(08).', '     05  ORD1-受注日-YMD REDEFINES ORD1-受注日.', '         10  ORD1-受注日-YY      PIC 9(04).', '         10  ORD1-受注日-MM      PIC 9(02).', '         10  ORD1-受注日-DD      PIC 9(02).', '     05  ORD1-処理区分           PIC X(01).', '     05  ORD1-明細件数           PIC 9(02).', '     05  ORD1-受注金額合計       PIC S9(09)V99 COMP-3.', '     05  ORD1-明細行 OCCURS 10 TIMES.', '         10  ORD1-商品コード     PIC X(08).', '         10  ORD1-数量           PIC S9(05) COMP-3.', '         10  ORD1-金額           PIC S9(09)V99 COMP-3.', '     05  ORD1-状態区分           PIC X(01).', "         88  ORD1-有効           VALUE '1'.", "         88  ORD1-取消済         VALUE '9'."];
+    const T = (t, m, tag) => ({ t, m: m || [], tag: tag || '' });
+    D.PY = [
+      T('# ── 2000-検証処理 ──', [78]), T('def 検証処理(rec):', [78]), T('    区分退避 = rec.処理区分', [79]), T('    区分別検証(rec)', [80]), T('    金額検査()', [81]), T('    金額編集(rec)', [82]), T('', []),
+      T('def 入力読込():', [84]), T('    rec = ordin.read()', [85]), T('    if rec is None:', [86]), T("        eof_flg = 'Y'", [87]), T('', []),
+      T('# ── 2100-区分別検証 ──', [90, 91, 92]), T('def 区分別検証(rec):', [93]), T("    if rec.処理区分 == '1':", [94, 95], 'EVALUATE → if/elif（多対一）'), T('        新規登録検証(rec)', [96]), T("    elif rec.処理区分 == '2':", [94, 97]), T('        訂正検証(rec)', [98]), T("    elif rec.処理区分 == '3':", [94, 99]), T('        pass  # 取消は検証対象外', [100, 101]), T('    else:', [102]), T('        rc.set_return_code(8)', [103]), T('', []),
+      T('def 新規登録検証(rec):', [106]), T("    if rec.受注番号.strip() == '':", [107]), T('        counters.エラー件数 += 1', [108]), T('    ws.検証金額 = rec.受注金額合計', [109]), T('    syk003.検証(rec, ws.検証結果)', [110]), T('    ws.明細金額計 = 0', [111]), T('    for idx in range(1, rec.明細件数 + 1):', [112, 113], 'PERFORM VARYING 2行 → 1行'), T('        ws.明細金額計 += rec.明細行[idx - 1].金額', [114]), T('', []),
+      T('def 訂正検証(rec):', [117]), T('    ws.検証金額 = rec.受注金額合計', [118]), T('', []),
+      T('def 金額検査():', [120]), T('    if ws.検証金額 != ws.明細金額計:', [121]), T('        counters.エラー件数 += 1', [122]), T('        エラー出力()', [123]), T('', []),
+      T('def 金額編集(rec):', [126, 127]), T('    ws.印字用金額 = trunc6(rec.受注金額合計)', [128], 'PIC 9(06) の桁詰めを再現'), T("    print('受注金額: ', ws.印字用金額)", [129])
+    ];
+    D.JV = [
+      T('// ── 2000-検証処理 ──', [78]), T('void 検証処理(OrdRecord rec) {', [78]), T('    区分退避 = rec.処理区分;', [79]), T('    区分別検証(rec);', [80]), T('    金額検査();', [81]), T('    金額編集(rec);', [82]), T('}', [83]),
+      T('void 入力読込() {', [84]), T('    OrdRecord rec = ordin.read();', [85]), T('    if (rec == null) { eofFlg = "Y"; }', [86, 87], 'AT END 3行 → 1行'), T('}', [89]),
+      T('void 区分別検証(OrdRecord rec) {', [93]), T('    switch (rec.処理区分) {', [94], 'EVALUATE → switch'), T('        case "1": 新規登録検証(rec); break;', [95, 96]), T('        case "2": 訂正検証(rec); break;', [97, 98]), T('        case "3": /* 取消は検証対象外 */ break;', [99, 100, 101]), T('        default: rc.setReturnCode(8);', [102, 103]), T('    }', [104]), T('}', [105]),
+      T('void 新規登録検証(OrdRecord rec) {', [106]), T('    if (rec.受注番号.isBlank()) { counters.エラー件数++; }', [107, 108]), T('    ws.検証金額 = rec.受注金額合計;', [109]), T('    syk003.検証(rec, ws.検証結果);', [110]), T('    ws.明細金額計 = BigDecimal.ZERO;', [111]), T('    for (int idx = 1; idx <= rec.明細件数; idx++) {', [112, 113], 'PERFORM VARYING 2行 → 1行'), T('        ws.明細金額計 = ws.明細金額計.add(rec.明細行[idx - 1].金額);', [114]), T('    }', [115]), T('}', [116]),
+      T('void 金額検査() {', [120]), T('    if (ws.検証金額.compareTo(ws.明細金額計) != 0) {', [121]), T('        counters.エラー件数++; エラー出力();', [122, 123]), T('    }', [124]), T('}', [125]),
+      T('void 金額編集(OrdRecord rec) {', [126]), T('    ws.印字用金額 = trunc6(rec.受注金額合計);', [128], 'PIC 9(06) の桁詰めを再現'), T('    System.out.println("受注金額: " + ws.印字用金額);', [129]), T('}', [130])
+    ];
+    D.SQLS = [
+      { file: 'SYK006.cbl', line: 145, kind: 'DECLARE CURSOR', sql: ['DECLARE SYKZAIKOCUR CURSOR FOR', '  SELECT *', '    FROM SYKDB.ZAIKOM', '   WHERE 倉庫コード = :HOST-倉庫コード'], adv: [
+        { r: 'S001', d: 'SELECT * はテーブル構造変更の影響を受けやすく、不要な列の転送で I/O を増大させます。必要な列のみを明示してください。', fix: 'SELECT 商品コード, 在庫数量, 引当数量' },
+        { r: 'S004', d: '更新を伴わないカーソルに FOR READ ONLY が指定されていません。更新可能カーソルとして扱われ、ロック競合の原因になります。OPEN に対応する CLOSE は 157 行目に存在します。', fix: '… WHERE 倉庫コード = :HOST-倉庫コード FOR READ ONLY' },
+        { r: 'S006', d: '取得行数が少件数に限られる用途では、OPTIMIZE FOR n ROWS の付与により少件数取得に適したアクセスパスが選択されやすくなります。', fix: '… OPTIMIZE FOR 20 ROWS' } ] },
+      { file: 'SYK006.cbl', line: 96, kind: 'SELECT INTO', sql: ['SELECT 在庫数量', '  INTO :HOST-在庫数量', '  FROM SYKDB.ZAIKOM', ' WHERE 商品コード = :HOST-商品コード'], adv: [] },
+      { file: 'SYK006.cbl', line: 113, kind: 'UPDATE', sql: ['UPDATE SYKDB.ZAIKOM', '   SET 在庫数量 = 在庫数量 + :HOST-入庫数量', ' WHERE 商品コード = :HOST-商品コード'], adv: [] },
+      { file: 'SYK006.cbl', line: 126, kind: 'INSERT', sql: ['INSERT INTO SYKDB.ZAIKOM', '  (商品コード, 在庫数量, 引当数量)', 'VALUES (:HOST-商品コード, :HOST-入庫数量, 0)'], adv: [] },
+      { file: 'SYK007.cbl', line: 66, kind: 'SELECT INTO', sql: ['SELECT 倉庫名', '  INTO :HOST-倉庫名', '  FROM SYKDB.SOKOM', ' WHERE SUBSTR(倉庫コード, 1, 2) = :HOST-地区コード'], adv: [
+        { r: 'S002', d: 'WHERE 句左辺の SUBSTR(倉庫コード,1,2) は非 SARGable な述語です。インデックスによる絞り込みができず、全表走査を招きます。範囲述語への書き換えを検討してください。', fix: "WHERE 倉庫コード BETWEEN :HOST-地区コード||'000000' AND :HOST-地区コード||'ZZZZZZ'" } ] },
+      { file: 'SYK007.cbl', line: 84, kind: 'UPDATE', sql: ['UPDATE SYKDB.ZAIKOM', '   SET 引当数量 = :HOST-引当数量', ' WHERE CAST(商品コード AS CHAR(8)) = :HOST-商品コード'], adv: [
+        { r: 'S003', d: 'インデックス列 商品コード への CAST 適用により、オプティマイザがインデックスを使用できません。列ではなくホスト変数側の型を列定義に合わせてください。', fix: 'WHERE 商品コード = :HOST-商品コード-CHAR8' } ] }
+    ];
+    D.SQLPERR = { file: 'SYK006.cbl', line: 158, kind: '構文解析不可', sql: ['EXEC SQL ブロックの解析に失敗しました。', 'END-EXEC の対応関係が不正な可能性があります。'], adv: [], perr: true };
+    const DR = (lno, lt, rno, rt, k) => ({ lno, lt, rno, rt, k });
+    D.FIXES = [
+      { id: 'FIX-01', rule: 'R017', file: 'SYK001.cbl', line: 85, title: 'READ 後の FILE STATUS 検査を挿入', desc: 'READ ORDIN の後、WS-ORDIN-STATUS を AT END 以外の入出力異常について検査していません。END-READ 直後に検査を挿入します。', rows: [
+        DR(85, ' READ ORDIN', 85, ' READ ORDIN', 'c'), DR(86, '     AT END', 86, '     AT END', 'c'), DR(87, "         MOVE 'Y' TO WS-EOF-FLG", 87, "         MOVE 'Y' TO WS-EOF-FLG", 'c'), DR(88, ' END-READ', 88, ' END-READ', 'c'),
+        DR('', '', 89, " IF WS-ORDIN-STATUS NOT = '00' AND '10'", 'a'), DR('', '', 90, '     MOVE 12 TO RETURN-CODE', 'a'), DR('', '', 91, '     PERFORM 9100-入出力異常処理', 'a'), DR('', '', 92, ' END-IF', 'a'), DR(89, ' .', 93, ' .', 'c') ] },
+      { id: 'FIX-02', rule: 'R017', file: 'SYK002.cbl', line: 130, title: 'REWRITE 後の FILE STATUS 検査を挿入', desc: 'REWRITE に INVALID KEY 句がなく、WS-MASTER-STATUS も未検査です。REWRITE 直後に検査を挿入します。', rows: [
+        DR(129, ' 4010-マスタ書込.', 129, ' 4010-マスタ書込.', 'c'), DR(130, '     REWRITE SYK2-受注マスタレコード', 130, '     REWRITE SYK2-受注マスタレコード', 'c'),
+        DR('', '', 131, "     IF WS-MASTER-STATUS NOT = '00'", 'a'), DR('', '', 132, '         MOVE 12 TO RETURN-CODE', 'a'), DR('', '', 133, '         PERFORM 9100-入出力異常処理', 'a'), DR('', '', 134, '     END-IF', 'a'), DR(131, '     .', 135, '     .', 'c') ] },
+      { id: 'FIX-03', rule: 'R018', file: 'SYK006.cbl', line: 119, title: 'UPDATE 後の SQLCODE 検査を挿入', desc: 'EXEC SQL UPDATE の実行後、SQLCODE を検査していません。END-EXEC 直後に検査を挿入します。', rows: [
+        DR(113, '     EXEC SQL', 113, '     EXEC SQL', 'c'), DR(114, '         UPDATE SYKDB.ZAIKOM', 114, '         UPDATE SYKDB.ZAIKOM', 'c'), DR(115, '            SET 在庫数量 = 在庫数量 + :HOST-入庫数量', 115, '            SET 在庫数量 = 在庫数量 + :HOST-入庫数量', 'c'), DR(116, '          WHERE 商品コード = :HOST-商品コード', 116, '          WHERE 商品コード = :HOST-商品コード', 'c'), DR(117, '     END-EXEC', 117, '     END-EXEC', 'c'),
+        DR('', '', 118, '     IF SQLCODE NOT = 0', 'a'), DR('', '', 119, '         MOVE SQLCODE TO WS-SQL退避コード', 'a'), DR('', '', 120, '         PERFORM 9200-SQL異常処理', 'a'), DR('', '', 121, '     END-IF', 'a'), DR(118, '     MOVE STKIN-商品コード TO STKEXTR-商品コード', 122, '     MOVE STKIN-商品コード TO STKEXTR-商品コード', 'c') ] },
+      { id: 'FIX-04', rule: 'R018', file: 'SYK007.cbl', line: 89, title: 'UPDATE 後の SQLCODE 検査を挿入', desc: 'EXEC SQL UPDATE の実行後、SQLCODE を検査していません。END-EXEC 直後に検査を挿入します。', errv: true, rows: [
+        DR(84, '     EXEC SQL', 84, '     EXEC SQL', 'c'), DR(85, '         UPDATE SYKDB.ZAIKOM', 85, '         UPDATE SYKDB.ZAIKOM', 'c'), DR(86, '            SET 引当数量 = :HOST-引当数量', 86, '            SET 引当数量 = :HOST-引当数量', 'c'), DR(87, '          WHERE CAST(商品コード AS CHAR(8)) = :HOST-商品コード', 87, '          WHERE CAST(商品コード AS CHAR(8)) = :HOST-商品コード', 'c'), DR(88, '     END-EXEC', 88, '     END-EXEC', 'c'),
+        DR('', '', 89, '     IF SQLCODE NOT = 0', 'a'), DR('', '', 90, '         PERFORM 9200-SQL異常処理', 'a'), DR('', '', 91, '     END-IF', 'a'), DR(89, '     ADD 1 TO WS-確定件数', 92, '     ADD 1 TO WS-確定件数', 'c') ] },
+      { id: 'FIX-05', rule: 'R004', file: 'SYK007.cbl', line: 79, title: 'COMPUTE に ON SIZE ERROR を追加', desc: 'ゼロ除算とオーバーフローを検出できるよう、COMPUTE に ON SIZE ERROR 句を追加します。', rows: [
+        DR(79, '     COMPUTE WS-引当率 =', 79, '     COMPUTE WS-引当率 =', 'c'), DR(80, '         (SYK3-引当可能数量 * 100) / SYK3-在庫数量', 80, '         (SYK3-引当可能数量 * 100) / SYK3-在庫数量', 'c'),
+        DR('', '', 81, '         ON SIZE ERROR', 'a'), DR('', '', 82, '             MOVE 12 TO RETURN-CODE', 'a'), DR('', '', 83, '             PERFORM 9300-演算異常処理', 'a'), DR('', '', 84, '     END-COMPUTE', 'a'), DR(81, '     .', 85, '     .', 'c') ] },
+      { id: 'FIX-06', rule: 'R021', file: 'SYK008.cbl', line: 38, title: 'RECEIVE MAP に RESP/RESP2 検査を追加', desc: 'EXEC CICS RECEIVE MAP に RESP/RESP2 句を追加し、応答コードの検査を挿入します。', rows: [
+        DR(34, '     EXEC CICS RECEIVE', 34, '     EXEC CICS RECEIVE', 'c'), DR(35, "         MAP('SYKM01')", 35, "         MAP('SYKM01')", 'c'), DR(36, "         MAPSET('SYKMAP1')", 36, "         MAPSET('SYKMAP1')", 'c'), DR(37, '         INTO(WS-受注入力マップ)', 37, '         INTO(WS-受注入力マップ)', 'c'),
+        DR('', '', 38, '         RESP(WS-RESPコード)', 'a'), DR('', '', 39, '         RESP2(WS-RESP2コード)', 'a'), DR(38, '     END-EXEC', 40, '     END-EXEC', 'c'),
+        DR('', '', 41, '     IF WS-RESPコード NOT = DFHRESP(NORMAL)', 'a'), DR('', '', 42, '         PERFORM 9100-異常終了処理', 'a'), DR('', '', 43, '     END-IF', 'a') ] },
+      { id: 'FIX-07', rule: 'R017', file: 'SYKCPY9.cpy', line: 12, title: '共通 READ 処理へ FILE STATUS 検査を挿入（コピー句内修正の表示例）', desc: 'コピー句内の READ 共通処理に FILE STATUS 検査を挿入します。この修正は当該コピー句を取り込む全プログラムに波及します（設計確認用のモック項目）。', cpy: ['SYK001', 'SYK002'], rows: [
+        DR(11, ' 8000-共通READ処理.', 11, ' 8000-共通READ処理.', 'c'), DR(12, '     READ 対象ファイル', 12, '     READ 対象ファイル', 'c'), DR(13, '     END-READ', 13, '     END-READ', 'c'),
+        DR('', '', 14, " IF 共通-STATUS NOT = '00' AND '10'", 'a'), DR('', '', 15, '     PERFORM 共通-異常処理', 'a'), DR('', '', 16, ' END-IF', 'a') ] }
+    ];
+    // __DATA__
+    return D;
+  }
+  ruleOf(id) { return this.D.RULES.find(r => r.id === id) || { id: id, name: '構文解析失敗', cat: '解析エラー', sev: '高', fx: false }; }
+  findingsBase() { let a = this.D.FINDINGS.slice(); if (this.state.mode === 'error') a = this.D.PARSEF.concat(a); return a; }
+  fileFindCount(n) { return this.findingsBase().filter(f => f.file === n).length; }
+  nav(s, extra) { this.setState(Object.assign({ screen: s }, extra || {})); }
+  setMode(m) { clearTimeout(this._t); this.setState({ mode: m, selNode: null, toastMsg: null }); }
+  startRun() {
+    this.setState({ mode: 'running' });
+    clearTimeout(this._t);
+    this._t = setTimeout(() => { if (this.state.mode === 'running') { this.setState({ mode: 'results' }); this.pop('解析が完了しました ― 19 資産 / 指摘 20 件 / SQL助言 6 件'); } }, 8000);
+  }
+  renderVals() {
+    const v = {};
+    ['gvGlobal', 'gvExplorer', 'gvGraph', 'gvFindings', 'gvViewer', 'gvSql', 'gvDiff', 'gvReport', 'gvSettings'].forEach(k => { if (this[k]) this[k](v); });
+    return v;
+  }
+  gvGlobal(v) {
+    const st = this.state;
+    v.showStateBar = this.props.showStateSwitcher !== false;
+    v.stateItems = [['empty', '空'], ['running', '実行中'], ['results', '結果あり'], ['error', 'エラー']].map(m => ({
+      label: m[1], bg: st.mode === m[0] ? '#E4F0FB' : '#FFFFFF', c: st.mode === m[0] ? '#084B85' : '#5C6670', fw: st.mode === m[0] ? 700 : 400,
+      onClick: () => this.setMode(m[0])
+    }));
+    v.navItems = [['explorer', '資産エクスプローラー'], ['graph', '呼出関係図'], ['findings', '指摘一覧'], ['viewer', 'ソースビューア'], ['sql', 'SQL助言'], ['diff', 'diff'], ['report', 'レポート出力'], ['settings', '設定']].map(m => ({
+      label: m[1], bg: st.screen === m[0] ? '#FFFFFF' : 'transparent', c: st.screen === m[0] ? '#084B85' : '#454C55',
+      fw: st.screen === m[0] ? 700 : 400, top: st.screen === m[0] ? '#005FB8' : 'transparent',
+      onClick: () => this.nav(m[0])
+    }));
+    v.scExp = st.screen === 'explorer'; v.scGraph = st.screen === 'graph'; v.scFind = st.screen === 'findings'; v.scSrc = st.screen === 'viewer';
+    v.scSql = st.screen === 'sql'; v.scDiff = st.screen === 'diff'; v.scRep = st.screen === 'report'; v.scSet = st.screen === 'settings';
+    v.isEmpty = st.mode === 'empty'; v.isRunning = st.mode === 'running'; v.isError = st.mode === 'error';
+    v.hasResults = st.mode === 'results' || st.mode === 'error';
+    v.runFile = 'SYK006.cbl'; v.runCount = '13 / 19 ファイル';
+    v.onCancel = () => { clearTimeout(this._t); this.setState({ mode: 'results' }); this.pop('解析をキャンセルしました（完了分の結果を保持）'); };
+    const n = this.findingsBase().length;
+    v.statusLeft = st.mode === 'empty' ? '準備完了 ― 資産をインポートしてください'
+      : st.mode === 'running' ? '解析実行中… ローカル解析ジョブ(Java) ― キャンセル可能'
+      : st.mode === 'error' ? '最終解析: 2026-07-18 09:24 ― 部分的成功（1 資産で構文解析に失敗）'
+      : '最終解析: 2026-07-18 09:24 ― 19 資産 / 3.2 秒 ― 正常終了';
+    v.statusCounts = st.mode === 'empty' ? '資産 0 ・ ルール 37 有効 ・ v1.0.0'
+      : '資産 19 ・ 指摘 ' + (st.mode === 'running' ? '―' : n) + ' ・ SQL助言 ' + (st.mode === 'running' ? '―' : 6) + ' ・ ルール 37 有効 ・ v1.0.0';
+    v.toastShow = !!st.toastMsg; v.toast = st.toastMsg || '';
+  }
+  gvExplorer(v) {
+    const st = this.state, D = this.D;
+    const pad = this.props.density === 'コンパクト' ? '2px 12px' : '5px 12px';
+    v.expEmpty = st.mode === 'empty';
+    v.expList = !v.expEmpty;
+    const tyMeta = { 'JCL': ['#E4F0FB', '#0B5394'], 'COBOL': ['#EAF2EA', '#2F6D45'], 'コピー句': ['#F5EFE0', '#8A6D1F'], 'BMSマップ': ['#FBEEE0', '#A05C1F'], '定義表': ['#F0EAF7', '#6A4E9C'] };
+    v.typeChips = ['すべて', 'JCL', 'COBOL', 'コピー句', 'BMS', 'その他'].map(t => ({
+      label: t, bg: st.aType === t ? '#E4F0FB' : '#FFFFFF', bd: st.aType === t ? '#7FB3E3' : '#C9CFD6', c: st.aType === t ? '#084B85' : '#5C6670',
+      onClick: () => this.setState({ aType: t })
+    }));
+    v.aSearch = st.aSearch;
+    v.onASearch = e => this.setState({ aSearch: e.target.value });
+    const match = f => {
+      if (st.aSearch && f.n.toLowerCase().indexOf(st.aSearch.toLowerCase()) < 0) return false;
+      if (st.aType === 'すべて') return true;
+      if (st.aType === 'BMS') return f.ty === 'BMSマップ';
+      if (st.aType === 'その他') return f.ty === '定義表';
+      return f.ty === st.aType;
+    };
+    const rows = [];
+    D.ASSETS.forEach(g => {
+      const fs = g.files.filter(match);
+      if (!fs.length) return;
+      rows.push({ gD: 'block', fD: 'none', dir: g.dir, count: fs.length, pad: pad, onSelect: () => {}, name: '', ty: '', tyBg: '', tyC: '', enc: '', st: '', stC: '', fn: '', fnC: '', bg: '#FFFFFF' });
+      fs.forEach(f => {
+        const fn = this.fileFindCount(f.n);
+        const failed = st.mode === 'error' && f.n === 'SYKENC1_SJIS.cbl';
+        const csv = f.ty === '定義表';
+        let s = '—', sc = '#8A94A0';
+        if (st.mode === 'running') { s = '解析中…'; sc = '#0B4E8F'; }
+        else if (st.mode === 'results' || st.mode === 'error') {
+          if (failed) { s = '✗ 失敗'; sc = '#C50F1F'; }
+          else if (csv) { s = '取込のみ'; sc = '#8A94A0'; }
+          else { s = '✓ 解析済'; sc = '#2F6D45'; }
+        }
+        rows.push({
+          gD: 'none', fD: 'grid', dir: '', count: '', name: f.n, ty: f.ty, tyBg: tyMeta[f.ty][0], tyC: tyMeta[f.ty][1],
+          enc: st.encSel[f.n] || f.enc, st: s, stC: sc, pad: pad,
+          fn: (st.mode === 'results' || st.mode === 'error') && fn ? String(fn) : '', fnC: fn ? '#C50F1F' : '#8A94A0',
+          bg: st.selAsset === f.n ? '#E4F0FB' : '#FFFFFF',
+          onSelect: () => this.setState({ selAsset: f.n })
+        });
+      });
+    });
+    v.assetRows = rows;
+    v.onImport = () => this.pop('インポートダイアログ（モック）― フォルダ選択後、文字コードのプレビュー確認へ進みます');
+    v.onRun = () => this.startRun();
+    let sel = null, selDir = '';
+    D.ASSETS.forEach(g => g.files.forEach(f => { if (f.n === st.selAsset) { sel = f; selDir = g.dir; } }));
+    v.hasSel = !!sel && !v.expEmpty; v.noSel = !v.hasSel;
+    if (sel) {
+      const failed = st.mode === 'error' && sel.n === 'SYKENC1_SJIS.cbl';
+      v.selName = sel.n; v.selPath = selDir + '/' + sel.n; v.selType = sel.ty;
+      v.selSt = st.mode === 'running' ? '解析中…' : st.mode === 'empty' ? '—' : failed ? '✗ 失敗' : '✓ 解析済';
+      v.selStC = failed ? '#C50F1F' : st.mode === 'running' ? '#0B4E8F' : '#2F6D45';
+      v.selFind = st.mode === 'results' || st.mode === 'error' ? this.fileFindCount(sel.n) + ' 件' : '—';
+      v.selEnc = st.encSel[sel.n] || sel.enc;
+      v.encOpts = ['自動判定: Shift_JIS', '自動判定: UTF-8', '手動: Shift_JIS', '手動: UTF-8', '手動: EBCDIC CP930', '手動: EBCDIC CP939'];
+      v.onEnc = e => { const m = Object.assign({}, st.encSel); m[sel.n] = e.target.value; this.setState({ encSel: m }); this.pop('文字コードを変更しました。次回の解析実行で反映されます。'); };
+      v.prevBad = failed;
+      v.prevBd = failed ? '#E7B4AE' : '#E4E7EB';
+      v.prevC = failed ? '#7A1C13' : '#1F2328';
+      let pl;
+      if (failed) pl = ['000100 IDENTIFICATION DIVISION.', '000200 PROGRAM-ID. SYKENC1.', '譁・ｭ励さ繝ｼ繝画､懆ｨｼ逕ｨ繧ｵ繝ｳ', '繝励Ν 縺薙・陦後・ Shift_JIS', '縺ｧ隱ｭ繧√↑縺・→縺阪・...'];
+      else if (sel.ty === 'JCL') pl = ['//' + sel.n.replace('.jcl', '') + '  JOB (ACCT),\'DAILY\',CLASS=A', '//*  ' + sel.desc, '//   SET CYCLE=250718', '//STEP010  EXEC PGM=SYK001', '//ORDIN    DD DSN=SYKT.D&CYCLE..ORDER.DAILY'];
+      else if (sel.ty === 'BMSマップ') pl = ['SYKMAP1  DFHMSD TYPE=&SYSPARM,MODE=INOUT', 'SYKM01   DFHMDI SIZE=(24,80)', 'ORDNO    DFHMDF POS=(3,10),LENGTH=8', '         ATTRB=(UNPROT,NUM)', 'MSG      DFHMDF POS=(22,5),LENGTH=40'];
+      else if (sel.ty === '定義表') pl = ['トランザクションID,プログラム名', 'SYK8,SYK008'];
+      else if (sel.ty === 'コピー句') pl = ['01  SYK1-受注レコード.', '    05  SYK1-受注番号     PIC X(08).', '    05  SYK1-受注日       PIC 9(08).', '    05  SYK1-処理区分     PIC X(01).', '    05  SYK1-明細件数     PIC 9(02).'];
+      else pl = [' IDENTIFICATION DIVISION.', ' PROGRAM-ID. ' + sel.n.replace('.cbl', '') + '.', '*    ' + sel.desc, ' ENVIRONMENT DIVISION.', ' DATA DIVISION.'];
+      v.prevLines = pl.map(t => ({ t }));
+    }
+  }
+  mkSvg(nodes, edges) {
+    const D = this.D, h = React.createElement;
+    const colors = {}; let ci = 0;
+    Object.keys(D.EK).forEach(k => { const c = D.EK[k][0]; if (!(c in colors)) { colors[c] = 'mk' + (ci++); } });
+    const defs = h('defs', { key: 'd' }, Object.keys(colors).map(c =>
+      h('marker', { key: c, id: colors[c], viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' },
+        h('path', { d: 'M 0 0 L 10 5 L 0 10 z', fill: c }))));
+    const els = [defs];
+    edges.forEach((e, i) => {
+      const a = nodes[e.a], b = nodes[e.b];
+      if (!a || !b) return;
+      const [col, dash] = D.EK[e.k];
+      let d, mx, my;
+      const acx = a.x + a.w / 2, bcx = b.x + b.w / 2;
+      if (Math.abs(acx - bcx) < 60) {
+        const down = a.y < b.y;
+        const sy = down ? a.y + 46 : a.y, ey = down ? b.y - 5 : b.y + 51;
+        d = 'M ' + acx + ' ' + sy + ' C ' + acx + ' ' + ((sy + ey) / 2) + ', ' + bcx + ' ' + ((sy + ey) / 2) + ', ' + bcx + ' ' + ey;
+        mx = (acx + bcx) / 2 + 6; my = (sy + ey) / 2;
+      } else if (b.x > a.x + a.w) {
+        const sx = a.x + a.w, sy = a.y + 23, ex = b.x - 6, ey = b.y + 23;
+        d = 'M ' + sx + ' ' + sy + ' C ' + (sx + 55) + ' ' + sy + ', ' + (ex - 55) + ' ' + ey + ', ' + ex + ' ' + ey;
+        mx = (sx + ex) / 2; my = (sy + ey) / 2 - 6;
+      } else {
+        const sx = a.x, sy = a.y + 23, ex = b.x + b.w + 6, ey = b.y + 23;
+        d = 'M ' + sx + ' ' + sy + ' C ' + (sx - 80) + ' ' + sy + ', ' + (ex + 80) + ' ' + ey + ', ' + ex + ' ' + ey;
+        mx = (sx + ex) / 2; my = (sy + ey) / 2 - 6;
+      }
+      els.push(h('path', { key: 'e' + i, d: d, fill: 'none', stroke: col, strokeWidth: 1.4, strokeDasharray: dash || undefined, markerEnd: 'url(#' + colors[col] + ')', opacity: .8 }));
+      if (e.l) els.push(h('text', { key: 't' + i, x: mx, y: my, textAnchor: 'middle', fontSize: 9.5, fill: col, stroke: '#FBFCFD', strokeWidth: 3, paintOrder: 'stroke', fontFamily: "'BIZ UDPGothic',sans-serif" }, e.l));
+    });
+    return h('svg', { width: 1160, height: 1000, style: { position: 'absolute', left: 0, top: 0, pointerEvents: 'none' } }, els);
+  }
+  gvGraph(v) {
+    const st = this.state, D = this.D;
+    v.gEmpty = st.mode === 'empty'; v.gRunning = st.mode === 'running'; v.gShow = st.mode === 'results' || st.mode === 'error';
+    v.onGoExp = () => this.nav('explorer');
+    const fkeys = [['job', 'ジョブ'], ['step', 'ステップ'], ['prog', 'プログラム'], ['sub', 'サブプログラム'], ['ds', 'データセット'], ['db', 'Db2表'], ['txn', 'トランザクション'], ['bms', 'BMSマップ'], ['unres', '未解決']];
+    v.gFilters = fkeys.map(f => {
+      const on = st.gTypes[f[0]], m = D.NTY[f[0]];
+      return { label: f[1], dot: m[1], dotBd: m[2], bg: on ? '#E4F0FB' : '#FFFFFF', bd: on ? '#7FB3E3' : '#C9CFD6', c: on ? '#084B85' : '#8A94A0',
+        onT: () => { const g = Object.assign({}, st.gTypes); g[f[0]] = !g[f[0]]; this.setState({ gTypes: g }); } };
+    });
+    const all = D.GN.concat(st.mode === 'error' ? [D.GNERR] : []);
+    const collHidden = {};
+    Object.keys(D.CLUST).forEach(cid => { if (st.gColl[cid]) D.CLUST[cid].forEach(id => { collHidden[id] = true; }); });
+    const vis = {};
+    all.forEach(n => {
+      const fk = n.ty === 'errn' ? 'unres' : n.ty;
+      if (st.gTypes[fk] === false) return;
+      if (collHidden[n.id]) return;
+      vis[n.id] = n;
+    });
+    v.gCount = '表示 ' + Object.keys(vis).length + ' / ' + all.length + ' ノード';
+    v.gSvg = this.mkSvg(vis, D.GE.filter(e => vis[e.a] && vis[e.b]));
+    v.gCaptions = D.CAPS;
+    v.gNodes = Object.keys(vis).map(id => {
+      const n = vis[id], m = D.NTY[n.ty], selq = st.selNode === id;
+      const isCl = !!D.CLUST[id];
+      return {
+        x: n.x, y: n.y, w: n.w, bg: m[1] === '#FFFFFF' ? '#FFFFFF' : m[1], bd: m[2], bds: (n.ty === 'unres' || n.ty === 'errn' || n.ty === 'sub') ? 'dashed' : 'solid',
+        cap: m[0], capC: m[2], l: n.l, s: n.s,
+        ring: selq ? '0 0 0 2.5px #005FB8' : '0 1px 2px rgba(31,35,40,.07)',
+        badge: n.badge ? n.badge + '件' : '', bdgD: n.badge && (st.mode === 'results' || st.mode === 'error') ? 'inline-block' : 'none',
+        clD: isCl ? 'inline-flex' : 'none', clTxt: st.gColl[id] ? '＋' : '−',
+        onColl: (ev) => { ev.stopPropagation(); const g = Object.assign({}, st.gColl); g[id] = !g[id]; this.setState({ gColl: g }); },
+        onClick: () => this.setState({ selNode: id })
+      };
+    });
+    const sn = st.selNode ? all.find(n => n.id === st.selNode) : null;
+    v.selN = !!sn && v.gShow; v.noSelN = !v.selN;
+    if (sn) {
+      const m = D.NTY[sn.ty];
+      v.snType = m[0]; v.snTyBg = m[1] === '#FFFFFF' ? '#F6F7F9' : m[1]; v.snTyC = m[2]; v.snTyBd = m[2];
+      v.snName = sn.l; v.snDesc = D.NINFO[sn.id] || sn.s;
+      v.snFind = sn.badge ? sn.badge + ' 件' : 'なし';
+      v.snOpenD = sn.file ? 'block' : 'none';
+      v.onOpenSrc = () => this.jump(sn.file, null, '呼出関係図');
+    }
+    v.legendN = Object.keys(D.NTY).map(k => { const m = D.NTY[k]; return { bg: m[1], bd: m[2], bds: (k === 'unres' || k === 'errn' || k === 'sub') ? 'dashed' : 'solid', t: m[0] }; });
+    v.legendE = [['exec', '実行(EXEC)'], ['execc', '条件付き実行(可能経路)'], ['call', '静的CALL'], ['calld', '動的CALL'], ['data', 'データセット連携'], ['db', 'Db2アクセス'], ['txn', 'トランザクション遷移'], ['txnd', '疑似会話(RETURN TRANSID)'], ['bms', 'BMSマップ参照'], ['err', '未解決・エラー']].map(x => ({ c: D.EK[x[0]][0], dash: D.EK[x[0]][1] ? 'dashed' : 'solid', t: x[1] }));
+    v.onExpSvg = () => this.pop('呼出関係図を SVG として出力しました（モック）: reports\\callgraph.svg');
+    v.onExpPng = () => this.pop('呼出関係図を PNG として出力しました（モック）: reports\\callgraph.png');
+  }
+  jump(file, line, from) {
+    this.setState({ screen: 'viewer', srcFile: file, srcLine: line, srcFrom: from + (line ? ' から ' + file + ':' + line + ' へジャンプ' : ' から ' + file + ' を表示'), copyOpen: false, linkC: [], linkP: [] }, () => {
+      const el = this.srcRef.current;
+      if (el && line) {
+        const rows = this.buildSrcRows ? this.buildSrcRows() : [];
+        const idx = rows.findIndex(r => r.no === line);
+        if (idx >= 0) el.scrollTop = Math.max(0, idx * 19 - 130);
+      }
+    });
+  }
+  gvFindings(v) {
+    const st = this.state, SEV = this.SEV;
+    const pad = this.props.density === 'コンパクト' ? '3px 12px' : '6px 12px';
+    v.fEmpty = st.mode === 'empty'; v.fRunning = st.mode === 'running'; v.fShow = st.mode === 'results' || st.mode === 'error';
+    v.onGoExp = v.onGoExp || (() => this.nav('explorer'));
+    v.onEV0 = () => this.setState({ emptyVariant: 0 }); v.onEV1 = () => this.setState({ emptyVariant: 1 });
+    v.ev0Bg = st.emptyVariant === 0 ? '#E4F0FB' : '#FFFFFF'; v.ev0C = st.emptyVariant === 0 ? '#084B85' : '#5C6670';
+    v.ev1Bg = st.emptyVariant === 1 ? '#E4F0FB' : '#FFFFFF'; v.ev1C = st.emptyVariant === 1 ? '#084B85' : '#5C6670';
+    v.evNoRun = st.emptyVariant === 0; v.evZero = st.emptyVariant === 1;
+    const base = this.findingsBase();
+    const cnt = { '高': 0, '中': 0, '低': 0, '警告': 0 };
+    base.forEach(f => { cnt[this.ruleOf(f.rule).sev]++; });
+    v.sevChips = ['高', '中', '低', '警告'].map(s => ({
+      label: s, shape: SEV[s].s, shC: SEV[s].c, count: cnt[s],
+      bg: st.fSev[s] ? '#E4F0FB' : '#FFFFFF', bd: st.fSev[s] ? '#7FB3E3' : '#C9CFD6', c: st.fSev[s] ? '#084B85' : '#8A94A0',
+      onT: () => { const m = Object.assign({}, st.fSev); m[s] = !m[s]; this.setState({ fSev: m }); }
+    }));
+    const ruleIds = []; base.forEach(f => { if (ruleIds.indexOf(f.rule) < 0) ruleIds.push(f.rule); });
+    ruleIds.sort();
+    v.ruleOpts = [{ v: 'all', t: 'ルール: すべて' }].concat(ruleIds.map(r => ({ v: r, t: r + ' ' + this.ruleOf(r).name })));
+    const files = []; base.forEach(f => { if (files.indexOf(f.file) < 0) files.push(f.file); });
+    files.sort();
+    v.fileOpts = [{ v: 'all', t: 'ファイル: すべて' }].concat(files.map(f => ({ v: f, t: f })));
+    v.fRule = st.fRule; v.fFile = st.fFile; v.fText = st.fText;
+    v.onFRule = e => this.setState({ fRule: e.target.value });
+    v.onFFile = e => this.setState({ fFile: e.target.value });
+    v.onFText = e => this.setState({ fText: e.target.value });
+    const so = { '高': 0, '中': 1, '低': 2, '警告': 3 };
+    let rows = base.filter(f => {
+      const r = this.ruleOf(f.rule);
+      if (!st.fSev[r.sev]) return false;
+      if (st.fRule !== 'all' && f.rule !== st.fRule) return false;
+      if (st.fFile !== 'all' && f.file !== st.fFile) return false;
+      if (st.fText && (f.note + r.name + f.file).toLowerCase().indexOf(st.fText.toLowerCase()) < 0) return false;
+      return true;
+    });
+    rows.sort((a, b) => {
+      if (st.fSort === 'file') return a.file === b.file ? a.line - b.line : (a.file < b.file ? -1 : 1);
+      if (st.fSort === 'line') return a.line - b.line;
+      const d = so[this.ruleOf(a.rule).sev] - so[this.ruleOf(b.rule).sev];
+      return d !== 0 ? d : (a.file === b.file ? a.line - b.line : (a.file < b.file ? -1 : 1));
+    });
+    v.arSev = st.fSort === 'sev' ? '▾' : ''; v.arFile = st.fSort === 'file' ? '▾' : ''; v.arLine = st.fSort === 'line' ? '▾' : '';
+    v.onSortSev = () => this.setState({ fSort: 'sev' }); v.onSortFile = () => this.setState({ fSort: 'file' }); v.onSortLine = () => this.setState({ fSort: 'line' });
+    v.fRows = rows.map(f => {
+      const r = this.ruleOf(f.rule);
+      return {
+        pad: pad, shape: SEV[r.sev].s, shC: SEV[r.sev].c, sev: r.sev, rule: f.rule, rname: r.name,
+        file: f.file, line: f.line, note: f.note, fixD: f.fix ? 'inline-block' : 'none',
+        bg: f.err ? '#FDF3F2' : '#FFFFFF',
+        onJump: () => this.jump(f.file, f.line, '指摘一覧')
+      };
+    });
+    v.fNoHit = v.fShow && rows.length === 0;
+    v.fSummary = base.length + ' 件（高 ' + cnt['高'] + ' / 中 ' + cnt['中'] + ' / 低 ' + cnt['低'] + ' / 警告 ' + cnt['警告'] + '）― 表示 ' + rows.length + ' 件';
+    v.onGoReport = () => this.nav('report');
+  }
+  buildSrcRows() {
+    const st = this.state, D = this.D;
+    const segs = D.SRC[st.srcFile];
+    const rows = [];
+    if (!segs) return rows;
+    let prevEnd = null;
+    segs.forEach(sg => {
+      if (prevEnd !== null && sg.start > prevEnd + 1) rows.push({ k: 'gap', label: (prevEnd + 1) + '〜' + (sg.start - 1) + ' 行 省略' });
+      sg.lines.forEach((raw, i) => {
+        const no = sg.start + i;
+        rows.push({ k: 'line', no: no, raw: raw });
+        if (st.srcFile === 'SYK001.cbl' && no === 32) {
+          rows.push({ k: 'copyhead' });
+          if (st.copyOpen) D.CPY1.forEach((cl, j) => rows.push({ k: 'copy', no: j + 1, raw: cl }));
+        }
+      });
+      prevEnd = sg.start + sg.lines.length - 1;
+    });
+    return rows;
+  }
+  gvViewer(v) {
+    const st = this.state, D = this.D, SEV = this.SEV;
+    v.vEmpty = st.mode === 'empty'; v.vRunning = st.mode === 'running'; v.vShow = st.mode === 'results' || st.mode === 'error';
+    v.vFile = st.srcFile; v.vFileOpts = Object.keys(D.SRC);
+    v.onVFile = e => this.setState({ srcFile: e.target.value, srcLine: null, srcFrom: null, copyOpen: false, linkC: [], linkP: [] });
+    v.vFromShow = !!st.srcFrom; v.vFrom = st.srcFrom || '';
+    v.srcRef = this.srcRef;
+    const fnds = this.findingsBase().filter(f => f.file === st.srcFile);
+    v.vFindCount = 'この資産の指摘: ' + fnds.length + ' 件　|　列ガイド: 7 桁目=標識 / 72 桁';
+    const tint = { '高': '#FBEBE9', '中': '#FBF2E4', '低': '#E9F1FB', '警告': '#F0F2F4' };
+    const trans = st.srcFile === 'SYK001.cbl' ? (st.lang === 'py' ? D.PY : D.JV) : null;
+    const rows = this.buildSrcRows();
+    v.vRows = rows.map(r => {
+      if (r.k === 'gap') return { no: '', mk: '', mkC: '#8A94A0', text: '  ── ' + r.label + ' ──', c: '#8A94A0', bg: '#FAFBFC', tip: '', btnD: 'none', btn: '', onBtn: null, orgD: 'none', org: '', onE: null, onL: null };
+      if (r.k === 'copyhead') return {
+        no: '', mk: '▸', mkC: '#6E8B57', text: '  COPY SYKCPY1 の展開内容', c: '#4A6B37', bg: '#F0F5EB', tip: '',
+        btnD: 'inline-block', btn: st.copyOpen ? '− 折りたたみ' : '＋ 展開表示', onBtn: () => this.setState({ copyOpen: !st.copyOpen }),
+        orgD: 'block', org: 'REPLACING LEADING ==SYK1== BY ==ORD1== 適用済', onE: null, onL: null
+      };
+      if (r.k === 'copy') {
+        const redef = r.raw.indexOf('REDEFINES') >= 0;
+        return { no: '', mk: '', mkC: '', text: '      ' + r.raw, c: '#33512B', bg: '#F5F9F1', tip: 'SYKCPY1.cpy ' + r.no + '行目(展開元)', btnD: 'none', btn: '', onBtn: null, orgD: 'block', org: 'SYKCPY1.cpy ' + r.no + '行' + (redef ? ' ― REDEFINES: 逐語変換不可(対訳側に注記)' : ''), onE: null, onL: null };
+      }
+      const f = fnds.find(x => x.line === r.no);
+      const sev = f ? this.ruleOf(f.rule).sev : null;
+      let bg = '#FFFFFF';
+      if (sev) bg = tint[sev];
+      if (st.linkC.indexOf(r.no) >= 0) bg = '#FFF3D0';
+      if (st.srcLine === r.no) bg = '#CBE3FA';
+      let onE = null, onL = null;
+      if (trans) {
+        const idxs = [];
+        trans.forEach((t, i) => { if (t.m.indexOf(r.no) >= 0) idxs.push(i); });
+        if (idxs.length) {
+          onE = () => this.setState({ linkC: [r.no], linkP: idxs });
+          onL = () => this.setState({ linkC: [], linkP: [] });
+        }
+      }
+      return {
+        no: r.no, mk: sev ? SEV[sev].s : '', mkC: sev ? SEV[sev].c : '#8A94A0',
+        text: '      ' + r.raw, c: r.raw.charAt(0) === '*' ? '#7C8692' : '#1F2328', bg: bg,
+        tip: f ? f.rule + ' ' + this.ruleOf(f.rule).name + ' ― ' + f.note : '',
+        btnD: 'none', btn: '', onBtn: null, orgD: 'none', org: '', onE: onE, onL: onL
+      };
+    });
+    v.tAvail = !!trans && v.vShow; v.tNone = !trans && v.vShow;
+    const act = ['#E4F0FB', '#7FB3E3', '#084B85'], ina = ['#FFFFFF', '#C9CFD6', '#5C6670'];
+    const p = st.lang === 'py' ? act : ina, j = st.lang === 'jv' ? act : ina;
+    v.pyBg = p[0]; v.pyBd = p[1]; v.pyC = p[2]; v.jvBg = j[0]; v.jvBd = j[1]; v.jvC = j[2];
+    v.onPy = () => this.setState({ lang: 'py', linkC: [], linkP: [] });
+    v.onJv = () => this.setState({ lang: 'jv', linkC: [], linkP: [] });
+    v.tRows = (trans || []).map((t, i) => ({
+      t: t.t || ' ', bg: st.linkP.indexOf(i) >= 0 ? '#FFF3D0' : '#FFFFFF',
+      tagD: t.tag ? 'inline-block' : 'none', tag: t.tag,
+      onE: t.m.length ? (() => this.setState({ linkP: [i], linkC: t.m })) : null,
+      onL: t.m.length ? (() => this.setState({ linkC: [], linkP: [] })) : null
+    }));
+  }
+  gvSql(v) {
+    const st = this.state, D = this.D, SEV = this.SEV;
+    v.qEmpty = st.mode === 'empty'; v.qRunning = st.mode === 'running'; v.qShow = st.mode === 'results' || st.mode === 'error';
+    const list = D.SQLS.concat(st.mode === 'error' ? [D.SQLPERR] : []);
+    const nAdv = D.SQLS.reduce((a, q) => a + q.adv.length, 0);
+    v.qSummary = 'SQL 文 ' + list.length + ' 件 / 助言 ' + nAdv + ' 件';
+    const so = { '高': 0, '中': 1, '低': 2, '警告': 3 };
+    const kMeta = { 'DECLARE CURSOR': ['#F0EAF7', '#6A4E9C'], 'SELECT INTO': ['#E4F0FB', '#0B5394'], 'UPDATE': ['#FBF2E4', '#8A5A00'], 'INSERT': ['#EAF2EA', '#2F6D45'], '構文解析不可': ['#FDECEA', '#C50F1F'] };
+    v.qRows = list.map((q, i) => {
+      let aTxt = '助言なし', aC = '#8A94A0', lbd = 'transparent';
+      if (q.perr) { aTxt = '解析不可'; aC = '#C50F1F'; lbd = '#C50F1F'; }
+      else if (q.adv.length) {
+        let top = '警告';
+        q.adv.forEach(a => { const s = this.ruleOf(a.r).sev; if (so[s] < so[top]) top = s; });
+        aTxt = q.adv.map(a => a.r).join('・') + '（' + q.adv.length + '件）'; aC = SEV[top].c; lbd = SEV[top].c;
+      }
+      const km = kMeta[q.kind] || ['#F6F7F9', '#5C6670'];
+      return { kind: q.kind, kBg: km[0], kC: km[1], loc: q.file + ':' + q.line, ex: q.sql.join(' ').replace(/\s+/g, ' '), aTxt, aC, lbd,
+        bg: st.sqlSel === i ? '#E4F0FB' : '#FFFFFF', onSel: () => this.setState({ sqlSel: i }) };
+    });
+    const sel = list[Math.min(st.sqlSel, list.length - 1)] || list[0];
+    v.qdTitle = sel.kind; v.qdLoc = sel.file + ' : ' + sel.line + ' 行目'; v.qdPerr = !!sel.perr;
+    v.qdSql = sel.sql.map(t => ({ t }));
+    v.qdHasAdv = sel.adv.length > 0; v.qdNoAdv = sel.adv.length === 0 && !sel.perr;
+    v.qdAdvCount = sel.adv.length ? sel.adv.length + ' 件' : '';
+    v.qdAdv = sel.adv.map(a => {
+      const r = this.ruleOf(a.r);
+      return { id: a.r, name: r.name, sev: r.sev, shape: SEV[r.sev].s, shC: SEV[r.sev].c, desc: a.d, fix: a.fix || '', fixD: a.fix ? 'block' : 'none' };
+    });
+    v.onQdJump = () => this.jump(sel.file, sel.line, 'SQL助言');
+  }
+  gvDiff(v) {
+    const st = this.state, D = this.D;
+    v.xEmpty = st.mode === 'empty'; v.xRunning = st.mode === 'running'; v.xShow = st.mode === 'results' || st.mode === 'error';
+    v.xCount = D.FIXES.length + ' 件（R004 / R017 / R018 / R021）';
+    const sel = D.FIXES[Math.min(st.fixSel, D.FIXES.length - 1)];
+    v.xRows = D.FIXES.map((f, i) => {
+      const dec = st.decisions[f.id];
+      return { rule: f.rule, loc: f.file + ':' + f.line, title: f.title,
+        cpyD: f.cpy ? 'inline-block' : 'none', errD: (st.mode === 'error' && f.errv) ? 'inline-block' : 'none',
+        dec: dec === 'a' ? '✓ 採用済' : dec === 'r' ? '✗ 棄却済' : '未判定',
+        decC: dec === 'a' ? '#2F6D45' : dec === 'r' ? '#C50F1F' : '#9AA4B1',
+        lbd: st.fixSel === i ? '#005FB8' : 'transparent',
+        bg: st.fixSel === i ? '#E4F0FB' : '#FFFFFF', onSel: () => this.setState({ fixSel: i }) };
+    });
+    v.xTitle = sel.rule + ' ' + this.ruleOf(sel.rule).name + ' ― ' + sel.file + ':' + sel.line;
+    v.xDesc = sel.desc;
+    v.xErrBanner = st.mode === 'error' && !!sel.errv;
+    v.impShow = !!sel.cpy; v.impProgs = (sel.cpy || []).join('、 ');
+    const pv = st.diffMode === 'preview';
+    v.onModeP = () => this.setState({ diffMode: 'preview' }); v.onModeA = () => this.setState({ diffMode: 'apply' });
+    v.mpBg = pv ? '#E4F0FB' : '#FFFFFF'; v.mpC = pv ? '#084B85' : '#5C6670'; v.mpF = pv ? 700 : 400;
+    v.maBg = !pv ? '#E4F0FB' : '#FFFFFF'; v.maC = !pv ? '#084B85' : '#5C6670'; v.maF = !pv ? 700 : 400;
+    v.applyShow = !pv;
+    const sub = sel.file.indexOf('.cpy') > 0 ? 'copybook' : 'cobol';
+    v.applyPath = 'fix\\' + sub + '\\' + sel.file;
+    v.onWriteFix = () => this.pop('修正版を書き出しました（モック）: ' + 'fix\\' + sub + '\\' + sel.file + ' ― 元ソースは変更されていません');
+    const dec = st.decisions[sel.id];
+    v.onAccept = () => { const m = Object.assign({}, st.decisions); m[sel.id] = 'a'; this.setState({ decisions: m }); this.pop(sel.id + ' を採用しました。「適用」モードで fix/ へ書き出せます。'); };
+    v.onReject = () => { const m = Object.assign({}, st.decisions); m[sel.id] = 'r'; this.setState({ decisions: m }); this.pop(sel.id + ' を棄却しました。'); };
+    v.dRows = sel.rows.map(r => ({
+      lno: r.lno, lt: r.lt || ' ', rno: r.rno, rt: r.rt || ' ',
+      lbg: r.k === 'a' ? 'repeating-linear-gradient(45deg,#F6F7F9 0 6px,#EFF1F4 6px 12px)' : '#FFFFFF',
+      rbg: r.k === 'a' ? '#E3F2E4' : '#FFFFFF'
+    }));
+  }
+  gvReport(v) {
+    const st = this.state, SEV = this.SEV;
+    v.rEmpty = st.mode === 'empty'; v.rRunning = st.mode === 'running'; v.rShow = st.mode === 'results' || st.mode === 'error';
+    v.repErr = st.mode === 'error';
+    const h = st.repFmt === 'HTML';
+    v.onFmtH = () => this.setState({ repFmt: 'HTML' }); v.onFmtT = () => this.setState({ repFmt: 'TEXT' });
+    v.fhBg = h ? '#E4F0FB' : '#FFFFFF'; v.fhC = h ? '#084B85' : '#5C6670'; v.fhF = h ? 700 : 400;
+    v.ftBg = !h ? '#E4F0FB' : '#FFFFFF'; v.ftC = !h ? '#084B85' : '#5C6670'; v.ftF = !h ? 700 : 400;
+    const scopes = [['repG', '呼出関係サマリ', 'ジョブ/プログラム/データセット'], ['repF', '指摘一覧', '全 ' + this.findingsBase().length + ' 件'], ['repS', 'SQL助言', '6 件']];
+    v.scopeItems = scopes.map(s => {
+      const on = st[s[0]];
+      return { label: s[1], sub: '― ' + s[2], chk: on ? '✓' : '', bxBg: on ? '#005FB8' : '#FFFFFF', bxBd: on ? '#005FB8' : '#C9CFD6',
+        onT: () => { const u = {}; u[s[0]] = !on; this.setState(u); } };
+    });
+    v.repPath = st.repPath; v.onRepPath = e => this.setState({ repPath: e.target.value });
+    v.repPathBd = st.mode === 'error' ? '#E7B4AE' : '#C9CFD6';
+    v.onWriteRep = () => { if (st.mode === 'error') { this.pop('書き込みに失敗しました: パスに書き込み権限がありません'); } else { this.pop('レポートを書き出しました（モック）: ' + st.repPath + 'report_20260718.' + (h ? 'html' : 'txt')); } };
+    v.prHtml = h; v.prText = !h;
+    v.prName = h ? 'report_20260718.html' : 'report_20260718.txt';
+    v.prG = st.repG; v.prF = st.repF; v.prS = st.repS;
+    const base = this.findingsBase();
+    v.prFindN = base.length;
+    const so = { '高': 0, '中': 1, '低': 2, '警告': 3 };
+    const top = base.slice().sort((a, b) => so[this.ruleOf(a.rule).sev] - so[this.ruleOf(b.rule).sev]).slice(0, 5);
+    v.prRows = top.map(f => { const r = this.ruleOf(f.rule); return { sev: r.sev, c: SEV[r.sev].c, rule: f.rule, file: f.file, line: f.line, note: f.note }; });
+    v.prMoreN = base.length - 5;
+    const L = [];
+    L.push('==============================================================');
+    L.push('  COBOL Insight 解析レポート');
+    L.push('  解析日時: 2026-07-18 09:24   対象: 19 資産 (samples/)');
+    L.push('==============================================================');
+    if (st.repG) { L.push(''); L.push('1. 呼出関係サマリ'); L.push('   ジョブ 3 / ステップ 6 / プログラム 9 / サブプログラム 3'); L.push('   データセット 8 / Db2表 2 / トランザクション 1 / BMSマップ 1'); L.push('   未解決参照 1 (SYKM99)'); }
+    if (st.repF) { L.push(''); L.push('2. 指摘一覧 (抜粋 / 全 ' + base.length + ' 件)'); top.forEach(f => { const r = this.ruleOf(f.rule); L.push('   [' + r.sev + '] ' + f.rule + ' ' + f.file + ':' + f.line + ' ' + r.name); }); }
+    if (st.repS) { L.push(''); L.push('3. SQL助言 (6 件)'); L.push('   S001 SYK006.cbl:145  SELECT * の回避'); L.push('   S002 SYK007.cbl:66   非SARGableな述語'); L.push('   S003 SYK007.cbl:84   インデックス列への関数適用'); }
+    v.prTextBody = L.join('\n');
+  }
+  gvSettings(v) {
+    const st = this.state, D = this.D, SEV = this.SEV;
+    const pad = this.props.density === 'コンパクト' ? '3px 12px' : '5px 12px';
+    v.setRO = st.mode === 'running';
+    v.setOp = v.setRO ? .55 : 1; v.setPE = v.setRO ? 'none' : 'auto';
+    v.encDef = st.encDef;
+    v.encDefOpts = ['自動判定（Shift_JIS / UTF-8）', 'Shift_JIS 固定', 'UTF-8 固定', 'EBCDIC CP930（推定含む）', 'EBCDIC CP939（推定含む）'];
+    v.onEncDef = e => this.setState({ encDef: e.target.value });
+    v.pathRows = st.cpyPaths.map((p, i) => {
+      const err = st.mode === 'error' && i === 1;
+      return { idx: i + 1, path: p, bd: err ? '#E7B4AE' : '#E4E7EB', bg: err ? '#FDF3F2' : '#FBFCFD', c: err ? '#7A1C13' : '#1F2328',
+        onUp: () => { if (i === 0) return; const a = st.cpyPaths.slice(); const t = a[i - 1]; a[i - 1] = a[i]; a[i] = t; this.setState({ cpyPaths: a }); },
+        onDown: () => { if (i === st.cpyPaths.length - 1) return; const a = st.cpyPaths.slice(); const t = a[i + 1]; a[i + 1] = a[i]; a[i] = t; this.setState({ cpyPaths: a }); },
+        onDel: () => { const a = st.cpyPaths.slice(); a.splice(i, 1); this.setState({ cpyPaths: a }); } };
+    });
+    v.pathErrShow = st.mode === 'error' && st.cpyPaths.length > 1;
+    v.newPath = st.newPath; v.onNewPath = e => this.setState({ newPath: e.target.value });
+    v.onAddPath = () => { if (!st.newPath) return; this.setState({ cpyPaths: st.cpyPaths.concat([st.newPath]), newPath: '' }); };
+    v.ruleSearch = st.ruleSearch; v.onRuleSearch = e => this.setState({ ruleSearch: e.target.value });
+    const offN = Object.keys(st.rulesOff).filter(k => st.rulesOff[k]).length;
+    v.ruleCount = '有効 ' + (37 - offN) + ' / 37';
+    const q = st.ruleSearch.toLowerCase();
+    const stageTxt = { 1: '第1段 構文', 2: '第2段 CFG', 3: '第3段 データフロー', 0: '構文木判定' };
+    const rows = [];
+    let lastCat = null;
+    D.RULES.forEach(r => {
+      if (q && (r.id + r.name + r.cat).toLowerCase().indexOf(q) < 0) return;
+      if (r.cat !== lastCat) { rows.push({ gD: 'block', fD: 'none', cat: r.cat, pad: pad, id: '', name: '', nameC: '', trBg: '', knL: '', fixD: 'none', stage: '', sev: '', shape: '', shC: '', onT: null }); lastCat = r.cat; }
+      const off = !!st.rulesOff[r.id];
+      rows.push({
+        gD: 'none', fD: 'flex', pad: pad, cat: '', id: r.id, name: r.name, nameC: off ? '#9AA4B1' : '#1F2328',
+        trBg: off ? '#C4CBD3' : '#005FB8', knL: off ? '2px' : '16px',
+        fixD: r.fx ? 'inline-block' : 'none', stage: stageTxt[r.st],
+        sev: r.sev, shape: SEV[r.sev].s, shC: off ? '#9AA4B1' : SEV[r.sev].c,
+        onT: () => { const m = Object.assign({}, st.rulesOff); m[r.id] = !m[r.id]; this.setState({ rulesOff: m }); }
+      });
+    });
+    v.ruleRows = rows;
+    const thOrd = ['高', '中', '低', '警告'];
+    v.sevThItems = thOrd.map(s => {
+      const on = st.sevTh === s;
+      return { label: s, shape: SEV[s].s, shC: SEV[s].c, bg: on ? '#E4F0FB' : '#FFFFFF', bd: on ? '#7FB3E3' : '#C9CFD6', c: on ? '#084B85' : '#5C6670', fw: on ? 700 : 400,
+        onT: () => this.setState({ sevTh: s }) };
+    });
+    const idx = thOrd.indexOf(st.sevTh);
+    v.sevThNote = '現在の設定: 「' + st.sevTh + '」以上を表示（' + thOrd.slice(0, idx + 1).join('・') + ' が対象' + (st.sevTh === '警告' ? ' ― すべて表示' : '') + '）';
+  }
+  // __EXT__
+}
+</script>
+</body>
+</html>
