@@ -91,18 +91,35 @@ public final class CicsReturnMissingRule implements Rule {
     }
 
     private static Statement firstTerminal(CobolSemanticModel model) {
+        // 段落 top-level の終端(無条件の可能性が高い)を優先する。
         for (Procedure procedure : model.procedures()) {
             for (Statement statement : procedure.statements()) {
-                if (statement instanceof SimpleStatement simple) {
-                    String verb = CfgSupport.upper(simple.verb());
-                    if (verb.equals("STOP") || verb.equals("GOBACK")
-                            || (verb.equals("EXIT")
-                                    && CfgSupport.upper(simple.text()).contains("PROGRAM"))) {
-                        return simple;
-                    }
+                if (isTerminal(statement)) {
+                    return statement;
                 }
             }
         }
-        return null;
+        // top-level に無ければ、IF/EVALUATE 内に入れ子の終端を探す。
+        Statement[] nested = {null};
+        for (Procedure procedure : model.procedures()) {
+            CfgSupport.walk(procedure.statements(), statement -> {
+                if (nested[0] == null && isTerminal(statement)) {
+                    nested[0] = statement;
+                }
+            });
+            if (nested[0] != null) {
+                break;
+            }
+        }
+        return nested[0];
+    }
+
+    private static boolean isTerminal(Statement statement) {
+        if (statement instanceof SimpleStatement simple) {
+            String verb = CfgSupport.upper(simple.verb());
+            return verb.equals("STOP") || verb.equals("GOBACK")
+                    || (verb.equals("EXIT") && CfgSupport.upper(simple.text()).contains("PROGRAM"));
+        }
+        return false;
     }
 }
