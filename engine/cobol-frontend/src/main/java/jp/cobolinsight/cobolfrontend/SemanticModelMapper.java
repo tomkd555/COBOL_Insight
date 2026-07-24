@@ -41,10 +41,12 @@ import org.eclipse.lsp.cobol.common.model.tree.SentenceNode;
 import org.eclipse.lsp.cobol.common.model.tree.StopNode;
 import org.eclipse.lsp.cobol.common.model.tree.SubroutineNameNode;
 import org.eclipse.lsp.cobol.common.model.tree.SubroutineNode;
+import org.eclipse.lsp.cobol.common.model.tree.variable.ElementaryItemNode;
 import org.eclipse.lsp.cobol.common.model.tree.variable.ElementaryNode;
 import org.eclipse.lsp.cobol.common.model.tree.variable.MultiTableDataNameNode;
 import org.eclipse.lsp.cobol.common.model.tree.variable.OccursClause;
 import org.eclipse.lsp.cobol.common.model.tree.variable.QualifiedReferenceNode;
+import org.eclipse.lsp.cobol.common.model.tree.variable.StandAloneDataItemNode;
 import org.eclipse.lsp.cobol.common.model.tree.variable.TableDataNameNode;
 import org.eclipse.lsp.cobol.common.model.tree.variable.UsageFormat;
 import org.eclipse.lsp.cobol.common.model.tree.variable.VariableDefinitionNameNode;
@@ -131,6 +133,7 @@ final class SemanticModelMapper {
                     .filter(p -> !p.isEmpty());
             usage = usageOf(elementary.getUsageFormat());
         }
+        Optional<String> value = valueOf(variable);
         Optional<Occurs> occurs = occursOf(variable);
         Optional<String> redefines = Optional.empty();
         if (variable.isRedefines()) {
@@ -152,12 +155,28 @@ final class SemanticModelMapper {
                 children.add(mapDataItem(nested));
             }
         }
-        return new DataItem(variable.getLevel(), variable.getName(), picture, usage, redefines,
-                occurs, conditionNames, children, positionOf(variable.getLocality()));
+        return new DataItem(variable.getLevel(), variable.getName(), picture, usage, value,
+                redefines, occurs, conditionNames, children, positionOf(variable.getLocality()));
     }
 
     private static boolean isMappableLevel(int level) {
         return (level >= 1 && level <= 49) || level == 66 || level == 77;
+    }
+
+    /** VALUE 句を取得する。VALUE 無しは空文字列で返るため空/欠如として扱う。 */
+    private static Optional<String> valueOf(VariableWithLevelNode variable) {
+        String value = null;
+        if (variable instanceof ElementaryItemNode elementary) {
+            value = elementary.getValue();
+        } else if (variable instanceof TableDataNameNode table) {
+            value = table.getValue();
+        } else if (variable instanceof StandAloneDataItemNode standAlone) {
+            value = standAlone.getValue();
+        }
+        if (value == null || value.isBlank()) {
+            return Optional.empty();
+        }
+        return Optional.of(value.trim());
     }
 
     private static Optional<String> usageOf(UsageFormat usageFormat) {

@@ -28,6 +28,7 @@ import jp.cobolinsight.engineapi.semantic.Statement;
 import jp.cobolinsight.engineapi.semantic.StatementBlock;
 import jp.cobolinsight.engineapi.sql.SqlStatementKind;
 import jp.cobolinsight.engineapi.sql.SqlStatementModel;
+import jp.cobolinsight.engineapi.sql.SqlStructureSignals;
 import jp.cobolinsight.engineapi.source.SourcePosition;
 import jp.cobolinsight.engineapi.source.SourceRange;
 import org.junit.jupiter.api.Test;
@@ -415,7 +416,7 @@ class CallGraphLinkerTest {
         CobolSemanticModel pgm = program("PGMD", List.of(), List.of(), List.of());
         SqlStatementModel select = new SqlStatementModel(SqlStatementKind.SELECT,
                 "SELECT A FROM SYKDB.ZAIKOM", "SELECT A FROM SYKDB.ZAIKOM", List.of(),
-                List.of("SYKDB.ZAIKOM"), range("PGMD.cbl", 96));
+                List.of("SYKDB.ZAIKOM"), range("PGMD.cbl", 96), SqlStructureSignals.empty());
         LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(pgm), List.of(),
                 List.of(), Map.of("PGMD", List.of(select)), Map.of()));
 

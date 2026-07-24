@@ -19,6 +19,8 @@ dependencies {
     testImplementation(project(":engine:dataflow"))
     // R031のテストでBMSソースをengine-apiのBmsMapsetへ写像する。
     testImplementation(project(":engine:bms-frontend"))
+    // SルールのテストでEmbeddedBlockのSQLをSqlParser SPI(JsqlSqlParser)でSqlStatementModel化する。
+    testImplementation(project(":engine:sql-frontend"))
     // SARIF出力のスキーマ検証(src/test/resources/sarif/sarif-schema-2.1.0.json)に使う。
     testImplementation("com.networknt:json-schema-validator:3.0.6")
 }

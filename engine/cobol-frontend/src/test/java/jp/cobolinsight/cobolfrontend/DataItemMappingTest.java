@@ -84,6 +84,22 @@ class DataItemMappingTest {
     }
 
     @Test
+    void valueClauseIsCapturedWhenPresent() {
+        CobolSemanticModel model = TestSources.model("SYK001.cbl");
+        DataItem eofFlag = find(model.dataItems(), "WS-EOF-FLAG");
+        assertEquals(Optional.of("'N'"), eofFlag.value());
+        DataItem errorCount = find(model.dataItems(), "WS-エラー件数");
+        assertEquals(Optional.of("ZERO"), errorCount.value());
+    }
+
+    @Test
+    void valueIsAbsentWhenNoValueClause() {
+        CobolSemanticModel model = TestSources.model("SYK001.cbl");
+        DataItem checkAmount = find(model.dataItems(), "WS-検証金額");
+        assertTrue(checkAmount.value().isEmpty());
+    }
+
+    @Test
     void parentChildHierarchyIsPreserved() {
         DataItem record = sykcpy1Record();
         List<String> topLevelChildren = record.children().stream().map(DataItem::name).toList();

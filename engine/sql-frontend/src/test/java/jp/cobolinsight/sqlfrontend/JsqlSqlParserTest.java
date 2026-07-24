@@ -106,6 +106,18 @@ class JsqlSqlParserTest {
     }
 
     @Test
+    void structureSignalsAreCarriedIntoTheModel() {
+        SqlStatementModel star = parser.parse(sqlBlock("SELECT * FROM STOCK")).value().orElseThrow();
+        assertTrue(star.structureSignals().selectStar());
+
+        SqlStatementModel cursor = parser.parse(sqlBlock(
+                "DECLARE CUR1 CURSOR FOR SELECT ITEM_CD FROM STOCK FOR READ ONLY"))
+                .value().orElseThrow();
+        assertTrue(cursor.structureSignals().cursor().orElseThrow().forReadOnly());
+        assertEquals("CUR1", cursor.structureSignals().cursor().orElseThrow().cursorName());
+    }
+
+    @Test
     void serviceLoaderDiscoversTheParser() {
         boolean found = ServiceLoader.load(jp.cobolinsight.engineapi.spi.SqlParser.class).stream()
                 .anyMatch(p -> p.type() == JsqlSqlParser.class);

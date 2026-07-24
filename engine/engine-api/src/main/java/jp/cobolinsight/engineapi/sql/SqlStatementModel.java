@@ -8,9 +8,11 @@ import java.util.Objects;
 /**
  * 埋め込みSQL文の解析結果。原文(originalText)とマングリング後テキスト(mangledText)の両方を
  * 保持し、ルールは原データ名で報告できる。range は元のCOBOLソース上の位置。
+ * structureSignals は SQL助言(S001〜S006)が読む構文レベルの構造シグナル。
  */
 public record SqlStatementModel(SqlStatementKind kind, String originalText, String mangledText,
-        List<HostVariableBinding> hostVariables, List<String> referencedTables, SourceRange range) {
+        List<HostVariableBinding> hostVariables, List<String> referencedTables, SourceRange range,
+        SqlStructureSignals structureSignals) {
 
     public SqlStatementModel {
         Objects.requireNonNull(kind, "kind");
@@ -23,5 +25,6 @@ public record SqlStatementModel(SqlStatementKind kind, String originalText, Stri
         hostVariables = List.copyOf(hostVariables);
         referencedTables = List.copyOf(referencedTables);
         Objects.requireNonNull(range, "range");
+        Objects.requireNonNull(structureSignals, "structureSignals");
     }
 }

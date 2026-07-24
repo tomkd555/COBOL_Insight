@@ -5,9 +5,11 @@ import jp.cobolinsight.bmsfrontend.BmsParseError;
 import jp.cobolinsight.bmsfrontend.BmsParseResult;
 import jp.cobolinsight.bmsfrontend.BmsSourceParser;
 import jp.cobolinsight.dataflow.CfgBuilder;
+import jp.cobolinsight.dataflow.DataFlowEngine;
 import jp.cobolinsight.engineapi.bms.BmsMapset;
 import jp.cobolinsight.engineapi.cfg.ControlFlowGraph;
 import jp.cobolinsight.engineapi.cfg.ControlFlowGraphs;
+import jp.cobolinsight.engineapi.dataflow.DataFlowFacts;
 import jp.cobolinsight.engineapi.finding.Finding;
 import jp.cobolinsight.engineapi.finding.FindingLevel;
 import jp.cobolinsight.engineapi.json.JsonWriter;
@@ -173,14 +175,21 @@ public final class LintRunner {
 
         List<ControlFlowGraph> graphs = models.stream().map(CfgBuilder::build).toList();
         ControlFlowGraphs cfgs = new ControlFlowGraphs(graphs);
+        DataFlowFacts dataFlowFacts = DataFlowEngine.analyzeAll(models, cfgs);
 
         AnalysisContext context = AnalysisContext.of(models, List.of(), List.of(), mapsets,
                 Optional.empty(),
                 Map.of(SourceTextIndex.class, new SourceTextIndex(textByPath),
-                        ControlFlowGraphs.class, cfgs));
-        List<Rule> activeRules = Stream.concat(
-                        services.rules(AnalysisPhase.SYNTAX).stream(),
-                        services.rules(AnalysisPhase.CONTROL_FLOW).stream())
+                        ControlFlowGraphs.class, cfgs,
+                        DataFlowFacts.class, dataFlowFacts));
+        // lint は構文・制御フロー・データフローの3段のバグ検出ルール(id が "R")のみを実行し、
+        // SQL 助言(id が "S")は sql-advise サブコマンドへ分離する(裁定A5)。
+        List<Rule> activeRules = Stream.of(
+                        services.rules(AnalysisPhase.SYNTAX),
+                        services.rules(AnalysisPhase.CONTROL_FLOW),
+                        services.rules(AnalysisPhase.DATA_FLOW))
+                .flatMap(List::stream)
+                .filter(rule -> rule.id().startsWith("R"))
                 .filter(rule -> !options.disabledRuleIds().contains(rule.id()))
                 .toList();
         for (Rule rule : activeRules) {

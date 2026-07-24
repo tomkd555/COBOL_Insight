@@ -11,8 +11,8 @@ import java.util.Optional;
  * children により集団項目と基本項目の親子関係を表す。
  */
 public record DataItem(int level, String name, Optional<String> picture, Optional<String> usage,
-        Optional<String> redefines, Optional<Occurs> occurs, List<ConditionName> conditionNames,
-        List<DataItem> children, SourcePosition position) {
+        Optional<String> value, Optional<String> redefines, Optional<Occurs> occurs,
+        List<ConditionName> conditionNames, List<DataItem> children, SourcePosition position) {
 
     public DataItem {
         if (!((level >= 1 && level <= 49) || level == 66 || level == 77)) {
@@ -23,6 +23,7 @@ public record DataItem(int level, String name, Optional<String> picture, Optiona
         }
         Objects.requireNonNull(picture, "picture");
         Objects.requireNonNull(usage, "usage");
+        Objects.requireNonNull(value, "value");
         Objects.requireNonNull(redefines, "redefines");
         Objects.requireNonNull(occurs, "occurs");
         conditionNames = List.copyOf(conditionNames);

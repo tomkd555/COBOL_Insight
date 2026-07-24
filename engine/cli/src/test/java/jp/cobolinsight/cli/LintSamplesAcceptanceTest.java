@@ -13,15 +13,21 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * samples/ 全体の lint 受入回帰テスト(05_開発計画.md §3.3)。構文段階(SYNTAX)と制御フロー段階
- * (CONTROL_FLOW)の両段を実行し、期待結果.md の欠陥をファイル・行番号どおりに検出し、samplesに
- * 意図的欠陥の無いルールが誤検出を出さないことを突合する。第1段のR002(未使用変数)・R008(THRUなし
- * 単独段落PERFORM)に加え、第2段のR007/R011/R017/R018/R021/R022/R031の検出と、samplesが
- * ERRORレベルの検出を含むため終了コードが2であることを確認する。R017は path-sensitive な忠実
- * 実装のため付随検出を許容し、必須2件の包含とOPEN/CLOSE非検出のみを表明する。
+ * samples/ 全体の lint 受入回帰テスト(05_開発計画.md §3.3)。構文段階(SYNTAX)・制御フロー段階
+ * (CONTROL_FLOW)・データフロー段階(DATA_FLOW)の3段を実行し、期待結果.md の欠陥をファイル・行番号
+ * どおりに検出し、samplesに意図的欠陥の無いルールが誤検出を出さないことを突合する。第1段のR002
+ * (未使用変数)・R008(THRUなし単独段落PERFORM)、第2段のR007/R011/R017/R018/R021/R022/R031、
+ * 第3段のR001/R003/R004/R005(期待結果.md No.1/2/3/5/9/13/14)の検出と、samplesがERRORレベルの検出を
+ * 含むため終了コードが2であることを確認する。lint は rule id が "R" で始まるルールのみを実行し、
+ * SQL助言(S接頭辞)を除外する(裁定A5)。R017は path-sensitive な忠実実装のため付随検出を許容し、
+ * 必須2件の包含とOPEN/CLOSE非検出のみを表明する。
+ *
+ * <p>検証オラクルは samples/期待結果.md(12種別18件)。docs/05_開発計画.md は「9種別15件」と記すが、
+ * 裁定A7に従い期待結果.md を優先する。M5 データフロー段が拾うのは18件中の7件(No.1/2/3/5/9/13/14)。
  */
 class LintSamplesAcceptanceTest {
 
@@ -72,11 +78,50 @@ class LintSamplesAcceptanceTest {
 
     @Test
     void rulesWithoutIntendedDefectsProduceNoFindingsOnSamples() {
+        // 意図的欠陥の無いルール。R012/R015/R016/R020/R025/R027/R028 は第3段(DATA_FLOW)のうち
+        // samplesに該当欠陥が無いもので、DATA_FLOW段配線後も偽陽性を出さないことを担保する。
         for (String ruleId : List.of("R006", "R009", "R010", "R013", "R014", "R019",
-                "R023", "R024", "R026", "R029", "R030")) {
+                "R023", "R024", "R026", "R029", "R030",
+                "R012", "R015", "R016", "R020", "R025", "R027", "R028")) {
             assertEquals(List.of(), byRule(ruleId),
                     ruleId + " はsamplesに該当欠陥が無いため検出しないこと");
         }
+    }
+
+    @Test
+    void r001DetectsExactlyTheTwoUninitializedVariableReferences() {
+        assertEquals(Set.of("cobol/SYK001.cbl:121", "cobol/SYK004.cbl:41"), fileLines("R001"),
+                "R001は未初期化変数の参照2件(期待結果.md No.1,9)を検出すること");
+        assertTrue(allLevel("R001", FindingLevel.ERROR), "R001は全件ERRORであること");
+    }
+
+    @Test
+    void r003DetectsExactlyTheTwoMoveTruncations() {
+        assertEquals(Set.of("cobol/SYK001.cbl:128", "cobol/SYK002.cbl:118"), fileLines("R003"),
+                "R003はMOVEでの桁落ち・切り捨て2件(期待結果.md No.2,5)を検出すること");
+        assertTrue(allLevel("R003", FindingLevel.ERROR), "R003は全件ERRORであること");
+    }
+
+    @Test
+    void r005DetectsExactlyTheTwoOutOfRangeSubscripts() {
+        assertEquals(Set.of("cobol/SYK001.cbl:114", "cobol/SYK006.cbl:139"), fileLines("R005"),
+                "R005はOCCURS範囲外になり得る添字2件(期待結果.md No.3,13)を検出すること");
+        assertTrue(allLevel("R005", FindingLevel.ERROR), "R005は全件ERRORであること");
+    }
+
+    @Test
+    void r004DetectsExactlyTheOnSizeErrorMissingCompute() {
+        assertEquals(Set.of("cobol/SYK007.cbl:79"), fileLines("R004"),
+                "R004はON SIZE ERROR欠如の演算1件(期待結果.md No.14)を検出すること");
+        assertTrue(allLevel("R004", FindingLevel.ERROR), "R004は全件ERRORであること");
+    }
+
+    @Test
+    void lintRunsOnlyRPrefixedRulesAndExcludesSqlAdviceRules() {
+        assertTrue(result.findings().stream().noneMatch(f -> f.ruleId().startsWith("S")),
+                "lintの検出にSQL助言(S接頭辞)が混じらないこと(裁定A5)");
+        assertFalse(result.sarifJson().contains("\"id\":\"S"),
+                "lintのSARIF driver.rules にS接頭辞のSQL助言ルールが載らないこと(裁定A5)");
     }
 
     @Test

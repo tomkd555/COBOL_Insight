@@ -27,25 +27,26 @@ class SemanticModelTest {
     @Test
     void dataItemAcceptsStandardAndSpecialLevels() {
         DataItem elementary = new DataItem(5, "WS-AMOUNT", Optional.of("S9(7)V99"), Optional.of("COMP-3"),
-                Optional.empty(), Optional.empty(), List.of(), List.of(), pos(10));
+                Optional.of("100"), Optional.empty(), Optional.empty(), List.of(), List.of(), pos(10));
         assertEquals(5, elementary.level());
+        assertEquals(Optional.of("100"), elementary.value());
         DataItem level77 = new DataItem(77, "WS-FLAG", Optional.of("X"), Optional.empty(),
-                Optional.empty(), Optional.empty(), List.of(), List.of(), pos(11));
+                Optional.empty(), Optional.empty(), Optional.empty(), List.of(), List.of(), pos(11));
         assertEquals(77, level77.level());
     }
 
     @Test
     void dataItemRejectsInvalidLevel() {
         assertThrows(IllegalArgumentException.class, () -> new DataItem(0, "X", Optional.empty(),
-                Optional.empty(), Optional.empty(), Optional.empty(), List.of(), List.of(), pos(1)));
+                Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), List.of(), List.of(), pos(1)));
         assertThrows(IllegalArgumentException.class, () -> new DataItem(88, "X", Optional.empty(),
-                Optional.empty(), Optional.empty(), Optional.empty(), List.of(), List.of(), pos(1)));
+                Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), List.of(), List.of(), pos(1)));
     }
 
     @Test
     void dataItemHoldsRedefinesOccursAndConditionNames() {
         ConditionName cond = new ConditionName("WS-OK", List.of("'0'"), pos(21));
-        DataItem item = new DataItem(1, "WS-REC", Optional.empty(), Optional.empty(),
+        DataItem item = new DataItem(1, "WS-REC", Optional.empty(), Optional.empty(), Optional.empty(),
                 Optional.of("WS-OTHER"), Optional.of(new Occurs(1, 10, Optional.of("WS-CNT"))),
                 List.of(cond), List.of(), pos(20));
         assertEquals("WS-OTHER", item.redefines().orElseThrow());
@@ -68,9 +69,9 @@ class SemanticModelTest {
     @Test
     void dataItemChildrenAreImmutable() {
         DataItem child = new DataItem(5, "WS-A", Optional.of("X"), Optional.empty(),
-                Optional.empty(), Optional.empty(), List.of(), List.of(), pos(2));
+                Optional.empty(), Optional.empty(), Optional.empty(), List.of(), List.of(), pos(2));
         DataItem parent = new DataItem(1, "WS-GROUP", Optional.empty(), Optional.empty(),
-                Optional.empty(), Optional.empty(), List.of(), List.of(child), pos(1));
+                Optional.empty(), Optional.empty(), Optional.empty(), List.of(), List.of(child), pos(1));
         assertThrows(UnsupportedOperationException.class, () -> parent.children().add(child));
     }
 

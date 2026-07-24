@@ -39,7 +39,8 @@ public final class JsqlSqlParser implements SqlParser {
                 result.mangledSql(),
                 toBindings(result.hostVariables()),
                 result.tableNames(),
-                sqlBlock.range()));
+                sqlBlock.range(),
+                result.structureSignals()));
     }
 
     /** 抽出テキストが EXEC SQL 〜 END-EXEC の外形を含む場合、外形を除いてSQL本文だけにする。 */

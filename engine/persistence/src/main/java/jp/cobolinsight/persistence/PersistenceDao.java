@@ -160,6 +160,11 @@ public final class PersistenceDao {
                 rs -> new NodeRecord(rs.getLong("id"), rs.getString("type"), rs.getString("label")), id);
     }
 
+    public List<NodeRecord> findAllNodes() {
+        return queryList("SELECT id, type, label FROM NODE ORDER BY id",
+                rs -> new NodeRecord(rs.getLong("id"), rs.getString("type"), rs.getString("label")));
+    }
+
     public void updateNode(NodeRecord node) {
         update("UPDATE NODE SET type = ?, label = ? WHERE id = ?", node.type(), node.label(),
                 node.id());
@@ -179,6 +184,11 @@ public final class PersistenceDao {
     public Optional<CallEdgeRecord> findCallEdge(long id) {
         return queryOne("SELECT id, from_node, to_node, kind, resolution, host_var FROM CALL_EDGE "
                 + "WHERE id = ?", PersistenceDao::mapCallEdge, id);
+    }
+
+    public List<CallEdgeRecord> findAllCallEdges() {
+        return queryList("SELECT id, from_node, to_node, kind, resolution, host_var FROM CALL_EDGE "
+                + "ORDER BY id", PersistenceDao::mapCallEdge);
     }
 
     public List<CallEdgeRecord> findEdgesFrom(long nodeId) {
