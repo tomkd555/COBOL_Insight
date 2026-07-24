@@ -126,6 +126,7 @@ final class Schema {
                 gen_line_start INTEGER NOT NULL,
                 gen_line_end INTEGER NOT NULL,
                 kind TEXT NOT NULL,
+                note TEXT NOT NULL,
                 anchor_id TEXT NOT NULL
             )
             """,

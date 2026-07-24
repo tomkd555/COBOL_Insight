@@ -117,10 +117,33 @@ class PersistenceDaoRoundTripTest {
     @Test
     void lineMapRoundTrip() {
         dao.insertSource(new SourceRecord(1L, "A.cbl", "IBM930", "hash-1", 10L));
-        LineMapRecord lineMap = new LineMapRecord(1L, 1L, 10, 12, "A.py", 20, 21, "1:N", "anchor-1");
+        LineMapRecord lineMap = new LineMapRecord(1L, 1L, 10, 12, "A.py", 20, 21, "1:N",
+                "GO TO は構造化のため N:1 対応で表現する", "anchor-1");
         dao.insertLineMap(lineMap);
         assertEquals(lineMap, dao.findLineMap(1L).orElseThrow());
         assertEquals(1, dao.findLineMapsBySource(1L).size());
+    }
+
+    @Test
+    void lineMapRoundTripWithEmptyNote() {
+        dao.insertSource(new SourceRecord(1L, "A.cbl", "IBM930", "hash-1", 10L));
+        LineMapRecord lineMap = new LineMapRecord(1L, 1L, 1, 1, "A.py", 1, 1, "1:1", "", "anchor-2");
+        dao.insertLineMap(lineMap);
+        assertEquals("", dao.findLineMap(1L).orElseThrow().note());
+    }
+
+    @Test
+    void deleteLineMapsBySourceRemovesOnlyThatSourcesRows() {
+        dao.insertSource(new SourceRecord(1L, "A.cbl", "IBM930", "hash-1", 10L));
+        dao.insertSource(new SourceRecord(2L, "B.cbl", "IBM930", "hash-2", 10L));
+        dao.insertLineMap(new LineMapRecord(1L, 1L, 1, 1, "A.py", 1, 1, "1:1", "", "a#1"));
+        dao.insertLineMap(new LineMapRecord(2L, 1L, 2, 2, "A.py", 2, 2, "1:1", "", "a#2"));
+        dao.insertLineMap(new LineMapRecord(3L, 2L, 1, 1, "B.py", 1, 1, "1:1", "", "b#1"));
+
+        dao.deleteLineMapsBySource(1L);
+
+        assertTrue(dao.findLineMapsBySource(1L).isEmpty());
+        assertEquals(1, dao.findLineMapsBySource(2L).size());
     }
 
     @Test

@@ -1,0 +1,19 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID.  GOTOLOOP.
+       ENVIRONMENT DIVISION.
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+       01  WS-COUNTER   PIC 9(03) VALUE 0.
+       01  WS-LIMIT     PIC 9(03) VALUE 10.
+       PROCEDURE DIVISION.
+       0000-MAIN.
+           PERFORM 7000-LOOP
+           STOP RUN.
+       7000-LOOP.
+           IF WS-COUNTER > WS-LIMIT
+               GO TO 7000-EXIT
+           END-IF
+           ADD 1 TO WS-COUNTER
+           GO TO 7000-LOOP.
+       7000-EXIT.
+           EXIT.

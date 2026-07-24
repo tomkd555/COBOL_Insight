@@ -296,29 +296,36 @@ public final class PersistenceDao {
 
     public void insertLineMap(LineMapRecord lineMap) {
         update("INSERT INTO LINE_MAP(id, cobol_source_id, cobol_line_start, cobol_line_end, gen_file, "
-                        + "gen_line_start, gen_line_end, kind, anchor_id) VALUES (?,?,?,?,?,?,?,?,?)",
+                        + "gen_line_start, gen_line_end, kind, note, anchor_id) "
+                        + "VALUES (?,?,?,?,?,?,?,?,?,?)",
                 lineMap.id(), lineMap.cobolSourceId(), lineMap.cobolLineStart(), lineMap.cobolLineEnd(),
                 lineMap.genFile(), lineMap.genLineStart(), lineMap.genLineEnd(), lineMap.kind(),
-                lineMap.anchorId());
+                lineMap.note(), lineMap.anchorId());
     }
 
     public Optional<LineMapRecord> findLineMap(long id) {
         return queryOne("SELECT id, cobol_source_id, cobol_line_start, cobol_line_end, gen_file, "
-                + "gen_line_start, gen_line_end, kind, anchor_id FROM LINE_MAP WHERE id = ?",
+                + "gen_line_start, gen_line_end, kind, note, anchor_id FROM LINE_MAP WHERE id = ?",
                 PersistenceDao::mapLineMap, id);
     }
 
     public List<LineMapRecord> findLineMapsBySource(long cobolSourceId) {
         return queryList("SELECT id, cobol_source_id, cobol_line_start, cobol_line_end, gen_file, "
-                + "gen_line_start, gen_line_end, kind, anchor_id FROM LINE_MAP WHERE cobol_source_id = ?",
+                + "gen_line_start, gen_line_end, kind, note, anchor_id FROM LINE_MAP "
+                + "WHERE cobol_source_id = ?",
                 PersistenceDao::mapLineMap, cobolSourceId);
+    }
+
+    /** 指定ソースの行対応を全消去する(transpile の再実行を冪等にするため書込前に呼ぶ)。 */
+    public void deleteLineMapsBySource(long cobolSourceId) {
+        update("DELETE FROM LINE_MAP WHERE cobol_source_id = ?", cobolSourceId);
     }
 
     private static LineMapRecord mapLineMap(ResultSet rs) throws SQLException {
         return new LineMapRecord(rs.getLong("id"), rs.getLong("cobol_source_id"),
                 rs.getInt("cobol_line_start"), rs.getInt("cobol_line_end"), rs.getString("gen_file"),
                 rs.getInt("gen_line_start"), rs.getInt("gen_line_end"), rs.getString("kind"),
-                rs.getString("anchor_id"));
+                rs.getString("note"), rs.getString("anchor_id"));
     }
 
     // ---- トランザクション ----

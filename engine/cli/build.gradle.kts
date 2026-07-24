@@ -65,6 +65,8 @@ dependencies {
     implementation(project(":engine:rules"))
     // dataflowはlintがCFGを直接構築する(CfgBuilder.build)ため、コンパイル依存とする。
     implementation(project(":engine:dataflow"))
+    // transpileはTranspileRunnerが逐語対訳器を直接呼ぶ(SPIではない)ため、コンパイル依存とする。
+    implementation(project(":engine:transpile"))
     implementation("info.picocli:picocli:4.7.7")
     // callgraphのSVG/PNG生成。graphviz-javaのJVM内実行(viz.js)にJSエンジンとしてGraalJSを使う
     // (graphviz-javaのNashorn経路はJava 15以降で使えないため、JDK 21ではGraalJS経路が必須)。
@@ -76,7 +78,6 @@ dependencies {
     runtimeOnly(project(":engine:cobol-frontend"))
     runtimeOnly(project(":engine:jcl-frontend"))
     runtimeOnly(project(":engine:sql-frontend"))
-    runtimeOnly(project(":engine:transpile"))
     runtimeOnly(project(":engine:fix"))
 }
 
