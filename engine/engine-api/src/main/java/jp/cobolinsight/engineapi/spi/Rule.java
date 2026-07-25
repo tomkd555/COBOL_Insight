@@ -22,7 +22,7 @@ public interface Rule {
 
     List<Finding> evaluate(AnalysisContext context);
 
-    /** 修正案生成器。定型的な修正を持つルール(R004・R017・R018・R021)のみが提供する。 */
+    /** 修正案生成器。定型的な修正を持つルール(R004・R017・R018)のみが提供する。 */
     default Optional<FixProducer> fixProducer() {
         return Optional.empty();
     }

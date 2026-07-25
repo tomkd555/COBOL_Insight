@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static java.util.Map.entry;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -15,6 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** DATA_FLOW 段11ルールの ServiceLoader 登録・ID順・severity・段階・fixProducer の検証。 */
 class DataFlowRuleRegistrationTest {
+
+    /** 定型修正の FixProducer を提供する DATA_FLOW 段ルール。 */
+    private static final Set<String> FIX_PRODUCERS = Set.of("R004");
 
     private static final Map<String, Severity> EXPECTED = Map.ofEntries(
             entry("R001", Severity.HIGH),
@@ -42,8 +46,12 @@ class DataFlowRuleRegistrationTest {
         for (Rule rule : AnalysisServices.load().rules(AnalysisPhase.DATA_FLOW)) {
             assertEquals(EXPECTED.get(rule.id()), rule.defaultSeverity(), rule.id());
             assertEquals(AnalysisPhase.DATA_FLOW, rule.phase(), rule.id());
-            assertTrue(rule.fixProducer().isEmpty(),
-                    rule.id() + " は現段階で修正案生成器を持たないこと");
+            if (FIX_PRODUCERS.contains(rule.id())) {
+                assertTrue(rule.fixProducer().isPresent(), rule.id() + " は修正案生成器を持つこと");
+            } else {
+                assertTrue(rule.fixProducer().isEmpty(),
+                        rule.id() + " は修正案生成器を持たないこと");
+            }
         }
     }
 }

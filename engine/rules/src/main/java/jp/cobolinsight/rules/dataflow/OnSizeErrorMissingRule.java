@@ -7,21 +7,27 @@ import jp.cobolinsight.engineapi.dataflow.DataFlowFacts;
 import jp.cobolinsight.engineapi.dataflow.ProgramDataFlow;
 import jp.cobolinsight.engineapi.dataflow.ValueInterval;
 import jp.cobolinsight.engineapi.finding.Finding;
+import jp.cobolinsight.engineapi.finding.FixSuggestion;
 import jp.cobolinsight.engineapi.finding.Severity;
+import jp.cobolinsight.engineapi.finding.TextEdit;
 import jp.cobolinsight.engineapi.picture.PictureType;
 import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
 import jp.cobolinsight.engineapi.semantic.SimpleStatement;
 import jp.cobolinsight.engineapi.semantic.Statement;
 import jp.cobolinsight.engineapi.source.SourcePosition;
+import jp.cobolinsight.engineapi.source.SourceRange;
 import jp.cobolinsight.engineapi.spi.AnalysisContext;
 import jp.cobolinsight.engineapi.spi.AnalysisPhase;
+import jp.cobolinsight.engineapi.spi.FixProducer;
 import jp.cobolinsight.engineapi.spi.Rule;
+import jp.cobolinsight.rules.FixEdits;
 import jp.cobolinsight.rules.SourceTextIndex;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -103,6 +109,53 @@ public final class OnSizeErrorMissingRule implements Rule {
                         new SourcePosition(model.sourceFile(), simple.range().start().line(), 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
             }
+        }
+    }
+
+    @Override
+    public Optional<FixProducer> fixProducer() {
+        return Optional.of(new OnSizeErrorFixProducer());
+    }
+
+    /**
+     * ON SIZE ERROR 句を欠く算術文へ、DISPLAY ハンドラ付きの ON SIZE ERROR 句と END-句を付与する。
+     * 句は算術文の内容終端(range.end)へ挿入する。ON SIZE ERROR 句は算術文のスコープ内の要素で
+     * あり、END-句がスコープを閉じる。文が文末(直後に終止ピリオド)の場合、挿入は終止ピリオドの
+     * 直前に入るため、ピリオドは自然に END-句の後へ回る。文が文の途中(直後に別の文)の場合は、
+     * END-句が算術文のスコープを区切り、後続文はそのまま続く。Finding.location の行(=算術文の
+     * 開始行)を anchor に対象文を再同定する。
+     */
+    private static final class OnSizeErrorFixProducer implements FixProducer {
+
+        @Override
+        public Optional<FixSuggestion> produce(Finding finding, AnalysisContext context) {
+            if (!"R004".equals(finding.ruleId())) {
+                return Optional.empty();
+            }
+            CobolSemanticModel model =
+                    FixEdits.modelOf(context, finding.location().file()).orElse(null);
+            if (model == null) {
+                return Optional.empty();
+            }
+            SimpleStatement arithmetic = FixEdits.findSimpleStatement(model,
+                    finding.location().line(),
+                    candidate -> ARITHMETIC_VERBS.contains(candidate.verb().toUpperCase(Locale.ROOT))
+                            && !candidate.text().toUpperCase(Locale.ROOT).contains("SIZE ERROR"))
+                    .orElse(null);
+            if (arithmetic == null) {
+                return Optional.empty();
+            }
+            String verb = arithmetic.verb().toUpperCase(Locale.ROOT);
+            List<String> receivers = receivers(verb, arithmetic.text());
+            if (receivers.isEmpty()) {
+                return Optional.empty();
+            }
+            String clause = "ON SIZE ERROR DISPLAY 'SIZE ERROR: " + receivers.get(0)
+                    + "' END-" + verb;
+            String replacement = "\n" + String.join("\n", FixEdits.layout(clause));
+            SourcePosition at = arithmetic.range().end();
+            TextEdit edit = new TextEdit(new SourceRange(at, at), replacement);
+            return Optional.of(new FixSuggestion("ON SIZE ERROR 句を付与する", List.of(edit)));
         }
     }
 

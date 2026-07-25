@@ -4,14 +4,18 @@ import jp.cobolinsight.engineapi.cfg.CfgNode;
 import jp.cobolinsight.engineapi.cfg.ControlFlowGraph;
 import jp.cobolinsight.engineapi.cfg.ControlFlowGraphs;
 import jp.cobolinsight.engineapi.finding.Finding;
+import jp.cobolinsight.engineapi.finding.FixSuggestion;
 import jp.cobolinsight.engineapi.finding.Severity;
+import jp.cobolinsight.engineapi.finding.TextEdit;
 import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
 import jp.cobolinsight.engineapi.semantic.CompoundStatement;
 import jp.cobolinsight.engineapi.semantic.SimpleStatement;
 import jp.cobolinsight.engineapi.source.SourcePosition;
 import jp.cobolinsight.engineapi.spi.AnalysisContext;
 import jp.cobolinsight.engineapi.spi.AnalysisPhase;
+import jp.cobolinsight.engineapi.spi.FixProducer;
 import jp.cobolinsight.engineapi.spi.Rule;
+import jp.cobolinsight.rules.FixEdits;
 import jp.cobolinsight.rules.SourceTextIndex;
 
 import java.util.ArrayList;
@@ -19,6 +23,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -115,6 +120,58 @@ public final class FileStatusUncheckedRule implements Rule {
                         new SourcePosition(model.sourceFile(), io.range().start().line(), 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
             }
+        }
+    }
+
+    @Override
+    public Optional<FixProducer> fixProducer() {
+        return Optional.of(new FileStatusFixProducer());
+    }
+
+    /**
+     * 未検査の record-access I/O 文の直後へ、その FD の FILE STATUS 変数を判定する IF 文を挿入する。
+     * Finding.location の行(=I/O 文の開始行)を anchor に対象文を再同定し、STATUS 変数と FD 名は
+     * evaluate と同じ SELECT/FD 解決で再取得する。
+     */
+    private static final class FileStatusFixProducer implements FixProducer {
+
+        @Override
+        public Optional<FixSuggestion> produce(Finding finding, AnalysisContext context) {
+            if (!"R017".equals(finding.ruleId())) {
+                return Optional.empty();
+            }
+            SourceTextIndex index = context.artifact(SourceTextIndex.class).orElse(null);
+            CobolSemanticModel model =
+                    FixEdits.modelOf(context, finding.location().file()).orElse(null);
+            if (index == null || model == null) {
+                return Optional.empty();
+            }
+            String source = index.textOf(model.sourceFile()).orElse(null);
+            if (source == null) {
+                return Optional.empty();
+            }
+            SimpleStatement io = FixEdits.findSimpleStatement(model, finding.location().line(),
+                    candidate -> IO_VERBS.contains(CfgSupport.upper(candidate.verb()))).orElse(null);
+            if (io == null) {
+                return Optional.empty();
+            }
+            String fd = fdOf(io, recordToFd(source, index));
+            String var = fd == null ? null : fdToVar(source).get(fd);
+            if (var == null) {
+                return Optional.empty();
+            }
+            // I/O 文が終止ピリオドで文を閉じている場合に限り、直後へ独立した検査文を挿入する。
+            // IF/ELSE や PERFORM ブロックの途中にある I/O(終止ピリオド無し)へピリオド終端の文を
+            // 挿入すると囲む構造を壊すため、その場合は修正案を出さない(検出は継続する)。
+            if (!FixEdits.endsSentence(source, io.range().end().line())) {
+                return Optional.empty();
+            }
+            // 直前の I/O 文は終止ピリオドで文が閉じるため、挿入する IF は独立した文として
+            // 終止ピリオドで閉じる。
+            String statement = "IF " + var + " NOT = '00' DISPLAY 'FILE ERROR: " + fd + " ' "
+                    + var + " END-IF.";
+            TextEdit edit = FixEdits.insertStatementAfter(io.range(), statement);
+            return Optional.of(new FixSuggestion("FILE STATUS 検査を挿入する", List.of(edit)));
         }
     }
 

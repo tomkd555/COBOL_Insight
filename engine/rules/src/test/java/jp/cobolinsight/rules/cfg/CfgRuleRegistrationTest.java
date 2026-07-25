@@ -8,12 +8,16 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** CONTROL_FLOW 段13ルールの ServiceLoader 登録・ID順・severity・段階・fixProducer の検証。 */
 class CfgRuleRegistrationTest {
+
+    /** 定型修正の FixProducer を提供する CONTROL_FLOW 段ルール。R021 は best-effort 対象外で持たない。 */
+    private static final Set<String> FIX_PRODUCERS = Set.of("R017", "R018");
 
     private static final Map<String, Severity> EXPECTED = Map.ofEntries(
             Map.entry("R007", Severity.HIGH),
@@ -43,7 +47,11 @@ class CfgRuleRegistrationTest {
         for (Rule rule : AnalysisServices.load().rules(AnalysisPhase.CONTROL_FLOW)) {
             assertEquals(EXPECTED.get(rule.id()), rule.defaultSeverity(), rule.id());
             assertEquals(AnalysisPhase.CONTROL_FLOW, rule.phase(), rule.id());
-            assertTrue(rule.fixProducer().isEmpty(), rule.id() + " は修正案生成の対象外であること");
+            if (FIX_PRODUCERS.contains(rule.id())) {
+                assertTrue(rule.fixProducer().isPresent(), rule.id() + " は修正案生成器を持つこと");
+            } else {
+                assertTrue(rule.fixProducer().isEmpty(), rule.id() + " は修正案生成の対象外であること");
+            }
         }
     }
 }

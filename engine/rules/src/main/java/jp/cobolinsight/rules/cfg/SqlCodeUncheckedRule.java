@@ -4,7 +4,9 @@ import jp.cobolinsight.engineapi.cfg.CfgNode;
 import jp.cobolinsight.engineapi.cfg.ControlFlowGraph;
 import jp.cobolinsight.engineapi.cfg.ControlFlowGraphs;
 import jp.cobolinsight.engineapi.finding.Finding;
+import jp.cobolinsight.engineapi.finding.FixSuggestion;
 import jp.cobolinsight.engineapi.finding.Severity;
+import jp.cobolinsight.engineapi.finding.TextEdit;
 import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
 import jp.cobolinsight.engineapi.semantic.CompoundStatement;
 import jp.cobolinsight.engineapi.semantic.EmbeddedBlock;
@@ -14,7 +16,10 @@ import jp.cobolinsight.engineapi.source.SourcePosition;
 import jp.cobolinsight.engineapi.source.SourceRange;
 import jp.cobolinsight.engineapi.spi.AnalysisContext;
 import jp.cobolinsight.engineapi.spi.AnalysisPhase;
+import jp.cobolinsight.engineapi.spi.FixProducer;
 import jp.cobolinsight.engineapi.spi.Rule;
+import jp.cobolinsight.rules.FixEdits;
+import jp.cobolinsight.rules.SourceTextIndex;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -23,6 +28,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -96,6 +102,57 @@ public final class SqlCodeUncheckedRule implements Rule {
                         new SourcePosition(model.sourceFile(), block.range().end().line(), 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
             }
+        }
+    }
+
+    @Override
+    public Optional<FixProducer> fixProducer() {
+        return Optional.of(new SqlCodeFixProducer());
+    }
+
+    private static boolean isDataChangeDml(String keyword) {
+        return keyword.equals("INSERT") || keyword.equals("UPDATE") || keyword.equals("DELETE");
+    }
+
+    /**
+     * 未検査のデータ変更 DML の EXEC SQL 直後(END-EXEC 行の次行)へ SQLCODE 判定文を挿入する。
+     * Finding.location の行(=END-EXEC 行)を anchor に、同一終端行の DML ブロックを再同定する。
+     */
+    private static final class SqlCodeFixProducer implements FixProducer {
+
+        @Override
+        public Optional<FixSuggestion> produce(Finding finding, AnalysisContext context) {
+            if (!"R018".equals(finding.ruleId())) {
+                return Optional.empty();
+            }
+            String file = finding.location().file();
+            int line = finding.location().line();
+            CobolSemanticModel model = FixEdits.modelOf(context, file).orElse(null);
+            if (model == null) {
+                return Optional.empty();
+            }
+            EmbeddedBlock block = model.embeddedBlocks().stream()
+                    .filter(candidate -> candidate.kind() == EmbeddedBlockKind.SQL)
+                    .filter(candidate -> candidate.range().end().line() == line)
+                    .filter(candidate -> isDataChangeDml(leadingSqlKeyword(candidate.text())))
+                    .findFirst()
+                    .orElse(null);
+            if (block == null) {
+                return Optional.empty();
+            }
+            // END-EXEC が終止ピリオドで文を閉じている場合に限り、直後へ独立した検査文を挿入する。
+            // IF/PERFORM ブロックの途中にある EXEC SQL(END-EXEC にピリオド無し)へピリオド終端の
+            // 文を挿入すると囲む構造を壊すため、その場合は修正案を出さない(検出は継続する)。
+            String source = context.artifact(SourceTextIndex.class)
+                    .flatMap(index -> index.textOf(model.sourceFile())).orElse(null);
+            if (source != null && !FixEdits.endsSentence(source, block.range().end().line())) {
+                return Optional.empty();
+            }
+            // 直前の EXEC SQL は END-EXEC のピリオドで文が閉じるため、挿入する IF は独立した
+            // 文として終止ピリオドで閉じる。
+            TextEdit edit = FixEdits.insertStatementAfter(block.range(),
+                    "IF SQLCODE NOT = 0 DISPLAY 'SQL ERROR: ' SQLCODE END-IF.");
+            return Optional.of(new FixSuggestion("SQLCODE 検査を挿入する", List.of(edit)));
         }
     }
 

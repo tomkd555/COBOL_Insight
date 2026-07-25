@@ -73,12 +73,15 @@ dependencies {
     implementation("guru.nidi:graphviz-java:0.18.1")
     runtimeOnly("org.graalvm.js:js:24.2.1")
 
+    // fixはFixRunnerがバイトスプライス適用器・ノーマライザ・diffを直接呼ぶため、コンパイル依存とする。
+    implementation(project(":engine:fix"))
+    // encodingはFixRunnerが原本を再復号してByteOffsetTable付きDecodedSourceを得るため、コンパイル依存とする。
+    implementation(project(":engine:encoding"))
+
     // ServiceLoaderがパイプラインを成立させるため、実装各モジュールを実行時クラスパスへ同梱する。
-    runtimeOnly(project(":engine:encoding"))
     runtimeOnly(project(":engine:cobol-frontend"))
     runtimeOnly(project(":engine:jcl-frontend"))
     runtimeOnly(project(":engine:sql-frontend"))
-    runtimeOnly(project(":engine:fix"))
 }
 
 // M1完了条件: Che4z(EPL-2.0)とMAPA(MIT)のライセンスファイルを配布物(cli.jar)へ同梱する。

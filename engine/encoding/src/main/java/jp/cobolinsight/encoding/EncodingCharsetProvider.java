@@ -2,8 +2,6 @@ package jp.cobolinsight.encoding;
 
 import jp.cobolinsight.engineapi.spi.CharsetProvider;
 
-import java.util.Locale;
-
 /**
  * engine-api の {@link CharsetProvider} 実装。モジュール内の {@link SourceDecoder} の結果を
  * engine-api の DecodedSource / EncodingInfo へ写像する。確信度は 0〜100 を 0.0〜1.0 へ正規化する。
@@ -20,18 +18,7 @@ public final class EncodingCharsetProvider implements CharsetProvider {
     @Override
     public jp.cobolinsight.engineapi.source.DecodedSource decode(String path, byte[] bytes,
             String charsetName) {
-        return toEngineApi(path, decoder.decode(bytes, codePageOf(charsetName)));
-    }
-
-    private static CodePage codePageOf(String charsetName) {
-        String key = charsetName.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
-        return switch (key) {
-            case "utf8" -> CodePage.UTF_8;
-            case "shiftjis", "sjis", "windows31j", "ms932", "cp932", "932" -> CodePage.SHIFT_JIS;
-            case "ibm930", "xibm930", "cp930", "930" -> CodePage.IBM930;
-            case "ibm939", "xibm939", "cp939", "939" -> CodePage.IBM939;
-            default -> throw new IllegalArgumentException("未対応のコードページ指定: " + charsetName);
-        };
+        return toEngineApi(path, decoder.decode(bytes, CodePage.fromName(charsetName)));
     }
 
     private static jp.cobolinsight.engineapi.source.DecodedSource toEngineApi(String path,
