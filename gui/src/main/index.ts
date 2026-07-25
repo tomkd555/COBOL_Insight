@@ -1,6 +1,34 @@
 import { app, BrowserWindow } from "electron";
+import { accessSync, constants, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { registerEngineIpc } from "./ipc";
+import { resolvePortableUserData } from "./portable";
+
+/** 保存先ディレクトリを作成し、書込可能かを確かめる。 */
+function ensureWritable(dir: string): boolean {
+  try {
+    mkdirSync(dir, { recursive: true });
+    accessSync(dir, constants.W_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 保存先をポータブル運用へ切り替える。app.whenReady より前に呼ぶ必要がある
+ * (userData は sessionData・logs・crashDumps の既定の起点でもあるため)。
+ */
+function applyPortableUserData(): void {
+  const dataDir = resolvePortableUserData({
+    isPackaged: app.isPackaged,
+    exePath: app.getPath("exe"),
+    ensureWritable,
+  });
+  if (dataDir !== null) {
+    app.setPath("userData", dataDir);
+  }
+}
 
 /**
  * main プロセス。renderer(React)を contextIsolation・sandbox 有効の BrowserWindow へ読み込む。
@@ -32,6 +60,8 @@ function createWindow(): void {
     void mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
   }
 }
+
+applyPortableUserData();
 
 app.whenReady().then(() => {
   console.log("[main] app whenReady reached");

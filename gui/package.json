@@ -61,15 +61,12 @@
       }
     ],
     "directories": {
-      "output": "dist/installer"
+      "output": "dist/portable"
     },
     "win": {
-      "target": "nsis",
+      "target": "zip",
       "signAndEditExecutable": false
     },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
-    }
+    "artifactName": "COBOLInsight-${version}-win-x64-portable.${ext}"
   }
 }
