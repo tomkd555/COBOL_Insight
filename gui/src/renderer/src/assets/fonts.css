@@ -1,0 +1,37 @@
+/*
+ * ローカル同梱フォント定義。design が Google Fonts CDN から読む BIZ UDPGothic / BIZ UDGothic を、
+ * OFL ライセンスの woff2 として gui 配下へ同梱し、ネットワーク非接続で読み込む。
+ * UI 本文=BIZ UDPGothic(プロポーショナル)、コード・識別子=BIZ UDGothic(等幅)。
+ */
+
+@font-face {
+  font-family: "BIZ UDPGothic";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/BIZUDPGothic-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "BIZ UDPGothic";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./fonts/BIZUDPGothic-Bold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "BIZ UDGothic";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/BIZUDGothic-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "BIZ UDGothic";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./fonts/BIZUDGothic-Bold.woff2") format("woff2");
+}

@@ -1,0 +1,323 @@
+/*
+ * ソースビューア(transpile 統合)のスタイル。厳格 BEM で命名し、値は :root トークンを参照する。
+ * design/COBOL Insight.dc.html の scSrc(design:349-447)の配置・寸法を移植する。
+ * コードの本体は Monaco が自前の DOM を描くため、CSS は枠・ツールバー・欄の見出し・注記一覧・
+ * コピー句展開と、Monaco の行へ付ける装飾クラスを担う。
+ */
+
+.ci-viewer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--ci-panel);
+}
+
+/* 上部ツールバー: ファイル選択・ジャンプ元・凡例 */
+.ci-viewer__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px var(--ci-space-3);
+  border-bottom: 1px solid var(--ci-border-soft);
+  flex: none;
+  flex-wrap: wrap;
+}
+.ci-viewer__file-label {
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-muted);
+}
+.ci-viewer__file-select,
+.ci-viewer__gen-select {
+  font-size: var(--ci-fs-sm);
+  padding: 4px 8px;
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius-sm);
+  font-family: var(--ci-font-code);
+  background: var(--ci-panel);
+  color: var(--ci-text);
+}
+.ci-viewer__from {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-2);
+  font-size: var(--ci-fs-xs);
+  background: var(--ci-select-tint);
+  color: var(--ci-accent-strong);
+  border: 1px solid var(--ci-info-border);
+  border-radius: var(--ci-radius-pill);
+  padding: 2px 10px;
+}
+.ci-viewer__spacer {
+  flex: 1;
+}
+.ci-viewer__legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--ci-fs-legend);
+  color: var(--ci-text-muted);
+}
+.ci-viewer__legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-1);
+}
+.ci-viewer__swatch {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+}
+.ci-viewer__swatch--linked {
+  background: var(--ci-line-linked-bg);
+  border: 1px solid var(--ci-line-linked-border);
+}
+.ci-viewer__swatch--focus {
+  background: var(--ci-line-focus-bg);
+  border: 1px solid var(--ci-select-border);
+}
+.ci-viewer__swatch--noted {
+  background: var(--ci-caution-bg);
+  border: 1px solid var(--ci-caution-border);
+}
+.ci-viewer__swatch--identification {
+  background: var(--ci-surface-alt);
+  border: 1px dashed var(--ci-border-strong);
+}
+
+/* 左右2ペイン */
+.ci-viewer__panes {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  gap: 10px;
+  padding: var(--ci-space-2) var(--ci-space-3) var(--ci-space-3);
+}
+.ci-viewer__pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--ci-border);
+  border-radius: var(--ci-radius-lg);
+  overflow: hidden;
+}
+.ci-viewer__pane-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-2);
+  padding: 5px 10px;
+  background: var(--ci-surface-header);
+  border-bottom: 1px solid var(--ci-border);
+  flex: none;
+  flex-wrap: wrap;
+}
+.ci-viewer__pane-title {
+  margin: 0;
+  font-size: var(--ci-fs-pane-title);
+  font-weight: 700;
+  color: var(--ci-text-heading);
+}
+.ci-viewer__pane-meta {
+  font-size: var(--ci-fs-note);
+  color: var(--ci-text-subtle);
+}
+.ci-viewer__pane-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+}
+
+/* 固定形式の欄の見出し(1-6 一連番号欄 / 7 標識 / 8-72 本体 / 73-80 識別欄) */
+.ci-viewer__columns {
+  display: flex;
+  align-items: stretch;
+  font-family: var(--ci-font-code);
+  font-size: var(--ci-fs-ruler);
+  line-height: 15px;
+  color: var(--ci-text-subtle);
+  background: var(--ci-surface-soft);
+  border-bottom: 1px solid var(--ci-border-soft);
+  flex: none;
+  overflow: hidden;
+}
+.ci-viewer__column {
+  text-align: center;
+  white-space: nowrap;
+  flex: none;
+}
+.ci-viewer__column--sequence {
+  width: 12ch;
+  background: var(--ci-surface-column);
+}
+.ci-viewer__column--indicator {
+  width: 6ch;
+  background: var(--ci-border-soft);
+}
+.ci-viewer__column--body {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.ci-viewer__column--identification {
+  width: 12ch;
+  background: var(--ci-surface-column);
+}
+
+/* Monaco の描画面 */
+.ci-code {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+/* 相互ハイライト・ジャンプ先・注記行・識別欄の装飾(Monaco が行要素へ付ける) */
+.ci-code__line--linked {
+  background: var(--ci-line-linked-bg);
+}
+.ci-code__line--focus {
+  background: var(--ci-line-focus-bg);
+}
+.ci-code__line--noted {
+  box-shadow: inset 3px 0 0 0 var(--ci-caution);
+}
+.ci-code__identification {
+  background: var(--ci-surface-alt);
+  border-bottom: 1px dashed var(--ci-border-strong);
+}
+
+/* 読み込み中・相互ハイライトの状態 */
+.ci-viewer__loading {
+  margin: 0;
+  padding: var(--ci-space-5) 12px;
+  font-size: var(--ci-fs-sm);
+  color: var(--ci-text-muted);
+}
+.ci-viewer__status {
+  margin: 0;
+  padding: 4px 10px;
+  flex: none;
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-muted);
+  background: var(--ci-surface-soft);
+  border-top: 1px solid var(--ci-border-soft);
+}
+
+/* 直訳不能の注記 */
+.ci-viewer__notes {
+  flex: none;
+  max-height: 30%;
+  overflow: auto;
+  padding: var(--ci-space-2) 10px;
+  border-top: 1px solid var(--ci-border);
+  background: var(--ci-surface-soft);
+}
+.ci-viewer__notes-title {
+  margin: 0 0 var(--ci-space-1);
+  font-size: var(--ci-fs-pane-title);
+  font-weight: 700;
+  color: var(--ci-caution);
+}
+.ci-viewer__notes-empty,
+.ci-viewer__copy-note {
+  margin: 0;
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-subtle);
+}
+.ci-viewer__copy-note--warn {
+  color: var(--ci-caution);
+}
+.ci-viewer__notes-list,
+.ci-viewer__copy-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-space-1);
+}
+.ci-viewer__note {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ci-space-2);
+  font-size: var(--ci-fs-xs);
+  flex-wrap: wrap;
+}
+.ci-viewer__note-jump {
+  font-family: var(--ci-font-code);
+  font-size: var(--ci-fs-legend);
+  padding: 0 6px;
+  background: var(--ci-select-tint);
+  border: 1px solid var(--ci-select-border);
+  color: var(--ci-accent-strong);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.ci-viewer__note-kind {
+  font-size: var(--ci-fs-tag);
+  color: var(--ci-caution);
+  background: var(--ci-caution-bg);
+  border: 1px solid var(--ci-caution-border);
+  border-radius: 3px;
+  padding: 0 6px;
+}
+.ci-viewer__note-text {
+  color: var(--ci-text);
+}
+
+/* コピー句の展開 */
+.ci-viewer__copy {
+  flex: none;
+  max-height: 32%;
+  overflow: auto;
+  padding: var(--ci-space-2) 10px;
+  border-top: 1px solid var(--ci-border);
+  background: var(--ci-copy-bg);
+}
+.ci-viewer__copy-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-2);
+  margin-bottom: var(--ci-space-1);
+}
+.ci-viewer__copy-count {
+  font-size: var(--ci-fs-pane-title);
+  font-weight: 700;
+  color: var(--ci-copy-title);
+}
+.ci-viewer__copy-item {
+  font-family: var(--ci-font-code);
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-copy-text);
+}
+.ci-viewer__copy-statement,
+.ci-viewer__copy-replacing,
+.ci-viewer__copy-source {
+  margin: 0;
+}
+.ci-viewer__copy-replacing,
+.ci-viewer__copy-source {
+  font-family: var(--ci-font-ui);
+  font-size: var(--ci-fs-note);
+  color: var(--ci-copy-meta);
+}
+.ci-viewer__copy-body {
+  margin: var(--ci-space-1) 0 var(--ci-space-2);
+  padding: var(--ci-space-1) var(--ci-space-2);
+  background: var(--ci-panel);
+  border: 1px solid var(--ci-copy-border);
+  border-radius: var(--ci-radius-sm);
+  font-family: var(--ci-font-code);
+  font-size: var(--ci-fs-xs);
+  line-height: 1.5;
+  white-space: pre;
+  overflow-x: auto;
+}

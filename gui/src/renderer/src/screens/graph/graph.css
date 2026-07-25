@@ -1,0 +1,305 @@
+/*
+ * 呼出関係図(callgraph)のスタイル。厳格 BEM で命名し、値は :root トークンを参照する。
+ * design/COBOL Insight.dc.html の scGraph(design:163-263)の配置・寸法を移植する。
+ * 図そのものは Cytoscape が canvas へ描くため、CSS は枠・ツールバー・詳細ペイン・凡例を担う。
+ */
+
+/* 画面全体: 左(図) + 右 252px(ノード情報と凡例) の2カラム */
+.ci-graph {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  min-height: 0;
+}
+.ci-graph__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--ci-surface-soft);
+}
+
+/* 上部ツールバー */
+.ci-graph__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px var(--ci-space-3);
+  background: var(--ci-panel);
+  border-bottom: 1px solid var(--ci-border);
+  flex: none;
+  flex-wrap: wrap;
+}
+.ci-graph__toolbar-label {
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-muted);
+}
+.ci-graph__chips {
+  display: flex;
+  gap: var(--ci-space-1);
+  flex-wrap: wrap;
+}
+.ci-graph__spacer {
+  flex: 1;
+}
+.ci-graph__count {
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-subtle);
+}
+
+/* 閾値超過の警告と、表示ノードが無いときの案内 */
+.ci-graph__warning {
+  font-size: var(--ci-fs-sm);
+  padding: 8px 14px;
+  margin: 10px;
+  flex: none;
+  background: var(--ci-caution-bg);
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius-sm);
+  color: var(--ci-caution);
+}
+.ci-graph__notice {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--ci-fs-sm);
+  color: var(--ci-text-muted);
+}
+
+/* 図の領域: 左にノード一覧(キーボード操作口)、右に Cytoscape の描画面 */
+.ci-graph__figure {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* Cytoscape の描画面。canvas は親の寸法へ追従するため、高さを明示する */
+.ci-graph__canvas {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  background: var(--ci-surface-soft);
+}
+
+/* --- 図と等価なノード一覧(canvas のノードはキーボードで選べないため併置する) --- */
+.ci-graph__nodes {
+  width: 184px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--ci-panel);
+  border-right: 1px solid var(--ci-border);
+}
+.ci-graph__nodes-title {
+  margin: 0;
+  padding: 7px 10px 5px;
+  font-size: var(--ci-fs-xs);
+  font-weight: 700;
+  color: var(--ci-tab-text);
+  border-bottom: 1px solid var(--ci-border-soft);
+  flex: none;
+}
+.ci-graph__nodes-list {
+  margin: 0;
+  padding: var(--ci-space-1);
+  list-style: none;
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+}
+.ci-graph__node {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--ci-radius-sm);
+  cursor: pointer;
+}
+.ci-graph__node:hover {
+  background: var(--ci-surface-alt);
+}
+.ci-graph__node:focus-visible {
+  outline: 2px solid var(--ci-focus-ring);
+  outline-offset: 1px;
+}
+.ci-graph__node--selected {
+  background: var(--ci-select-tint);
+  border-color: var(--ci-select-border);
+}
+.ci-graph__node-label {
+  font-family: var(--ci-font-code);
+  font-size: var(--ci-fs-sm);
+  color: var(--ci-text);
+  word-break: break-all;
+}
+.ci-graph__node-kind {
+  font-size: var(--ci-fs-note);
+  color: var(--ci-text-subtle);
+}
+
+/* --- 右の詳細ペイン --- */
+.ci-graph-detail {
+  width: 252px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  background: var(--ci-surface-soft);
+  border-left: 1px solid var(--ci-border);
+  overflow: auto;
+}
+.ci-graph-detail__title {
+  padding: 10px 13px 8px;
+  font-size: var(--ci-fs-detail-title);
+  font-weight: 700;
+  color: var(--ci-tab-text);
+  border-bottom: 1px solid var(--ci-border-soft);
+  flex: none;
+}
+.ci-graph-detail__empty {
+  padding: var(--ci-space-4) 13px;
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-subtle);
+  line-height: 1.7;
+  border-bottom: 1px solid var(--ci-border-soft);
+}
+.ci-graph-detail__body {
+  padding: 11px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-space-2);
+  border-bottom: 1px solid var(--ci-border-soft);
+}
+.ci-graph-detail__kind {
+  font-size: var(--ci-fs-note);
+  padding: 1px 8px;
+  border-radius: var(--ci-radius-pill);
+  border: 1px solid transparent;
+}
+.ci-graph-detail__name {
+  font-family: var(--ci-font-code);
+  font-size: var(--ci-fs-md);
+  font-weight: 700;
+  word-break: break-all;
+}
+.ci-graph-detail__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-muted);
+}
+.ci-graph-detail__meta dt {
+  font-weight: 700;
+}
+.ci-graph-detail__id {
+  font-family: var(--ci-font-code);
+  word-break: break-all;
+}
+.ci-graph-detail__attribute {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ci-graph-detail__edges {
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-muted);
+}
+.ci-graph-detail__edges-title {
+  font-size: var(--ci-fs-xs);
+  font-weight: 700;
+  color: var(--ci-tab-text);
+  margin-bottom: 3px;
+}
+.ci-graph-detail__edges ul {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  list-style: none;
+}
+.ci-graph-detail__edges li {
+  display: flex;
+  flex-direction: column;
+  padding: 3px 5px;
+  background: var(--ci-panel);
+  border: 1px solid var(--ci-border-soft);
+  border-radius: var(--ci-radius-sm);
+}
+.ci-graph-detail__edge-peer {
+  font-family: var(--ci-font-code);
+  color: var(--ci-text);
+  word-break: break-all;
+}
+.ci-graph-detail__edge-kind {
+  color: var(--ci-text-secondary);
+}
+.ci-graph-detail__edge-resolution {
+  color: var(--ci-text-subtle);
+}
+.ci-graph-detail__edge-resolution--dashed {
+  color: var(--ci-sev-medium);
+}
+.ci-graph-detail__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-space-1);
+  align-items: flex-start;
+}
+.ci-graph-detail__note {
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-subtle);
+}
+
+/* --- 凡例 --- */
+.ci-graph-legend {
+  padding: 10px 13px var(--ci-space-4);
+}
+.ci-graph-legend__title {
+  font-size: var(--ci-fs-xs);
+  font-weight: 700;
+  color: var(--ci-tab-text);
+  margin: 6px 0 4px;
+}
+.ci-graph-legend__nodes,
+.ci-graph-legend__edges {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  list-style: none;
+}
+.ci-graph-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--ci-fs-legend);
+  color: var(--ci-tab-text);
+}
+.ci-graph-legend__swatch {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  border-width: 1.5px;
+  flex: none;
+}
+.ci-graph-legend__line {
+  width: 26px;
+  border-top-width: 2px;
+  border-top-style: solid;
+  flex: none;
+}
+.ci-graph-legend__line--dashed {
+  border-top-style: dashed;
+  border-top-color: var(--ci-text-secondary);
+}
+.ci-graph-legend__shape {
+  color: var(--ci-text-subtle);
+}
+.ci-graph-legend__note {
+  font-size: var(--ci-fs-note);
+  color: var(--ci-text-subtle);
+  line-height: 1.6;
+  margin-top: var(--ci-space-1);
+}

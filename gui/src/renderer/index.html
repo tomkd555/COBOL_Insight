@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      ネットワーク・CDN 非接続を CSP で強制する。default-src 'self' により外部ホスト・外部フォント・
+      外部スクリプトへの接続を遮断し、ローカル同梱資産のみを許可する。外部オリジンは加えない。
+
+      script-src は 'self' を明示し、インラインスクリプトを許さない。
+      style-src の 'unsafe-inline' は Monaco に要る。Monaco は各行の位置を style 属性
+      (style="top:NNpx")で書き出すため、これが無いと style-src-attr が 'self' へ落ちて
+      すべての行が同じ y 座標へ重なり、原本と異なる見た目のソースを表示してしまう。
+      worker-src の blob: は Monaco の Worker 起動にだけ要る(バンドル済みの Worker コードを
+      Blob から起こす)。
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>COBOL Insight</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./src/main.tsx"></script>
+  </body>
+</html>

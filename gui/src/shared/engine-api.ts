@@ -1,0 +1,306 @@
+/**
+ * renderer↔main の IPC 契約(型とチャネル名)。preload・main・renderer の3ビルドが共有する。
+ * ここで公開する API は engine CLI サブプロセスの起動と、その成果物ファイルの読取だけを扱う。
+ * ネットワーク通信・ソケットは用いない。
+ */
+
+/** engine CLI の起動対象サブコマンド。fix は preview/apply を別値として区別する。 */
+export type EngineSubcommand =
+  | "scan"
+  | "callgraph"
+  | "lint"
+  | "sql-advise"
+  | "report"
+  | "transpile"
+  | "fix-preview"
+  | "fix-apply";
+
+/** 全解析コマンドが共有する入力・コピー句探索パス・コードページ手動指定。 */
+export interface EngineCommonOptions {
+  /** 資産フォルダ(picocli の位置引数 INPUT_DIR)。 */
+  inputDir: string;
+  /** コピー句探索パス(--copybook-path、繰り返し指定)。 */
+  copybookPaths?: string[];
+  /** ファイル単位のコードページ手動指定(--codepage FILE=CHARSET)。キーは相対パスまたはファイル名。 */
+  codepageOverrides?: Record<string, string>;
+}
+
+export interface ScanRequest extends EngineCommonOptions {
+  /** SQLite プロジェクトファイル(--db)。 */
+  db?: string;
+}
+
+export interface CallgraphRequest extends EngineCommonOptions {
+  db?: string;
+  jsonFile?: string;
+  dotFile?: string;
+  svgFile?: string;
+  pngFile?: string;
+}
+
+export interface LintRequest extends EngineCommonOptions {
+  /** SARIF 2.1.0 出力ファイル(--sarif)。 */
+  sarifFile?: string;
+  /** 無効化するルールID(--disable-rule、繰り返し指定)。 */
+  disabledRules?: string[];
+}
+
+export type SqlAdviseRequest = LintRequest;
+
+export interface ReportRequest extends EngineCommonOptions {
+  db?: string;
+  htmlFile?: string;
+  textFile?: string;
+  disabledRules?: string[];
+}
+
+export interface TranspileRequest extends EngineCommonOptions {
+  db?: string;
+  language?: "python" | "java" | "both";
+  outDir?: string;
+}
+
+export interface FixPreviewRequest extends EngineCommonOptions {
+  htmlFile?: string;
+}
+
+export interface FixApplyRequest extends EngineCommonOptions {
+  outDir?: string;
+}
+
+/** サブコマンドと、その型付きリクエストを対にした判別可能ユニオン。引数組立の入力とする。 */
+export type EngineInvocation =
+  | { subcommand: "scan"; request: ScanRequest }
+  | { subcommand: "callgraph"; request: CallgraphRequest }
+  | { subcommand: "lint"; request: LintRequest }
+  | { subcommand: "sql-advise"; request: SqlAdviseRequest }
+  | { subcommand: "report"; request: ReportRequest }
+  | { subcommand: "transpile"; request: TranspileRequest }
+  | { subcommand: "fix-preview"; request: FixPreviewRequest }
+  | { subcommand: "fix-apply"; request: FixApplyRequest };
+
+/** 起動で生成した成果物ファイルの解決済みパス。renderer はここを起点に成果物を読む。 */
+export interface EngineOutputs {
+  db?: string;
+  sarif?: string;
+  json?: string;
+  dot?: string;
+  svg?: string;
+  png?: string;
+  html?: string;
+  text?: string;
+  outDir?: string;
+}
+
+/** サブプロセス起動の結果。stdout 末尾のサマリ JSON をパースして summary へ格納する。 */
+export interface EngineResult {
+  subcommand: EngineSubcommand;
+  exitCode: number;
+  /** stdout 末尾の1行サマリ JSON(callgraph 無指定時はグラフ本体 JSON)。無ければ null。 */
+  summary: Record<string, unknown> | null;
+  stdout: string;
+  stderr: string;
+  outputs: EngineOutputs;
+}
+
+/** SARIF 2.1.0 の1件の検出結果を、画面が要する形へ平坦化したもの。 */
+export interface SarifFinding {
+  ruleId: string;
+  ruleIndex?: number;
+  /** SARIF の level(error/warning/note/none)。 */
+  level: string;
+  message: string;
+  /** 対象ファイルの相対パス(physicalLocation.artifactLocation.uri)。 */
+  file: string;
+  startLine: number;
+  startColumn: number;
+}
+
+/** 呼出関係グラフのノード(CallGraph.toJson の nodes 要素)。 */
+export interface CallGraphNode {
+  id: string;
+  /** NodeKind(JOB/STEP/PROGRAM/PARAGRAPH/DATASET/DB2_TABLE/UNRESOLVED/EXTERNAL_UTILITY/TRANSACTION/BMS_MAP)。 */
+  kind: string;
+  label: string;
+  attributes: Record<string, string>;
+}
+
+/** 呼出関係グラフのエッジ(CallGraph.toJson の edges 要素)。 */
+export interface CallGraphEdge {
+  from: string;
+  to: string;
+  /** EdgeKind(CALL/EXECUTION/REFERENCE/TRANSACTION_TRANSITION/MAP_REFERENCE)。 */
+  kind: string;
+  /** Resolution(CONSTANT/DATAFLOW/UNRESOLVED)。破線描画は DATAFLOW/UNRESOLVED を条件にする。 */
+  resolution: string;
+}
+
+export interface CallGraphData {
+  nodes: CallGraphNode[];
+  edges: CallGraphEdge[];
+}
+
+/** fix の1ファイル分の原本・修正後テキスト対。Monaco DiffEditor へそのまま渡せる形。 */
+export interface FixDiff {
+  relPath: string;
+  originalText: string;
+  fixedText: string;
+}
+
+/** コピー句由来の修正の影響範囲。原本は書き換えず、取り込むプログラム一覧を併記する。 */
+export interface FixCopybookImpact {
+  copybook: string;
+  importers: string[];
+}
+
+/** fix preview/apply のサマリ JSON を型付き情報へ正規化したもの。 */
+export interface FixSummaryInfo {
+  /** 修正対象ファイル(preview の fixedFiles、apply の writtenFiles)。 */
+  files: string[];
+  copybookFixes: FixCopybookImpact[];
+  fixCount: number;
+  analysisErrors: number;
+  /** apply のみ。再パース検証で失敗した件数。 */
+  reparseFailures?: number;
+}
+
+/** readFixResult の入力。原本(資産フォルダ側)と修正後(apply 出力先)の対応を渡す。 */
+export interface FixResultRequest {
+  originalPath: string;
+  fixedPath: string;
+  relPath: string;
+}
+
+/** 資産一覧の1件(SQLite の SOURCE を NODE.type・FINDING 件数と結合したもの)。 */
+export interface AssetInventoryItem {
+  id: number;
+  /** 資産フォルダからの相対パス(例: cobol/SYK001.cbl)。 */
+  path: string;
+  /** ファイル名(path の末尾要素)。 */
+  name: string;
+  /** NODE.type(PROGRAM/JCL/COPYBOOK/BMS)。ノード未登録時は UNKNOWN。 */
+  type: string;
+  /** 検出コードページ(SOURCE.codepage)。復号失敗時は null。 */
+  codepage: string | null;
+  byteSize: number;
+  /** グラフ層(id ≥ 1e12)を除いた、この資産に紐づく scan 由来 finding 件数。 */
+  findingCount: number;
+}
+
+/**
+ * ソース本文の読取要求。復号は表示のためだけに行い、構文解析・判定は engine CLI が担う。
+ * path は inputDir 配下に限る(境界外の読取は main が拒む)。
+ */
+export interface SourceTextRequest {
+  /**
+   * 境界検査の基準ディレクトリ。AppState の project.inputDir、またはコピー句の探索では
+   * project.copybookPaths の1件を渡す。main は symlink を解決した実体パスで配下判定を行う。
+   */
+  inputDir: string;
+  /** 読むファイル。inputDir からの相対パス、または inputDir 配下の絶対パス。 */
+  path: string;
+  /** 復号に用いるコードページ(SOURCE.codepage の検出値、または画面での手動指定)。null は検出失敗。 */
+  codepage: string | null;
+  /** 先頭 N 行で打ち切る。省略時は全文を返す。 */
+  maxLines?: number;
+}
+
+/** readSourceText の結果。復号非対応・復号不能は unsupported で示し、text は空にする。 */
+export interface SourceTextResult {
+  text: string;
+  /** 復号に用いたコードページ表示名。非対応のときは要求値(不明なら "不明")を返す。 */
+  codepage: string;
+  /** maxLines で打ち切ったか。 */
+  truncated: boolean;
+  /** EBCDIC(CP930/CP939)またはコードページ不明で復号しなかったか。 */
+  unsupported: boolean;
+}
+
+/** transpile 成果物の読取要求。outDir は transpile の --out、cobolRelPath は SOURCE.path と同形。 */
+export interface TranspileArtifactsRequest {
+  /** transpile の出力先。TranspileRunner はこの直下へ平坦に生成物を書く。 */
+  outDir: string;
+  /** LINE_MAP を持つ SQLite プロジェクトファイル。 */
+  dbPath: string;
+  /** 対訳を読む COBOL 本体の相対パス(例: cobol/SYK001.cbl)。 */
+  cobolRelPath: string;
+}
+
+/** 逐語対訳の生成言語。生成物の拡張子(.py/.java)から決まる。 */
+export type TranspileLanguage = "python" | "java";
+
+/** transpile が出力先直下へ書いた生成物1件。 */
+export interface TranspileGeneratedFile {
+  /** ファイル名(出力先直下の平坦な名前)。 */
+  name: string;
+  language: TranspileLanguage;
+  /** 本文(TranspileRunner は UTF-8 で書く)。 */
+  text: string;
+}
+
+/** LINE_MAP の1行(Schema.java の LINE_MAP 表)。行範囲は 1 起点で両端を含む。 */
+export interface LineMapEntry {
+  id: number;
+  cobolLineStart: number;
+  cobolLineEnd: number;
+  /** 対応する生成ファイル名(TranspileGeneratedFile.name と一致する)。 */
+  genFile: string;
+  genLineStart: number;
+  genLineEnd: number;
+  /** 対応の種別。engine の MappingKindCodec が書く "1:1" / "1:N" / "N:1" のいずれか。 */
+  kind: string;
+  /** 直訳できなかった箇所の注記。空文字は注記なし。 */
+  note: string;
+  /** 生成物側のアンカー識別子。 */
+  anchorId: string;
+}
+
+/** ソースビューアが要する transpile 成果物一式(生成物本文と行対応表)。 */
+export interface TranspileArtifacts {
+  files: TranspileGeneratedFile[];
+  lineMap: LineMapEntry[];
+}
+
+/** renderer へ contextBridge で公開する API の型。window.cobolInsight として参照する。 */
+export interface CobolInsightApi {
+  runScan(request: ScanRequest): Promise<EngineResult>;
+  runCallgraph(request: CallgraphRequest): Promise<EngineResult>;
+  runLint(request: LintRequest): Promise<EngineResult>;
+  runSqlAdvise(request: SqlAdviseRequest): Promise<EngineResult>;
+  runReport(request: ReportRequest): Promise<EngineResult>;
+  runTranspile(request: TranspileRequest): Promise<EngineResult>;
+  runFixPreview(request: FixPreviewRequest): Promise<EngineResult>;
+  runFixApply(request: FixApplyRequest): Promise<EngineResult>;
+  /** 資産フォルダ選択ダイアログを開く。キャンセルは null。 */
+  selectInputFolder(): Promise<string | null>;
+  readSarif(path: string): Promise<SarifFinding[]>;
+  readCallgraphJson(path: string): Promise<CallGraphData>;
+  readFixResult(request: FixResultRequest): Promise<FixDiff>;
+  readReportHtml(path: string): Promise<string>;
+  readReportText(path: string): Promise<string>;
+  readAssetInventory(dbPath: string): Promise<AssetInventoryItem[]>;
+  readSourceText(request: SourceTextRequest): Promise<SourceTextResult>;
+  readTranspileArtifacts(request: TranspileArtifactsRequest): Promise<TranspileArtifacts>;
+  versions: { chrome: string; node: string; electron: string };
+}
+
+/** IPC チャネル名。preload(invoke)と main(handle)で同一の値を使う。 */
+export const ENGINE_CHANNELS = {
+  runScan: "engine:run-scan",
+  runCallgraph: "engine:run-callgraph",
+  runLint: "engine:run-lint",
+  runSqlAdvise: "engine:run-sql-advise",
+  runReport: "engine:run-report",
+  runTranspile: "engine:run-transpile",
+  runFixPreview: "engine:run-fix-preview",
+  runFixApply: "engine:run-fix-apply",
+  selectInputFolder: "dialog:select-input-folder",
+  readSarif: "artifact:read-sarif",
+  readCallgraphJson: "artifact:read-callgraph-json",
+  readFixResult: "artifact:read-fix-result",
+  readReportHtml: "artifact:read-report-html",
+  readReportText: "artifact:read-report-text",
+  readAssetInventory: "artifact:read-asset-inventory",
+  readSourceText: "artifact:read-source-text",
+  readTranspileArtifacts: "artifact:read-transpile-artifacts",
+} as const;

@@ -1,0 +1,133 @@
+/*
+ * シェル5段レイアウトのスタイル。厳格 BEM・トークン参照。
+ * 上から タイトルバー / タブバー / 進捗バー / 中央コンテンツ / ステータスバー。
+ */
+
+.ci-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-width: var(--ci-min-width);
+  background: var(--ci-bg);
+  color: var(--ci-text);
+  font-family: var(--ci-font-ui);
+  font-size: var(--ci-fs-base);
+}
+
+/* --- タイトルバー(44px) --- */
+.ci-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: var(--ci-titlebar-h);
+  padding: 0 var(--ci-space-4);
+  background: var(--ci-panel);
+  border-bottom: 1px solid var(--ci-border);
+  flex: none;
+}
+.ci-titlebar__brand {
+  font-size: var(--ci-fs-lg);
+  font-weight: 700;
+}
+.ci-titlebar__spacer {
+  flex: 1;
+}
+.ci-titlebar__running {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-2);
+  background: var(--ci-info-bg);
+  border: 1px solid var(--ci-info-border);
+  border-radius: var(--ci-radius-md);
+  padding: 4px 10px;
+}
+.ci-titlebar__spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--ci-info-border);
+  border-top-color: var(--ci-accent);
+  border-radius: 50%;
+  animation: ci-spin 0.9s linear infinite;
+}
+.ci-titlebar__running-text {
+  font-size: 11.5px;
+  color: var(--ci-info-text);
+}
+
+/* --- タブバー --- */
+.ci-tabbar {
+  display: flex;
+  align-items: flex-end;
+  background: var(--ci-surface-alt);
+  border-bottom: 1px solid var(--ci-border);
+  padding: 0 10px;
+  flex: none;
+}
+.ci-tab {
+  font-family: inherit;
+  font-size: 12.5px;
+  padding: 8px 15px;
+  border: none;
+  border-right: 1px solid var(--ci-border-soft);
+  border-top: 2px solid transparent;
+  background: transparent;
+  color: var(--ci-tab-text);
+  cursor: pointer;
+}
+.ci-tab:hover {
+  background: var(--ci-surface-header);
+}
+.ci-tab--active {
+  background: var(--ci-panel);
+  color: var(--ci-accent-strong);
+  border-top-color: var(--ci-accent);
+  font-weight: 700;
+}
+.ci-tab:focus-visible {
+  outline: 2px solid var(--ci-focus-ring);
+  outline-offset: -2px;
+}
+
+/* --- 進捗バー(4px) --- */
+.ci-progress {
+  height: var(--ci-progress-h);
+  flex: none;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--ci-progress-a) 0 8px,
+    var(--ci-progress-b) 8px 16px
+  );
+  background-size: 28px 4px;
+  animation: ci-bar 1s linear infinite;
+}
+
+/* --- 中央コンテンツ領域 --- */
+.ci-shell__content {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+.ci-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--ci-panel);
+}
+
+/* --- ステータスバー(24px) --- */
+.ci-statusbar {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-4);
+  height: var(--ci-statusbar-h);
+  padding: 0 var(--ci-space-3);
+  background: var(--ci-statusbar-bg);
+  color: var(--ci-statusbar-text);
+  font-size: var(--ci-fs-xs);
+  flex: none;
+}
+.ci-statusbar__spacer {
+  flex: 1;
+}

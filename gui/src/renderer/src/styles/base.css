@@ -1,0 +1,64 @@
+/*
+ * 基盤スタイルとアニメーション。トークンを参照して html/body の下地を整え、
+ * シェル・共通コンポーネントが用いるキーフレームを定義する。
+ */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--ci-bg);
+  color: var(--ci-text);
+  font-family: var(--ci-font-ui);
+  font-size: var(--ci-fs-base);
+}
+
+#root {
+  height: 100vh;
+}
+
+a {
+  color: var(--ci-accent);
+}
+a:hover {
+  color: var(--ci-accent-hover);
+}
+
+/* タイトルバーの実行中スピナー */
+@keyframes ci-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 進捗バー・待機縞の流れ */
+@keyframes ci-bar {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 28px 0;
+  }
+}
+
+/* トーストの出現(pop) */
+@keyframes ci-pop {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

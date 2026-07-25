@@ -1,0 +1,321 @@
+/*
+ * 指摘一覧(lint)・SQL助言(sql-advise)で共有する一覧 UI のスタイル。厳格 BEM で命名し、値は
+ * :root トークンを参照する。design/COBOL Insight.dc.html の scFind(design:263-346)の配置・列幅を移植する。
+ */
+
+/* 画面全体: 上部ツールバー + 表(縦積み、パネル全体を満たす) */
+.ci-findings {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: var(--ci-panel);
+}
+
+/* --- 上部ツールバー --- */
+.ci-findings__toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-2);
+  padding: var(--ci-space-2) var(--ci-space-3);
+  border-bottom: 1px solid var(--ci-border-soft);
+  flex: none;
+  flex-wrap: wrap;
+}
+.ci-findings__sev-chips {
+  display: flex;
+  gap: var(--ci-space-1);
+}
+.ci-findings__select {
+  font-family: inherit;
+  font-size: 11.5px;
+  padding: 4px 7px;
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius-sm);
+  background: var(--ci-panel);
+  color: var(--ci-text);
+  max-width: 230px;
+}
+.ci-findings__select:focus-visible {
+  outline: 2px solid var(--ci-focus-ring);
+  outline-offset: 2px;
+}
+.ci-findings__spacer {
+  flex: 1;
+}
+.ci-findings__summary {
+  font-size: 11.5px;
+  color: var(--ci-text-muted);
+}
+
+/*
+ * --- 表 ---
+ * 行はグリッドで桁をそろえるため table 要素の既定の表示を外す。表としての意味づけは
+ * FindingsTable が role で明示する。
+ */
+.ci-findings-table {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow-x: auto;
+}
+.ci-findings-table__table {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: max-content;
+  border-collapse: collapse;
+}
+.ci-findings-table__head-group {
+  display: block;
+  flex: none;
+}
+.ci-findings-table__body {
+  display: block;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+.ci-findings-table__head,
+.ci-findings-table__row {
+  display: grid;
+  grid-template-columns: 96px 224px 158px 56px minmax(240px, 1fr) 84px;
+  align-items: start;
+}
+.ci-findings-table__head {
+  padding: 5px var(--ci-space-3);
+  background: var(--ci-surface-header);
+  border-bottom: 1px solid var(--ci-border);
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-muted);
+}
+.ci-findings-table__col {
+  font-weight: 400;
+  text-align: left;
+}
+.ci-findings-table__sort {
+  all: unset;
+  cursor: pointer;
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-muted);
+}
+.ci-findings-table__sort:focus-visible {
+  outline: 2px solid var(--ci-focus-ring);
+  outline-offset: 2px;
+}
+.ci-findings-table__arrow {
+  color: var(--ci-accent);
+}
+
+/* 指摘行(活性化でソースへジャンプ、または詳細ペインへ選択) */
+.ci-findings-table__row {
+  padding: 6px var(--ci-space-3);
+  border-bottom: 1px solid var(--ci-border-soft);
+  background: var(--ci-panel);
+  font-size: var(--ci-fs-sm);
+  cursor: pointer;
+}
+.ci-findings-table__row:hover {
+  background: var(--ci-select-tint-soft);
+}
+.ci-findings-table__row:focus-visible {
+  outline: 2px solid var(--ci-focus-ring);
+  outline-offset: -2px;
+}
+.ci-findings-table__row--selected {
+  background: var(--ci-select-tint);
+}
+.ci-findings-table__sev {
+  display: flex;
+  align-items: center;
+  font-weight: 700;
+}
+.ci-findings-table__rule {
+  padding-right: var(--ci-space-2);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.ci-findings-table__rule-id {
+  font-family: var(--ci-font-code);
+  color: var(--ci-text-muted);
+}
+.ci-findings-table__file {
+  font-family: var(--ci-font-code);
+  font-size: 11.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ci-findings-table__line {
+  font-family: var(--ci-font-code);
+  font-size: 11.5px;
+  color: var(--ci-accent);
+}
+.ci-findings-table__note {
+  font-size: 11.5px;
+  color: var(--ci-text);
+  line-height: 1.55;
+  padding-right: 10px;
+}
+.ci-findings-table__fix-badge {
+  display: inline-block;
+  font-size: 10px;
+  padding: 1px 7px;
+  border-radius: var(--ci-radius-badge);
+  background: var(--ci-select-tint);
+  color: var(--ci-accent-strong);
+  border: 1px solid var(--ci-info-border);
+}
+.ci-findings-table__no-hit {
+  padding: var(--ci-space-8);
+  text-align: center;
+  font-size: var(--ci-fs-sm);
+  color: var(--ci-text-subtle);
+}
+
+/* --- SQL助言画面(一覧 UI を包み、判定範囲の説明を上部に置く。design:454) --- */
+.ci-sql {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: var(--ci-panel);
+}
+.ci-sql__intro {
+  flex: none;
+  padding: var(--ci-space-2) var(--ci-space-3);
+  border-bottom: 1px solid var(--ci-border-soft);
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-muted);
+  line-height: 1.6;
+}
+
+/* 一覧(共有 UI)と詳細ペインの横並び */
+.ci-sql__body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* --- 詳細ペイン(design scSql の右ペイン) --- */
+.ci-sql-detail {
+  width: 380px;
+  flex: none;
+  overflow-y: auto;
+  border-left: 1px solid var(--ci-border);
+  background: var(--ci-surface-soft);
+}
+.ci-sql-detail__empty {
+  padding: var(--ci-space-8) var(--ci-space-4);
+  text-align: center;
+  font-size: var(--ci-fs-sm);
+  color: var(--ci-text-subtle);
+  line-height: 1.8;
+}
+.ci-sql-detail__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-space-3);
+  padding: var(--ci-space-4);
+}
+.ci-sql-detail__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ci-space-2);
+}
+.ci-sql-detail__title {
+  font-size: var(--ci-fs-md);
+  font-weight: 700;
+}
+.ci-sql-detail__loc {
+  flex: 1;
+  font-family: var(--ci-font-code);
+  font-size: 11.5px;
+  color: var(--ci-text-muted);
+}
+.ci-sql-detail__section {
+  border: 1px solid var(--ci-border);
+  border-radius: var(--ci-radius-lg);
+  background: var(--ci-panel);
+  overflow: hidden;
+}
+.ci-sql-detail__section-plain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-space-2);
+}
+.ci-sql-detail__section-head {
+  padding: 5px var(--ci-space-3);
+  background: var(--ci-surface-header);
+  border-bottom: 1px solid var(--ci-border-soft);
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-muted);
+}
+.ci-sql-detail__sql {
+  padding: 10px var(--ci-space-4);
+  overflow-x: auto;
+}
+.ci-sql-detail__sql-line {
+  font-family: var(--ci-font-code);
+  font-size: var(--ci-fs-sm);
+  line-height: 1.7;
+  white-space: pre;
+}
+.ci-sql-detail__sql-note {
+  margin-top: var(--ci-space-2);
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-caution);
+}
+.ci-sql-detail__sql-empty {
+  padding: var(--ci-space-3) var(--ci-space-4);
+  font-size: var(--ci-fs-sm);
+  color: var(--ci-text-subtle);
+}
+.ci-sql-detail__warn {
+  margin: var(--ci-space-2);
+  padding: 7px var(--ci-space-3);
+  background: var(--ci-error-bg);
+  border: 1px solid var(--ci-error-border);
+  border-radius: var(--ci-radius-md);
+  font-size: 11.5px;
+  color: var(--ci-error-text);
+  line-height: 1.7;
+}
+.ci-sql-detail__advice-title {
+  font-size: var(--ci-fs-sm);
+  font-weight: 700;
+  color: var(--ci-text);
+}
+.ci-sql-detail__advice {
+  border: 1px solid var(--ci-border);
+  border-radius: var(--ci-radius-lg);
+  background: var(--ci-panel);
+  padding: 11px var(--ci-space-4);
+}
+.ci-sql-detail__advice-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-2);
+  margin-bottom: var(--ci-space-1);
+}
+.ci-sql-detail__advice-id {
+  font-family: var(--ci-font-code);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ci-text-muted);
+}
+.ci-sql-detail__advice-name {
+  font-size: var(--ci-fs-sm);
+  font-weight: 700;
+}
+.ci-sql-detail__advice-note {
+  font-size: 11.5px;
+  color: var(--ci-text);
+  line-height: 1.7;
+}

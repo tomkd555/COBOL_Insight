@@ -1,0 +1,247 @@
+/*
+ * 共通コンポーネントのスタイル。厳格 BEM で命名し、値はすべて :root トークンを参照する。
+ * 操作可能要素には :focus-visible の輪郭を与える。
+ */
+
+/* 共通のフォーカス輪郭 */
+.ci-btn:focus-visible,
+.ci-chip:focus-visible,
+.ci-input:focus-visible {
+  outline: 2px solid var(--ci-focus-ring);
+  outline-offset: 2px;
+}
+
+/* --- 重大度バッジ --- */
+.ci-severity-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ci-space-1);
+  font-size: var(--ci-fs-sm);
+  white-space: nowrap;
+}
+.ci-severity-badge__symbol {
+  font-size: 10px;
+  line-height: 1;
+}
+.ci-severity-badge--high .ci-severity-badge__symbol {
+  color: var(--ci-sev-high);
+}
+.ci-severity-badge--medium .ci-severity-badge__symbol {
+  color: var(--ci-sev-medium);
+}
+.ci-severity-badge--low .ci-severity-badge__symbol {
+  color: var(--ci-sev-low);
+}
+.ci-severity-badge--warning .ci-severity-badge__symbol {
+  color: var(--ci-sev-warning);
+}
+
+/* --- フィルタチップ --- */
+.ci-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: inherit;
+  font-size: var(--ci-fs-xs);
+  padding: 3px 10px;
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius-pill);
+  background: var(--ci-panel);
+  color: var(--ci-text-subtle);
+  cursor: pointer;
+}
+.ci-chip:hover:not(:disabled) {
+  background: var(--ci-surface-header);
+}
+/* 重大度しきい値で表示対象から外れたチップ。押せないことを薄色と既定カーソルで示す。 */
+.ci-chip:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+.ci-chip--active {
+  border-color: var(--ci-select-border);
+  background: var(--ci-select-tint);
+  color: var(--ci-accent-strong);
+}
+.ci-chip__symbol {
+  font-size: 10px;
+  line-height: 1;
+}
+.ci-chip__count {
+  color: var(--ci-text-subtle);
+}
+
+/* 単一選択のチップ群(ラジオグループ) */
+.ci-chip-group {
+  display: flex;
+  gap: var(--ci-space-1);
+}
+
+/* --- トースト --- */
+.ci-toast {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ci-toast-bg);
+  color: var(--ci-toast-text);
+  font-size: var(--ci-fs-sm);
+  padding: 8px 18px;
+  border-radius: var(--ci-radius-lg);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  z-index: 50;
+  animation: ci-pop 0.18s ease-out;
+}
+
+/* --- 空状態プレースホルダ --- */
+.ci-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+.ci-empty__box {
+  width: 470px;
+  max-width: 100%;
+  border: 2px dashed var(--ci-border-strong);
+  border-radius: 8px;
+  padding: 38px 30px;
+  text-align: center;
+  background: var(--ci-surface-soft);
+}
+.ci-empty__icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 14px;
+  border-radius: 8px;
+  background: var(--ci-select-tint);
+  color: var(--ci-accent);
+  font-size: 24px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ci-empty__title {
+  font-size: var(--ci-fs-lg);
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+.ci-empty__desc {
+  font-size: var(--ci-fs-sm);
+  color: var(--ci-text-muted);
+  line-height: 1.7;
+  margin: 0 0 16px;
+}
+.ci-empty__note {
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-subtle);
+  margin: 12px 0 0;
+}
+
+/* --- 実行中インジケータ --- */
+.ci-running {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  min-height: 0;
+}
+.ci-running__box {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-3);
+  background: var(--ci-surface-soft);
+  border: 1px solid var(--ci-border);
+  border-radius: var(--ci-radius-lg);
+  padding: 18px 26px;
+}
+.ci-running__spinner {
+  width: 22px;
+  height: 22px;
+  border: 3px solid var(--ci-info-border);
+  border-top-color: var(--ci-accent);
+  border-radius: 50%;
+  animation: ci-spin 0.9s linear infinite;
+  flex: none;
+}
+.ci-running__title {
+  font-size: var(--ci-fs-md);
+  font-weight: 700;
+  margin: 0;
+}
+.ci-running__stages {
+  font-size: 11.5px;
+  color: var(--ci-text-muted);
+  margin: 2px 0 0;
+}
+.ci-running__arrow {
+  color: var(--ci-text-subtle);
+}
+.ci-running__stage--active {
+  color: var(--ci-accent-strong);
+  font-weight: 700;
+}
+
+/* --- 注意バナー --- */
+.ci-banner {
+  font-size: var(--ci-fs-sm);
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--ci-radius-sm);
+  margin: 10px;
+  flex: none;
+}
+.ci-banner--error {
+  background: var(--ci-error-bg);
+  border-color: var(--ci-error-border);
+  color: var(--ci-error-text);
+}
+
+/* --- 基本ボタン --- */
+.ci-btn {
+  font-family: inherit;
+  font-size: var(--ci-fs-sm);
+  padding: 5px 13px;
+  border-radius: var(--ci-radius-sm);
+  cursor: pointer;
+}
+.ci-btn--default {
+  background: var(--ci-panel);
+  border: 1px solid var(--ci-border-strong);
+  color: var(--ci-text);
+}
+.ci-btn--default:hover {
+  background: var(--ci-surface-header);
+}
+.ci-btn--primary {
+  background: var(--ci-accent);
+  border: 1px solid var(--ci-accent);
+  color: var(--ci-text-inverse);
+  font-weight: 700;
+  padding: 6px 16px;
+}
+.ci-btn--primary:hover {
+  background: var(--ci-accent-hover);
+  border-color: var(--ci-accent-hover);
+}
+.ci-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* --- 基本テキスト入力 --- */
+.ci-input {
+  font-family: inherit;
+  font-size: var(--ci-fs-sm);
+  padding: 5px 9px;
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius-sm);
+  background: var(--ci-panel);
+  color: var(--ci-text);
+}
+.ci-input::placeholder {
+  color: var(--ci-text-subtle);
+}
