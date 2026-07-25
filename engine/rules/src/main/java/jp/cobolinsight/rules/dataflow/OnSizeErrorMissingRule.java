@@ -20,6 +20,7 @@ import jp.cobolinsight.engineapi.spi.AnalysisContext;
 import jp.cobolinsight.engineapi.spi.AnalysisPhase;
 import jp.cobolinsight.engineapi.spi.FixProducer;
 import jp.cobolinsight.engineapi.spi.Rule;
+import jp.cobolinsight.fix.FixedFormatNormalizer;
 import jp.cobolinsight.rules.FixEdits;
 import jp.cobolinsight.rules.SourceTextIndex;
 
@@ -127,6 +128,8 @@ public final class OnSizeErrorMissingRule implements Rule {
      */
     private static final class OnSizeErrorFixProducer implements FixProducer {
 
+        private static final FixedFormatNormalizer NORMALIZER = new FixedFormatNormalizer();
+
         @Override
         public Optional<FixSuggestion> produce(Finding finding, AnalysisContext context) {
             if (!"R004".equals(finding.ruleId())) {
@@ -152,7 +155,9 @@ public final class OnSizeErrorMissingRule implements Rule {
             }
             String clause = "ON SIZE ERROR DISPLAY 'SIZE ERROR: " + receivers.get(0)
                     + "' END-" + verb;
-            String replacement = "\n" + String.join("\n", FixEdits.layout(clause));
+            // 原ソースの終止ピリオドが挿入文の末尾へ回るため、その1バイトを桁予算から差し引く。
+            List<String> layout = NORMALIZER.layoutStatement(clause, FixEdits.LAYOUT_CHARSET, 1);
+            String replacement = "\n" + String.join("\n", layout);
             SourcePosition at = arithmetic.range().end();
             TextEdit edit = new TextEdit(new SourceRange(at, at), replacement);
             return Optional.of(new FixSuggestion("ON SIZE ERROR 句を付与する", List.of(edit)));

@@ -324,6 +324,8 @@ describe("DiffScreen の採用・棄却", () => {
     expect(screen.getAllByRole("option")[2]).toHaveAttribute("aria-selected", "true");
     fireEvent.keyDown(list, { key: "Home" });
     expect(screen.getAllByRole("option")[0]).toHaveAttribute("aria-selected", "true");
+    // 選び替えごとに readFixResult が走るため、最後の解決を待ってから終える。
+    await waitFor(() => expect(readFixResult).toHaveBeenCalledTimes(3));
   });
 
   it("修正案を選び替えると判定は選んだ修正案のものを示す", async () => {

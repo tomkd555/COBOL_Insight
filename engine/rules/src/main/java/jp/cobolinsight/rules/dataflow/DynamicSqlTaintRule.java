@@ -89,11 +89,15 @@ public final class DynamicSqlTaintRule implements Rule {
                 }
             }
             if (!flagged.isEmpty()) {
-                findings.add(Finding.of(id(), defaultSeverity().toLevel(),
+                SourcePosition position = new SourcePosition(model.sourceFile(),
+                        simple.range().start().line(), 1, SourcePosition.UNKNOWN_BYTE_OFFSET);
+                findings.add(new Finding(id(), defaultSeverity().toLevel(),
                         "動的SQLの文字列に外部入力由来の未検証変数 " + String.join(", ", flagged)
                                 + " を組み込んでいる。SQLインジェクションになり得る。",
-                        new SourcePosition(model.sourceFile(), simple.range().start().line(), 1,
-                                SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                        position,
+                        TaintCodeFlows.of(model, df, node, TaintKind.EXTERNAL_INPUT, flagged,
+                                position, "動的SQLの文字列へ組み込む"),
+                        List.of()));
             }
         }
     }

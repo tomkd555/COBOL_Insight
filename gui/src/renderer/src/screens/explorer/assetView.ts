@@ -209,6 +209,16 @@ export interface AssetGroup {
   readonly rows: readonly AssetRow[];
 }
 
+/**
+ * 一覧の文字コード列に「未判定」の行が1件でもあるか。一覧の列は engine の判定結果を示す一方、
+ * 詳細ペインの選択欄と本文の復号は検出に失敗した資産へ設定の既定文字コードを当てる
+ * (encodingSelectValue / previewCodepage)。両者が別の語を示すため、一覧側に既定文字コードで
+ * 表示する旨の注記を出すかどうかをこの関数で判定する。
+ */
+export function hasUndeterminedEncoding(groups: readonly AssetGroup[]): boolean {
+  return groups.some((group) => group.rows.some((row) => row.encoding === "未判定"));
+}
+
 export interface BuildGroupsOptions {
   readonly search: string;
   readonly type: AssetTypeFilter;

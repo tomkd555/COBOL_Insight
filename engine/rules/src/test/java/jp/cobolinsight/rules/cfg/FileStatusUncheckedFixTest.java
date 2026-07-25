@@ -15,7 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * R017 の FixProducer 検証。FILE STATUS を検査しない I/O 文の直後へ、FD の STATUS 変数を
  * 判定する IF 文を挿入する TextEdit を返すことを確認する。STATUS 変数・FD 名はルールと同じ
- * SELECT/FD 解決で再取得する。
+ * SELECT/FD 解決で再取得する。終止ピリオドは I/O 文が文を閉じている場合にのみ付き、囲む文の
+ * 途中では END-IF だけで閉じる。
  */
 class FileStatusUncheckedFixTest {
 
@@ -50,16 +51,63 @@ class FileStatusUncheckedFixTest {
     }
 
     @Test
-    void doesNotFixInBlockWriteInSyk001() {
-        // IF/ELSE ブロックの途中にある WRITE(終止ピリオド無し)は検出はするが、直後へピリオド終端の
-        // 検査文を挿入すると囲む IF を壊すため、修正案を出さない。
+    void insertsPeriodlessCheckForBlockWriteInSyk001() {
+        // IF の THEN 節末尾にある WRITE(終止ピリオド無し)の直後へは、ピリオドを付けない
+        // IF … END-IF を挿入する。END-IF で閉じるため外側の ELSE・END-IF の結合は変わらない。
         AnalysisContext context = CfgFixtures.samples();
         String file = CfgFixtures.samplesFile("SYK001.cbl");
         Finding finding = finding(context, file, 126);
 
-        assertTrue(new FileStatusUncheckedRule().fixProducer().orElseThrow()
-                        .produce(finding, context).isEmpty(),
-                "ブロック途中の WRITE には修正案を出さないこと");
+        FixSuggestion suggestion = new FileStatusUncheckedRule().fixProducer().orElseThrow()
+                .produce(finding, context)
+                .orElseThrow(() -> new AssertionError("ブロック途中の WRITE にも修正案が返ること"));
+        TextEdit edit = suggestion.edits().get(0);
+        assertEquals(127, edit.range().start().line());
+        assertEquals("           IF WS-ORDERR-STATUS NOT = '00' DISPLAY 'FILE ERROR: ORDERR '\n"
+                + "           WS-ORDERR-STATUS END-IF\n", edit.replacement());
+
+        assertTrue(FixApplyChecks.applyAndReparse(file, suggestion.edits(),
+                        List.of(CfgFixtures.SAMPLES.resolve("copybook"))).success(),
+                "R017(THEN 節末尾の WRITE) 修正後ソースが再パースできること");
+    }
+
+    @Test
+    void insertsPeriodlessCheckForBlockWriteBeforeEndIfInSyk001() {
+        // ELSE 節末尾(次行が END-IF.)にある WRITE でも同様にピリオドを付けない。
+        AnalysisContext context = CfgFixtures.samples();
+        String file = CfgFixtures.samplesFile("SYK001.cbl");
+        Finding finding = finding(context, file, 130);
+
+        FixSuggestion suggestion = new FileStatusUncheckedRule().fixProducer().orElseThrow()
+                .produce(finding, context).orElseThrow();
+        TextEdit edit = suggestion.edits().get(0);
+        assertEquals(131, edit.range().start().line());
+        assertEquals("           IF WS-ORDVALID-STATUS NOT = '00' DISPLAY\n"
+                + "           'FILE ERROR: ORDVALID ' WS-ORDVALID-STATUS END-IF\n",
+                edit.replacement());
+
+        assertTrue(FixApplyChecks.applyAndReparse(file, suggestion.edits(),
+                        List.of(CfgFixtures.SAMPLES.resolve("copybook"))).success(),
+                "R017(ELSE 節末尾の WRITE) 修正後ソースが再パースできること");
+    }
+
+    @Test
+    void insertsPeriodlessCheckAfterEndWriteInSyk002() {
+        // END-WRITE で閉じるが終止ピリオドを持たない WRITE の直後でも、ピリオドを付けない。
+        AnalysisContext context = CfgFixtures.samples();
+        String file = CfgFixtures.samplesFile("SYK002.cbl");
+        Finding finding = finding(context, file, 107);
+
+        FixSuggestion suggestion = new FileStatusUncheckedRule().fixProducer().orElseThrow()
+                .produce(finding, context).orElseThrow();
+        TextEdit edit = suggestion.edits().get(0);
+        assertEquals(111, edit.range().start().line());
+        assertEquals("           IF WS-MASTER-STATUS NOT = '00' DISPLAY 'FILE ERROR: ORDMSTR '\n"
+                + "           WS-MASTER-STATUS END-IF\n", edit.replacement());
+
+        assertTrue(FixApplyChecks.applyAndReparse(file, suggestion.edits(),
+                        List.of(CfgFixtures.SAMPLES.resolve("copybook"))).success(),
+                "R017(END-WRITE 直後) 修正後ソースが再パースできること");
     }
 
     @Test

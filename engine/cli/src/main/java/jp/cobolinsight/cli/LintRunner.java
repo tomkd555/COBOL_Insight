@@ -10,18 +10,24 @@ import jp.cobolinsight.engineapi.bms.BmsMapset;
 import jp.cobolinsight.engineapi.cfg.ControlFlowGraph;
 import jp.cobolinsight.engineapi.cfg.ControlFlowGraphs;
 import jp.cobolinsight.engineapi.dataflow.DataFlowFacts;
+import jp.cobolinsight.engineapi.finding.CodeFlow;
+import jp.cobolinsight.engineapi.finding.CodeFlowStep;
 import jp.cobolinsight.engineapi.finding.Finding;
 import jp.cobolinsight.engineapi.finding.FindingLevel;
+import jp.cobolinsight.engineapi.finding.FixSuggestion;
+import jp.cobolinsight.engineapi.finding.TextEdit;
 import jp.cobolinsight.engineapi.json.JsonWriter;
 import jp.cobolinsight.engineapi.pipeline.AnalysisServices;
 import jp.cobolinsight.engineapi.pipeline.ExitCodes;
 import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
 import jp.cobolinsight.engineapi.source.DecodedSource;
 import jp.cobolinsight.engineapi.source.SourcePosition;
+import jp.cobolinsight.engineapi.source.SourceRange;
 import jp.cobolinsight.engineapi.spi.AnalysisContext;
 import jp.cobolinsight.engineapi.spi.AnalysisPhase;
 import jp.cobolinsight.engineapi.spi.CharsetProvider;
 import jp.cobolinsight.engineapi.spi.CobolParser;
+import jp.cobolinsight.engineapi.spi.FixProducer;
 import jp.cobolinsight.engineapi.spi.ParseOutcome;
 import jp.cobolinsight.engineapi.spi.Rule;
 import jp.cobolinsight.rules.SourceTextIndex;
@@ -46,9 +52,10 @@ import java.util.stream.Stream;
  * `lint` の中核処理。資産フォルダのCOBOL・コピー句・BMSを復号し、COBOLをパースして
  * 制御フローグラフを構築し、BMSをマップモデルへ写像したうえで、構文段階(AnalysisPhase.SYNTAX)と
  * 制御フロー段階(AnalysisPhase.CONTROL_FLOW)のルールを実行して findings を返す。復号失敗・
- * パース失敗も errorレベルの finding として合流させる。出力は決定論とする: findings は
- * (ファイル・行・桁・ルールID・メッセージ)の昇順に正規化し、位置のファイルは
- * 入力フォルダからの相対パスへ揃える。
+ * パース失敗も errorレベルの finding として合流させる。FixProducer を持つルールの検出には
+ * 修正案(SARIF の fixes)を付す。出力は決定論とする: findings は
+ * (ファイル・行・桁・ルールID・メッセージ)の昇順に正規化し、位置・汚染経路の各歩・修正案の
+ * 編集範囲のファイルは入力フォルダからの相対パスへ揃える。
  */
 public final class LintRunner {
 
@@ -193,7 +200,10 @@ public final class LintRunner {
                 .filter(rule -> !options.disabledRuleIds().contains(rule.id()))
                 .toList();
         for (Rule rule : activeRules) {
-            findings.addAll(rule.evaluate(context));
+            FixProducer producer = rule.fixProducer().orElse(null);
+            for (Finding finding : rule.evaluate(context)) {
+                findings.add(producer == null ? finding : withFix(finding, producer, context));
+            }
         }
 
         List<Finding> normalized = new ArrayList<>(findings.stream()
@@ -249,20 +259,65 @@ public final class LintRunner {
     }
 
     /**
-     * finding の位置ファイルを入力フォルダ相対パスへ置き換える。入力フォルダで対応が取れない
-     * 絶対パスは --copybook-path の各ディレクトリ基準の相対化も試み、どれにも一致しない場合のみ
-     * 絶対パスのまま返す。
+     * ルールの FixProducer が修正案を返した finding へ fixes を付す。修正案を返さない finding は
+     * そのまま返す。位置は意味モデルの sourceFile(絶対パス)のままで、相対化は
+     * {@link #relativize} が finding と編集範囲へ同時に施す。
+     */
+    private static Finding withFix(Finding finding, FixProducer producer,
+            AnalysisContext context) {
+        return producer.produce(finding, context)
+                .map(fix -> new Finding(finding.ruleId(), finding.level(), finding.message(),
+                        finding.location(), finding.codeFlows(), List.of(fix)))
+                .orElse(finding);
+    }
+
+    /**
+     * finding の位置と、汚染経路の各歩・修正案の各編集範囲を、いずれも入力フォルダ相対パスへ
+     * 揃える。
      */
     private static Finding relativize(Finding finding, Map<Path, String> relByAbs,
             List<Path> copybookSearchPaths) {
+        List<CodeFlow> codeFlows = new ArrayList<>();
+        for (CodeFlow codeFlow : finding.codeFlows()) {
+            List<CodeFlowStep> steps = new ArrayList<>();
+            for (CodeFlowStep step : codeFlow.steps()) {
+                steps.add(new CodeFlowStep(
+                        relativize(step.position(), relByAbs, copybookSearchPaths),
+                        step.message()));
+            }
+            codeFlows.add(new CodeFlow(steps));
+        }
+        List<FixSuggestion> fixes = new ArrayList<>();
+        for (FixSuggestion fix : finding.fixes()) {
+            List<TextEdit> edits = new ArrayList<>();
+            for (TextEdit edit : fix.edits()) {
+                edits.add(new TextEdit(new SourceRange(
+                        relativize(edit.range().start(), relByAbs, copybookSearchPaths),
+                        relativize(edit.range().end(), relByAbs, copybookSearchPaths)),
+                        edit.replacement()));
+            }
+            fixes.add(new FixSuggestion(fix.description(), edits));
+        }
+        return new Finding(finding.ruleId(), finding.level(), finding.message(),
+                relativize(finding.location(), relByAbs, copybookSearchPaths),
+                codeFlows, fixes);
+    }
+
+    /**
+     * 位置のファイルを入力フォルダ相対パスへ置き換える。入力フォルダで対応が取れない絶対パスは
+     * --copybook-path の各ディレクトリ基準の相対化も試み、どれにも一致しない場合のみ絶対パスの
+     * まま返す。
+     */
+    private static SourcePosition relativize(SourcePosition position, Map<Path, String> relByAbs,
+            List<Path> copybookSearchPaths) {
         Path file;
         try {
-            file = Path.of(finding.location().file());
+            file = Path.of(position.file());
         } catch (java.nio.file.InvalidPathException e) {
-            return finding;
+            return position;
         }
         if (!file.isAbsolute()) {
-            return finding;
+            return position;
         }
         Path normalized = file.normalize();
         String rel = relByAbs.get(normalized);
@@ -276,11 +331,8 @@ public final class LintRunner {
             }
         }
         if (rel == null) {
-            return finding;
+            return position;
         }
-        SourcePosition position = finding.location();
-        return new Finding(finding.ruleId(), finding.level(), finding.message(),
-                new SourcePosition(rel, position.line(), position.column(), position.byteOffset()),
-                finding.codeFlows(), finding.fixes());
+        return new SourcePosition(rel, position.line(), position.column(), position.byteOffset());
     }
 }

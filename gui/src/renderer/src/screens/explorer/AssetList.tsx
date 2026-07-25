@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import type { AssetGroup } from "./assetView";
+import { hasUndeterminedEncoding, type AssetGroup } from "./assetView";
 
 export interface AssetListProps {
   groups: readonly AssetGroup[];
@@ -42,6 +42,11 @@ export function AssetList({ groups, collapsed, showFindingColumn, onToggleDir, o
         <div>解析</div>
         <div className="ci-asset-list__num">指摘</div>
       </div>
+      {hasUndeterminedEncoding(groups) ? (
+        <p className="ci-asset-list__note">
+          未判定の資産は、詳細ペインで設定の既定文字コードを使って表示する。
+        </p>
+      ) : null}
       <div className="ci-asset-list__body">
         {groups.map((group) => {
           const isCollapsed = collapsed.has(group.dir);

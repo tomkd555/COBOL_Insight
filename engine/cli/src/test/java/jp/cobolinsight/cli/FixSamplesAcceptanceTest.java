@@ -25,6 +25,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p>対象5欠陥: No.14 R004(SYK007 COMPUTE→ON SIZE ERROR+END-COMPUTE)、No.4 R017(SYK001
  * READ ORDIN→FILE STATUS 検査)、No.6 R017(SYK002 REWRITE→FILE STATUS 検査)、No.12 R018
  * (SYK006 EXEC SQL UPDATE→SQLCODE 検査)、No.15 R018(SYK007 EXEC SQL UPDATE→SQLCODE 検査)。
+ *
+ * <p>あわせて、囲む文(IF/PERFORM)の途中にある I/O へ付く R017 の修正案4件(SYK001:126・
+ * SYK001:130・SYK002:107・SYK006:172)も対象とする。これらは終止ピリオドを持たないため、挿入する
+ * IF もピリオドを付けず END-IF だけで閉じる。docs/06_ルールカタログ.md が R017 を「修正案生成:
+ * あり」と記すため、ブロック内の I/O も修正案の対象である。
  */
 class FixSamplesAcceptanceTest {
 
@@ -33,7 +38,7 @@ class FixSamplesAcceptanceTest {
     /** 挿入文の B領域起点。一連番号欄(6桁)+標識欄(1桁)+A領域(4桁)=11桁の空白の後に本文が始まる。 */
     private static final String PAD = "           ";
 
-    /** 5欠陥の期待挿入内容と挿入位置(直前物理行の条件)。 */
+    /** 各欠陥の期待挿入内容と挿入位置(直前物理行の条件)。 */
     private record Defect(String no, String rule, String relPath, List<String> handlerLines,
             Predicate<String> precedingLine, String precedingDesc) {
     }
@@ -43,6 +48,22 @@ class FixSamplesAcceptanceTest {
                     List.of(PAD + "IF WS-ORDIN-STATUS NOT = '00' DISPLAY 'FILE ERROR: ORDIN '",
                             PAD + "WS-ORDIN-STATUS END-IF."),
                     prev -> prev.endsWith("END-READ."), "READ ORDIN の END-READ 直後"),
+            new Defect("R017 THEN節", "R017", "cobol/SYK001.cbl",
+                    List.of(PAD + "IF WS-ORDERR-STATUS NOT = '00' DISPLAY 'FILE ERROR: ORDERR '",
+                            PAD + "WS-ORDERR-STATUS END-IF"),
+                    prev -> prev.equals("WRITE ERROR-REC"), "IF の THEN 節末尾の WRITE 直後"),
+            new Defect("R017 ELSE節", "R017", "cobol/SYK001.cbl",
+                    List.of(PAD + "IF WS-ORDVALID-STATUS NOT = '00' DISPLAY",
+                            PAD + "'FILE ERROR: ORDVALID ' WS-ORDVALID-STATUS END-IF"),
+                    prev -> prev.equals("WRITE VALID-REC"), "IF の ELSE 節末尾の WRITE 直後"),
+            new Defect("R017 END-WRITE", "R017", "cobol/SYK002.cbl",
+                    List.of(PAD + "IF WS-MASTER-STATUS NOT = '00' DISPLAY 'FILE ERROR: ORDMSTR '",
+                            PAD + "WS-MASTER-STATUS END-IF"),
+                    prev -> prev.equals("END-WRITE"), "INVALID KEY 付き WRITE の END-WRITE 直後"),
+            new Defect("R017 IF内", "R017", "cobol/SYK006.cbl",
+                    List.of(PAD + "IF WS-STKEXTR-STATUS NOT = '00' DISPLAY",
+                            PAD + "'FILE ERROR: STKEXTR ' WS-STKEXTR-STATUS END-IF"),
+                    prev -> prev.equals("WRITE SYK3-在庫抽出レコード"), "IF の中の WRITE 直後"),
             new Defect("No.6", "R017", "cobol/SYK002.cbl",
                     List.of(PAD + "IF WS-MASTER-STATUS NOT = '00' DISPLAY 'FILE ERROR: ORDMSTR '",
                             PAD + "WS-MASTER-STATUS END-IF."),
@@ -71,7 +92,7 @@ class FixSamplesAcceptanceTest {
     }
 
     @Test
-    void allFiveDefectsInsertExpectedHandlerAtExpectedPosition() {
+    void eachDefectInsertsExpectedHandlerAtExpectedPosition() {
         FixRunner.Result result = runFix();
         assertEquals(0, result.analysisErrors(), "復号・パース失敗が無いこと");
 
@@ -80,14 +101,11 @@ class FixSamplesAcceptanceTest {
             List<String> lines = fix.fixedText().lines().toList();
             List<String> handler = defect.handlerLines();
 
-            int at = indexOfExact(lines, handler.get(0));
+            // ハンドラの全物理行が連続して現れること。ピリオドの有無だけが異なるハンドラが同一
+            // ファイル内に並ぶため、先頭行ではなくブロック全体で照合する。
+            int at = indexOfBlock(lines, handler);
             assertTrue(at >= 0, defect.no() + " " + defect.rule()
-                    + ": 期待ハンドラ先頭行が無い: [" + handler.get(0) + "] in " + defect.relPath());
-            // ハンドラの全物理行が連続して現れること。
-            for (int i = 1; i < handler.size(); i++) {
-                assertEquals(handler.get(i), lines.get(at + i),
-                        defect.no() + ": ハンドラ継続行が一致すること");
-            }
+                    + ": 期待ハンドラが無い: " + handler + " in " + defect.relPath());
             // 挿入位置: 直前の物理行が anchor 条件を満たすこと。
             assertTrue(at >= 1, defect.no() + ": ハンドラの直前行が存在すること");
             String preceding = lines.get(at - 1).strip();
@@ -97,6 +115,15 @@ class FixSamplesAcceptanceTest {
 
             assertColumnRules(defect, fix.charsetName(), handler);
         }
+    }
+
+    @Test
+    void everyDetectionOfTheFourFixableRulesYieldsEdits() {
+        // 修正案生成を持つ4ルール(R004・R017・R018・R021)の samples 検出は、R004 が1件・R017 が
+        // 9件・R018 が2件・R021 が1件である。R021 は RESP オペランドと判定文の2か所を編集するため、
+        // 編集の総数は 1+9+2+2=14 になる。
+        FixRunner.Result result = runFix();
+        assertEquals(14, result.fixCount(), "編集の総数");
     }
 
     @Test
@@ -142,7 +169,8 @@ class FixSamplesAcceptanceTest {
                 "cobol/SYK001.cbl", Files.readAllBytes(SAMPLES.resolve("cobol/SYK001.cbl")),
                 "cobol/SYK002.cbl", Files.readAllBytes(SAMPLES.resolve("cobol/SYK002.cbl")),
                 "cobol/SYK006.cbl", Files.readAllBytes(SAMPLES.resolve("cobol/SYK006.cbl")),
-                "cobol/SYK007.cbl", Files.readAllBytes(SAMPLES.resolve("cobol/SYK007.cbl")));
+                "cobol/SYK007.cbl", Files.readAllBytes(SAMPLES.resolve("cobol/SYK007.cbl")),
+                "cobol/SYK008.cbl", Files.readAllBytes(SAMPLES.resolve("cobol/SYK008.cbl")));
     }
 
     /** 挿入した各物理行が固定形式の桁規則を保つことを表明する。桁はファイル符号のバイト単位で数える。 */
@@ -178,9 +206,10 @@ class FixSamplesAcceptanceTest {
         return -1;
     }
 
-    private static int indexOfExact(List<String> lines, String target) {
-        for (int i = 0; i < lines.size(); i++) {
-            if (lines.get(i).equals(target)) {
+    /** 連続する物理行が block と完全一致する先頭位置(0始まり)。見つからなければ -1。 */
+    private static int indexOfBlock(List<String> lines, List<String> block) {
+        for (int i = 0; i + block.size() <= lines.size(); i++) {
+            if (lines.subList(i, i + block.size()).equals(block)) {
                 return i;
             }
         }

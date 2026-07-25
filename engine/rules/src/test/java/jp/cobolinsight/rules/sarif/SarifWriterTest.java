@@ -1,9 +1,14 @@
 package jp.cobolinsight.rules.sarif;
 
+import jp.cobolinsight.engineapi.finding.CodeFlow;
+import jp.cobolinsight.engineapi.finding.CodeFlowStep;
 import jp.cobolinsight.engineapi.finding.Finding;
 import jp.cobolinsight.engineapi.finding.FindingLevel;
+import jp.cobolinsight.engineapi.finding.FixSuggestion;
 import jp.cobolinsight.engineapi.finding.Severity;
+import jp.cobolinsight.engineapi.finding.TextEdit;
 import jp.cobolinsight.engineapi.source.SourcePosition;
+import jp.cobolinsight.engineapi.source.SourceRange;
 import jp.cobolinsight.engineapi.spi.AnalysisContext;
 import jp.cobolinsight.engineapi.spi.AnalysisPhase;
 import jp.cobolinsight.engineapi.spi.Rule;
@@ -13,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** SARIF 2.1.0 出力の構造・決定論の検証。 */
@@ -113,6 +119,117 @@ class SarifWriterTest {
                         + "/cobol%20dir/A%231%20100%25.cbl\""),
                 "空白・#・%・非ASCIIをセグメント毎にパーセントエンコードし、/は保持すること: "
                         + json);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void fixSuggestionsAreSerializedAsArtifactChanges() {
+        SourceRange range = new SourceRange(
+                new SourcePosition("cobol\\A.cbl", 10, 20, SourcePosition.UNKNOWN_BYTE_OFFSET),
+                new SourcePosition("cobol\\A.cbl", 10, 20, SourcePosition.UNKNOWN_BYTE_OFFSET));
+        SourceRange deletion = new SourceRange(
+                new SourcePosition("cobol\\A.cbl", 12, 1, SourcePosition.UNKNOWN_BYTE_OFFSET),
+                new SourcePosition("cobol\\A.cbl", 12, 9, SourcePosition.UNKNOWN_BYTE_OFFSET));
+        Finding finding = new Finding("R008", FindingLevel.WARNING, "THRUなしPERFORM",
+                new SourcePosition("cobol/A.cbl", 10, 12, SourcePosition.UNKNOWN_BYTE_OFFSET),
+                List.of(),
+                List.of(new FixSuggestion("ON SIZE ERROR 句を付与する",
+                        List.of(new TextEdit(range, "\n    ON SIZE ERROR"),
+                                new TextEdit(deletion, "")))));
+
+        String json = SarifWriter.toJson(RULES, List.of(finding));
+
+        Map<String, Object> result = (Map<String, Object>) ((List<Object>)
+                ((Map<String, Object>) ((List<Object>)
+                        ((Map<String, Object>) MiniJson.parse(json)).get("runs")).get(0))
+                        .get("results")).get(0);
+        List<Object> fixes = (List<Object>) result.get("fixes");
+        assertEquals(1, fixes.size(), "修正案1件が fixes へ出ること: " + json);
+        Map<String, Object> fix = (Map<String, Object>) fixes.get(0);
+        assertEquals("ON SIZE ERROR 句を付与する",
+                ((Map<String, Object>) fix.get("description")).get("text"));
+        List<Object> changes = (List<Object>) fix.get("artifactChanges");
+        assertEquals(1, changes.size(), "同一ファイルの編集は1つの artifactChange へ束ねること");
+        Map<String, Object> change = (Map<String, Object>) changes.get(0);
+        assertEquals("cobol/A.cbl",
+                ((Map<String, Object>) change.get("artifactLocation")).get("uri"),
+                "artifactLocation.uri は物理位置と同じ規約で正規化すること");
+        List<Object> replacements = (List<Object>) change.get("replacements");
+        assertEquals(2, replacements.size());
+        Map<String, Object> insertion = (Map<String, Object>) replacements.get(0);
+        Map<String, Object> region = (Map<String, Object>) insertion.get("deletedRegion");
+        assertEquals(10L, region.get("startLine"));
+        assertEquals(20L, region.get("startColumn"));
+        assertEquals(10L, region.get("endLine"));
+        assertEquals(20L, region.get("endColumn"));
+        assertEquals("\n    ON SIZE ERROR",
+                ((Map<String, Object>) insertion.get("insertedContent")).get("text"));
+        Map<String, Object> removal = (Map<String, Object>) replacements.get(1);
+        assertEquals(9L, ((Map<String, Object>) removal.get("deletedRegion")).get("endColumn"));
+        assertEquals("", ((Map<String, Object>) removal.get("insertedContent")).get("text"),
+                "削除は空文字列の insertedContent で表すこと");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void codeFlowsAreSerializedAsThreadFlowLocations() {
+        Finding finding = new Finding("R008", FindingLevel.WARNING, "汚染経路付きの検出",
+                new SourcePosition("cobol/A.cbl", 30, 12, SourcePosition.UNKNOWN_BYTE_OFFSET),
+                List.of(new CodeFlow(List.of(
+                        new CodeFlowStep(new SourcePosition("cobol\\A.cbl", 10, 16,
+                                SourcePosition.UNKNOWN_BYTE_OFFSET), "WS-IN が外部入力を受け取る"),
+                        new CodeFlowStep(new SourcePosition("cobol/A.cbl", 30, 12,
+                                SourcePosition.UNKNOWN_BYTE_OFFSET), "WS-IN を出力する")))),
+                List.of());
+
+        String json = SarifWriter.toJson(RULES, List.of(finding));
+
+        Map<String, Object> result = (Map<String, Object>) ((List<Object>)
+                ((Map<String, Object>) ((List<Object>)
+                        ((Map<String, Object>) MiniJson.parse(json)).get("runs")).get(0))
+                        .get("results")).get(0);
+        List<Object> codeFlows = (List<Object>) result.get("codeFlows");
+        assertEquals(1, codeFlows.size(), "経路1本が codeFlows へ出ること: " + json);
+        List<Object> threadFlows =
+                (List<Object>) ((Map<String, Object>) codeFlows.get(0)).get("threadFlows");
+        assertEquals(1, threadFlows.size(), "経路は1つの threadFlow で表すこと");
+        List<Object> locations =
+                (List<Object>) ((Map<String, Object>) threadFlows.get(0)).get("locations");
+        assertEquals(2, locations.size());
+
+        Map<String, Object> first = (Map<String, Object>)
+                ((Map<String, Object>) locations.get(0)).get("location");
+        assertEquals("WS-IN が外部入力を受け取る",
+                ((Map<String, Object>) first.get("message")).get("text"));
+        Map<String, Object> physical = (Map<String, Object>) first.get("physicalLocation");
+        assertEquals("cobol/A.cbl",
+                ((Map<String, Object>) physical.get("artifactLocation")).get("uri"),
+                "経路の URI も物理位置と同じ規約で正規化すること");
+        Map<String, Object> region = (Map<String, Object>) physical.get("region");
+        assertEquals(10L, region.get("startLine"));
+        assertEquals(16L, region.get("startColumn"));
+
+        Map<String, Object> second = (Map<String, Object>)
+                ((Map<String, Object>) locations.get(1)).get("location");
+        assertEquals("WS-IN を出力する",
+                ((Map<String, Object>) second.get("message")).get("text"));
+        assertEquals(30L, ((Map<String, Object>) ((Map<String, Object>)
+                second.get("physicalLocation")).get("region")).get("startLine"));
+    }
+
+    @Test
+    void findingWithoutCodeFlowsOmitsTheCodeFlowsKey() {
+        String json = SarifWriter.toJson(RULES, FINDINGS);
+
+        assertFalse(json.contains("\"codeFlows\""),
+                "経路が無い finding へ空の codeFlows を出さないこと");
+    }
+
+    @Test
+    void findingWithoutFixesOmitsTheFixesKey() {
+        String json = SarifWriter.toJson(RULES, FINDINGS);
+
+        assertFalse(json.contains("\"fixes\""), "修正案が無い finding へ空の fixes を出さないこと");
     }
 
     @Test

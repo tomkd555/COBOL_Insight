@@ -74,6 +74,7 @@
   /* トースト */
   --ci-toast-bg: #2b3138;
   --ci-toast-text: #f2f5f8;
+  --ci-shadow-toast: 0 4px 14px rgba(0, 0, 0, 0.25);
 
   /* コード表示の行装飾(相互ハイライト・ジャンプ先・注記行の枠) */
   --ci-line-linked-bg: #fff3d0;

@@ -45,27 +45,42 @@ public final class FixedFormatNormalizer {
      * 単独で収まらない語・リテラルのみ継続行で途中分割する。
      */
     public List<String> layoutStatement(String statement, Charset charset) {
+        return layoutStatement(statement, charset, 0);
+    }
+
+    /**
+     * 整形後に呼び出し側が末尾へ {@code reservedTrailingBytes} バイトを書き足す前提で整形する。
+     * 予約分は最終トークンを載せる行の予算から差し引くため、呼び出し側が最終行の末尾へ終止ピリオド
+     * などを付け足しても72桁を超えない。予約は最終トークンを載せる行にのみ効き、それより前の行は
+     * B領域を使い切る。単独で収まらず継続行へ途中分割する語・リテラルは予約の対象外である。
+     */
+    public List<String> layoutStatement(String statement, Charset charset,
+            int reservedTrailingBytes) {
         List<String> lines = new ArrayList<>();
         StringBuilder current = new StringBuilder();
         int currentBytes = 0;
 
-        for (String token : tokenize(statement)) {
+        List<String> tokens = tokenize(statement);
+        for (int index = 0; index < tokens.size(); index++) {
+            String token = tokens.get(index);
+            int budget = index == tokens.size() - 1
+                    ? B_AREA_BYTE_BUDGET - reservedTrailingBytes : B_AREA_BYTE_BUDGET;
             int tokenBytes = byteLength(token, charset);
             if (currentBytes == 0) {
-                if (tokenBytes <= B_AREA_BYTE_BUDGET) {
+                if (tokenBytes <= budget) {
                     current.append(token);
                     currentBytes = tokenBytes;
                 } else {
                     splitOversizedToken(token, charset, lines);
                 }
-            } else if (currentBytes + 1 + tokenBytes <= B_AREA_BYTE_BUDGET) {
+            } else if (currentBytes + 1 + tokenBytes <= budget) {
                 current.append(' ').append(token);
                 currentBytes += 1 + tokenBytes;
             } else {
                 lines.add(B_AREA_PREFIX + current);
                 current.setLength(0);
                 currentBytes = 0;
-                if (tokenBytes <= B_AREA_BYTE_BUDGET) {
+                if (tokenBytes <= budget) {
                     current.append(token);
                     currentBytes = tokenBytes;
                 } else {

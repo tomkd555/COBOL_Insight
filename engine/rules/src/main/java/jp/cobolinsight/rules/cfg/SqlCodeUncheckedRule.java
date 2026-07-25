@@ -117,6 +117,8 @@ public final class SqlCodeUncheckedRule implements Rule {
     /**
      * 未検査のデータ変更 DML の EXEC SQL 直後(END-EXEC 行の次行)へ SQLCODE 判定文を挿入する。
      * Finding.location の行(=END-EXEC 行)を anchor に、同一終端行の DML ブロックを再同定する。
+     * 挿入する IF は常に明示的な END-IF で閉じ、終止ピリオドは END-EXEC が文を閉じている場合に
+     * のみ付ける。
      */
     private static final class SqlCodeFixProducer implements FixProducer {
 
@@ -140,18 +142,15 @@ public final class SqlCodeUncheckedRule implements Rule {
             if (block == null) {
                 return Optional.empty();
             }
-            // END-EXEC が終止ピリオドで文を閉じている場合に限り、直後へ独立した検査文を挿入する。
-            // IF/PERFORM ブロックの途中にある EXEC SQL(END-EXEC にピリオド無し)へピリオド終端の
-            // 文を挿入すると囲む構造を壊すため、その場合は修正案を出さない(検出は継続する)。
+            // END-EXEC が終止ピリオドで文を閉じているときだけ、挿入する IF も終止ピリオドで閉じる。
+            // 囲む文(IF/PERFORM など)の途中にある EXEC SQL の直後へピリオドを置くと外側の文を
+            // 途中で終止させるため、その場合は明示的な END-IF だけで閉じる。
             String source = context.artifact(SourceTextIndex.class)
                     .flatMap(index -> index.textOf(model.sourceFile())).orElse(null);
-            if (source != null && !FixEdits.endsSentence(source, block.range().end().line())) {
-                return Optional.empty();
-            }
-            // 直前の EXEC SQL は END-EXEC のピリオドで文が閉じるため、挿入する IF は独立した
-            // 文として終止ピリオドで閉じる。
+            String terminator = source == null
+                    || FixEdits.endsSentence(source, block.range().end().line()) ? "." : "";
             TextEdit edit = FixEdits.insertStatementAfter(block.range(),
-                    "IF SQLCODE NOT = 0 DISPLAY 'SQL ERROR: ' SQLCODE END-IF.");
+                    "IF SQLCODE NOT = 0 DISPLAY 'SQL ERROR: ' SQLCODE END-IF" + terminator);
             return Optional.of(new FixSuggestion("SQLCODE 検査を挿入する", List.of(edit)));
         }
     }

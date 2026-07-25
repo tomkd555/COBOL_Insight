@@ -1,8 +1,11 @@
 package jp.cobolinsight.transpile.proc;
 
+import jp.cobolinsight.engineapi.semantic.CompoundStatement;
 import jp.cobolinsight.engineapi.semantic.EmbeddedBlock;
 import jp.cobolinsight.engineapi.semantic.EmbeddedBlockKind;
 import jp.cobolinsight.engineapi.semantic.SimpleStatement;
+import jp.cobolinsight.engineapi.semantic.StatementBlock;
+import jp.cobolinsight.engineapi.source.SourcePosition;
 import jp.cobolinsight.engineapi.source.SourceRange;
 import jp.cobolinsight.transpile.emit.Identifiers;
 import jp.cobolinsight.transpile.emit.Literals;
@@ -460,6 +463,62 @@ public final class OperandParser {
     }
 
     // ---- 条件式 ----
+
+    /**
+     * 分岐(IF)の条件を原文から復元して条件式へ写す。意味モデルの conditionText は条件式が持つ
+     * 構文木ノードの範囲を合成した結果であり、ノードを持たないクラス条件・符号条件(NOT NUMERIC 等)を
+     * 落とす。そこで原ソースの IF 見出しから THEN 側の最初の文の直前までを切り出し、IF・THEN の
+     * 予約語を除いて条件の原文を得る。原ソース未供給、または THEN 側に文が無い場合は意味モデルの
+     * テキストで代替する。
+     */
+    public PCond parseBranchCondition(CompoundStatement cs) {
+        return parseCondition(branchConditionText(cs));
+    }
+
+    private String branchConditionText(CompoundStatement cs) {
+        SourcePosition bodyStart = firstThenStatementStart(cs);
+        if (slicer == null || bodyStart == null) {
+            return cs.conditionText();
+        }
+        String text = stripBranchKeywords(slicer.between(cs.range().start(), bodyStart));
+        return text.isEmpty() ? cs.conditionText() : text;
+    }
+
+    private static SourcePosition firstThenStatementStart(CompoundStatement cs) {
+        for (StatementBlock block : cs.blocks()) {
+            if (block.label().equalsIgnoreCase("THEN") && !block.statements().isEmpty()) {
+                return block.statements().get(0).range().start();
+            }
+        }
+        return null;
+    }
+
+    /** 切り出した IF 見出しから、先頭の IF と末尾の THEN を語境界で除く。 */
+    private static String stripBranchKeywords(String text) {
+        String result = text.trim();
+        if (startsWithWord(result, "IF")) {
+            result = result.substring(2).trim();
+        }
+        if (endsWithWord(result, "THEN")) {
+            result = result.substring(0, result.length() - 4).trim();
+        }
+        return result;
+    }
+
+    private static boolean startsWithWord(String text, String word) {
+        return text.regionMatches(true, 0, word, 0, word.length())
+                && (text.length() == word.length() || !isWordChar(text.charAt(word.length())));
+    }
+
+    private static boolean endsWithWord(String text, String word) {
+        int start = text.length() - word.length();
+        return start >= 0 && text.regionMatches(true, start, word, 0, word.length())
+                && (start == 0 || !isWordChar(text.charAt(start - 1)));
+    }
+
+    private static boolean isWordChar(char c) {
+        return Character.isLetterOrDigit(c) || c == '-' || c == '_';
+    }
 
     public PCond parseCondition(String text) {
         List<String> toks = tokenizeCondition(text);

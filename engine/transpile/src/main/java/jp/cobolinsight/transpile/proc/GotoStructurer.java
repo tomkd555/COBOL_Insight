@@ -393,7 +393,7 @@ final class GotoStructurer {
 
         private ProcStmt buildBranch(CfgNode node, CfgNode follow) {
             CompoundStatement c = (CompoundStatement) node.statement().orElseThrow();
-            PCond cond = parser.parseCondition(c.conditionText());
+            PCond cond = parser.parseBranchCondition(c);
             List<CfgNode> succ = cfg.successors(node);
             List<ProcStmt> thenArm = structure(succ.get(0), follow);
             List<ProcStmt> elseArm = structure(succ.get(1), follow);
@@ -412,7 +412,7 @@ final class GotoStructurer {
                 throw new Unsupported();
             }
             CompoundStatement c = (CompoundStatement) header.statement().orElseThrow();
-            PCond cond = parser.parseCondition(c.conditionText());
+            PCond cond = parser.parseBranchCondition(c);
             Set<CfgNode> body = loopBodies.getOrDefault(header, Set.of());
             List<CfgNode> succ = cfg.successors(header);
             boolean trueInLoop = body.contains(succ.get(0));

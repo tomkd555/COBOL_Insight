@@ -45,6 +45,38 @@ class FixedFormatNormalizerTest {
     }
 
     @Test
+    void reservedTrailingBytesShrinkTheBudgetOfTheFinalLineOnly() {
+        // 整形後に呼び出し側が末尾へ1バイト(終止ピリオド)を書き足す前提。最終物理行の予算だけが
+        // 60バイトへ縮み、それより前の行は61バイトのまま使い切る。
+        String statement = "A".repeat(55) + " " + "B".repeat(5);
+        assertEquals(61, byteLen(statement, StandardCharsets.UTF_8));
+
+        List<String> withoutReserve =
+                normalizer.layoutStatement(statement, StandardCharsets.UTF_8);
+        assertEquals(1, withoutReserve.size());
+        assertEquals(72, byteLen(withoutReserve.get(0), StandardCharsets.UTF_8));
+
+        List<String> reserved = normalizer.layoutStatement(statement, StandardCharsets.UTF_8, 1);
+        assertEquals(2, reserved.size());
+        assertEquals("           " + "A".repeat(55), reserved.get(0));
+        assertEquals("           " + "B".repeat(5), reserved.get(1));
+        // 末尾へピリオドを書き足しても72桁を超えない。
+        assertTrue(byteLen(reserved.get(1) + ".", StandardCharsets.UTF_8) <= 72);
+    }
+
+    @Test
+    void reservedTrailingBytesDoNotShrinkLinesBeforeTheFinalOne() {
+        String statement = "A".repeat(61) + " " + "B".repeat(5);
+
+        List<String> lines = normalizer.layoutStatement(statement, StandardCharsets.UTF_8, 1);
+
+        assertEquals(2, lines.size());
+        // 最終行でない1行目はB領域を61バイト使い切る。
+        assertEquals(72, byteLen(lines.get(0), StandardCharsets.UTF_8));
+        assertEquals("           " + "B".repeat(5), lines.get(1));
+    }
+
+    @Test
     void asciiOverflowWrapsToContinuationLine() {
         // 62バイトは61桁のB領域に収まらず、継続行(7桁目に '-')へ折り返す。
         String content = "A".repeat(62);

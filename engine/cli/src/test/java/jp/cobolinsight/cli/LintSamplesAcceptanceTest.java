@@ -26,8 +26,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * SQL助言(S接頭辞)を除外する(裁定A5)。R017は path-sensitive な忠実実装のため付随検出を許容し、
  * 必須2件の包含とOPEN/CLOSE非検出のみを表明する。
  *
- * <p>検証オラクルは samples/期待結果.md(12種別18件)。docs/05_開発計画.md は「9種別15件」と記すが、
- * 裁定A7に従い期待結果.md を優先する。M5 データフロー段が拾うのは18件中の7件(No.1/2/3/5/9/13/14)。
+ * <p>検証オラクルは samples/期待結果.md(12種別18件)。この18件は、docs/02_要件定義.md 6.1節が
+ * 分解する「意図的に混入した欠陥15件」と「CICS関連の検出3件(6.6節)」の合計である。M5
+ * データフロー段が拾うのは18件中の7件(No.1/2/3/5/9/13/14)。
  */
 class LintSamplesAcceptanceTest {
 

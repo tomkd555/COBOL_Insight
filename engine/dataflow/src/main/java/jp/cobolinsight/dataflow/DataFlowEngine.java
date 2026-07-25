@@ -12,7 +12,6 @@ import jp.cobolinsight.engineapi.semantic.Statement;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -53,14 +52,14 @@ public final class DataFlowEngine {
 
         Map<CfgNode, Set<Definition>> reachingIn =
                 reachingDefinitions(cfg, defUseByNode, uninitVars);
-        Map<CfgNode, Set<String>> externalTaintIn =
+        Map<CfgNode, Set<TaintFact>> externalTaintIn =
                 taint(cfg, defUseByNode, externalSourceByNode, Set.of());
-        Map<CfgNode, Set<String>> sensitiveTaintIn =
+        Map<CfgNode, Set<TaintFact>> sensitiveTaintIn =
                 taint(cfg, defUseByNode, emptyExternalSources(cfg), sensitiveVars);
         Map<CfgNode, Set<String>> liveOut = liveness(cfg, defUseByNode);
         Map<CfgNode, Map<String, ValueInterval>> intervalIn = IntervalAnalysis.run(cfg, model);
 
-        return new ProgramDataFlowFacts(model.programId(), defUseByNode, reachingIn,
+        return new ProgramDataFlowFacts(model.programId(), cfg.nodes(), defUseByNode, reachingIn,
                 externalTaintIn, sensitiveTaintIn, liveOut, intervalIn);
     }
 
@@ -99,28 +98,41 @@ public final class DataFlowEngine {
 
     // ---- 汚染追跡(前進・may) ----
 
-    private static Map<CfgNode, Set<String>> taint(ControlFlowGraph cfg,
+    private static Map<CfgNode, Set<TaintFact>> taint(ControlFlowGraph cfg,
             Map<CfgNode, DefUse> defUseByNode, Map<CfgNode, Set<String>> externalSourceByNode,
             Set<String> alwaysTainted) {
-        Set<String> boundary = new LinkedHashSet<>(alwaysTainted);
+        Set<TaintFact> boundary = new LinkedHashSet<>();
+        for (String var : alwaysTainted) {
+            boundary.add(TaintFact.declared(var));
+        }
         return WorklistSolver.solve(cfg, WorklistSolver.Direction.FORWARD, boundary, (node, in) -> {
             DefUse defUse = defUseByNode.get(node);
             Set<String> defVars = defUse.defs();
-            Set<String> out = new LinkedHashSet<>(in);
+            Set<TaintFact> out = new LinkedHashSet<>();
             // kill: 代入で上書きされる変数の旧汚染を落とす(識別子由来の恒常汚染は残す)。
-            for (String def : defVars) {
-                if (!alwaysTainted.contains(def)) {
-                    out.remove(def);
+            for (TaintFact fact : in) {
+                if (!defVars.contains(fact.variable())
+                        || alwaysTainted.contains(fact.variable())) {
+                    out.add(fact);
                 }
             }
-            // 伝播: 参照変数のいずれかが汚染なら、この文の定義先も汚染する。
-            if (!Collections.disjoint(defUse.uses(), in)) {
-                out.addAll(defVars);
+            // 伝播: 参照変数のいずれかが汚染なら、この文の定義先も汚染する。伝播元ごとに事実を
+            // 立てることで、事実の生成が流入集合に対して単調になり不動点へ収束する。
+            for (TaintFact fact : in) {
+                if (defUse.uses().contains(fact.variable())) {
+                    for (String def : defVars) {
+                        out.add(TaintFact.propagated(def, node.id(), fact));
+                    }
+                }
             }
             // source: 外部入力の受信先を汚染源として生成する。
-            out.addAll(externalSourceByNode.get(node));
+            for (String var : externalSourceByNode.get(node)) {
+                out.add(TaintFact.source(var, node.id()));
+            }
             // 恒常汚染(機密名義)は全ノードで維持する。
-            out.addAll(alwaysTainted);
+            for (String var : alwaysTainted) {
+                out.add(TaintFact.declared(var));
+            }
             return out;
         });
     }

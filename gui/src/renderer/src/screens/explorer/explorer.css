@@ -55,6 +55,14 @@
   font-size: var(--ci-fs-sm);
   color: var(--ci-text-subtle);
 }
+.ci-asset-list__note {
+  flex: none;
+  padding: 4px var(--ci-space-3);
+  background: var(--ci-surface-soft);
+  border-bottom: 1px solid var(--ci-border-soft);
+  font-size: var(--ci-fs-note);
+  color: var(--ci-text-subtle);
+}
 .ci-asset-list__head,
 .ci-asset-row {
   display: grid;

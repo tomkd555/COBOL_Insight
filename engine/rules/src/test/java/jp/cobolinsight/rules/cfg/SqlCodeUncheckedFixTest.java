@@ -14,12 +14,12 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * R018 の FixProducer 検証。SQLCODE を検査しないデータ変更 DML の EXEC SQL 直後(END-EXEC 行の
- * 次行)へ、SQLCODE を判定する IF 文を挿入する TextEdit を返すことを確認する。
+ * 次行)へ、SQLCODE を判定する IF 文を挿入する TextEdit を返すことを確認する。終止ピリオドは
+ * END-EXEC が文を閉じている場合にのみ付き、囲む文の途中では END-IF だけで閉じる。
  */
 class SqlCodeUncheckedFixTest {
 
@@ -77,9 +77,9 @@ class SqlCodeUncheckedFixTest {
     }
 
     @Test
-    void doesNotFixInBlockDml() {
-        // IF ブロックの途中にある INSERT(END-EXEC に終止ピリオド無し)は検出はするが、直後へ
-        // ピリオド終端の検査文を挿入すると囲む IF を壊すため、修正案を出さない。
+    void insertsPeriodlessCheckForBlockDml() {
+        // IF ブロックの途中にある INSERT(END-EXEC に終止ピリオド無し)の直後へは、ピリオドを
+        // 付けない IF … END-IF を挿入する。外側の IF は END-IF まで途切れない。
         String text = String.join("\n",
                 "       IDENTIFICATION DIVISION.",
                 "       PROGRAM-ID. FIX018M.",
@@ -102,7 +102,13 @@ class SqlCodeUncheckedFixTest {
         SqlCodeUncheckedRule rule = new SqlCodeUncheckedRule();
         Finding finding = rule.evaluate(context).stream().findFirst()
                 .orElseThrow(() -> new AssertionError("ブロック内 INSERT の R018 検出が前提"));
-        assertFalse(rule.fixProducer().orElseThrow().produce(finding, context).isPresent(),
-                "ブロック途中の INSERT には修正案を出さないこと");
+        FixSuggestion suggestion = rule.fixProducer().orElseThrow().produce(finding, context)
+                .orElseThrow(() -> new AssertionError("ブロック途中の INSERT にも修正案が返ること"));
+        assertEquals("           IF SQLCODE NOT = 0 DISPLAY 'SQL ERROR: ' SQLCODE END-IF\n",
+                suggestion.edits().get(0).replacement());
+
+        assertTrue(FixApplyChecks.applyAndReparse(model.sourceFile(), suggestion.edits(), List.of())
+                        .success(),
+                "R018(ブロック途中) 修正後ソースが再パースできること");
     }
 }

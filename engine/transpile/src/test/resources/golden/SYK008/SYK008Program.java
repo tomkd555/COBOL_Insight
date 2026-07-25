@@ -3,6 +3,8 @@ package cobolinsight.generated;
 /**
  * SYK008 の手続き部を逐語対訳した自動生成コード(非最適化・逐語優先)。
  * データ項目はフラットな変数として扱い、REDEFINES の別名共有と OCCURS の添字は簡約する。
+ * 逐語対訳であり、演算や桁詰めの最適化は行わない。桁数・小数スケール・固定長の空白詰めは
+ * フラット変数では再現せず、原文の PICTURE 句とレコードクラスのバイト列アクセサを正とする。
  */
 public final class SYK008Program {
 
@@ -33,7 +35,7 @@ public final class SYK008Program {
     }
 
     void _1000_受注番号検査() {
-        if (Boolean.TRUE /* WS-ORDNO-入力 = SPACES OR WS-ORDNO-入力 */) {
+        if (Boolean.TRUE /* WS-ORDNO-入力 = SPACES OR WS-ORDNO-入力 NOT NUMERIC */) {
             WS_検査結果 = "E";
             WS_MSG_出力 = "受注番号が不正です";
         } else {

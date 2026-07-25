@@ -182,7 +182,7 @@ describe("SqlAdviseScreen(SQL助言)", () => {
     expect(detail.queryByText(/014800/)).toBeNull();
   });
 
-  it("選択した行を aria-current と修飾子クラスで示す", () => {
+  it("選択した行を aria-current と修飾子クラスで示す", async () => {
     renderSql(resultsSeed);
     const row = screen.getByRole("row", { name: /^S001 / });
     expect(row).not.toHaveAttribute("aria-current");
@@ -190,6 +190,8 @@ describe("SqlAdviseScreen(SQL助言)", () => {
     expect(screen.getByRole("row", { name: /^S001 / })).toHaveAttribute("aria-current", "true");
     expect(screen.getByRole("row", { name: /^S001 / })).toHaveClass("ci-findings-table__row--selected");
     expect(screen.getByRole("row", { name: /^S002 / })).not.toHaveAttribute("aria-current");
+    // 行選択が起こす readSourceText の解決を待ち、act の外での状態更新を防ぐ。
+    await waitFor(() => expect(readSourceText).toHaveBeenCalled());
   });
 
   it("詳細ペインは同じ位置の助言を全件示す(1 つの SQL 文に複数の助言)", async () => {

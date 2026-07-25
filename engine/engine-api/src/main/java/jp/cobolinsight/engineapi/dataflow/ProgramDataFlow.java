@@ -2,6 +2,7 @@ package jp.cobolinsight.engineapi.dataflow;
 
 import jp.cobolinsight.engineapi.cfg.CfgNode;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -29,6 +30,16 @@ public interface ProgramDataFlow {
 
     /** ノード入口で当該種別の汚染下にある変数(R020=EXTERNAL_INPUT、R027=SENSITIVE)。 */
     Set<String> taintedAt(CfgNode node, TaintKind kind);
+
+    /**
+     * ノード入口で汚染下にある varName について、汚染源から当該ノードの入口に至るまでに汚染を
+     * 得たノードの列(汚染源が先頭)。問い合わせたノード自身は含まない。汚染下でない場合は空。
+     *
+     * <p>may 解析のため経路は複数あり得る。返すのは汚染源に根を持つ最短の1本であり、経路の
+     * 網羅ではない。機密名義(SENSITIVE)の汚染源はデータ部の宣言であって文を持たないため、
+     * 経路は宣言項目からの最初の代入から始まる。
+     */
+    List<TaintStep> taintPathTo(CfgNode node, String varName, TaintKind kind);
 
     /** このノードで定義(代入)される変数。 */
     Set<String> defsAt(CfgNode node);

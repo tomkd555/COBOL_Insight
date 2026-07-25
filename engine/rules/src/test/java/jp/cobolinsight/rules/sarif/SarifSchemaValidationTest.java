@@ -6,14 +6,19 @@ import com.networknt.schema.Schema;
 import com.networknt.schema.SchemaRegistry;
 import com.networknt.schema.SpecificationVersion;
 import jp.cobolinsight.cobolfrontend.Che4zCobolParser;
+import jp.cobolinsight.engineapi.finding.CodeFlow;
+import jp.cobolinsight.engineapi.finding.CodeFlowStep;
 import jp.cobolinsight.engineapi.finding.Finding;
 import jp.cobolinsight.engineapi.finding.FindingLevel;
+import jp.cobolinsight.engineapi.finding.FixSuggestion;
 import jp.cobolinsight.engineapi.finding.Severity;
+import jp.cobolinsight.engineapi.finding.TextEdit;
 import jp.cobolinsight.engineapi.pipeline.AnalysisServices;
 import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
 import jp.cobolinsight.engineapi.source.DecodedSource;
 import jp.cobolinsight.engineapi.source.EncodingInfo;
 import jp.cobolinsight.engineapi.source.SourcePosition;
+import jp.cobolinsight.engineapi.source.SourceRange;
 import jp.cobolinsight.engineapi.spi.AnalysisContext;
 import jp.cobolinsight.engineapi.spi.AnalysisPhase;
 import jp.cobolinsight.engineapi.spi.ParseOutcome;
@@ -60,12 +65,52 @@ class SarifSchemaValidationTest {
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)),
                 Finding.of("R008", FindingLevel.WARNING, "THRUなしPERFORM",
                         new SourcePosition("cobol/A.cbl", 10, 12,
-                                SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                                SourcePosition.UNKNOWN_BYTE_OFFSET)),
+                new Finding("R004", FindingLevel.ERROR, "ON SIZE ERROR 句が無い",
+                        new SourcePosition("cobol/A.cbl", 20, 1,
+                                SourcePosition.UNKNOWN_BYTE_OFFSET),
+                        List.of(), List.of(fixSuggestion())));
 
         List<Error> errors = loadSchema()
                 .validate(SarifWriter.toJson(rules, findings), InputFormat.JSON);
 
         assertEquals(List.of(), errors, "SARIF 2.1.0スキーマ違反が0件であること");
+    }
+
+    /** 挿入(空範囲)と置換の2編集を持つ修正案。fixes の直列化がスキーマへ適合することを検証する。 */
+    private static FixSuggestion fixSuggestion() {
+        SourcePosition insertAt =
+                new SourcePosition("cobol/A.cbl", 20, 40, SourcePosition.UNKNOWN_BYTE_OFFSET);
+        SourceRange insertion = new SourceRange(insertAt, insertAt);
+        SourceRange replacement = new SourceRange(
+                new SourcePosition("cobol/A.cbl", 21, 12, SourcePosition.UNKNOWN_BYTE_OFFSET),
+                new SourcePosition("cobol/A.cbl", 21, 20, SourcePosition.UNKNOWN_BYTE_OFFSET));
+        return new FixSuggestion("ON SIZE ERROR 句を付与する",
+                List.of(new TextEdit(insertion, "\n               ON SIZE ERROR"),
+                        new TextEdit(replacement, "END-ADD")));
+    }
+
+    /** 汚染経路付きの finding が codeFlows(threadFlows → locations)としてスキーマへ適合すること。 */
+    @Test
+    void codeFlowFindingsProduceSchemaValidSarif() {
+        List<Rule> rules = AnalysisServices.load().rules(AnalysisPhase.SYNTAX);
+        List<Finding> findings = List.of(
+                new Finding("R020", FindingLevel.ERROR, "動的SQLへの外部入力の組込",
+                        new SourcePosition("cobol/A.cbl", 30, 12,
+                                SourcePosition.UNKNOWN_BYTE_OFFSET),
+                        List.of(new CodeFlow(List.of(
+                                new CodeFlowStep(new SourcePosition("cobol/A.cbl", 10, 16,
+                                        SourcePosition.UNKNOWN_BYTE_OFFSET),
+                                        "WS-COND が外部入力を受け取る"),
+                                new CodeFlowStep(new SourcePosition("cobol/A.cbl", 30, 12,
+                                        SourcePosition.UNKNOWN_BYTE_OFFSET),
+                                        "WS-COND を動的SQLの文字列へ組み込む")))),
+                        List.of(fixSuggestion())));
+
+        List<Error> errors = loadSchema()
+                .validate(SarifWriter.toJson(rules, findings), InputFormat.JSON);
+
+        assertEquals(List.of(), errors, "codeFlows もSARIF 2.1.0スキーマ違反が0件であること");
     }
 
     @Test

@@ -5,6 +5,8 @@ import jp.cobolinsight.transpile.emit.LineTrackingEmitter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 /** Python の手続き対訳レンダリング。フラット変数を持つクラスと段落メソッドを出力する。 */
 public final class PythonProcedureDialect implements ProcedureDialect {
@@ -60,15 +62,23 @@ public final class PythonProcedureDialect implements ProcedureDialect {
         return "True";
     }
 
+    /** 後置で書く COBOL のクラス条件・符号条件の語。前置の述語呼出の字面へ組み替える対象。 */
+    private static final Set<String> POSTFIX_CONDITIONS = Set.of(
+            "NUMERIC", "ALPHABETIC", "ALPHABETIC-LOWER", "ALPHABETIC-UPPER",
+            "POSITIVE", "NEGATIVE", "ZERO");
+
     /**
      * 直訳できない条件を原文から描画する。COBOL の関係演算子と論理演算子を Python の字面へ正規化し
      * (= → ==、&lt;&gt; → !=、AND → and、OR → or、NOT に続く関係演算子は否定した演算子 =&gt;
      * NOT = → !=・NOT &gt; → &lt;= 等)、被演算子の生名はそのまま残す。Python は未宣言名でも構文上は
-     * 妥当で、{@code while not (SQLCODE == 100):} のように原文の条件が読める。
+     * 妥当で、{@code while not (SQLCODE == 100):} のように原文の条件が読める。後置で書く
+     * クラス条件・符号条件は Python に対応する演算子が無いため、COBOL の語を保った前置の述語呼出
+     * ({@code NOT NUMERIC} → {@code not NUMERIC(項目)})へ組み替える。
      */
     @Override
     public String rawCondition(String cobolConditionText) {
-        List<String> tokens = OperandParser.tokenizeCondition(cobolConditionText);
+        List<String> tokens =
+                foldPostfixConditions(OperandParser.tokenizeCondition(cobolConditionText));
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < tokens.size(); i++) {
             String token = tokens.get(i);
@@ -96,6 +106,47 @@ public final class PythonProcedureDialect implements ProcedureDialect {
         return sb.toString();
     }
 
+    /**
+     * 「項目 [IS] [NOT] NUMERIC」のような後置の条件を「not NUMERIC(項目)」の並びへ組み替える。
+     * 該当しないトークンはそのまま通す。
+     */
+    private static List<String> foldPostfixConditions(List<String> tokens) {
+        List<String> folded = new ArrayList<>();
+        for (int i = 0; i < tokens.size(); i++) {
+            String operand = tokens.get(i);
+            int keyword = i + 1;
+            if (keyword < tokens.size() && tokens.get(keyword).equalsIgnoreCase("IS")) {
+                keyword++;
+            }
+            boolean negated = keyword < tokens.size() && tokens.get(keyword).equalsIgnoreCase("NOT");
+            if (negated) {
+                keyword++;
+            }
+            if (isOperand(operand) && keyword < tokens.size() && isPostfixCondition(tokens.get(keyword))) {
+                if (negated) {
+                    folded.add("not");
+                }
+                folded.add(tokens.get(keyword) + "(" + operand + ")");
+                i = keyword;
+                continue;
+            }
+            folded.add(operand);
+        }
+        return folded;
+    }
+
+    private static boolean isPostfixCondition(String token) {
+        return POSTFIX_CONDITIONS.contains(token.toUpperCase(Locale.ROOT));
+    }
+
+    /** 被演算子として置ける語か(演算子・論理語・クラス条件の語は被演算子ではない)。 */
+    private static boolean isOperand(String token) {
+        return !token.isEmpty() && Character.isLetterOrDigit(token.charAt(0))
+                && !token.equalsIgnoreCase("AND") && !token.equalsIgnoreCase("OR")
+                && !token.equalsIgnoreCase("NOT") && !token.equalsIgnoreCase("IS")
+                && !isPostfixCondition(token);
+    }
+
     /** COBOL の NOT に続く関係演算子を、否定した Python 演算子へ写す。関係演算子でなければ null。 */
     private static String negatedRelation(String op) {
         return switch (op) {
@@ -118,7 +169,9 @@ public final class PythonProcedureDialect implements ProcedureDialect {
     public void emitProgramPrologue(LineTrackingEmitter out, String programId,
             ProgramSymbols symbols) {
         out.emit("\"\"\"" + programId + " の手続き部を逐語対訳した自動生成コード(非最適化・逐語優先)。");
-        out.emit("データ項目はフラットな変数として扱い、REDEFINES の別名共有と OCCURS の添字は簡約する。\"\"\"");
+        out.emit("データ項目はフラットな変数として扱い、REDEFINES の別名共有と OCCURS の添字は簡約する。");
+        out.emit("逐語対訳であり、演算や桁詰めの最適化は行わない。桁数・小数スケール・固定長の空白詰めは");
+        out.emit("フラット変数では再現せず、原文の PICTURE 句とレコードクラスのバイト列アクセサを正とする。\"\"\"");
         out.blank();
         out.blank();
         out.emit("class " + Identifiers.sanitize(programId) + "Program:");

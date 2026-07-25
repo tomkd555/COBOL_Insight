@@ -79,11 +79,15 @@ public final class SensitiveDataOutputRule implements Rule {
             Set<String> exposed = new LinkedHashSet<>(df.usesAt(node));
             exposed.retainAll(sensitive);
             if (!exposed.isEmpty()) {
-                findings.add(Finding.of(id(), defaultSeverity().toLevel(),
+                SourcePosition position = new SourcePosition(model.sourceFile(),
+                        simple.range().start().line(), 1, SourcePosition.UNKNOWN_BYTE_OFFSET);
+                findings.add(new Finding(id(), defaultSeverity().toLevel(),
                         "機密項目 " + String.join(", ", exposed)
                                 + " をマスキング・暗号化せずに出力している。機密情報が露出する。",
-                        new SourcePosition(model.sourceFile(), simple.range().start().line(), 1,
-                                SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                        position,
+                        TaintCodeFlows.of(model, df, node, TaintKind.SENSITIVE, exposed, position,
+                                "出力する"),
+                        List.of()));
             }
         }
     }

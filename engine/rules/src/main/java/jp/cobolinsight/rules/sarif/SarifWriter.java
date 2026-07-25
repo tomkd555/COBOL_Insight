@@ -1,18 +1,26 @@
 package jp.cobolinsight.rules.sarif;
 
+import jp.cobolinsight.engineapi.finding.CodeFlow;
+import jp.cobolinsight.engineapi.finding.CodeFlowStep;
 import jp.cobolinsight.engineapi.finding.Finding;
+import jp.cobolinsight.engineapi.finding.FixSuggestion;
+import jp.cobolinsight.engineapi.finding.TextEdit;
 import jp.cobolinsight.engineapi.json.JsonWriter;
 import jp.cobolinsight.engineapi.spi.Rule;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * findings を SARIF 2.1.0 の JSON テキストへ整形する。severity→level の対応は
- * FindingLevel.sarifName に従う。出力は決定論とする: ルールは id 昇順、結果は
- * (ファイル・行・桁・ルールID・メッセージ)の昇順に正規化する。
+ * FindingLevel.sarifName に従う。修正案を持つ finding には fixes(artifactChanges の
+ * ソース範囲置換)を付し、汚染追跡由来の経路を持つ finding には codeFlows(threadFlows の
+ * 位置列)を付す。いずれも持たない finding へは当該キーを出さない。出力は決定論とする:
+ * ルールは id 昇順、結果は(ファイル・行・桁・ルールID・メッセージ)の昇順に正規化する。
  */
 public final class SarifWriter {
 
@@ -78,11 +86,91 @@ public final class SarifWriter {
                     .name("startColumn").value(finding.location().column())
                     .endObject()
                     .endObject()
-                    .endObject().endArray()
-                    .endObject();
+                    .endObject().endArray();
+            writeCodeFlows(writer, finding.codeFlows());
+            writeFixes(writer, finding.fixes());
+            writer.endObject();
         }
         writer.endArray().endObject().endArray().endObject();
         return writer.toString();
+    }
+
+    /**
+     * 汚染追跡由来の経路を SARIF の codeFlows(codeFlow → threadFlows → locations → location)へ
+     * 直列化する。1本の経路は単一の実行の流れであり、1つの threadFlow で表す。
+     */
+    private static void writeCodeFlows(JsonWriter writer, List<CodeFlow> codeFlows) {
+        if (codeFlows.isEmpty()) {
+            return;
+        }
+        writer.name("codeFlows").beginArray();
+        for (CodeFlow codeFlow : codeFlows) {
+            writer.beginObject()
+                    .name("threadFlows").beginArray().beginObject()
+                    .name("locations").beginArray();
+            for (CodeFlowStep step : codeFlow.steps()) {
+                writer.beginObject()
+                        .name("location").beginObject()
+                        .name("physicalLocation").beginObject()
+                        .name("artifactLocation").beginObject()
+                        .name("uri").value(uriOf(step.position().file())).endObject()
+                        .name("region").beginObject()
+                        .name("startLine").value(step.position().line())
+                        .name("startColumn").value(step.position().column())
+                        .endObject()
+                        .endObject()
+                        .name("message").beginObject()
+                        .name("text").value(step.message()).endObject()
+                        .endObject()
+                        .endObject();
+            }
+            writer.endArray().endObject().endArray().endObject();
+        }
+        writer.endArray();
+    }
+
+    /**
+     * 修正案を SARIF の fixes(fix → artifactChanges → replacements)へ直列化する。1つの修正案が
+     * 複数ファイルへまたがる編集を含む場合は、artifactChanges の一意性制約に従いファイル単位へ束ねる。
+     * 空範囲の編集は挿入を表し、deletedRegion の開始と終了が一致する。
+     */
+    private static void writeFixes(JsonWriter writer, List<FixSuggestion> fixes) {
+        if (fixes.isEmpty()) {
+            return;
+        }
+        writer.name("fixes").beginArray();
+        for (FixSuggestion fix : fixes) {
+            Map<String, List<TextEdit>> editsByFile = new LinkedHashMap<>();
+            for (TextEdit edit : fix.edits()) {
+                editsByFile.computeIfAbsent(edit.range().start().file(), k -> new ArrayList<>())
+                        .add(edit);
+            }
+            writer.beginObject()
+                    .name("description").beginObject()
+                    .name("text").value(fix.description()).endObject()
+                    .name("artifactChanges").beginArray();
+            for (Map.Entry<String, List<TextEdit>> entry : editsByFile.entrySet()) {
+                writer.beginObject()
+                        .name("artifactLocation").beginObject()
+                        .name("uri").value(uriOf(entry.getKey())).endObject()
+                        .name("replacements").beginArray();
+                for (TextEdit edit : entry.getValue()) {
+                    writer.beginObject()
+                            .name("deletedRegion").beginObject()
+                            .name("startLine").value(edit.range().start().line())
+                            .name("startColumn").value(edit.range().start().column())
+                            .name("endLine").value(edit.range().end().line())
+                            .name("endColumn").value(edit.range().end().column())
+                            .endObject()
+                            .name("insertedContent").beginObject()
+                            .name("text").value(edit.replacement()).endObject()
+                            .endObject();
+                }
+                writer.endArray().endObject();
+            }
+            writer.endArray().endObject();
+        }
+        writer.endArray();
     }
 
     private static int indexOf(List<Rule> rules, String ruleId) {

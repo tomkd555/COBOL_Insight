@@ -87,4 +87,36 @@ describe("AssetList(資産一覧)", () => {
     );
     expect(screen.getByText("該当する資産がありません。")).toBeInTheDocument();
   });
+
+  it("文字コード列が未判定の行を含むとき、既定の文字コードで表示する旨の注記を出す", () => {
+    // SAMPLE_INVENTORY の SYKENC1.cbl は codepage=null で、行の文字コード列は「未判定」になる。
+    renderList();
+    const row = screen.getByRole("button", { name: /SYKENC1\.cbl/ });
+    expect(within(row).getByText("未判定")).toBeInTheDocument();
+    expect(screen.getByText(/既定文字コード/)).toBeInTheDocument();
+  });
+
+  it("すべての行が判定済みなら注記を出さない", () => {
+    const determinedGroups = buildAssetGroups(
+      SAMPLE_INVENTORY.filter((entry) => entry.codepage !== null),
+      {
+        search: "",
+        type: "すべて",
+        encodingSel: {},
+        mode: "results",
+        selectedPath: "",
+        findingCounts: {},
+      },
+    );
+    render(
+      <AssetList
+        groups={determinedGroups}
+        collapsed={new Set()}
+        showFindingColumn={true}
+        onToggleDir={vi.fn()}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText(/既定文字コード/)).toBeNull();
+  });
 });

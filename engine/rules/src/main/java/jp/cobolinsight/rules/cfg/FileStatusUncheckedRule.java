@@ -131,7 +131,8 @@ public final class FileStatusUncheckedRule implements Rule {
     /**
      * 未検査の record-access I/O 文の直後へ、その FD の FILE STATUS 変数を判定する IF 文を挿入する。
      * Finding.location の行(=I/O 文の開始行)を anchor に対象文を再同定し、STATUS 変数と FD 名は
-     * evaluate と同じ SELECT/FD 解決で再取得する。
+     * evaluate と同じ SELECT/FD 解決で再取得する。挿入する IF は常に明示的な END-IF で閉じ、
+     * 終止ピリオドは I/O 文が文を閉じている場合にのみ付ける。
      */
     private static final class FileStatusFixProducer implements FixProducer {
 
@@ -160,16 +161,14 @@ public final class FileStatusUncheckedRule implements Rule {
             if (var == null) {
                 return Optional.empty();
             }
-            // I/O 文が終止ピリオドで文を閉じている場合に限り、直後へ独立した検査文を挿入する。
-            // IF/ELSE や PERFORM ブロックの途中にある I/O(終止ピリオド無し)へピリオド終端の文を
-            // 挿入すると囲む構造を壊すため、その場合は修正案を出さない(検出は継続する)。
-            if (!FixEdits.endsSentence(source, io.range().end().line())) {
-                return Optional.empty();
-            }
-            // 直前の I/O 文は終止ピリオドで文が閉じるため、挿入する IF は独立した文として
-            // 終止ピリオドで閉じる。
+            // I/O 文が終止ピリオドで文を閉じているときだけ、挿入する IF も終止ピリオドで閉じる。
+            // 囲む文(IF/ELSE・PERFORM など)の途中にある I/O の直後へピリオドを置くと外側の文を
+            // 途中で終止させるため、その場合は明示的な END-IF だけで閉じる。END-IF で閉じる限り、
+            // 外側の ELSE・END-IF との結合は変わらない。
+            String terminator =
+                    FixEdits.endsSentence(source, io.range().end().line()) ? "." : "";
             String statement = "IF " + var + " NOT = '00' DISPLAY 'FILE ERROR: " + fd + " ' "
-                    + var + " END-IF.";
+                    + var + " END-IF" + terminator;
             TextEdit edit = FixEdits.insertStatementAfter(io.range(), statement);
             return Optional.of(new FixSuggestion("FILE STATUS 検査を挿入する", List.of(edit)));
         }

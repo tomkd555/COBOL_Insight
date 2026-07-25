@@ -7,6 +7,7 @@ import {
   displayType,
   effectiveEncoding,
   encodingSelectValue,
+  hasUndeterminedEncoding,
   matchesSearch,
   matchesType,
   previewCodepage,
@@ -280,5 +281,35 @@ describe("buildAssetGroups(集約+絞り込み)", () => {
     const groups = buildAssetGroups(SAMPLE_INVENTORY, base);
     const row = groups.flatMap((g) => g.rows).find((r) => r.name === "SYK002.cbl");
     expect(row?.status).toEqual({ label: "✗ 構文解析失敗", tone: "error" });
+  });
+});
+
+describe("hasUndeterminedEncoding(一覧の注記表示の要否)", () => {
+  const base = {
+    search: "",
+    type: "すべて" as const,
+    encodingSel: {},
+    mode: "results" as const,
+    selectedPath: "",
+    findingCounts: {},
+  };
+
+  it("検出に失敗した資産(未判定)が1件でもあれば真", () => {
+    const groups = buildAssetGroups(SAMPLE_INVENTORY, base);
+    expect(hasUndeterminedEncoding(groups)).toBe(true);
+  });
+
+  it("すべて判定済みなら偽", () => {
+    const determined = SAMPLE_INVENTORY.filter((entry) => entry.codepage !== null);
+    const groups = buildAssetGroups(determined, base);
+    expect(hasUndeterminedEncoding(groups)).toBe(false);
+  });
+
+  it("手動指定を与えた資産は未判定に数えない(表示は手動指定の語になる)", () => {
+    const groups = buildAssetGroups(SAMPLE_INVENTORY, {
+      ...base,
+      encodingSel: { "cobol/SYKENC1.cbl": "手動: Shift_JIS" },
+    });
+    expect(hasUndeterminedEncoding(groups)).toBe(false);
   });
 });

@@ -114,6 +114,28 @@ class ByteSpliceApplierTest {
         }
     }
 
+    @Test
+    void insertionAfterLastLineOfFileWithoutTrailingBreakAddsBreak() {
+        DecodedSource decoded = decode("ABCDE\nFGHIJ", CodePage.UTF_8);
+        // 最終行(2行目)の直後は3行目先頭で表す。原本が改行で終わらないため改行から書き始める。
+        byte[] result = applier.apply(decoded, List.of(edit(3, 1, 3, 1, "KLMNO\n")));
+        assertArrayEquals("ABCDE\nFGHIJ\nKLMNO\n".getBytes(StandardCharsets.UTF_8), result);
+    }
+
+    @Test
+    void insertionAfterLastLineOfFileWithTrailingBreakKeepsSingleBreak() {
+        DecodedSource decoded = decode("ABCDE\nFGHIJ\n", CodePage.UTF_8);
+        byte[] result = applier.apply(decoded, List.of(edit(3, 1, 3, 1, "KLMNO\n")));
+        assertArrayEquals("ABCDE\nFGHIJ\nKLMNO\n".getBytes(StandardCharsets.UTF_8), result);
+    }
+
+    @Test
+    void insertionFollowsCrlfLineSeparatorOfOriginal() {
+        DecodedSource decoded = decode("ABCDE\r\nFGHIJ\r\n", CodePage.UTF_8);
+        byte[] result = applier.apply(decoded, List.of(edit(2, 1, 2, 1, "KLMNO\n")));
+        assertArrayEquals("ABCDE\r\nKLMNO\r\nFGHIJ\r\n".getBytes(StandardCharsets.UTF_8), result);
+    }
+
     private static byte[] slice(byte[] src, int from, int to) {
         byte[] out = new byte[to - from];
         System.arraycopy(src, from, out, 0, to - from);

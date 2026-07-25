@@ -96,7 +96,7 @@ public final class ProcedureModelBuilder {
                 elseBody = buildStatements(block.statements());
             }
         }
-        PCond cond = parser.parseCondition(cs.conditionText());
+        PCond cond = parser.parseBranchCondition(cs);
         ProcStmt.Arm arm = new ProcStmt.Arm(cond, thenBody);
         return new ProcStmt.Branch(List.of(arm), elseBody, cs.range(),
                 PCond.untranslatableNote(cond));

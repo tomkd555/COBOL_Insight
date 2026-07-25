@@ -66,6 +66,31 @@ class RawConditionTranspileTest {
     }
 
     @Test
+    void javaCommentKeepsTheWholeOriginalConditionIncludingClassCondition() {
+        String java = program(Transpiler.transpile(SampleModels.model("SYK008.cbl"),
+                SampleModels.sourceText("SYK008.cbl"), TargetLanguage.JAVA), "Program.java");
+        assertTrue(java.contains(
+                        "/* WS-ORDNO-入力 = SPACES OR WS-ORDNO-入力 NOT NUMERIC */"),
+                "クラス条件を含む原文の条件が末尾まで残ること: " + java);
+    }
+
+    @Test
+    void pythonRendersPostfixClassConditionAsValidExpression() {
+        String py = program(Transpiler.transpile(SampleModels.model("SYK008.cbl"),
+                SampleModels.sourceText("SYK008.cbl"), TargetLanguage.PYTHON), "_program.py");
+        assertTrue(py.contains("or not NUMERIC(WS-ORDNO-入力):"),
+                "後置のクラス条件が原文の語を保った述語呼出の字面へ写ること: " + py);
+    }
+
+    @Test
+    void lineMapNoteKeepsTheWholeOriginalCondition() {
+        TranspileResult py = Transpiler.transpile(SampleModels.model("SYK008.cbl"),
+                SampleModels.sourceText("SYK008.cbl"), TargetLanguage.PYTHON);
+        assertTrue(py.lineMap().stream().anyMatch(e -> e.note().contains("NOT NUMERIC")),
+                "直訳不能条件の注記も原文を末尾まで持つこと: " + py.lineMap());
+    }
+
+    @Test
     void javaKeepsRawConditionAsVerbatimCommentAndCompiles(@TempDir Path tempDir)
             throws IOException {
         String java = program(transpile(TargetLanguage.JAVA), "Program.java");

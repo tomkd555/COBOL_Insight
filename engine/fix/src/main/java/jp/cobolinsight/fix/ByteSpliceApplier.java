@@ -44,16 +44,26 @@ public final class ByteSpliceApplier {
         Charset charset = decoded.encodingInfo().codePage().charset();
         ByteOffsetTable table = decoded.offsetTable();
 
+        byte[] originalBytes = decoded.originalBytes();
+        String separator = lineSeparatorOf(originalBytes);
+        boolean endsWithBreak = originalBytes.length == 0
+                || originalBytes[originalBytes.length - 1] == '\n';
+
         List<ByteEdit> byteEdits = new ArrayList<>(edits.size());
         for (TextEdit edit : edits) {
             int start = byteOffsetOf(table, edit.range().start());
             int end = byteOffsetOf(table, edit.range().end());
-            byteEdits.add(new ByteEdit(start, end, edit.replacement().getBytes(charset)));
+            String replacement = withSeparator(edit.replacement(), separator);
+            // 最終行の直後へ挿入する場合、原本が改行で終わっていなければ改行から書き始める。
+            if (start == originalBytes.length && !endsWithBreak) {
+                replacement = separator + replacement;
+            }
+            byteEdits.add(new ByteEdit(start, end, replacement.getBytes(charset)));
         }
         byteEdits.sort(Comparator.comparingInt(ByteEdit::start));
         rejectOverlap(byteEdits);
 
-        byte[] result = decoded.originalBytes();
+        byte[] result = originalBytes;
         for (int i = byteEdits.size() - 1; i >= 0; i--) {
             result = splice(result, byteEdits.get(i));
         }
@@ -62,6 +72,29 @@ public final class ByteSpliceApplier {
 
     private static int byteOffsetOf(ByteOffsetTable table, SourcePosition position) {
         return table.byteOffsetAt(position.line(), position.column() - 1);
+    }
+
+    /** 原本の改行様式。CRLF だけで構成される原本は CRLF、それ以外は LF とする。 */
+    private static String lineSeparatorOf(byte[] original) {
+        int breaks = 0;
+        int crlf = 0;
+        for (int i = 0; i < original.length; i++) {
+            if (original[i] == '\n') {
+                breaks++;
+                if (i > 0 && original[i - 1] == '\r') {
+                    crlf++;
+                }
+            }
+        }
+        return breaks > 0 && breaks == crlf ? "\r\n" : "\n";
+    }
+
+    /** 置換テキストの改行を原本の改行様式へそろえる。混在した改行を作らないためである。 */
+    private static String withSeparator(String replacement, String separator) {
+        if (separator.equals("\n")) {
+            return replacement;
+        }
+        return replacement.replace("\r\n", "\n").replace("\n", separator);
     }
 
     private static void rejectOverlap(List<ByteEdit> edits) {

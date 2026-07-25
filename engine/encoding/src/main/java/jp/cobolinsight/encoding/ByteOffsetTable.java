@@ -45,8 +45,14 @@ public final class ByteOffsetTable {
         return lineStartCharIndexes.length;
     }
 
-    /** 指定行(1始まり)の先頭文字位置。 */
+    /**
+     * 指定行(1始まり)の先頭文字位置。{@code lineCount()+1} は最終行の直後、すなわち本文の末尾を
+     * 指す。末尾への挿入点を(行,桁)で表せるようにするためである。
+     */
     public int lineStartCharIndex(int line) {
+        if (line == lineStartCharIndexes.length + 1) {
+            return charCount();
+        }
         return lineStartCharIndexes[line - 1];
     }
 
