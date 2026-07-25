@@ -1,19 +1,7 @@
 import { app, BrowserWindow } from "electron";
-import { accessSync, constants, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { registerEngineIpc } from "./ipc";
-import { resolvePortableUserData } from "./portable";
-
-/** 保存先ディレクトリを作成し、書込可能かを確かめる。 */
-function ensureWritable(dir: string): boolean {
-  try {
-    mkdirSync(dir, { recursive: true });
-    accessSync(dir, constants.W_OK);
-    return true;
-  } catch {
-    return false;
-  }
-}
+import { ensureWritable, resolvePortableUserData } from "./portable";
 
 /**
  * 保存先をポータブル運用へ切り替える。app.whenReady より前に呼ぶ必要がある

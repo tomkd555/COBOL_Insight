@@ -20,7 +20,7 @@ repositories {
 }
 
 // M1配布検証: installDist成果物(bin/lib)を入力に、内蔵JRE同梱のWindows app-imageをjpackageで生成する。
-// 出力はbuild配下(git追跡外)。生成物のサイズ・起動時間はengine/distribution-notes.mdに記録する。
+// 出力はbuild配下(git追跡外)。
 val jpackageAppImageDir = layout.buildDirectory.dir("jpackage/app-image")
 
 tasks.register<Exec>("jpackageAppImage") {
