@@ -1,6 +1,6 @@
 package jp.cobolinsight.persistence;
 
-/** 04_アーキテクチャ設計.md §4.4 のER図に基づく12表のDDL。 */
+/** 解析結果を保持する12表のDDL。 */
 final class Schema {
 
     static final int VERSION = 1;

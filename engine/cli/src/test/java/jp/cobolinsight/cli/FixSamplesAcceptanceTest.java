@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * M7 修正受入。samples を対象に fix(FixRunner=apply の中核)を実行し、docs/05 §3.7 完了条件の
+ * M7 修正受入。samples を対象に fix(FixRunner=apply の中核)を実行し、次の
  * 5欠陥それぞれについて、期待するハンドラが該当位置へ挿入されること・挿入した物理行が固定形式の
  * 桁規則(一連番号欄1-6・標識欄7・B領域8-72・識別欄73-80)を保つこと・修正後ソースが再パースに
  * 成功することを検証する。原本 samples は読み込むだけで変更しない。
@@ -28,8 +28,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>あわせて、囲む文(IF/PERFORM)の途中にある I/O へ付く R017 の修正案4件(SYK001:126・
  * SYK001:130・SYK002:107・SYK006:172)も対象とする。これらは終止ピリオドを持たないため、挿入する
- * IF もピリオドを付けず END-IF だけで閉じる。docs/06_ルールカタログ.md が R017 を「修正案生成:
- * あり」と記すため、ブロック内の I/O も修正案の対象である。
+ * IF もピリオドを付けず END-IF だけで閉じる。R017 は修正案生成の対象であるため、ブロック内の
+ * I/O も修正案の対象である。
  */
 class FixSamplesAcceptanceTest {
 

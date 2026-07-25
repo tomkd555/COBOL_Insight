@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * lint の SARIF が、FixProducer を持つルールの検出へ fixes(artifactChanges のソース範囲置換)を
- * 付すことの検証(docs/04_アーキテクチャ設計.md §4.2)。FixProducer を持つルールの集合は
+ * 付すことの検証。FixProducer を持つルールの集合は
  * 実行時に {@link Rule#fixProducer()} へ問い合わせて求め、テスト側で固定値として持たない。
  */
 class LintSarifFixesTest {

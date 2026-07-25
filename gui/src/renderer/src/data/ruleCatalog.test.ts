@@ -31,12 +31,12 @@ describe("ruleCatalog(検出ルールカタログ)", () => {
     expect(withFix).toEqual(["R004", "R017", "R018"]);
   });
 
-  it("名称は docs/06 ルールカタログの名称と一致する", () => {
+  it("名称はルールカタログの名称と一致する", () => {
     expect(ruleOf("R014").name).toBe("セクション末尾のEXIT文欠如によるフォールスルー");
     expect(ruleOf("R029").name).toBe("呼び出し先プログラムの戻りコード(RETURN-CODE)未検査");
   });
 
-  it("SQL 助言のカテゴリは docs/06 の分類(可読性・保守性/性能/性能・信頼性)を使う", () => {
+  it("SQL 助言のカテゴリは可読性・保守性/性能/性能・信頼性の分類を使う", () => {
     expect(ruleOf("S001").category).toBe("可読性・保守性");
     expect(ruleOf("S002").category).toBe("性能");
     expect(ruleOf("S003").category).toBe("性能");

@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * 汚染追跡段ルール(R020・R027)の検出が、汚染源から sink までの経路を codeFlows として
- * 保持することの検証(docs/04_アーキテクチャ設計.md §4.2)。
+ * 保持することの検証。
  */
 class TaintCodeFlowTest {
 

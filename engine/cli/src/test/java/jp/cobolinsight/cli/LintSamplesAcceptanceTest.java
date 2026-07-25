@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * samples/ 全体の lint 受入回帰テスト(05_開発計画.md §3.3)。構文段階(SYNTAX)・制御フロー段階
+ * samples/ 全体の lint 受入回帰テスト。構文段階(SYNTAX)・制御フロー段階
  * (CONTROL_FLOW)・データフロー段階(DATA_FLOW)の3段を実行し、期待結果.md の欠陥をファイル・行番号
  * どおりに検出し、samplesに意図的欠陥の無いルールが誤検出を出さないことを突合する。第1段のR002
  * (未使用変数)・R008(THRUなし単独段落PERFORM)、第2段のR007/R011/R017/R018/R021/R022/R031、
@@ -26,9 +26,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * SQL助言(S接頭辞)を除外する(裁定A5)。R017は path-sensitive な忠実実装のため付随検出を許容し、
  * 必須2件の包含とOPEN/CLOSE非検出のみを表明する。
  *
- * <p>検証オラクルは samples/期待結果.md(12種別18件)。この18件は、docs/02_要件定義.md 6.1節が
- * 分解する「意図的に混入した欠陥15件」と「CICS関連の検出3件(6.6節)」の合計である。M5
- * データフロー段が拾うのは18件中の7件(No.1/2/3/5/9/13/14)。
+ * <p>検証オラクルは samples/期待結果.md(12種別18件)。この18件は「意図的に混入した欠陥15件」と
+ * 「CICS関連の検出3件」の合計である。M5 データフロー段が拾うのは18件中の7件
+ * (No.1/2/3/5/9/13/14)。
  */
 class LintSamplesAcceptanceTest {
 

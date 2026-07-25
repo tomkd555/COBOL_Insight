@@ -14,8 +14,8 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * 依存範囲は「当該コピー句を取り込むプログラム」と「当該プログラムを呼ぶJCL」の2種に限る
- * (02_要件定義.md 2.4節)。合成グラフ: COPYBOOK(1) が PROGA(2)・PROGB(3) に取り込まれ、
+ * 依存範囲は「当該コピー句を取り込むプログラム」と「当該プログラムを呼ぶJCL」の2種に限る。
+ * 合成グラフ: COPYBOOK(1) が PROGA(2)・PROGB(3) に取り込まれ、
  * JOB1(5) が PROGA(2) を実行する。PROGC(4)・JOB2(6) はどの依存にも属さない。
  */
 class IncrementalAnalysisPlannerTest {

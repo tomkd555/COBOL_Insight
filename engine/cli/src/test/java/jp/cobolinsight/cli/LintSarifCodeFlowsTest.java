@@ -21,9 +21,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * lint の SARIF が、汚染追跡由来の検出(R020・R027)へ codeFlows を付すことの検証
- * (docs/04_アーキテクチャ設計.md §4.2)。経路の各歩の位置も finding の位置と同じく入力フォルダ
- * 相対パスへ揃うことを併せて確認する。
+ * lint の SARIF が、汚染追跡由来の検出(R020・R027)へ codeFlows を付すことの検証。
+ * 経路の各歩の位置も finding の位置と同じく入力フォルダ相対パスへ揃うことを併せて確認する。
  */
 class LintSarifCodeFlowsTest {
 

@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** CONTROL_FLOW 段13ルールの ServiceLoader 登録・ID順・severity・段階・fixProducer の検証。 */
 class CfgRuleRegistrationTest {
 
-    /** 定型修正の FixProducer を提供する CONTROL_FLOW 段ルール(04_アーキテクチャ設計.md §5)。 */
+    /** 定型修正の FixProducer を提供する CONTROL_FLOW 段ルール。 */
     private static final Set<String> FIX_PRODUCERS = Set.of("R017", "R018", "R021");
 
     private static final Map<String, Severity> EXPECTED = Map.ofEntries(

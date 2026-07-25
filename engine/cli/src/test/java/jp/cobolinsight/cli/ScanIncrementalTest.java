@@ -16,7 +16,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** 内容ハッシュによる増分解析の検証(05_開発計画.md §3.1: 変更メンバのみ再解析される)。 */
+/** 内容ハッシュによる増分解析の検証(変更メンバのみ再解析される)。 */
 class ScanIncrementalTest {
 
     private static final Path SAMPLES = Path.of("..", "..", "samples").toAbsolutePath().normalize();

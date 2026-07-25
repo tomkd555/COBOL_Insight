@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * ServiceLoader登録と、ルールカタログ(docs/06)どおりのID・severity・段階の検証。
+ * ServiceLoader登録と、ID・severity・段階の検証。
  * SYNTAX 段には構文ルール(R系7件)と SQL助言ルール(S系6件)が同居するため、本テストは R系に
  * 限定して突合する(S系の登録は SqlRuleRegistrationTest が検証する)。
  */
@@ -44,7 +44,7 @@ class SyntaxRuleRegistrationTest {
         for (Rule rule : syntaxCobolRules()) {
             assertEquals(expected.get(rule.id()), rule.defaultSeverity(), rule.id());
             assertTrue(rule.fixProducer().isEmpty(),
-                    rule.id() + " は修正案生成の対象外(docs/06)であること");
+                    rule.id() + " は修正案生成の対象外であること");
         }
     }
 }

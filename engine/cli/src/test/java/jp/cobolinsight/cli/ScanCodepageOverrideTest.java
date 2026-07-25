@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** コードページ手動指定が自動判別を上書きすることの検証(05_開発計画.md §3.1)。 */
+/** コードページ手動指定が自動判別を上書きすることの検証。 */
 class ScanCodepageOverrideTest {
 
     private static final Path SAMPLES = Path.of("..", "..", "samples").toAbsolutePath().normalize();

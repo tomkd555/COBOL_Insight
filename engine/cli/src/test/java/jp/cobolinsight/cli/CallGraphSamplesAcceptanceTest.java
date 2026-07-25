@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * M2受入回帰テスト(05_開発計画.md §3.2)。samples/ 全体(COBOL9・JCL3・BMS1)から構築した
+ * M2受入回帰テスト。samples/ 全体(COBOL9・JCL3・BMS1)から構築した
  * 呼出関係グラフを、期待結果.md 4・5・9章の正解グラフと1辺単位で突合する。
  */
 class CallGraphSamplesAcceptanceTest {

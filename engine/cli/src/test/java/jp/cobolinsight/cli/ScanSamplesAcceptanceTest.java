@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * M1受入回帰テスト(05_開発計画.md §3.1)。samples/ 全体の scan が成功し、SQLiteへ期待どおりの
+ * M1受入回帰テスト。samples/ 全体の scan が成功し、SQLiteへ期待どおりの
  * 行が入ることを、期待結果.md 4・6・9章の値と突合して検証する。
  */
 class ScanSamplesAcceptanceTest {

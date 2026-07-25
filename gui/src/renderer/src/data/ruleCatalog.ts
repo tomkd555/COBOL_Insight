@@ -1,7 +1,6 @@
 /**
  * 検出ルールのカタログ。バグ検出 31 件(R001〜R031)と SQL 最適化助言 6 件(S001〜S006)の
  * 静的メタ情報(名称・カテゴリ・重大度・修正案の有無)を単一の正として持つ。
- * 名称・カテゴリ・重大度は docs/06_ルールカタログ.md の一覧表に合わせる。
  *
  * SARIF の level(error/warning/note)は 3 段だが、画面表示の重大度は 4 段(高/中/低/警告)で
  * ルール固有の属性である。したがって重大度は SARIF の level ではなく、このカタログを引いて決める。
@@ -25,7 +24,7 @@ export interface RuleInfo {
   readonly hasFix: boolean;
 }
 
-/** docs/06 の [id, 名称, カテゴリ, 重大度ラベル, 修正案あり?] 表。 */
+/** [id, 名称, カテゴリ, 重大度ラベル, 修正案あり?] の表。 */
 const RULE_TABLE: readonly [string, string, string, string, boolean][] = [
   ["R001", "未初期化変数の参照", "データフロー", "高", false],
   ["R002", "未使用データ項目", "データフロー", "低", false],
