@@ -26,8 +26,8 @@ export interface FixListProps {
 }
 
 /**
- * 修正案カードの一覧(design scDiff の左 300px)。1件はファイル単位で、ルール・位置・判定状態を示し、
- * コピー句の修正はバッジで区別する。
+ * 修正案カードの一覧。1件はファイル単位で、ルール・位置・判定状態を示し、コピー句の修正は
+ * バッジで区別する。
  *
  * 単一選択の一覧(role=listbox / role=option)として表し、roving tabindex で焦点を選択中の項目へ
  * 集約する。矢印キーで選択を移し(端では反対の端へ回す)、Home・End で端へ移す。
@@ -52,6 +52,7 @@ export function FixList({ candidates, selected, decisions, onSelect }: FixListPr
     } else if (event.key === "End") {
       next = last;
     } else if (event.key === "Enter" || event.key === " ") {
+      // 焦点のある項目をそのまま選び直す。選択が消えている場合はここで先頭が選択される。
       next = activeIndex;
     } else {
       const step = STEP_KEYS[event.key];
@@ -65,7 +66,7 @@ export function FixList({ candidates, selected, decisions, onSelect }: FixListPr
 
   return (
     <div className="ci-fix-list">
-      <p className="ci-fix-list__head">修正案 {fixCountLabel(candidates)}</p>
+      <h4 className="ci-fix-list__head">修正案 {fixCountLabel(candidates)}</h4>
       <ul
         ref={listRef}
         className="ci-fix-list__items"
@@ -102,7 +103,7 @@ export function FixList({ candidates, selected, decisions, onSelect }: FixListPr
         })}
       </ul>
       <p className="ci-fix-list__note">
-        原本は変更しません。「適用（書き出し）」は出力先へ相対パス構造を保って書き出します。採用・棄却は常に人の判断です。
+        原本は変更しない。「適用（書き出し）」は出力先へ相対パス構造を保って書き出す。採用・棄却は常に人の判断である。
       </p>
     </div>
   );

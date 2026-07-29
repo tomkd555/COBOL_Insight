@@ -4,7 +4,7 @@ import { Button } from "../../components/Button";
 import { TextInput } from "../../components/TextInput";
 import { ChipRadioGroup } from "../../components/ChipRadioGroup";
 
-/** 種別チップの並び(design typeChips)。 */
+/** 種別チップの並び。先頭に「すべて」を置き、以降は資産の種別を並べる。 */
 const TYPE_CHIPS: readonly AssetTypeFilter[] = ["すべて", "JCL", "COBOL", "コピー句", "BMS", "その他"];
 
 export interface ExplorerToolbarProps {
@@ -20,6 +20,9 @@ export interface ExplorerToolbarProps {
 /**
  * 資産エクスプローラー上部のツールバー。インポート・名前フィルタ・種別チップ・解析実行を並べる。
  * 種別チップは単一選択なので、ラジオグループ(role=radiogroup / role=radio)として表す。
+ *
+ * 記号は追加(＋)・実行(▶)の意味が確立したものだけを残し、読み上げ名に混ざらないよう
+ * aria-hidden で隠したうえで aria-label に語句だけを与える。
  */
 export function ExplorerToolbar({
   search,
@@ -32,7 +35,9 @@ export function ExplorerToolbar({
 }: ExplorerToolbarProps): ReactElement {
   return (
     <div className="ci-explorer__toolbar">
-      <Button onClick={onImport}>＋ インポート</Button>
+      <Button aria-label="インポート" onClick={onImport}>
+        <span aria-hidden="true">＋</span> インポート
+      </Button>
       <TextInput
         aria-label="名前でフィルタ"
         placeholder="名前でフィルタ"
@@ -41,8 +46,8 @@ export function ExplorerToolbar({
       />
       <ChipRadioGroup label="種別フィルタ" options={TYPE_CHIPS} value={typeFilter} onChange={onTypeChange} />
       <div className="ci-explorer__spacer" />
-      <Button variant="primary" onClick={onRun} disabled={runDisabled}>
-        ▶ 解析実行
+      <Button aria-label="解析実行" variant="primary" onClick={onRun} disabled={runDisabled}>
+        <span aria-hidden="true">▶</span> 解析実行
       </Button>
     </div>
   );

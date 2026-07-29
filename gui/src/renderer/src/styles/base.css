@@ -17,6 +17,18 @@ body {
   height: 100vh;
 }
 
+/* 視覚的には隠すが読み上げには残す(見出し階層を保つための隠し見出しに使う)。 */
+.ci-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 a {
   color: var(--ci-accent);
 }
@@ -31,7 +43,10 @@ a:hover {
   }
 }
 
-/* 進捗バー・待機縞の流れ */
+/*
+ * 進捗バー・待機縞の流れ。移動距離 28px は縞タイルの幅(Shell.css の .ci-progress の
+ * background-size)と同じであり、1周ごとに元と同じ描画へ戻るため縞が継ぎ目なく循環する。
+ */
 @keyframes ci-bar {
   0% {
     background-position: 0 0;

@@ -1,7 +1,6 @@
 /*
  * diff(fix)画面のスタイル。厳格 BEM で命名し、値は :root トークンを参照する。
- * design/COBOL Insight.dc.html の scDiff(design:539-633)の配置(左 300px の修正案一覧 +
- * 右の差分ペイン)を移植する。
+ * 配置は左の修正案一覧と右の差分ペインの2カラムで、一覧は幅を固定し、残りを差分ペインへ与える。
  */
 
 .ci-diff {
@@ -12,7 +11,7 @@
   background: var(--ci-panel);
 }
 
-/* --- 修正案カードの一覧(左 300px) --- */
+/* --- 修正案カードの一覧(左) --- 幅は 300px に固定し、差分ペインの幅を画面幅に応じて伸縮させる。 */
 .ci-fix-list {
   width: 300px;
   flex: none;
@@ -63,9 +62,13 @@
   outline: 2px solid var(--ci-focus-ring);
   outline-offset: -2px;
 }
+/* 押下中。即時の変化でモーションは伴わない。 */
+.ci-fix-card:active {
+  transform: translateY(1px);
+}
 .ci-fix-card--selected {
   background: var(--ci-select-tint);
-  border-left-color: var(--ci-accent);
+  border-left-color: var(--ci-select-bar);
 }
 .ci-fix-card__head {
   display: flex;
@@ -214,7 +217,7 @@
   padding: var(--ci-space-1) var(--ci-space-4) 0;
 }
 .ci-diff__label {
-  padding: 4px var(--ci-space-2);
+  padding: var(--ci-space-1) var(--ci-space-2);
   background: var(--ci-surface-header);
   border: 1px solid var(--ci-border);
   border-bottom: none;
@@ -280,6 +283,7 @@
   padding: 10px var(--ci-space-4);
   font-family: var(--ci-font-code);
   font-size: var(--ci-fs-sm);
+  /* 行の高さは Monaco DiffEditor(DiffPane の lineHeight)にそろえ、表示方式が変わっても行送りを保つ。 */
   line-height: 19px;
   white-space: pre;
   color: var(--ci-text);

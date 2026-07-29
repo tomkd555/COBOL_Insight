@@ -49,27 +49,29 @@ export function TabBar({ tabs, activeId, onSelect }: TabBarProps): ReactElement 
   }
 
   return (
-    <div ref={listRef} className="ci-tabbar" role="tablist" aria-label="画面切り替え" onKeyDown={onKeyDown}>
-      {tabs.map((tab) => {
-        const selected = tab.id === activeId;
-        const classes = ["ci-tab"];
-        if (selected) classes.push("ci-tab--active");
-        return (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            id={`ci-tab-${tab.id}`}
-            aria-selected={selected}
-            aria-controls={`ci-screen-${tab.id}`}
-            tabIndex={selected ? 0 : -1}
-            className={classes.join(" ")}
-            onClick={() => onSelect(tab.id)}
-          >
-            {tab.label}
-          </button>
-        );
-      })}
-    </div>
+    <nav aria-label="画面切り替え">
+      <div ref={listRef} className="ci-tabbar" role="tablist" onKeyDown={onKeyDown}>
+        {tabs.map((tab) => {
+          const selected = tab.id === activeId;
+          const classes = ["ci-tab"];
+          if (selected) classes.push("ci-tab--active");
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              id={`ci-tab-${tab.id}`}
+              aria-selected={selected}
+              aria-controls={`ci-screen-${tab.id}`}
+              tabIndex={selected ? 0 : -1}
+              className={classes.join(" ")}
+              onClick={() => onSelect(tab.id)}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+    </nav>
   );
 }

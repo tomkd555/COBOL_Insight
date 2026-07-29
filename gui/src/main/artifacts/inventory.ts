@@ -22,9 +22,10 @@ const INVENTORY_QUERY = `
 `;
 
 /**
- * scan 済み SQLite の SOURCE 表を NODE.type・scan 由来 finding 件数と結合し、資産一覧を返す
- * 純関数(A2 のデータ供給源)。scan の stdout サマリ JSON にはインベントリ(コードページ・
- * 種別・件数)が無いため、資産一覧はここを正本とする。NODE.id=SOURCE.id 規約に依存する。
+ * scan 済み SQLite の SOURCE 表を NODE.type・scan 由来 finding 件数と結合し、資産一覧を返す純関数
+ * (資産エクスプローラー画面の供給源)。scan の stdout サマリ JSON にはインベントリ(コードページ・
+ * 種別・件数)が無いため、画面はこの問い合わせの結果だけを資産一覧として用いる。
+ * NODE.id=SOURCE.id 規約に依存する。
  */
 export function readInventory(db: QueryableDatabase): AssetInventoryItem[] {
   return mapRows(db.exec(INVENTORY_QUERY), (row) => {

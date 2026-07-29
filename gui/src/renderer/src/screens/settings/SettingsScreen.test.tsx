@@ -1,13 +1,26 @@
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import type { ReactElement } from "react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { SettingsScreen } from "./SettingsScreen";
 import { AppStateProvider, useAppDispatch, useAppState } from "../../state/AppStateContext";
 import { initialState, type AppState } from "../../state/appState";
 import { disabledRuleIds } from "./settingsModel";
 import { ENCODING_OPTIONS as ASSET_ENCODING_OPTIONS } from "../explorer/assetView";
+import type { CobolInsightApi } from "../../../../shared/engine-api";
 
 const PATHS = ["C:\\資産\\copybook", "C:\\資産\\共通\\copylib"];
+
+let checkDirectoryExists: ReturnType<typeof vi.fn>;
+
+beforeEach(() => {
+  // 既定ではすべて実在するものとして扱い、実在確認と無関係な既存テストへ影響しないようにする。
+  checkDirectoryExists = vi.fn().mockResolvedValue(true);
+  window.cobolInsight = { checkDirectoryExists } as unknown as CobolInsightApi;
+});
+
+afterEach(() => {
+  delete (window as { cobolInsight?: CobolInsightApi }).cobolInsight;
+});
 
 function seedState(overrides: Partial<AppState> = {}): AppState {
   return {
@@ -24,6 +37,7 @@ function Harness(): ReactElement {
   return (
     <>
       <p data-testid="copybook-paths">{state.project.copybookPaths.join(" | ")}</p>
+      <p data-testid="toast-msg">{state.toastMsg ?? ""}</p>
       <p data-testid="settings-state">
         {[
           disabledRuleIds(state.rulesDisabled).join(","),
@@ -72,7 +86,7 @@ describe("SettingsScreen のルール一覧", () => {
 
   it("修正案を生成するルールにバッジを付ける", () => {
     renderSettings(seedState());
-    expect(screen.getAllByText("修正案")).toHaveLength(3);
+    expect(screen.getAllByText("修正案")).toHaveLength(4);
   });
 
   it("ルールを無効にすると有効数が減り、トグルの状態が変わる", () => {
@@ -82,6 +96,19 @@ describe("SettingsScreen のルール一覧", () => {
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute("aria-checked", "false");
     expect(screen.getByText("有効 36 / 37")).toBeInTheDocument();
+  });
+
+  it("無効にしたルール名へ、色に依存しない無効の印を添える", () => {
+    renderSettings(seedState({ rulesDisabled: { R009: true } }));
+    const toggle = screen.getByRole("switch", { name: "R009 GO TO文による構造化フローからの逸脱" });
+    const row = toggle.parentElement as HTMLElement;
+    expect(within(row).getByText(/GO TO文による構造化フローからの逸脱/)).toHaveClass("ci-rules__name--off");
+    expect(within(row).getByText("（無効）")).toBeInTheDocument();
+  });
+
+  it("有効なルール名には無効の印を添えない", () => {
+    renderSettings(seedState());
+    expect(screen.queryByText("（無効）")).not.toBeInTheDocument();
   });
 
   it("押し直すと有効へ戻す", () => {
@@ -170,7 +197,7 @@ describe("SettingsScreen のコピー句探索パス", () => {
     renderSettings(seedState());
     const input = screen.getByLabelText("追加するコピー句探索パス");
     fireEvent.change(input, { target: { value: "D:\\copylib2" } });
-    fireEvent.click(screen.getByRole("button", { name: "＋ 追加" }));
+    fireEvent.click(screen.getByRole("button", { name: "追加" }));
     expect(screen.getByTestId("copybook-paths")).toHaveTextContent(
       `${PATHS.join(" | ")} | D:\\copylib2`,
     );
@@ -182,13 +209,70 @@ describe("SettingsScreen のコピー句探索パス", () => {
     fireEvent.change(screen.getByLabelText("追加するコピー句探索パス"), {
       target: { value: "C:\\資産\\copybook" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "＋ 追加" }));
+    fireEvent.click(screen.getByRole("button", { name: "追加" }));
     expect(screen.getByTestId("copybook-paths")).toHaveTextContent(PATHS.join(" | "));
   });
 
   it("未設定のときは engine の既定の探索先を示す", () => {
     renderSettings(seedState({ project: { inputDir: null, dbPath: null, copybookPaths: [] } }));
     expect(screen.getByText(/copybook・copy/)).toBeInTheDocument();
+  });
+});
+
+describe("SettingsScreen のコピー句探索パスの実在確認", () => {
+  it("画面を開いた時点で保存済みの全パスを実在確認する", async () => {
+    renderSettings(seedState());
+    await waitFor(() => expect(checkDirectoryExists).toHaveBeenCalledTimes(2));
+    expect(checkDirectoryExists).toHaveBeenCalledWith(PATHS[0]);
+    expect(checkDirectoryExists).toHaveBeenCalledWith(PATHS[1]);
+  });
+
+  it("実在しない保存済みパスの行に警告を出す", async () => {
+    checkDirectoryExists.mockImplementation((path: string) =>
+      Promise.resolve(path !== PATHS[1]),
+    );
+    renderSettings(seedState());
+    await waitFor(() => expect(screen.getByText(/見つからない/)).toBeInTheDocument());
+    expect(screen.getByText("C:\\資産\\copybook")).toBeInTheDocument();
+  });
+
+  it("実在するパスだけのときは警告を出さない", async () => {
+    renderSettings(seedState());
+    await waitFor(() => expect(checkDirectoryExists).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText(/見つからない/)).toBeNull();
+  });
+
+  it("追加したパスが実在しなければ、入力欄の近くに警告を出しトーストは出さない", async () => {
+    checkDirectoryExists.mockImplementation((path: string) =>
+      Promise.resolve(path !== "D:\\無い\\フォルダ"),
+    );
+    renderSettings(seedState());
+    await waitFor(() => expect(checkDirectoryExists).toHaveBeenCalledTimes(2));
+
+    fireEvent.change(screen.getByLabelText("追加するコピー句探索パス"), {
+      target: { value: "D:\\無い\\フォルダ" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "追加" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent("D:\\無い\\フォルダ が見つからない"),
+    );
+    expect(screen.getByTestId("toast-msg")).toHaveTextContent("");
+    // 行そのものは残り、一覧からは消えない。
+    expect(screen.getByText("D:\\無い\\フォルダ")).toBeInTheDocument();
+  });
+
+  it("追加したパスが実在すれば、入力欄近くの警告を出さない", async () => {
+    renderSettings(seedState());
+    await waitFor(() => expect(checkDirectoryExists).toHaveBeenCalledTimes(2));
+
+    fireEvent.change(screen.getByLabelText("追加するコピー句探索パス"), {
+      target: { value: "D:\\ある\\フォルダ" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "追加" }));
+
+    await waitFor(() => expect(checkDirectoryExists).toHaveBeenCalledWith("D:\\ある\\フォルダ"));
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });
 
@@ -262,10 +346,10 @@ describe("SettingsScreen の操作が共有状態へ届く", () => {
 describe("SettingsScreen の読み取り専用", () => {
   it("解析の実行中は告知を出し、操作を禁じる", () => {
     renderSettings(seedState({ mode: "running" }));
-    expect(screen.getByRole("status")).toHaveTextContent("解析の実行中は設定を変更できません");
+    expect(screen.getByRole("status")).toHaveTextContent("解析の実行中は設定を変更できない");
     expect(screen.getByRole("switch", { name: "R004 ON SIZE ERROR句の欠如" })).toBeDisabled();
     expect(screen.getByLabelText("既定の文字コード")).toBeDisabled();
-    expect(screen.getByRole("button", { name: "＋ 追加" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "追加" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "すべて無効" })).toBeDisabled();
   });
 
@@ -287,5 +371,20 @@ describe("SettingsScreen の engine の実行", () => {
   it("ネットワーク接続を行わない旨を示す", () => {
     renderSettings(seedState());
     expect(screen.getByText(/ネットワーク接続は行わない/)).toBeInTheDocument();
+  });
+
+  it("利用者向けの文言に内部名(engine・コマンド引数)を出さない", () => {
+    renderSettings(seedState());
+    expect(screen.getByRole("heading", { level: 4, name: "解析エンジンの実行" })).toBeInTheDocument();
+    expect(screen.queryByText(/--disable-rule|--copybook-path/)).toBeNull();
+  });
+});
+
+describe("SettingsScreen の見出し階層", () => {
+  it("画面の題目を h3 に置き、各カードを h4、ルールのカテゴリを h5 とする", () => {
+    renderSettings(seedState());
+    expect(screen.getByRole("heading", { level: 3 })).toHaveTextContent("設定");
+    expect(screen.getByRole("heading", { level: 4, name: "既定の文字コード" })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 5 }).length).toBeGreaterThan(0);
   });
 });

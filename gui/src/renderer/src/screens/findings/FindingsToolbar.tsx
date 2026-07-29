@@ -27,7 +27,7 @@ export interface FindingsToolbarProps {
 
 /**
  * 一覧上部のツールバー。重大度チップ(件数付・記号で二重符号化)・ルール選択・ファイル選択・
- * 内容テキスト検索・要約・「レポート出力 →」を並べる。指摘一覧と SQL助言で共有する。
+ * 内容テキスト検索・要約・「レポート出力へ」を並べる。指摘一覧と SQL助言で共有する。
  *
  * 重大度チップは設定のしきい値が許した範囲の中でだけ絞り込める。しきい値より低い重大度は
  * 一覧に出ないため、そのチップは操作できない状態にし、件数は隠れている件数として残す。
@@ -101,7 +101,7 @@ export function FindingsToolbar({
       <div className="ci-findings__spacer" />
       <span className="ci-findings__summary">{summary}</span>
       <button type="button" className="ci-btn ci-btn--default" onClick={onGoReport}>
-        レポート出力 →
+        レポート出力へ
       </button>
     </div>
   );

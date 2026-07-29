@@ -1,7 +1,7 @@
 /**
  * テスト用の指摘 fixture。window.cobolInsight.readSarif が返す SarifFinding[](lint / sql-advise の
- * --sarif を parseSarif で平坦化した形)を模す。実サンプル(scratchpad の samples-lint.sarif)から
- * 代表を抜き、4 段の重大度・修正案ありルール(R004/R017/R018)・複数ファイルを網羅する。
+ * --sarif を parseSarif で平坦化した形)を模す。lint が実際に出力した SARIF から代表を抜き、
+ * 4 段の重大度・修正案ありルール(R004/R017/R018)・複数ファイルを網羅する。
  */
 
 import type { SarifFinding } from "../../../../shared/engine-api";

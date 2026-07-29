@@ -18,7 +18,7 @@ import {
 } from "./reportModel";
 
 /** レポート生成中に提示する段。 */
-const REPORT_RUN_STAGES = ["scan の結果と、指摘・SQL助言の再検出を1つの文書へ束ねている"];
+const REPORT_RUN_STAGES = ["資産の走査結果と、指摘・SQL助言の再検出を1つの文書へ束ねている"];
 
 /** 未生成のときの状態。参照を固定して依存を安定させる。 */
 const IDLE_REPORT: ReportState = { status: "idle" };
@@ -30,7 +30,7 @@ function messageOf(error: unknown): string {
 
 /**
  * レポート出力(report)画面。engine の `report` を起動して HTML とテキストを書き出し、書いたものを
- * readReportHtml / readReportText で読んで表示する。レポート本文は GUI で組み立てない(裁定 A1)。
+ * readReportHtml / readReportText で読んで表示する。レポート本文は GUI で組み立てない。
  *
  * HTML は sandbox 付き iframe の srcdoc で表示し、スクリプトを実行させない。表示の形式切替は
  * engine が同時に書いた2つの成果物のどちらを見るかの選択であり、engine の再実行を伴わない。
@@ -92,7 +92,7 @@ export function ReportScreen(): ReactElement {
   function placeholder(children: ReactNode): ReactElement {
     return (
       <div className="ci-report ci-report--placeholder">
-        <h2 className="ci-report__title">レポート出力</h2>
+        <h3 className="ci-report__title">レポート出力</h3>
         {runBanner === null ? null : (
           <div className="ci-banner ci-banner--error" role="alert">
             {runBanner}
@@ -142,7 +142,7 @@ export function ReportScreen(): ReactElement {
         disabledRuleCount={disabledRules.length}
         onWrite={() => void writeReport()}
         busy={busy}
-        error={error === null ? null : `レポートを書き出せませんでした。${error}`}
+        error={error === null ? null : `レポートを書き出せなかった。${error}`}
       />
       <div className="ci-report__body">
         {warning === null ? null : (
@@ -161,7 +161,7 @@ export function ReportScreen(): ReactElement {
         ) : (
           <EmptyState
             title="レポートはまだ書き出されていません"
-            description="出力先フォルダを確かめて「レポートを書き出す」を押すと、engine が HTML とテキストを書き出し、その内容をここに表示する。"
+            description="出力先フォルダを確かめて「レポートを書き出す」を押すと、解析エンジンが HTML とテキストを書き出し、その内容をここに表示する。"
           />
         )}
       </div>

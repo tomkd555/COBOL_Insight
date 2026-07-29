@@ -3,28 +3,52 @@ import type { ReactElement } from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ViewerScreen } from "./ViewerScreen";
 import { AppStateProvider, useAppState } from "../../state/AppStateContext";
-import { initialState, type AppState } from "../../state/appState";
+import { SPLIT_PANES, initialState, type AppState } from "../../state/appState";
 import { SAMPLE_INVENTORY } from "../explorer/fixtures";
 import {
   SAMPLE_COBOL_TEXT,
   SAMPLE_COPYBOOK_TEXT,
+  SAMPLE_COPY_EXPANSION,
   SAMPLE_GENERATED_FILES,
   SAMPLE_LINE_MAP,
 } from "./fixtures";
 import type {
   CobolInsightApi,
   EngineResult,
+  SarifFinding,
   SourceTextRequest,
   SourceTextResult,
 } from "../../../../shared/engine-api";
 
 /** 偽の Monaco エディタ1台の観測結果。 */
+interface FakeDecoration {
+  range: { startLineNumber: number };
+  options: {
+    className?: string;
+    inlineClassName?: string;
+    glyphMarginClassName?: string;
+    hoverMessage?: { value: string };
+    after?: { content: string };
+  };
+}
+
+/** 差し込んだビューゾーン1件(COPY 展開)。 */
+interface FakeViewZone {
+  id: string;
+  afterLineNumber: number;
+  heightInLines: number;
+  domNode: HTMLElement;
+  marginDomNode: HTMLElement;
+}
+
 interface FakeEditor {
   language: string;
   ariaLabel: string;
   rulers: number[];
+  glyphMargin: boolean;
   value: string;
-  decorations: { range: { startLineNumber: number }; options: { className?: string; inlineClassName?: string } }[];
+  decorations: FakeDecoration[];
+  zones: FakeViewZone[];
   revealed: number[];
   disposed: boolean;
   cursorHandler: ((event: { position: { lineNumber: number } }) => void) | null;
@@ -46,22 +70,33 @@ vi.mock("../../vendor/monacoEditor", () => ({
       setLanguageConfiguration: () => undefined,
     },
     editor: {
+      // 実測寸法の取得に使う列挙(monaco.editor.EditorOption)。値は本物と同じである必要がない。
+      EditorOption: { fontInfo: "fontInfo" },
       defineTheme: () => undefined,
       create: (
         _container: HTMLElement,
-        options: { value?: string; language?: string; rulers?: number[]; ariaLabel?: string },
+        options: {
+          value?: string;
+          language?: string;
+          rulers?: number[];
+          ariaLabel?: string;
+          glyphMargin?: boolean;
+        },
       ) => {
         const editor: FakeEditor = {
           language: options.language ?? "",
           ariaLabel: options.ariaLabel ?? "",
           rulers: options.rulers ?? [],
+          glyphMargin: options.glyphMargin ?? false,
           value: options.value ?? "",
           decorations: [],
+          zones: [],
           revealed: [],
           disposed: false,
           cursorHandler: null,
         };
         monacoStore.editors.push(editor);
+        let nextZoneId = 0;
         return {
           getValue: () => editor.value,
           setValue: (value: string) => {
@@ -83,6 +118,35 @@ vi.mock("../../vendor/monacoEditor", () => ({
               },
             };
           },
+          // ビューゾーン(COPY 展開の差し込み)。追加・削除を記録し、行番号は消費しない。
+          changeViewZones: (
+            change: (accessor: {
+              addZone: (zone: Omit<FakeViewZone, "id">) => string;
+              removeZone: (id: string) => void;
+            }) => void,
+          ) => {
+            change({
+              addZone: (zone) => {
+                const id = `zone-${(nextZoneId += 1)}`;
+                editor.zones.push({ ...zone, id });
+                return id;
+              },
+              removeZone: (id: string) => {
+                editor.zones = editor.zones.filter((zone) => zone.id !== id);
+              },
+            });
+          },
+          // 桁見出しの位置合わせと展開行の字送りに使う実測寸法。jsdom では実寸を測れないため固定値を返す。
+          getLayoutInfo: () => ({ contentLeft: 60 }),
+          getOption: () => ({
+            typicalHalfwidthCharacterWidth: 7,
+            fontFamily: "'BIZ UDGothic',monospace",
+            fontSize: 12,
+            lineHeight: 19,
+          }),
+          getScrollLeft: () => 0,
+          onDidLayoutChange: () => ({ dispose: () => undefined }),
+          onDidScrollChange: () => ({ dispose: () => undefined }),
           revealLineInCenter: (line: number) => {
             editor.revealed.push(line);
           },
@@ -121,6 +185,7 @@ function transpileResult(): EngineResult {
 
 let readSourceText: ReturnType<typeof vi.fn>;
 let readTranspileArtifacts: ReturnType<typeof vi.fn>;
+let readCopyExpansion: ReturnType<typeof vi.fn>;
 let runTranspile: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
@@ -137,10 +202,12 @@ beforeEach(() => {
   readTranspileArtifacts = vi
     .fn()
     .mockResolvedValue({ files: SAMPLE_GENERATED_FILES, lineMap: SAMPLE_LINE_MAP });
+  readCopyExpansion = vi.fn().mockResolvedValue(SAMPLE_COPY_EXPANSION);
   runTranspile = vi.fn().mockResolvedValue(transpileResult());
   window.cobolInsight = {
     readSourceText,
     readTranspileArtifacts,
+    readCopyExpansion,
     runTranspile,
   } as unknown as CobolInsightApi;
 });
@@ -306,7 +373,7 @@ describe("ViewerScreen の逐語対訳", () => {
     readTranspileArtifacts.mockResolvedValue({ files: [], lineMap: [] });
     renderViewer(analyzedState());
     const region = await screen.findByRole("region", { name: "逐語対訳が生成されていません" });
-    expect(region).toHaveTextContent("対応表(LINE_MAP)に対応が無い");
+    expect(region).toHaveTextContent("行の対応表に対応が無い");
     expect(runTranspile).toHaveBeenCalledTimes(1);
   });
 
@@ -317,7 +384,7 @@ describe("ViewerScreen の逐語対訳", () => {
       name: "生成物が出力先に見つかりません",
     });
     expect(region).toHaveTextContent("C:\\proj\\transpile");
-    expect(region).toHaveTextContent("対応表(LINE_MAP)はある");
+    expect(region).toHaveTextContent("行の対応表はある");
     // 対応表がある状態では自動で生成し直さない(利用者の操作で作り直す)。
     expect(runTranspile).not.toHaveBeenCalled();
   });
@@ -443,6 +510,180 @@ describe("ViewerScreen の相互ハイライト", () => {
   });
 });
 
+describe("ViewerScreen の指摘ハイライト", () => {
+  /** 表示中の資産に 11 行目(高 1 件)・12 行目(中と警告の 2 件)、別資産に 1 件の指摘を置く。 */
+  const FINDINGS: readonly SarifFinding[] = [
+    { ruleId: "R001", level: "error", message: "未初期化の WS-検証金額 を参照している。", file: COBOL, startLine: 11, startColumn: 1 },
+    { ruleId: "R009", level: "warning", message: "GO TO 文が構造化フローから外れる。", file: COBOL, startLine: 12, startColumn: 1 },
+    { ruleId: "R008", level: "warning", message: "PERFORM が THRU 句を持たない。", file: COBOL, startLine: 12, startColumn: 12 },
+    { ruleId: "R002", level: "note", message: "参照されない項目。", file: "cobol/SYK002.cbl", startLine: 3, startColumn: 1 },
+  ];
+
+  function withFindings(): AppState {
+    return analyzedState({ findings: { status: "ready", items: FINDINGS } });
+  }
+
+  it("表示中の資産の指摘だけを、重大度別の行装飾として COBOL 側へ渡す", async () => {
+    renderViewer(withFindings());
+    await waitForPanes();
+    expect(decoratedLines("cobol-fixed", "ci-code__line--finding-high")).toEqual([11]);
+    expect(decoratedLines("cobol-fixed", "ci-code__line--finding-medium")).toEqual([12]);
+    // 別の資産の指摘(SYK002 の 3 行目)は装飾しない。
+    expect(decoratedLines("cobol-fixed", "ci-code__line--finding-low")).toEqual([]);
+    // 対訳側は指摘の対象ではない。
+    expect(decoratedLines("python", "ci-code__line--finding-high")).toEqual([]);
+  });
+
+  it("重大度の記号をグリフ余白へ出す(色に頼らない二重符号化)", async () => {
+    renderViewer(withFindings());
+    await waitForPanes();
+    expect(editorOf("cobol-fixed").glyphMargin).toBe(true);
+    const glyphs = editorOf("cobol-fixed").decorations.filter(
+      (decoration) => decoration.options.glyphMarginClassName !== undefined,
+    );
+    expect(glyphs.map((decoration) => decoration.options.glyphMarginClassName)).toEqual([
+      "ci-code__glyph ci-code__glyph--high",
+      "ci-code__glyph ci-code__glyph--medium",
+    ]);
+  });
+
+  it("ホバーでルール ID・ルール名・根拠が読め、複数件の行には件数を添える", async () => {
+    renderViewer(withFindings());
+    await waitForPanes();
+    const multi = editorOf("cobol-fixed").decorations.find(
+      (decoration) => decoration.range.startLineNumber === 12 && decoration.options.after !== undefined,
+    );
+    expect(multi?.options.after?.content).toBe(" ◆2");
+    expect(multi?.options.hoverMessage?.value).toContain("この行の指摘 2 件");
+    expect(multi?.options.hoverMessage?.value).toContain("R008");
+    expect(multi?.options.hoverMessage?.value).toContain("PERFORM単独段落名の直接指定");
+    expect(multi?.options.hoverMessage?.value).toContain("PERFORM が THRU 句を持たない。");
+  });
+
+  it("この資産の指摘の件数を見出しへ出す", async () => {
+    renderViewer(withFindings());
+    await waitForPanes();
+    expect(screen.getByRole("region", { name: "COBOL ソース" })).toHaveTextContent(
+      "この資産の指摘: 3 件",
+    );
+  });
+
+  it("凡例に重大度 4 段を記号付きで並べる", async () => {
+    renderViewer(withFindings());
+    await waitForPanes();
+    const legend = screen.getByRole("list", { name: "ハイライトの凡例" });
+    expect(legend).toHaveTextContent("指摘のある行");
+    expect(legend).toHaveTextContent("●高");
+    expect(legend).toHaveTextContent("◆中");
+    expect(legend).toHaveTextContent("■低");
+    expect(legend).toHaveTextContent("▲警告");
+  });
+
+  it("指摘が無ければ指摘の装飾を出さない", async () => {
+    renderViewer(analyzedState());
+    await waitForPanes();
+    expect(
+      editorOf("cobol-fixed").decorations.filter(
+        (decoration) => decoration.options.glyphMarginClassName !== undefined,
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe("ViewerScreen の桁見出し", () => {
+  it("見出しを Monaco の実測寸法から求めた桁位置へ置く", async () => {
+    renderViewer(analyzedState());
+    await waitForPanes();
+    const columns = screen.getByRole("img", { name: /固定形式の欄割り/ });
+    const marks = [...columns.querySelectorAll(".ci-viewer__column")];
+    // 偽エディタは contentLeft=60・字送り 7px を返す。8桁目=60+49、73桁目=60+504 である。
+    expect(marks.map((mark) => (mark as HTMLElement).style.left)).toEqual([
+      "109px",
+      "109px",
+      "564px",
+      "564px",
+    ]);
+    expect(marks.map((mark) => mark.textContent)).toEqual([
+      "1-6 一連番号 / 7 標識",
+      "8 本体（A/B 領域）",
+      "72",
+      "73-80 識別欄",
+    ]);
+  });
+});
+
+describe("ViewerScreen の見出し階層", () => {
+  it("2 つのペインの題目を h3 とし、注記の小見出しを h4 に置く", async () => {
+    renderViewer(analyzedState());
+    await waitForPanes();
+    const paneTitles = screen.getAllByRole("heading", { level: 3 });
+    expect(paneTitles.map((title) => title.textContent)).toEqual([
+      expect.stringContaining("COBOL ソース（固定形式 80 桁）"),
+      "逐語対訳",
+    ]);
+    expect(screen.getByRole("heading", { level: 4 })).toHaveTextContent("直訳不能の注記");
+  });
+});
+
+describe("ViewerScreen のペイン幅", () => {
+  /** 桁見出しの左位置(画素)。 */
+  function columnLefts(): string[] {
+    const columns = screen.getByRole("img", { name: /固定形式の欄割り/ });
+    return [...columns.querySelectorAll(".ci-viewer__column")].map(
+      (mark) => (mark as HTMLElement).style.left,
+    );
+  }
+
+  /** 対訳ペインへ渡っている幅。 */
+  function translationWidth(): string {
+    const viewer = document.querySelector(".ci-viewer");
+    if (viewer === null) {
+      throw new Error("ソースビューアの枠が無い");
+    }
+    return (viewer as HTMLElement).style.getPropertyValue("--ci-viewer-translation-w");
+  }
+
+  it("原本と対訳の境界に分割ハンドルを置く", async () => {
+    renderViewer(analyzedState());
+    await waitForPanes();
+    const handle = screen.getByRole("separator", { name: "逐語対訳ペインの幅" });
+    expect(handle).toHaveAttribute("aria-orientation", "vertical");
+    expect(handle).toHaveAttribute("aria-valuenow", String(SPLIT_PANES.viewerTranslation.initial));
+    expect(handle).toHaveAttribute("aria-valuemin", String(SPLIT_PANES.viewerTranslation.min));
+    expect(handle).toHaveAttribute("aria-valuemax", String(SPLIT_PANES.viewerTranslation.max));
+    expect(translationWidth()).toBe(`${SPLIT_PANES.viewerTranslation.initial}px`);
+  });
+
+  it("End キーで対訳ペインを下限まで詰め、COBOL 原本を広げられる", async () => {
+    renderViewer(analyzedState());
+    await waitForPanes();
+    const handle = screen.getByRole("separator", { name: "逐語対訳ペインの幅" });
+    fireEvent.keyDown(handle, { key: "Home" });
+    expect(translationWidth()).toBe(`${SPLIT_PANES.viewerTranslation.min}px`);
+  });
+
+  it("ペイン幅を変えても桁見出しの位置は Monaco の実測寸法のままである", async () => {
+    renderViewer(analyzedState());
+    await waitForPanes();
+    const before = columnLefts();
+    fireEvent.keyDown(screen.getByRole("separator", { name: "逐語対訳ペインの幅" }), {
+      key: "ArrowRight",
+    });
+    await waitFor(() => expect(translationWidth()).not.toBe(`${SPLIT_PANES.viewerTranslation.initial}px`));
+    expect(columnLefts()).toEqual(before);
+  });
+
+  it("ファイルを切り替えても幅を保つ", async () => {
+    renderViewer(analyzedState());
+    await waitForPanes();
+    fireEvent.keyDown(screen.getByRole("separator", { name: "逐語対訳ペインの幅" }), { key: "End" });
+    fireEvent.change(screen.getByLabelText("表示するファイル"), {
+      target: { value: SAMPLE_INVENTORY[0].path },
+    });
+    await waitFor(() => expect(translationWidth()).toBe(`${SPLIT_PANES.viewerTranslation.max}px`));
+  });
+});
+
 describe("ViewerScreen のジャンプ受領", () => {
   it("ジャンプ先の行を強調し、その行までスクロールする", async () => {
     renderViewer(
@@ -471,7 +712,7 @@ describe("ViewerScreen のジャンプ受領", () => {
     );
     await waitForPanes();
     expect(screen.getByText("指摘一覧 から cobol/SYK001.cbl:11 へジャンプ")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "← 指摘一覧へ戻る" }));
+    fireEvent.click(screen.getByRole("button", { name: "指摘一覧へ戻る" }));
     expect(screen.getByTestId("screen")).toHaveTextContent("findings");
   });
 
@@ -497,82 +738,150 @@ describe("ViewerScreen のジャンプ受領", () => {
   });
 });
 
-describe("ViewerScreen のコピー句展開", () => {
-  it("COPY 文の件数と原文を示し、閉じている間は本文を読まない", async () => {
+describe("ViewerScreen のコピー句のインライン展開", () => {
+  /** COBOL 側へ差し込まれたビューゾーンのうち先頭のもの。 */
+  function firstZone(): FakeViewZone {
+    const zone = editorOf("cobol-fixed").zones[0];
+    if (zone === undefined) {
+      throw new Error("差し込みが無い");
+    }
+    return zone;
+  }
+
+  /** 差し込みの本文(見出しを除く各行)。 */
+  function zoneLines(zone: FakeViewZone): string[] {
+    return [...zone.domNode.querySelectorAll(".ci-code__expansion-line")].map(
+      (line) => line.textContent ?? "",
+    );
+  }
+
+  /** 展開の切替を押す。 */
+  async function openExpansion(): Promise<void> {
+    fireEvent.click(screen.getByRole("button", { name: "コピー句を展開" }));
+    await waitFor(() => expect(editorOf("cobol-fixed").zones).toHaveLength(1));
+  }
+
+  it("閉じているあいだは対応表を読まず、件数と展開の効き目を示す", async () => {
     renderViewer(analyzedState());
     await waitForPanes();
-    const copy = screen.getByRole("region", { name: "コピー句の展開" });
-    expect(copy).toHaveTextContent("COPY 文 1 件");
-    expect(copy).toHaveTextContent("7 行: COPY SYKCPY1 REPLACING LEADING ==SYK1== BY ==ORD1==.");
-    expect(readSourceText).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("region", { name: "COBOL ソース" })).toHaveTextContent(
+      "COPY 文 1 件 ― 展開すると取り込んだ行を COPY 文の位置へ差し込む",
+    );
+    expect(readCopyExpansion).not.toHaveBeenCalled();
+    expect(editorOf("cobol-fixed").zones).toEqual([]);
   });
 
-  it("展開するとコピー句の本文を読み、REPLACING は原文として添える", async () => {
+  it("展開すると COPY 文の直後へ、REPLACING 適用後の行を差し込む", async () => {
     renderViewer(analyzedState());
     await waitForPanes();
-    fireEvent.click(screen.getByRole("button", { name: "＋ 展開表示" }));
-    await waitFor(() => expect(screen.getByText(/SYK1-KEY/)).toBeInTheDocument());
+    await openExpansion();
+    expect(readCopyExpansion).toHaveBeenCalledWith("C:\\proj\\cobol-insight-copy-expansion.json");
+    const zone = firstZone();
+    expect(zone.afterLineNumber).toBe(7);
+    // 見出しの2行と展開の4行。
+    expect(zone.heightInLines).toBe(6);
+    expect(zone.domNode.textContent).toContain("COPY SYKCPY1 の展開");
+    expect(zone.domNode.textContent).toContain("copybook/SYKCPY1.cpy");
+    expect(zoneLines(zone)[1]).toBe("       01  ORD1-REC.");
+    expect(screen.getByRole("region", { name: "COBOL ソース" })).toHaveTextContent(
+      "COPY 文 1 件のうち 1 件を展開中",
+    );
+  });
+
+  it("展開行の出所を、コピー句名と行番号で示す", async () => {
+    renderViewer(analyzedState());
+    await waitForPanes();
+    await openExpansion();
+    const zone = firstZone();
+    expect(zone.domNode.getAttribute("aria-label")).toBe("7 行の COPY SYKCPY1 の展開 4 行");
+    // 行番号はコピー句の中での行番号であり、原本の行番号ガターの位置へ置く。
+    expect(
+      [...zone.marginDomNode.querySelectorAll(".ci-code__expansion-lineno")].map(
+        (line) => line.textContent,
+      ),
+    ).toEqual([" ", " ", "1", "2", "3", "4"]);
+  });
+
+  it("差し込みは原本の本文を変えない(行番号の並びを崩さない)", async () => {
+    renderViewer(analyzedState());
+    await waitForPanes();
+    await openExpansion();
+    expect(editorOf("cobol-fixed").value).toBe(SAMPLE_COBOL_TEXT);
+  });
+
+  it("前処理で空になった注記行を、原本から一連番号欄を除いて補う", async () => {
+    renderViewer(analyzedState());
+    await waitForPanes();
+    await openExpansion();
     expect(readSourceText).toHaveBeenCalledWith({
       inputDir: INPUT_DIR,
       path: "copybook/SYKCPY1.cpy",
       codepage: "UTF-8",
     });
-    const copy = screen.getByRole("region", { name: "コピー句の展開" });
-    expect(copy).toHaveTextContent("REPLACING LEADING ==SYK1== BY ==ORD1==");
-    expect(copy).toHaveTextContent("置換後の姿は示さない");
+    expect(zoneLines(firstZone())[0]).toBe("      * 受注レコード");
+    expect(firstZone().domNode.textContent).toContain("注記行は原本から補う");
   });
 
-  it("折りたたみへ戻せる", async () => {
+  it("原本のコピー句を読めないときは空行のまま示し、空に見える理由を添える", async () => {
+    readSourceText.mockImplementation((request: SourceTextRequest) =>
+      request.path === COBOL
+        ? Promise.resolve(textResult(SAMPLE_COBOL_TEXT))
+        : Promise.reject(new Error("ない")),
+    );
     renderViewer(analyzedState());
     await waitForPanes();
-    fireEvent.click(screen.getByRole("button", { name: "＋ 展開表示" }));
-    const toggle = await screen.findByRole("button", { name: "− 折りたたみ" });
+    await openExpansion();
+    expect(zoneLines(firstZone())[0]).toBe(" ");
+    expect(firstZone().domNode.textContent).toContain("注記行は空のまま");
+  });
+
+  it("展開データが無い COPY 文には、対象外である旨だけを差し込む", async () => {
+    readCopyExpansion.mockResolvedValue({ programs: [] });
+    renderViewer(analyzedState());
+    await waitForPanes();
+    await openExpansion();
+    const zone = firstZone();
+    expect(zone.heightInLines).toBe(2);
+    expect(zone.domNode.textContent).toContain("展開データが無い");
+    expect(screen.getByRole("region", { name: "COBOL ソース" })).toHaveTextContent(
+      "COPY 文 1 件のうち 0 件を展開中（1 件は展開データが無い）",
+    );
+  });
+
+  it("対応表を取得できなければ理由を示し、差し込まずにソース表示を保つ", async () => {
+    readCopyExpansion.mockRejectedValue(new Error("対応表が無い"));
+    renderViewer(analyzedState());
+    await waitForPanes();
+    fireEvent.click(screen.getByRole("button", { name: "コピー句を展開" }));
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "COBOL ソース" })).toHaveTextContent(
+        "コピー句の展開を取得できない（対応表が無い）",
+      ),
+    );
+    expect(editorOf("cobol-fixed").zones).toEqual([]);
+    expect(editorOf("cobol-fixed").value).toContain("IDENTIFICATION");
+  });
+
+  it("折りたたみへ戻すと差し込みを外す", async () => {
+    renderViewer(analyzedState());
+    await waitForPanes();
+    await openExpansion();
+    const toggle = screen.getByRole("button", { name: "コピー句の展開を閉じる" });
     expect(toggle).toHaveAttribute("aria-expanded", "true");
     fireEvent.click(toggle);
-    expect(screen.getByRole("button", { name: "＋ 展開表示" })).toHaveAttribute("aria-expanded", "false");
-  });
-
-  it("どの探索先にも無いコピー句は、探索した場所を添えて見つからない旨を示す", async () => {
-    readSourceText.mockImplementation((request: SourceTextRequest) =>
-      request.path === COBOL
-        ? Promise.resolve(textResult(SAMPLE_COBOL_TEXT))
-        : Promise.reject(new Error("ない")),
+    await waitFor(() => expect(editorOf("cobol-fixed").zones).toEqual([]));
+    expect(screen.getByRole("button", { name: "コピー句を展開" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
     );
-    renderViewer(analyzedState());
-    await waitForPanes();
-    fireEvent.click(screen.getByRole("button", { name: "＋ 展開表示" }));
-    await waitFor(() => expect(screen.getByText(/コピー句が見つからない/)).toBeInTheDocument());
-    expect(screen.getByText(/D:\\共通コピー句\\SYKCPY1.cpy/)).toBeInTheDocument();
-  });
-
-  it("探索先が1つも無い場合は、空の場所を並べず探索先が無い旨を示す", async () => {
-    readSourceText.mockImplementation((request: SourceTextRequest) =>
-      request.path === COBOL
-        ? Promise.resolve(textResult(SAMPLE_COBOL_TEXT))
-        : Promise.reject(new Error("ない")),
-    );
-    // 資産一覧にコピー句が無く、コピー句検索パスも未設定なら探索候補は 0 件になる。
-    renderViewer(
-      analyzedState({
-        project: { inputDir: INPUT_DIR, dbPath: DB_PATH, copybookPaths: [] },
-        inventory: {
-          status: "ready",
-          items: SAMPLE_INVENTORY.filter((item) => item.type !== "COPYBOOK"),
-        },
-      }),
-    );
-    await waitForPanes();
-    fireEvent.click(screen.getByRole("button", { name: "＋ 展開表示" }));
-    await waitFor(() =>
-      expect(screen.getByText(/コピー句の探索先が無い/)).toBeInTheDocument(),
-    );
-    expect(screen.queryByText(/探索した場所: 。/)).not.toBeInTheDocument();
   });
 
   it("COPY 文が無い資産では展開の操作を出さない", async () => {
     readSourceText.mockResolvedValue(textResult("       MOVE A TO B."));
     renderViewer(analyzedState());
-    await waitFor(() => expect(screen.getByText("このソースに COPY 文はない。")).toBeInTheDocument());
-    expect(screen.queryByRole("button", { name: "＋ 展開表示" })).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "COBOL ソース" })).toHaveTextContent("COPY 文なし"),
+    );
+    expect(screen.queryByRole("button", { name: "コピー句を展開" })).not.toBeInTheDocument();
   });
 });

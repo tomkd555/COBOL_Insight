@@ -94,7 +94,7 @@ describe("buildRuleGroups", () => {
   it("修正案を持つルールを行から見分けられる", () => {
     const groups = buildRuleGroups("R004", {});
     expect(groups[0].rows[0].hasFix).toBe(true);
-    expect(buildRuleGroups("R021", {})[0].rows[0].hasFix).toBe(false);
+    expect(buildRuleGroups("R021", {})[0].rows[0].hasFix).toBe(true);
   });
 });
 

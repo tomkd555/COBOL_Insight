@@ -1,9 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { copybookCandidates, detectCopyStatements, type CopyStatement } from "./copybookLookup";
+import { detectCopyStatements, type CopyStatement } from "./copybookLookup";
 import type { SourceCodepage } from "./columns";
-import { SAMPLE_INVENTORY } from "../explorer/fixtures";
 
-/** 固定形式の1行を組む。col は本体の開始桁(1 起点)で、7桁目には標識を置く。 */
+/** 固定形式の1行を組む。1〜6桁を空白の一連番号欄、7桁目を標識欄とし、本体は B 領域(12桁目)へ置く。 */
 function fixed(body: string, indicator = " "): string {
   return `      ${indicator}    ${body}`;
 }
@@ -100,101 +99,5 @@ describe("detectCopyStatements(COPY 文の検出)", () => {
   it("日本語を含んでも本体(72バイト以内)にある COPY 文は検出する", () => {
     const body = `${"注".repeat(10)} COPY SYKCPY1.`;
     expect(detect(`      ${" "}${body}`, "Shift_JIS").map((copy) => copy.name)).toEqual(["SYKCPY1"]);
-  });
-});
-
-describe("copybookCandidates(コピー句の探索)", () => {
-  const INPUT_DIR = "C:\\資産\\SYK";
-  const SEARCH_PATHS = ["C:\\資産\\SYK\\copybook", "D:\\共通コピー句"];
-
-  it("資産一覧に登録済みのコピー句を最初の候補にする", () => {
-    const candidates = copybookCandidates("SYKCPY1", {
-      inputDir: INPUT_DIR,
-      copybookPaths: SEARCH_PATHS,
-      inventory: SAMPLE_INVENTORY,
-    });
-    expect(candidates[0]).toEqual({ inputDir: INPUT_DIR, path: "copybook/SYKCPY1.cpy", origin: "inventory" });
-  });
-
-  it("コピー句名の大文字小文字を無視して資産一覧と突き合わせる", () => {
-    const candidates = copybookCandidates("sykcpy1", {
-      inputDir: INPUT_DIR,
-      copybookPaths: [],
-      inventory: SAMPLE_INVENTORY,
-    });
-    expect(candidates.map((candidate) => candidate.path)).toEqual(["copybook/SYKCPY1.cpy"]);
-  });
-
-  it("検索パスごとに拡張子なし・.cpy・.CPY の順で候補を並べる", () => {
-    const candidates = copybookCandidates("SYKCPY9", {
-      inputDir: INPUT_DIR,
-      copybookPaths: SEARCH_PATHS,
-      inventory: SAMPLE_INVENTORY,
-    });
-    expect(candidates).toEqual([
-      { inputDir: "C:\\資産\\SYK\\copybook", path: "SYKCPY9", origin: "searchPath" },
-      { inputDir: "C:\\資産\\SYK\\copybook", path: "SYKCPY9.cpy", origin: "searchPath" },
-      { inputDir: "C:\\資産\\SYK\\copybook", path: "SYKCPY9.CPY", origin: "searchPath" },
-      { inputDir: "D:\\共通コピー句", path: "SYKCPY9", origin: "searchPath" },
-      { inputDir: "D:\\共通コピー句", path: "SYKCPY9.cpy", origin: "searchPath" },
-      { inputDir: "D:\\共通コピー句", path: "SYKCPY9.CPY", origin: "searchPath" },
-    ]);
-  });
-
-  it("資産一覧の候補を検索パスの候補より前に置く", () => {
-    const candidates = copybookCandidates("SYKCPY1", {
-      inputDir: INPUT_DIR,
-      copybookPaths: SEARCH_PATHS,
-      inventory: SAMPLE_INVENTORY,
-    });
-    expect(candidates.map((candidate) => candidate.origin)).toEqual([
-      "inventory",
-      "searchPath",
-      "searchPath",
-      "searchPath",
-      "searchPath",
-      "searchPath",
-      "searchPath",
-    ]);
-  });
-
-  it("資産フォルダが未確定なら資産一覧の候補を出さない", () => {
-    const candidates = copybookCandidates("SYKCPY1", {
-      inputDir: null,
-      copybookPaths: ["D:\\共通コピー句"],
-      inventory: SAMPLE_INVENTORY,
-    });
-    expect(candidates.every((candidate) => candidate.origin === "searchPath")).toBe(true);
-  });
-
-  it("探索先がひとつも無ければ空を返す", () => {
-    expect(copybookCandidates("SYKCPY9", { inputDir: null, copybookPaths: [], inventory: [] })).toEqual([]);
-  });
-
-  it("拡張子付きで書かれた名前も資産一覧のファイル名と突き合わせる", () => {
-    const candidates = copybookCandidates("SYKCPY1.CPY", {
-      inputDir: INPUT_DIR,
-      copybookPaths: [],
-      inventory: SAMPLE_INVENTORY,
-    });
-    expect(candidates.map((candidate) => candidate.path)).toEqual(["copybook/SYKCPY1.cpy"]);
-  });
-
-  it("コピー句以外の資産は候補にしない", () => {
-    const candidates = copybookCandidates("SYK001", {
-      inputDir: INPUT_DIR,
-      copybookPaths: [],
-      inventory: SAMPLE_INVENTORY,
-    });
-    expect(candidates).toEqual([]);
-  });
-
-  it("同じ探索先が重なっても候補を重複させない", () => {
-    const candidates = copybookCandidates("SYKCPY9", {
-      inputDir: INPUT_DIR,
-      copybookPaths: ["D:\\共通コピー句", "D:\\共通コピー句"],
-      inventory: [],
-    });
-    expect(candidates).toHaveLength(3);
   });
 });

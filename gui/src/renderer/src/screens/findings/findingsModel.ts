@@ -1,22 +1,22 @@
 /**
- * 指摘一覧・SQL助言で共有する一覧のビューモデル(React 非依存の純関数)。
- * design gvFindings(design:1273-1329)の重大度集計・ルール/ファイル選択肢の導出・
- * 重大度/ルール/ファイル/内容フィルタ・重大度/ファイル/行ソート・要約文を移植する。
+ * 指摘一覧・SQL助言で共有する一覧のビューモデル(React 非依存の純関数)。重大度の集計・
+ * ルール/ファイル選択肢の導出・重大度/ルール/ファイル/内容のフィルタ・重大度/ファイル/行の
+ * ソート・要約文を持つ。
  *
  * データ供給源は lint / sql-advise の --sarif を parseSarif で平坦化した SarifFinding[] である。
- * 重大度は SARIF の level ではなく、ルールカタログ(ruleOf)を引いて決める(A2)。
+ * 重大度は SARIF の level ではなく、ルールカタログ(ruleOf)を引いて決める。
  */
 
 import type { SarifFinding } from "../../../../shared/engine-api";
 import { SEVERITY_META, SEVERITY_ORDER, type Severity } from "../../components/severity";
 import { ruleOf } from "../../data/ruleCatalog";
 import { visibleSeverities } from "../settings/settingsModel";
-import type { FindingSort } from "../../state/appState";
+import type { FindingSort, FindingSortColumn } from "../../state/appState";
 
 /** ルール/ファイル選択の「すべて」を表す番兵値。 */
 export const ALL = "all";
 
-/** 一覧のフィルタ・ソート状態。いずれも AppState から供給する。 */
+/** 一覧のフィルタ状態。AppState から供給する。ソート状態は表側だけが持つため含まない。 */
 export interface FindingFilters {
   /** 重大度チップの ON/OFF。 */
   readonly severity: Record<Severity, boolean>;
@@ -28,19 +28,33 @@ export interface FindingFilters {
   readonly file: string;
   /** 内容テキスト検索。 */
   readonly text: string;
-  /** ソート列。 */
-  readonly sort: FindingSort;
 }
 
-/** フィルタの初期値(全重大度 ON・しきい値は最下位・ルール/ファイル すべて・検索空・重大度ソート)。 */
+/** フィルタの初期値(全重大度 ON・しきい値は最下位・ルール/ファイル すべて・検索空)。 */
 export const initialFindingFilters: FindingFilters = {
   severity: { high: true, medium: true, low: true, warning: true },
   threshold: "warning",
   rule: ALL,
   file: ALL,
   text: "",
-  sort: "sev",
 };
+
+/** 表でソート可能な列。AppState の FindingSortColumn(sev/rule/file/line)と同じ。 */
+export type SortColumn = FindingSortColumn;
+
+/** 列とソートの向きの組。AppState の FindingSort と同じ形で、指摘一覧・SQL助言はそれぞれ AppState に持つ。 */
+export type SortState = FindingSort;
+
+/** 表の既定のソート状態(重大度列・昇順)。 */
+export const initialSortState: SortState = { column: "sev", direction: "asc" };
+
+/** 見出しクリックに応じたソート状態の遷移。同じ列を再度押すと向きが反転し、別の列を押すと昇順から始める。 */
+export function nextSortState(current: SortState, column: SortColumn): SortState {
+  if (current.column === column) {
+    return { column, direction: current.direction === "asc" ? "desc" : "asc" };
+  }
+  return { column, direction: "asc" };
+}
 
 /** しきい値が表示を許す重大度か。偽の重大度はチップも操作できない。 */
 export function severityAllowed(severity: Severity, threshold: Severity): boolean {
@@ -106,13 +120,44 @@ function compareFileLine(a: SarifFinding, b: SarifFinding): number {
   return a.startLine - b.startLine;
 }
 
+/** ルール ID を接頭辞(英字)と数値へ分けて比べる。"R001".."R031" → "S001".. のように自然に並ぶ。 */
+const RULE_ID_PATTERN = /^([A-Za-z]+)(\d+)$/;
+
+function compareRuleId(a: string, b: string): number {
+  const pa = RULE_ID_PATTERN.exec(a);
+  const pb = RULE_ID_PATTERN.exec(b);
+  if (pa === null || pb === null) return a < b ? -1 : a > b ? 1 : 0;
+  if (pa[1] !== pb[1]) return pa[1] < pb[1] ? -1 : 1;
+  return Number(pa[2]) - Number(pb[2]);
+}
+
+function compareBySeverity(a: FindingRow, b: FindingRow): number {
+  const bySev = SORT_INDEX[a.severity] - SORT_INDEX[b.severity];
+  return bySev !== 0 ? bySev : compareFileLine(a.finding, b.finding);
+}
+
+/** 列ごとの比較(昇順)。重大度は 高→中→低→警告 を昇順とし、同順位はファイル→行で比べる。 */
+function compareByColumn(a: FindingRow, b: FindingRow, column: SortColumn): number {
+  switch (column) {
+    case "file":
+      return compareFileLine(a.finding, b.finding);
+    case "line":
+      return a.finding.startLine - b.finding.startLine;
+    case "rule":
+      return compareRuleId(a.finding.ruleId, b.finding.ruleId);
+    case "sev":
+      return compareBySeverity(a, b);
+  }
+}
+
 /**
- * 重大度/ルール/ファイル/内容でフィルタし、指定列でソートした表示行を返す(design gvFindings)。
+ * 重大度/ルール/ファイル/内容でフィルタし、指定列・向きでソートした表示行を返す。
  * 設定のしきい値が表示できる重大度の範囲を決め、その範囲の中で重大度チップがさらに絞る(論理積)。
  */
 export function filterAndSortFindings(
   findings: readonly SarifFinding[],
   filters: FindingFilters,
+  sort: SortState = initialSortState,
 ): FindingRow[] {
   const needle = filters.text.toLowerCase();
   const allowed = new Set(visibleSeverities(filters.threshold));
@@ -135,15 +180,13 @@ export function filterAndSortFindings(
     });
 
   rows.sort((a, b) => {
-    if (filters.sort === "file") return compareFileLine(a.finding, b.finding);
-    if (filters.sort === "line") return a.finding.startLine - b.finding.startLine;
-    const bySev = SORT_INDEX[a.severity] - SORT_INDEX[b.severity];
-    return bySev !== 0 ? bySev : compareFileLine(a.finding, b.finding);
+    const cmp = compareByColumn(a, b, sort.column);
+    return sort.direction === "asc" ? cmp : -cmp;
   });
   return rows;
 }
 
-/** 要約文(全件・重大度内訳・表示件数)。design:1327 の書式を踏襲する。 */
+/** 要約文。全件数・重大度の内訳・フィルタ後の表示件数を、この順で1行に並べる。 */
 export function summaryText(
   findings: readonly SarifFinding[],
   visibleCount: number,

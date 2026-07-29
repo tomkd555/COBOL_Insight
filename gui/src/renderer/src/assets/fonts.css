@@ -1,6 +1,6 @@
 /*
- * ローカル同梱フォント定義。design が Google Fonts CDN から読む BIZ UDPGothic / BIZ UDGothic を、
- * OFL ライセンスの woff2 として gui 配下へ同梱し、ネットワーク非接続で読み込む。
+ * ローカル同梱フォント定義。UI で用いる BIZ UDPGothic / BIZ UDGothic を OFL ライセンスの woff2 として
+ * gui 配下へ同梱し、CDN へ接続せずに読み込む(index.html の CSP が外部ホストを遮断する)。
  * UI 本文=BIZ UDPGothic(プロポーショナル)、コード・識別子=BIZ UDGothic(等幅)。
  */
 

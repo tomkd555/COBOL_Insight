@@ -2,12 +2,11 @@
  * diff(fix)画面の純ロジック。engine の `fix preview` と `fix apply` が出したサマリ JSON と、lint の
  * 指摘(SARIF)を組み合わせて、修正案の一覧・採用/棄却の集合・書出先パスを導く。
  *
- * 差分そのものは GUI で計算しない(裁定 A2)。左右2ペインには readFixResult が返す原本テキストと
+ * 差分そのものは GUI で計算しない。左右2ペインには readFixResult が返す原本テキストと
  * 修正後テキストの対をそのまま渡し、コピー句の修正(engine が修正後ソースを書き出さないもの)は
  * `fix preview` が標準出力へ書いた unified diff を切り出して素の文字列として示す。
  *
- * 修正案を持つのは engine の FixProducer 実装がある R004・R017・R018 の3ルールだけである
- * (裁定 A8。R021 は FixProducer を持たない)。
+ * 修正案を持つルールは engine の FixProducer 実装と一致させる(一覧は FIX_RULE_IDS が唯一の正)。
  */
 
 import type {
@@ -20,7 +19,7 @@ import { ruleOf } from "../../data/ruleCatalog";
 import type { FixDecision, ScreenMode } from "../../state/appState";
 
 /** 修正案を生成できるルール ID。engine の FixProducer 実装と一致させる。 */
-export const FIX_RULE_IDS: readonly string[] = ["R004", "R017", "R018"];
+export const FIX_RULE_IDS: readonly string[] = ["R004", "R017", "R018", "R021"];
 
 /** --db 未指定時に engine が使う既定のプロジェクトファイル名。 */
 const DEFAULT_DB_FILE = "cobol-insight.db";
@@ -45,7 +44,7 @@ export interface FixCandidate {
   readonly copybook: boolean;
   /** コピー句を取り込むプログラム一覧。copybook が真のときだけ非空になる。 */
   readonly importers: readonly string[];
-  /** このファイルで修正案の対象となった指摘(R004/R017/R018)。行の昇順。 */
+  /** このファイルで修正案の対象となった指摘(FIX_RULE_IDS に含まれるもの)。行の昇順。 */
   readonly findings: readonly FixFinding[];
 }
 
@@ -146,9 +145,19 @@ function fixFindingsOf(relPath: string, findings: readonly SarifFinding[]): FixF
     .sort((a, b) => a.line - b.line || a.ruleId.localeCompare(b.ruleId));
 }
 
+/** 修正案を持つルール ID を区切り文字でつないだ一覧。FIX_RULE_IDS が増減しても文言はそれに追随する。 */
+export function fixRuleIdLabel(separator: string = "・"): string {
+  return FIX_RULE_IDS.join(separator);
+}
+
+/** 修正案を持つルールを「ID（名称）」の形で列挙し、読点でつなぐ。 */
+export function fixRuleDescriptionLabel(): string {
+  return FIX_RULE_IDS.map((id) => `${id}（${ruleOf(id).name}）`).join("・");
+}
+
 /** 一覧見出しの件数表示。修正案を持つルールを併記する。 */
 export function fixCountLabel(candidates: readonly FixCandidate[]): string {
-  return `${candidates.length} 件（R004 / R017 / R018）`;
+  return `${candidates.length} 件（${fixRuleIdLabel(" / ")}）`;
 }
 
 /** カードと詳細見出しに出すルールの要約。指摘が取れていないときはファイル名だけを示す。 */
@@ -169,7 +178,7 @@ export function candidateLocation(candidate: FixCandidate): string {
   return first === undefined ? candidate.relPath : `${candidate.relPath}:${first.line}`;
 }
 
-/** 判定の表示文言(design の「✓ 採用済 / ✗ 棄却済 / 未判定」)。 */
+/** 判定の表示文言。未判定は判断がまだ無い状態として、採用・棄却と区別して示す。 */
 export function decisionLabel(decision: FixDecision | undefined): string {
   if (decision === "adopted") return "✓ 採用済";
   if (decision === "rejected") return "✗ 棄却済";
@@ -281,7 +290,7 @@ export function reparseWarning(reparseFailures: number | null): string | null {
   if (reparseFailures === null || reparseFailures === 0) {
     return null;
   }
-  return `修正後ソースの再構文解析で ${reparseFailures} 件が検証に失敗しました。失敗した修正は内容を確認のうえ棄却するか、手動で修正してください。`;
+  return `修正後ソースの再構文解析で ${reparseFailures} 件が検証に失敗した。失敗した修正は内容を確認のうえ棄却するか、手動で修正する。`;
 }
 
 /** 解析段の失敗(復号・構文解析)を示す警告文。失敗が無ければ null。 */
@@ -289,7 +298,7 @@ export function analysisWarning(summary: FixSummaryInfo): string | null {
   if (summary.analysisErrors === 0) {
     return null;
   }
-  return `解析で ${summary.analysisErrors} 件のエラーがあります。修正案は解析できた資産の範囲で生成されています。`;
+  return `解析で ${summary.analysisErrors} 件のエラーがある。修正案は解析できた資産の範囲で生成している。`;
 }
 
 /**
@@ -300,7 +309,7 @@ export function applyCaution(counts: DecisionCounts): string | null {
   if (counts.rejected === 0) {
     return null;
   }
-  return `棄却した ${counts.rejected} 件も書き出しに含まれます。engine は修正案を選んで書き出す機能を持たないため、取り込む際は判定を確認してください。`;
+  return `棄却した ${counts.rejected} 件も書き出しに含まれる。書き出しは修正案を選べないため、取り込む際に判定を確認する。`;
 }
 
 /** 書き出し後の結果文言。 */
@@ -308,10 +317,10 @@ export function applyNotice(outcome: FixApplyOutcome): string {
   const held =
     outcome.copybookFixes.length === 0
       ? ""
-      : ` コピー句 ${outcome.copybookFixes.length} 件は原本を書き換えないため提示に留めています。`;
+      : ` コピー句 ${outcome.copybookFixes.length} 件は原本を書き換えないため提示に留めている。`;
   const failed =
     outcome.reparseFailures === 0 ? "" : ` 再構文解析の失敗 ${outcome.reparseFailures} 件。`;
-  return `${outcome.outDir} へ ${outcome.written.length} 件を書き出しました（原本は変更していません）。${held}${failed}`;
+  return `${outcome.outDir} へ ${outcome.written.length} 件を書き出した（原本は変更していない）。${held}${failed}`;
 }
 
 /** diff 画面の4状態を、解析ライフサイクルと fix の取得状態から導く。 */

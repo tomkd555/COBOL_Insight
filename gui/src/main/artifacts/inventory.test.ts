@@ -64,7 +64,7 @@ describe("readInventory", () => {
     expect(paths).toEqual([...paths].sort());
   });
 
-  it("列写像で組み立てるため列順に依存しない", () => {
+  it("列名で組み立てるため列順に依存しない", () => {
     const stub: QueryableDatabase = {
       exec: () => [
         {

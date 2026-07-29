@@ -11,12 +11,19 @@ export interface CopybookPathListProps {
   onRemove: (index: number) => void;
   onAdd: () => void;
   disabled: boolean;
+  /** パスごとの実在確認結果。未確認のパスはキーを持たず、警告を出さない。 */
+  existence: Readonly<Record<string, boolean>>;
+  /** 直前の追加操作で実在しないと分かったときの警告文。無ければ null。 */
+  addWarning: string | null;
 }
+
+/** 追加入力の警告文の id。入力欄の aria-describedby から指すため、画面内で一意にする。 */
+const ADD_WARN_ID = "ci-paths-add-warn";
 
 /**
  * コピー句探索パスの一覧と編集(design scSet のコピー句検索パス)。上から順に探索するため、
  * 並び順そのものが設定値である。並びの変更・削除・追加を行い、結果は engine の
- * `--copybook-path` へ同じ順序で渡る。
+ * `--copybook-path` へ同じ順序で渡る(利用者向けの文言では内部の引数名を出さない)。
  */
 export function CopybookPathList({
   paths,
@@ -26,20 +33,27 @@ export function CopybookPathList({
   onRemove,
   onAdd,
   disabled,
+  existence,
+  addWarning,
 }: CopybookPathListProps): ReactElement {
   return (
     <div className="ci-paths">
       {paths.length === 0 ? (
         <p className="ci-paths__empty">
-          コピー句探索パスは未設定である。未設定のとき engine は資産フォルダ配下の copybook・copy
-          を探索する。
+          コピー句探索パスは未設定である。未設定のとき解析エンジンは資産フォルダ配下の
+          copybook・copy を探索する。
         </p>
       ) : (
         <ol className="ci-paths__list">
           {paths.map((path, index) => (
             <li key={path} className="ci-paths__item">
               <span className="ci-paths__index">{index + 1}</span>
-              <span className="ci-paths__path">{path}</span>
+              <span className="ci-paths__path">
+                {path}
+                {existence[path] === false ? (
+                  <span className="ci-paths__missing"> ⚠ フォルダが見つからない</span>
+                ) : null}
+              </span>
               <Button
                 aria-label={`${path} を1つ上へ`}
                 disabled={disabled || index === 0}
@@ -72,12 +86,19 @@ export function CopybookPathList({
           placeholder="追加するフォルダパス（例: D:\資産\copylib2）"
           value={draft}
           disabled={disabled}
+          invalid={addWarning !== null}
+          aria-describedby={addWarning === null ? undefined : ADD_WARN_ID}
           onChange={(event) => onDraftChange(event.target.value)}
         />
-        <Button disabled={disabled} onClick={onAdd}>
-          ＋ 追加
+        <Button aria-label="追加" disabled={disabled} onClick={onAdd}>
+          <span aria-hidden="true">＋</span> 追加
         </Button>
       </div>
+      {addWarning === null ? null : (
+        <p id={ADD_WARN_ID} className="ci-paths__add-warn" role="alert">
+          ⚠ {addWarning}
+        </p>
+      )}
     </div>
   );
 }

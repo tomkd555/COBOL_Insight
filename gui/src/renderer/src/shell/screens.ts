@@ -1,10 +1,10 @@
 /**
- * 8画面の正本。design/COBOL Insight.dc.html の navItems(explorer/graph/findings/
- * viewer/sql/diff/report/settings)を移植し、タブと画面ルーティングの単一の正とする。
+ * 画面の定義。タブと画面ルーティングの単一の正とする。
  */
 
 export type ScreenId =
   | "explorer"
+  | "import"
   | "graph"
   | "findings"
   | "viewer"
@@ -20,11 +20,12 @@ export interface ScreenTab {
 
 export const SCREENS: readonly ScreenTab[] = [
   { id: "explorer", label: "資産エクスプローラー" },
+  { id: "import", label: "端末取込" },
   { id: "graph", label: "呼出関係図" },
   { id: "findings", label: "指摘一覧" },
   { id: "viewer", label: "ソースビューア" },
   { id: "sql", label: "SQL助言" },
-  { id: "diff", label: "diff" },
+  { id: "diff", label: "修正案の差分" },
   { id: "report", label: "レポート出力" },
   { id: "settings", label: "設定" },
 ];

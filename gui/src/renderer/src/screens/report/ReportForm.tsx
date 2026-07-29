@@ -39,7 +39,7 @@ export function ReportForm({
 }: ReportFormProps): ReactElement {
   return (
     <div className="ci-report-form">
-      <h2 className="ci-report-form__title">レポート出力</h2>
+      <h3 className="ci-report-form__title">レポート出力</h3>
       {error === null ? null : (
         <div className="ci-banner ci-banner--error" role="alert">
           {error}
@@ -61,14 +61,14 @@ export function ReportForm({
           ))}
         </div>
         <p className="ci-report-form__note">
-          engine は1回の実行で HTML とテキストの両方を書き出す。ここでの選択は表示の切替である。
+          解析エンジンは1回の実行で HTML とテキストの両方を書き出す。ここでの選択は表示の切替である。
         </p>
       </div>
 
       <div className="ci-report-form__field">
         <p className="ci-report-form__label">出力内容</p>
         <p className="ci-report-form__note">
-          {"呼出関係サマリ・指摘一覧・SQL助言を1つの文書へ束ねる。章の取捨は engine が対応していないため、常に全章を出力する。"}
+          {"呼出関係サマリ・指摘一覧・SQL助言を1つの文書へ束ねる。章の取捨には対応していないため、常に全章を出力する。"}
           {disabledRuleCount === 0
             ? ""
             : `設定で無効化した ${disabledRuleCount} 件のルールは検出から除く。`}

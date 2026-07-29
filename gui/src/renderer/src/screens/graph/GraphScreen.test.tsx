@@ -3,8 +3,8 @@ import type { ReactElement } from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { GraphScreen } from "./GraphScreen";
 import { AppStateProvider, useAppState, useAppDispatch } from "../../state/AppStateContext";
-import { initialState, type AppState } from "../../state/appState";
-import { SAMPLE_GRAPH } from "./fixtures";
+import { SPLIT_PANES, initialState, type AppState } from "../../state/appState";
+import { SAMPLE_GRAPH, SAMPLE_GRAPH_WITH_UNANALYZABLE } from "./fixtures";
 import { SAMPLE_INVENTORY } from "../explorer/fixtures";
 import type { CobolInsightApi, EngineResult } from "../../../../shared/engine-api";
 
@@ -173,15 +173,15 @@ describe("GraphScreen(呼出関係図)の4状態", () => {
     runCallgraph.mockResolvedValueOnce(callgraphResult({ outputs: {} }));
     renderGraph(analyzedState());
     const region = await screen.findByRole("region", { name: "呼出関係図を取得できませんでした" });
-    expect(region).toHaveTextContent("JSON の出力先");
+    expect(region).toHaveTextContent("呼出関係のデータの出力先");
     expect(readCallgraphJson).not.toHaveBeenCalled();
   });
 
-  it("非ゼロ終了でも図は隠さず、終了コードを添えた警告を出す", async () => {
+  it("非ゼロ終了でも図は隠さず、起きたことを説明する警告を出す", async () => {
     runCallgraph.mockResolvedValueOnce(callgraphResult({ exitCode: 2 }));
     renderGraph(analyzedState());
     await waitForGraph();
-    expect(screen.getByRole("alert")).toHaveTextContent("callgraph 終了コード 2");
+    expect(screen.getByRole("alert")).toHaveTextContent("解析エラーのあった資産がある");
     expect(renderedNodeIds().length).toBeGreaterThan(0);
   });
 });
@@ -228,6 +228,63 @@ describe("GraphScreen の部分展開とフィルタ", () => {
     await waitForGraph();
     expect(screen.getByRole("button", { name: "プログラム 6" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "段落・節 0" })).toBeInTheDocument();
+  });
+});
+
+describe("GraphScreen の解析不能ノード", () => {
+  it("解析不能ノードが無ければ件数の案内は出さない", async () => {
+    renderGraph(analyzedState());
+    await waitForGraph();
+    expect(screen.queryByText(/構文解析に失敗した資産が/)).not.toBeInTheDocument();
+  });
+
+  it("解析不能ノードは孤立していても初期表示に含まれ、件数の案内を出す", async () => {
+    readCallgraphJson.mockResolvedValue(SAMPLE_GRAPH_WITH_UNANALYZABLE);
+    renderGraph(analyzedState());
+    await screen.findByText(/表示 \d+ \/ 全 19 ノード/);
+    expect(renderedNodeIds()).toContain("unanalyzable:BROKEN1.cbl");
+    expect(screen.getByText(/構文解析に失敗した資産が 1 件ある/)).toBeInTheDocument();
+  });
+
+  it("種別チップ「解析不能」を切ると、孤立していても図から外れる", async () => {
+    readCallgraphJson.mockResolvedValue(SAMPLE_GRAPH_WITH_UNANALYZABLE);
+    renderGraph(analyzedState());
+    await screen.findByText(/表示 \d+ \/ 全 19 ノード/);
+    expect(renderedNodeIds()).toContain("unanalyzable:BROKEN1.cbl");
+    fireEvent.click(screen.getByRole("button", { name: /解析不能/ }));
+    await waitFor(() => expect(renderedNodeIds()).not.toContain("unanalyzable:BROKEN1.cbl"));
+  });
+
+  it("種別チップ「解析不能」の切替は AppState に持ち、タブを移動して戻っても保たれる", async () => {
+    readCallgraphJson.mockResolvedValue(SAMPLE_GRAPH_WITH_UNANALYZABLE);
+    function Tabs(): ReactElement {
+      const state = useAppState();
+      const dispatch = useAppDispatch();
+      return (
+        <>
+          <button type="button" onClick={() => dispatch({ type: "NAV", screen: "findings" })}>
+            指摘一覧タブ
+          </button>
+          <button type="button" onClick={() => dispatch({ type: "NAV", screen: "graph" })}>
+            呼出関係図タブ
+          </button>
+          {state.screen === "graph" ? <GraphScreen /> : null}
+        </>
+      );
+    }
+    render(
+      <AppStateProvider initialState={analyzedState()}>
+        <Tabs />
+      </AppStateProvider>,
+    );
+    await screen.findByText(/表示 \d+ \/ 全 19 ノード/);
+    fireEvent.click(screen.getByRole("button", { name: /解析不能/ }));
+    await waitFor(() => expect(renderedNodeIds()).not.toContain("unanalyzable:BROKEN1.cbl"));
+
+    fireEvent.click(screen.getByRole("button", { name: "指摘一覧タブ" }));
+    fireEvent.click(screen.getByRole("button", { name: "呼出関係図タブ" }));
+    await screen.findByText(/表示 \d+ \/ 全 19 ノード/);
+    expect(renderedNodeIds()).not.toContain("unanalyzable:BROKEN1.cbl");
   });
 });
 
@@ -329,7 +386,7 @@ describe("GraphScreen の詳細ペイン", () => {
     );
     await waitForGraph();
     tapNode("program:SYK001");
-    fireEvent.click(await screen.findByRole("button", { name: "ソースを開く →" }));
+    fireEvent.click(await screen.findByRole("button", { name: "ソースを開く" }));
     expect(screen.getByTestId("screen")).toHaveTextContent("viewer");
   });
 
@@ -379,7 +436,7 @@ describe("GraphScreen の詳細ペイン", () => {
     expect(screen.queryByRole("button", { name: /ソースを開く/ })).not.toBeInTheDocument();
   });
 
-  it("凡例はノード 10 種・エッジ 5 種と破線の意味を示す", async () => {
+  it("凡例はノード 11 種(解析不能を含む)・エッジ 5 種と破線の意味を示す", async () => {
     renderGraph(analyzedState());
     await waitForGraph();
     const detail = screen.getByRole("complementary", { name: "ノード情報と凡例" });
@@ -387,6 +444,8 @@ describe("GraphScreen の詳細ペイン", () => {
     expect(detail).toHaveTextContent("外部ユーティリティ");
     expect(detail).toHaveTextContent("トランザクション遷移");
     expect(detail).toHaveTextContent("破線 ― データフロー由来・未解決");
+    expect(detail).toHaveTextContent("解析不能");
+    expect(detail).toHaveTextContent("星形");
   });
 });
 
@@ -422,5 +481,68 @@ describe("GraphScreen の図の書出と再構築", () => {
     await waitForGraph();
     fireEvent.click(screen.getByRole("button", { name: "再構築" }));
     await waitFor(() => expect(runCallgraph).toHaveBeenCalledTimes(2));
+  });
+});
+
+describe("GraphScreen の詳細ペインの幅と畳み込み", () => {
+  /** 詳細ペインへ渡っている幅。 */
+  function detailWidth(): string {
+    const graph = document.querySelector(".ci-graph");
+    if (graph === null) {
+      throw new Error("呼出関係図の枠が無い");
+    }
+    return (graph as HTMLElement).style.getPropertyValue("--ci-graph-detail-w");
+  }
+
+  it("図と詳細ペインの境界に分割ハンドルを置く", async () => {
+    renderGraph(analyzedState());
+    await waitForGraph();
+    const handle = screen.getByRole("separator", { name: "ノード情報と凡例のペインの幅" });
+    expect(handle).toHaveAttribute("aria-orientation", "vertical");
+    expect(handle).toHaveAttribute("aria-valuenow", String(SPLIT_PANES.graphDetail.initial));
+    expect(handle).toHaveAttribute("aria-valuemin", String(SPLIT_PANES.graphDetail.min));
+    expect(handle).toHaveAttribute("aria-valuemax", String(SPLIT_PANES.graphDetail.max));
+    expect(detailWidth()).toBe(`${SPLIT_PANES.graphDetail.initial}px`);
+  });
+
+  it("End キーで上限まで広げる", async () => {
+    renderGraph(analyzedState());
+    await waitForGraph();
+    fireEvent.keyDown(screen.getByRole("separator", { name: "ノード情報と凡例のペインの幅" }), {
+      key: "End",
+    });
+    expect(detailWidth()).toBe(`${SPLIT_PANES.graphDetail.max}px`);
+  });
+
+  it("畳むと詳細ペインもハンドルも出さず、図が全幅を使う", async () => {
+    renderGraph(analyzedState());
+    await waitForGraph();
+    expect(screen.getByRole("complementary", { name: "ノード情報と凡例" })).toBeInTheDocument();
+    const toggle = screen.getByRole("button", { name: "ノード情報と凡例を畳む" });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(toggle);
+    expect(screen.queryByRole("complementary", { name: /ノード情報/ })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("separator", { name: "ノード情報と凡例のペインの幅" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "ノード情報と凡例を開く" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+  });
+
+  it("畳む前の幅を保ち、戻したときに同じ幅で開く", async () => {
+    renderGraph(analyzedState());
+    await waitForGraph();
+    fireEvent.keyDown(screen.getByRole("separator", { name: "ノード情報と凡例のペインの幅" }), {
+      key: "ArrowLeft",
+    });
+    const widened = detailWidth();
+    fireEvent.click(screen.getByRole("button", { name: "ノード情報と凡例を畳む" }));
+    fireEvent.click(screen.getByRole("button", { name: "ノード情報と凡例を開く" }));
+    expect(detailWidth()).toBe(widened);
+    expect(
+      screen.getByRole("separator", { name: "ノード情報と凡例のペインの幅" }),
+    ).toHaveAttribute("aria-valuenow", String(SPLIT_PANES.graphDetail.initial + 24));
   });
 });

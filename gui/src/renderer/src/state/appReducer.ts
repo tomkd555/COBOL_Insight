@@ -1,5 +1,5 @@
 /**
- * 状態遷移の単一の正。design の DCLogic のメソッド(nav/setMode/startRun/jump/pop、design:1068-1272)を
+ * 状態遷移の単一の正。design の DCLogic のメソッド(nav/setMode/startRun/jump/pop)を
  * 純粋な reducer へ移植する。副作用(setTimeout・DOM スクロール)は持たず、トーストの自動消滅は
  * Toast コンポーネント側のタイマーに委ね、実行段の進行は SET_RUN_STAGE の外部駆動に委ねる。
  *
@@ -16,11 +16,13 @@ import type {
   FixDecision,
   GraphArtifactState,
   GraphNodeKind,
+  ImportPatch,
   ProjectPatch,
   ReportFormat,
   RunStage,
   ScreenMode,
   SourceLang,
+  SplitPaneId,
 } from "./appState";
 import type { AssetInventoryItem, SarifFinding } from "../../../shared/engine-api";
 import type { Severity } from "../components/severity";
@@ -57,6 +59,7 @@ export type Action =
   | { type: "SET_FINDING_FILE"; value: string }
   | { type: "SET_FINDING_TEXT"; value: string }
   | { type: "SET_FINDING_SORT"; sort: FindingSort }
+  | { type: "SELECT_FINDING"; finding: SarifFinding }
   | { type: "TOGGLE_SQL_SEVERITY"; severity: Severity }
   | { type: "SET_SQL_RULE"; value: string }
   | { type: "SET_SQL_FILE"; value: string }
@@ -68,12 +71,15 @@ export type Action =
   | { type: "SET_FIX_DECISION"; relPath: string; decision: FixDecision }
   | { type: "SET_REPORT_FORMAT"; format: ReportFormat }
   | { type: "SET_REPORT_PATH"; value: string }
+  | { type: "SET_IMPORT"; patch: ImportPatch }
   | { type: "SET_RULE_SEARCH"; value: string }
   | { type: "TOGGLE_RULE"; id: string }
   | { type: "SET_RULES_ENABLED"; ids: readonly string[]; enabled: boolean }
   | { type: "SET_SEVERITY_THRESHOLD"; severity: Severity }
   | { type: "SET_DEFAULT_ENCODING"; value: string }
   | { type: "SET_NEW_COPYBOOK_PATH"; value: string }
+  | { type: "SET_PANE_WIDTH"; pane: SplitPaneId; width: number }
+  | { type: "TOGGLE_GRAPH_DETAIL" }
   | { type: "SHOW_TOAST"; message: string }
   | { type: "DISMISS_TOAST" };
 
@@ -96,8 +102,9 @@ export function appReducer(state: AppState, action: Action): AppState {
         inventory: { status: "none" },
         findings: { status: "none" },
         sqlAdvice: { status: "none" },
-        // 破棄した成果物の指摘を詳細ペインが指し続けないよう、SQL助言の選択も外す。
+        // 破棄した成果物の指摘を詳細ペイン・選択が指し続けないよう、両画面の選択を外す。
         sqlSelected: null,
+        findingSelected: null,
         // 呼出関係図も古い実行の結果を残さない。次に画面を開いた時点で callgraph を取り直す。
         graph: { status: "none" },
         graphExpanded: {},
@@ -165,7 +172,7 @@ export function appReducer(state: AppState, action: Action): AppState {
       return { ...state, selectedNode: action.id };
 
     case "JUMP":
-      // design jump(design:1263): viewer へ遷移し、ジャンプ元→先の文言を組み、対訳連携をリセットする。
+      // design の jump: viewer へ遷移し、ジャンプ元→先の文言を組み、対訳連携をリセットする。
       return {
         ...state,
         screen: "viewer",
@@ -236,6 +243,9 @@ export function appReducer(state: AppState, action: Action): AppState {
     case "SET_FINDING_SORT":
       return { ...state, findingSort: action.sort };
 
+    case "SELECT_FINDING":
+      return { ...state, findingSelected: action.finding };
+
     case "TOGGLE_SQL_SEVERITY":
       return {
         ...state,
@@ -273,6 +283,16 @@ export function appReducer(state: AppState, action: Action): AppState {
     case "SET_REPORT_PATH":
       return { ...state, reportPath: action.value };
 
+    case "SET_IMPORT":
+      return {
+        ...state,
+        importText: action.patch.importText ?? state.importText,
+        importKind: action.patch.importKind ?? state.importKind,
+        importFileName: action.patch.importFileName ?? state.importFileName,
+        importColumnFrom: action.patch.importColumnFrom ?? state.importColumnFrom,
+        importColumnTo: action.patch.importColumnTo ?? state.importColumnTo,
+      };
+
     case "SET_RULE_SEARCH":
       return { ...state, ruleSearch: action.value };
 
@@ -295,6 +315,14 @@ export function appReducer(state: AppState, action: Action): AppState {
     case "SET_NEW_COPYBOOK_PATH":
       return { ...state, newCopybookPath: action.value };
 
+    case "SET_PANE_WIDTH":
+      // 可動範囲の適用は分割ハンドル(SplitHandle)が担い、ここは受け取った幅をそのまま保つ。
+      return { ...state, paneWidths: { ...state.paneWidths, [action.pane]: action.width } };
+
+    case "TOGGLE_GRAPH_DETAIL":
+      // 畳んでも幅は保つ。戻したときに畳む前の幅で開く。
+      return { ...state, graphDetailCollapsed: !state.graphDetailCollapsed };
+
     case "SHOW_TOAST":
       return { ...state, toastMsg: action.message };
 
@@ -302,7 +330,7 @@ export function appReducer(state: AppState, action: Action): AppState {
       return { ...state, toastMsg: null };
 
     default: {
-      // 未処理の action 型を追加した場合にコンパイル時へ検出させる網羅性チェック。
+      // 未処理の action 型をコンパイル時に検出させる網羅性チェック。
       const exhaustive: never = action;
       return exhaustive;
     }

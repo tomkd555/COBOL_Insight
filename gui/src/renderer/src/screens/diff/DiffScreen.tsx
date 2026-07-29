@@ -19,6 +19,8 @@ import {
   deriveDiffView,
   extractUnifiedDiff,
   fixOutputPaths,
+  fixRuleDescriptionLabel,
+  fixRuleIdLabel,
   joinPath,
   readFixSummary,
   reparseWarning,
@@ -28,7 +30,7 @@ import {
   type FixState,
 } from "./diffModel";
 
-/** 修正案の生成中に提示する段(design:554 の副見出し)。 */
+/** 修正案の生成中に提示する段。engine は生成した修正後ソースを再構文解析して検証する。 */
 const FIX_RUN_STAGES = ["修正後ソースの再構文解析による妥当性確認を含む"];
 
 /**
@@ -47,7 +49,7 @@ function messageOf(error: unknown): string {
 /**
  * diff(fix)画面。engine の `fix preview` が出した修正案の一覧を左に並べ、選択した1件の差分を
  * Monaco DiffEditor の左右2ペインで示す。差分は GUI で計算せず、engine が書いた原本テキストと
- * 修正後テキストの対(readFixResult)をそのまま渡す(裁定 A2・A3)。
+ * 修正後テキストの対(readFixResult)をそのまま渡す。
  *
  * 修正後ソースの実体化は、差分表示のために検証用の作業フォルダへ `fix apply` で書き出して行う。
  * 原本はどちらの経路でも変更されない。engine はコピー句の修正後ソースを書き出さないため、
@@ -139,8 +141,8 @@ export function DiffScreen(): ReactElement {
         status: "unified",
         lines: extractUnifiedDiff(fix.stdout, candidate.relPath),
         reason: candidate.copybook
-          ? "コピー句の修正は原本を書き換えないため、engine は修正後ソースを書き出しません。fix preview が出した差分をそのまま示します。"
-          : "修正後ソースを実体化できなかったため、fix preview が出した差分をそのまま示します。",
+          ? "コピー句の修正は原本を書き換えないため、修正後ソースは書き出されない。修正案の生成が出した差分をそのまま示す。"
+          : "修正後ソースを実体化できなかったため、修正案の生成が出した差分をそのまま示す。",
       });
       return;
     }
@@ -216,7 +218,7 @@ export function DiffScreen(): ReactElement {
     return (
       <EmptyState
         title="修正案がありません"
-        description="資産をインポートして解析を実行すると、R004（ON SIZE ERROR 句の欠如）・R017（FILE STATUS 未検査）・R018（SQLCODE 未検査）の修正案を生成する。他の指摘は助言のみで、diff は生成されない。"
+        description={`資産をインポートして解析を実行すると、${fixRuleDescriptionLabel()}の修正案を生成する。他の指摘は助言のみで、差分は生成されない。`}
         actionLabel="資産エクスプローラーへ"
         onAction={() => dispatch({ type: "NAV", screen: "explorer" })}
       />
@@ -240,7 +242,7 @@ export function DiffScreen(): ReactElement {
       <EmptyState
         icon="！"
         title="修正案を生成できませんでした"
-        description={`fix preview の実行に失敗した。${view.message}`}
+        description={`修正案の生成に失敗した。${view.message}`}
         actionLabel="再試行"
         onAction={() => setFix(IDLE_FIX)}
       />
@@ -250,7 +252,7 @@ export function DiffScreen(): ReactElement {
     return (
       <EmptyState
         title="修正案は生成されませんでした"
-        description="解析した資産に、R004・R017・R018 の修正案を生成できる指摘は見つからなかった。他の指摘は助言のみで、diff は生成されない。"
+        description={`解析した資産に、${fixRuleIdLabel()} の修正案を生成できる指摘は見つからなかった。他の指摘は助言のみで、差分は生成されない。`}
         actionLabel="修正案を作り直す"
         onAction={() => setFix(IDLE_FIX)}
       />
@@ -273,13 +275,13 @@ export function DiffScreen(): ReactElement {
       <div className="ci-diff__main">
         <div className="ci-diff__toolbar">
           <div className="ci-diff__heading">
-            <h2 className="ci-diff__title">{`${candidateRuleSummary(candidate)} ― ${candidateLocation(candidate)}`}</h2>
+            <h3 className="ci-diff__title">{`${candidateRuleSummary(candidate)} ― ${candidateLocation(candidate)}`}</h3>
             <p className="ci-diff__subtitle">
               {`判定: 採用 ${counts.adopted} ・ 棄却 ${counts.rejected} ・ 未判定 ${counts.pending}`}
             </p>
           </div>
           <div className="ci-diff__spacer" />
-          <div className="ci-diff__modes" role="group" aria-label="diff の表示モード">
+          <div className="ci-diff__modes" role="group" aria-label="差分の表示モード">
             <Button
               variant={preview ? "primary" : "default"}
               aria-pressed={preview}
@@ -296,17 +298,19 @@ export function DiffScreen(): ReactElement {
             </Button>
           </div>
           <Button
+            aria-label="採用"
             variant="primary"
             aria-pressed={decisions[candidate.relPath] === "adopted"}
             onClick={() => decide("adopted")}
           >
-            ✓ 採用
+            <span aria-hidden="true">✓</span> 採用
           </Button>
           <Button
+            aria-label="棄却"
             aria-pressed={decisions[candidate.relPath] === "rejected"}
             onClick={() => decide("rejected")}
           >
-            ✗ 棄却
+            <span aria-hidden="true">✗</span> 棄却
           </Button>
         </div>
 
@@ -352,7 +356,7 @@ export function DiffScreen(): ReactElement {
 
         <div className="ci-diff__labels">
           <span className="ci-diff__label">修正前（原本 ― 変更しない）</span>
-          <span className="ci-diff__label">修正後（engine が生成した修正後ソース）</span>
+          <span className="ci-diff__label">修正後（解析エンジンが生成した修正後ソース）</span>
         </div>
         <div className="ci-diff__body">
           {diff.status === "loading" ? (
@@ -370,10 +374,10 @@ export function DiffScreen(): ReactElement {
               <p className="ci-diff__unified-note">{diff.reason}</p>
               {diff.lines.length === 0 ? (
                 <p className="ci-diff__unified-empty">
-                  この修正案の差分は fix preview の出力に含まれていない。
+                  この修正案の差分は、生成された差分の出力に含まれていない。
                 </p>
               ) : (
-                <pre className="ci-diff__unified-body" aria-label={`unified diff ${candidate.relPath}`}>
+                <pre className="ci-diff__unified-body" aria-label={`統一形式の差分 ${candidate.relPath}`}>
                   {diff.lines.join("\n")}
                 </pre>
               )}

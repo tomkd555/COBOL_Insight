@@ -1,15 +1,16 @@
 /*
  * 実描画 smoke。ビルド済みの renderer(out/renderer/index.html)を Electron の offscreen
- * レンダリングで実際に描かせ、jsdom では確かめられない次の点を検査する(裁定 A8)。
+ * レンダリングで実際に描かせ、jsdom では確かめられない次の点を検査する。
  *
- *   1. 8タブが列挙される(シェルが起動している)
+ *   1. 9タブが列挙される(シェルが起動している)
  *   2. Cytoscape が canvas を作り、そこへノードを描く(空でない画素がある)
  *   3. Monaco が起動し、view-line が複数行それぞれ異なる y 座標に並ぶ
  *      (CSP の style-src に 'unsafe-inline' が無いと全行が同じ y へ重なる。この検査がそれを捕らえる)
  *   4. Monaco DiffEditor が左右2ペインで起動し、差分の装飾を描く
  *   5. レポート HTML が sandbox="" の iframe として実際に読み込まれる
  *   6. 設定のルール表が 37 件を並べる
- *   7. console にエラーと CSP 拒否("Refused to ...")が出ない
+ *   7. 端末取込が貼り付けた本文を桁で切り出し、桁定規付きのプレビューへ等幅で並べる
+ *   8. console にエラーと CSP 拒否("Refused to ...")が出ない
  *
  * engine CLI は起動しない。preload を smoke/fake-preload.cjs へ差し替え、window.cobolInsight を
  * 固定データで満たして画面を results 状態まで進める。本番と同じ contextIsolation:true・sandbox:true で
@@ -96,17 +97,17 @@ function selectOption(selector, value) {
   })()`;
 }
 
-/** 8タブの列挙(検査1)。 */
+/** 9タブの列挙(検査1)。 */
 async function checkTabs(win) {
   const labels = await waitUntil(
     win,
     `(() => {
       const tabs = [...document.querySelectorAll('[role="tab"]')].map((t) => t.textContent.trim());
-      return tabs.length === 8 ? tabs : null;
+      return tabs.length === 9 ? tabs : null;
     })()`,
-    "8タブの列挙",
+    "9タブの列挙",
   );
-  record("8タブが列挙される", labels.length === 8, labels.join(" / "));
+  record("9タブが列挙される", labels.length === 9, labels.join(" / "));
 }
 
 /** 解析実行(scan→lint→sql-advise)を進めて results 状態にする。 */
@@ -224,9 +225,9 @@ async function checkViewer(win) {
   record("識別欄(73〜80桁)の装飾が描かれる", identification > 0, `装飾 ${identification} 箇所`);
 }
 
-/** Monaco DiffEditor の実描画(検査5)。差分の行が重なっていないことを y 座標で確かめる。 */
+/** Monaco DiffEditor の実描画(検査4)。差分の行が重なっていないことを y 座標で確かめる。 */
 async function checkDiff(win) {
-  await waitUntil(win, clickTab("diff"), "diff タブの押下");
+  await waitUntil(win, clickTab("修正案の差分"), "修正案の差分タブの押下");
   const candidates = await waitUntil(
     win,
     `(() => {
@@ -271,7 +272,7 @@ async function checkDiff(win) {
   );
   record("差分の装飾が描かれる", decorations > 0, `装飾 ${decorations} 箇所`);
 
-  // コピー句の修正案は engine が修正後ソースを書かないため unified diff で示す(裁定 A9)。
+  // コピー句の修正案は engine が修正後ソースを書かないため、unified diff で示す。
   await waitUntil(
     win,
     `(() => {
@@ -294,7 +295,7 @@ async function checkDiff(win) {
   record("コピー句の修正案が unified diff を出す", unified > 0, `本文 ${unified} 文字`);
 }
 
-/** レポート HTML の sandbox iframe 描画(検査6)。 */
+/** レポート HTML の sandbox iframe 描画(検査5)。 */
 async function checkReport(win) {
   await waitUntil(win, clickTab("レポート出力"), "レポート出力タブの押下");
   await waitUntil(win, clickButton("レポートを書き出す"), "レポート書き出しの押下");
@@ -324,7 +325,7 @@ async function checkReport(win) {
   );
 }
 
-/** 設定画面のルール表(検査7)。 */
+/** 設定画面のルール表(検査6)。 */
 async function checkSettings(win) {
   await waitUntil(win, clickTab("設定"), "設定タブの押下");
   const rows = await waitUntil(
@@ -338,7 +339,52 @@ async function checkSettings(win) {
   record("設定がルール37件を並べる", rows === 37, `ルール ${rows} 件`);
 }
 
-/** console のエラーと CSP 拒否(検査4)。 */
+/**
+ * 端末取込のプレビュー(検査7)。React は textarea の value を追跡するため、プロトタイプの
+ * setter で値を入れてから input を起こす(要素へ直接代入すると React が変更を検知しない)。
+ */
+async function checkImport(win) {
+  await waitUntil(win, clickTab("端末取込"), "端末取込タブの押下");
+  await waitUntil(
+    win,
+    `(() => {
+      const area = document.querySelector('.ci-import__paste');
+      if (area === null) return false;
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+      setter.call(area, '000100 IDENTIFICATION DIVISION.\\n000200 PROGRAM-ID. SYK001.');
+      area.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    })()`,
+    "本文の貼り付け",
+  );
+  await waitUntil(
+    win,
+    `(() => {
+      const field = document.querySelector('#ci-import-col-from');
+      if (field === null) return false;
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+      setter.call(field, '8');
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    })()`,
+    "開始桁の指定",
+  );
+  const shown = await waitUntil(
+    win,
+    `(() => {
+      const texts = [...document.querySelectorAll('.ci-import-preview__text')].map((e) => e.textContent);
+      const ruler = document.querySelector('.ci-import-preview__ruler');
+      if (texts.length !== 2 || ruler === null) return null;
+      return texts[0] === 'IDENTIFICATION DIVISION.' && ruler.textContent.includes('1234567890')
+        ? texts.length
+        : null;
+    })()`,
+    "取込プレビューの表示",
+  );
+  record("端末取込が桁を切り出してプレビューへ並べる", shown === 2, `プレビュー ${shown} 行`);
+}
+
+/** console のエラーと CSP 拒否(検査8)。 */
 function checkConsole() {
   record(
     "console にエラーと CSP 拒否が出ない",
@@ -395,6 +441,7 @@ async function main() {
     await checkDiff(win);
     await checkReport(win);
     await checkSettings(win);
+    await checkImport(win);
     checkConsole();
   } catch (error) {
     record("smoke の進行", false, error instanceof Error ? error.message : String(error));

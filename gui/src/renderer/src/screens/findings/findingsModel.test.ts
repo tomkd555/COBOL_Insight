@@ -71,8 +71,8 @@ describe("findingsView(共有一覧のビューモデル)", () => {
     expect(filterAndSortFindings(SAMPLE_FINDINGS, withFilters({ text: "SYK001" }))).toHaveLength(4);
   });
 
-  it("重大度ソートは 高→中→低→警告、同順位はファイル→行", () => {
-    const rows = filterAndSortFindings(SAMPLE_FINDINGS, withFilters({ sort: "sev" }));
+  it("重大度ソート(昇順)は 高→中→低→警告、同順位はファイル→行", () => {
+    const rows = filterAndSortFindings(SAMPLE_FINDINGS, withFilters({}), { column: "sev", direction: "asc" });
     const order = rows.map((r) => r.severity);
     expect(order).toEqual([...order].sort((a, b) => {
       const idx = { high: 0, medium: 1, low: 2, warning: 3 } as const;
@@ -91,14 +91,24 @@ describe("findingsView(共有一覧のビューモデル)", () => {
     ]);
   });
 
-  it("行ソートは startLine 昇順", () => {
-    const rows = filterAndSortFindings(SAMPLE_FINDINGS, withFilters({ sort: "line" }));
-    const lines = rows.map((r) => r.finding.startLine);
-    expect(lines).toEqual([...lines].sort((a, b) => a - b));
+  it("重大度ソート(降順)は昇順をそのまま逆順にする(警告→低→中→高)", () => {
+    const asc = filterAndSortFindings(SAMPLE_FINDINGS, withFilters({}), { column: "sev", direction: "asc" });
+    const desc = filterAndSortFindings(SAMPLE_FINDINGS, withFilters({}), { column: "sev", direction: "desc" });
+    expect(desc).toEqual([...asc].reverse());
+  });
+
+  it("行ソートは startLine 昇順、降順で逆になる", () => {
+    const asc = filterAndSortFindings(SAMPLE_FINDINGS, withFilters({}), { column: "line", direction: "asc" });
+    const ascLines = asc.map((r) => r.finding.startLine);
+    expect(ascLines).toEqual([...ascLines].sort((a, b) => a - b));
+
+    const desc = filterAndSortFindings(SAMPLE_FINDINGS, withFilters({}), { column: "line", direction: "desc" });
+    const descLines = desc.map((r) => r.finding.startLine);
+    expect(descLines).toEqual([...ascLines].reverse());
   });
 
   it("ファイルソートはファイル名昇順、同一ファイル内は行昇順", () => {
-    const rows = filterAndSortFindings(SAMPLE_FINDINGS, withFilters({ sort: "file" }));
+    const rows = filterAndSortFindings(SAMPLE_FINDINGS, withFilters({}), { column: "file", direction: "asc" });
     const keys = rows.map((r) => `${r.finding.file}:${r.finding.startLine}`);
     expect(keys).toEqual([
       "cobol/SYK001.cbl:73",
@@ -112,6 +122,29 @@ describe("findingsView(共有一覧のビューモデル)", () => {
       "cobol/SYK007.cbl:79",
       "cobol/SYK009.cbl:21",
     ]);
+  });
+
+  it("ルールソートは ID を昇順に並べる(カタログ順の R001→R031→S001…と一致)", () => {
+    const rows = filterAndSortFindings(SAMPLE_FINDINGS, withFilters({}), { column: "rule", direction: "asc" });
+    const ids = rows.map((r) => r.finding.ruleId);
+    expect(ids).toEqual([...ids].sort());
+  });
+
+  it("ルールソートは ID を文字列比較せず接頭辞+数値で比べる(2桁と3桁の混在でも数値順)", () => {
+    // 文字列比較では "R100" < "R9" になってしまうが、接頭辞+数値の比較では R9 → R100 の順になる。
+    const findings: SarifFinding[] = [
+      { ruleId: "R100", level: "error", message: "m1", file: "a.cbl", startLine: 1, startColumn: 1 },
+      { ruleId: "R9", level: "error", message: "m2", file: "a.cbl", startLine: 2, startColumn: 1 },
+      { ruleId: "R10", level: "error", message: "m3", file: "a.cbl", startLine: 3, startColumn: 1 },
+    ];
+    const rows = filterAndSortFindings(findings, withFilters({}), { column: "rule", direction: "asc" });
+    expect(rows.map((r) => r.finding.ruleId)).toEqual(["R9", "R10", "R100"]);
+  });
+
+  it("ソート向きを指定しない場合は昇順(既定値)になる", () => {
+    const withDefault = filterAndSortFindings(SAMPLE_FINDINGS, withFilters({}));
+    const explicitAsc = filterAndSortFindings(SAMPLE_FINDINGS, withFilters({}), { column: "sev", direction: "asc" });
+    expect(withDefault).toEqual(explicitAsc);
   });
 
   it("空配列は行 0 件・件数 0 件の要約になる", () => {

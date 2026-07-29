@@ -4,7 +4,11 @@
  * ファイル、行対応は LINE_MAP の列(kind は "1:1"/"1:N"/"N:1")である。
  */
 
-import type { LineMapEntry, TranspileGeneratedFile } from "../../../../shared/engine-api";
+import type {
+  CopyExpansionData,
+  LineMapEntry,
+  TranspileGeneratedFile,
+} from "../../../../shared/engine-api";
 
 /** COBOL 原本。7行目に COPY 文、11〜12行目に対訳の対応がある。 */
 export const SAMPLE_COBOL_TEXT = [
@@ -22,12 +26,39 @@ export const SAMPLE_COBOL_TEXT = [
   "           GO TO EXIT-PROC.",
 ].join("\n");
 
-/** コピー句の本文。 */
+/** コピー句の原本。1行目は注記行で、engine の前処理では空になる。 */
 export const SAMPLE_COPYBOOK_TEXT = [
-  "       01  SYK1-REC.",
-  "           05  SYK1-KEY             PIC X(10).",
-  "           05  SYK1-DATA            PIC X(90).",
+  "000100* 受注レコード",
+  "000200 01  SYK1-REC.",
+  "000300     05  SYK1-KEY             PIC X(10).",
+  "000400     05  SYK1-DATA            PIC X(90).",
 ].join("\n");
+
+/**
+ * scan が書く COPY 展開の対応表。SAMPLE_COBOL_TEXT の 7 行目の COPY 文に対応し、text は
+ * REPLACING(SYK1→ORD1)適用後・注記行と一連番号欄と識別欄が空白の姿である。
+ */
+export const SAMPLE_COPY_EXPANSION: CopyExpansionData = {
+  programs: [
+    {
+      path: "cobol/SYK001.cbl",
+      programId: "SYK001",
+      expansions: [
+        {
+          copyStatementLine: 7,
+          copybookName: "SYKCPY1",
+          copybookPath: "copybook/SYKCPY1.cpy",
+          lines: [
+            { copybookLine: 1, text: "" },
+            { copybookLine: 2, text: "       01  ORD1-REC." },
+            { copybookLine: 3, text: "           05  ORD1-KEY             PIC X(10)." },
+            { copybookLine: 4, text: "           05  ORD1-DATA            PIC X(90)." },
+          ],
+        },
+      ],
+    },
+  ],
+};
 
 /** Python の生成物。12行目と15〜18行目に対応がある。 */
 export const SAMPLE_PYTHON_TEXT = [

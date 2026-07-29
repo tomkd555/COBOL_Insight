@@ -1,7 +1,6 @@
 import { useMemo, type ReactElement } from "react";
 import type { SarifFinding } from "../../../../shared/engine-api";
 import type { Severity } from "../../components/severity";
-import type { FindingSort } from "../../state/appState";
 import { FindingsToolbar } from "./FindingsToolbar";
 import { FindingsTable } from "./FindingsTable";
 import {
@@ -13,6 +12,8 @@ import {
   thresholdNote,
   type FindingFilters,
   type FindingRow,
+  type SortColumn,
+  type SortState,
 } from "./findingsModel";
 
 export interface FindingsViewHandlers {
@@ -20,7 +21,6 @@ export interface FindingsViewHandlers {
   onRuleChange: (value: string) => void;
   onFileChange: (value: string) => void;
   onTextChange: (value: string) => void;
-  onSortChange: (sort: FindingSort) => void;
 }
 
 export interface FindingsViewProps {
@@ -28,7 +28,7 @@ export interface FindingsViewProps {
   findings: readonly SarifFinding[];
   filters: FindingFilters;
   handlers: FindingsViewHandlers;
-  /** 行の活性化(指摘一覧はソース行へのジャンプ、SQL助言は詳細ペインの選択)。 */
+  /** 行の活性化(指摘一覧・SQL助言のいずれも選択だけを行う)。 */
   onActivateRow: (row: FindingRow) => void;
   /** 行を活性化したときに起きることの説明。 */
   rowHint: string;
@@ -36,6 +36,15 @@ export interface FindingsViewProps {
   tableLabel: string;
   /** 選択中の指摘(行の強調に使う)。選択の概念を持たない画面は渡さない。 */
   selectedFinding?: SarifFinding | null;
+  /** ソート状態(列・向き)。指摘一覧・SQL助言はそれぞれ AppState に持ち、タブを跨いでも保たれる。 */
+  sort: SortState;
+  /** 見出しクリックで押された列。次のソート状態への変換は呼び出し側(AppState)が行う。 */
+  onSortChange: (column: SortColumn) => void;
+  /**
+   * ファイル・行のセルをソースへのジャンプ操作にする。詳細ペインを持たない指摘一覧だけが渡し、
+   * 詳細ペインを持つ SQL助言はジャンプをペイン側の操作に委ねるため渡さない。
+   */
+  onJumpRow?: (row: FindingRow) => void;
   onGoReport: () => void;
   /** フィルタ 0 件時のメッセージ。 */
   noHitMessage: string;
@@ -43,8 +52,8 @@ export interface FindingsViewProps {
 
 /**
  * 指摘一覧と SQL助言で共有する一覧 UI。ツールバー(重大度チップ・ルール/ファイル選択・
- * 内容検索・要約・レポート出力)と表(重大度/ファイル/行のソート・行の活性化)を組む。
- * フィルタ状態と各種ハンドラは呼び出し側が AppState から供給する。
+ * 内容検索・要約・レポート出力)と表(重大度/ルール/ファイル/行のソート・行の活性化)を組む。
+ * フィルタ・ソート状態はいずれも呼び出し側が AppState から供給し、タブを跨いでも保たれる。
  */
 export function FindingsView({
   findings,
@@ -54,13 +63,16 @@ export function FindingsView({
   rowHint,
   tableLabel,
   selectedFinding = null,
+  sort,
+  onSortChange,
+  onJumpRow,
   onGoReport,
   noHitMessage,
 }: FindingsViewProps): ReactElement {
   const counts = useMemo(() => severityCounts(findings), [findings]);
   const rules = useMemo(() => ruleOptions(findings), [findings]);
   const files = useMemo(() => fileOptions(findings), [findings]);
-  const rows = useMemo(() => filterAndSortFindings(findings, filters), [findings, filters]);
+  const rows = useMemo(() => filterAndSortFindings(findings, filters, sort), [findings, filters, sort]);
   // しきい値で一覧が絞られているときは、全件と表示件数の差の理由を要約へ添える。
   const note = thresholdNote(filters.threshold);
   const counted = summaryText(findings, rows.length, counts);
@@ -86,12 +98,13 @@ export function FindingsView({
       />
       <FindingsTable
         rows={rows}
-        sort={filters.sort}
-        onSortChange={handlers.onSortChange}
+        sort={sort}
+        onSortChange={onSortChange}
         onActivateRow={onActivateRow}
         rowHint={rowHint}
         label={tableLabel}
         selectedFinding={selectedFinding}
+        onJumpRow={onJumpRow}
         noHitMessage={noHitMessage}
       />
     </div>

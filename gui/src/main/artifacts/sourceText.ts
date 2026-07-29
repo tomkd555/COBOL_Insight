@@ -1,6 +1,6 @@
 /**
  * ソース本文の表示用復号。engine が SOURCE.codepage へ記録した検出値(または画面の手動指定)を
- * TextDecoder の encoding へ写して復号する。復号は表示専用であり、構文解析・判定は engine CLI が担う。
+ * TextDecoder の encoding へ対応付けて復号する。復号は表示専用であり、構文解析・判定は engine CLI が担う。
  *
  * TextDecoder(Electron・Node の全 ICU)が持つのは UTF-8 と shift_jis であり、EBCDIC(CP930/CP939)の
  * 変換器は無い。したがって EBCDIC とコードページ不明はいずれも復号せず unsupported として返し、

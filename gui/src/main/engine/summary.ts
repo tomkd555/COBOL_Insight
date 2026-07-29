@@ -26,7 +26,7 @@ export function extractSummaryJson(stdout: string): Record<string, unknown> | nu
 }
 
 /**
- * サマリ JSON に含まれる成果物パス項目(sarifFile/htmlFile/textFile/outputDir)を
+ * サマリ JSON に含まれる成果物パス項目(dbFile/sarifFile/htmlFile/textFile/outputDir)を
  * {@link EngineOutputs} へ写す。runner が明示指定の出力先とこれを併合し、実際に書かれた
  * ファイルの位置を確定する。
  */
@@ -35,6 +35,7 @@ export function summaryOutputs(summary: Record<string, unknown> | null): EngineO
   if (summary === null) {
     return outputs;
   }
+  assignString(outputs, "db", summary["dbFile"]);
   assignString(outputs, "sarif", summary["sarifFile"]);
   assignString(outputs, "html", summary["htmlFile"]);
   assignString(outputs, "text", summary["textFile"]);

@@ -3,8 +3,9 @@
  * スタイル・レイアウト指定・可視集合・詳細情報を導く。描画そのもの(canvas 操作)は GraphCanvas が
  * 担い、ここは DOM にも cytoscape の実行時 API にも触れない。
  *
- * ノード種別は engine の NodeKind 10 種、エッジ種別は EdgeKind 5 種、解決根拠は Resolution 3 種と
- * 1 対 1 で対応する。種別は色だけでなく形も変え、凡例と併せて色覚に依存せず区別できるようにする。
+ * ノード種別は engine の NodeKind 10 種に「解析不能」(構文解析に失敗した資産。engine の列挙には
+ * 無く GUI 側で扱う第 11 の種別)を加えた 11 種、エッジ種別は EdgeKind 5 種、解決根拠は Resolution
+ * 3 種と対応する。種別は色だけでなく形も変え、凡例と併せて色覚に依存せず区別できるようにする。
  * 解決根拠が DATAFLOW・UNRESOLVED のエッジは破線にして、確定した呼出と区別する。
  */
 
@@ -17,9 +18,16 @@ import type {
 } from "../../../../shared/engine-api";
 import type { GraphNodeKind } from "../../state/appState";
 
+/**
+ * ノード種別。engine の NodeKind(GraphNodeKind、10 種)に、構文解析に失敗した資産を表す
+ * 「解析不能」(UNANALYZABLE)を加えた 11 種。UNANALYZABLE は engine の NodeKind 列挙には無く、
+ * callgraph JSON のノードで kind が "UNANALYZABLE" のものを GUI 側だけで識別する。
+ */
+export type AnyNodeKind = GraphNodeKind | "UNANALYZABLE";
+
 /** ノード種別ごとの見え方。形・地色・枠色・枠線種を種別ごとに変える。 */
 export interface NodeKindStyle {
-  readonly kind: GraphNodeKind;
+  readonly kind: AnyNodeKind;
   /** 凡例・詳細ペインに出す日本語表示名。 */
   readonly label: string;
   readonly shape: cytoscape.Css.NodeShape;
@@ -32,9 +40,13 @@ export interface NodeKindStyle {
 
 /**
  * ノード種別の並びと見え方。並びは凡例・フィルタチップの表示順であり、ジョブ→ステップ→
- * プログラム→段落→データセット→Db2表→トランザクション→BMSマップ→外部ユーティリティ→未解決の順に、
- * バッチの上流から下流、続いてオンライン、最後に外部・未解決を置く。配色は design の
- * ノード種別(design:938 の D.NTY)を踏襲する。
+ * プログラム→段落→データセット→Db2表→トランザクション→BMSマップ→外部ユーティリティ→未解決→
+ * 解析不能の順に、バッチの上流から下流、続いてオンライン、最後に外部・未解決・解析不能を置く。
+ * 配色は design のノード種別(design の D.NTY)を踏襲する(解析不能は design に無いため GUI 側で定める)。
+ *
+ * 解析不能は「未解決」(動的 CALL の解決失敗。呼出先は分からないが呼出関係自体は図に現れる)とは
+ * 別概念で、資産そのものの構文解析が失敗し呼出関係が一切分からないことを表す。混同しないよう、
+ * 既存 10 種のどれとも重ならない形(星形)と配色を与える。
  */
 export const NODE_KIND_STYLES: readonly NodeKindStyle[] = [
   { kind: "JOB", label: "ジョブ", shape: "hexagon", shapeLabel: "六角形", background: "#e3edf9", border: "#5b8bc4", borderStyle: "solid" },
@@ -47,10 +59,11 @@ export const NODE_KIND_STYLES: readonly NodeKindStyle[] = [
   { kind: "BMS_MAP", label: "BMSマップ", shape: "rhomboid", shapeLabel: "平行四辺形", background: "#fbf1e4", border: "#c0913f", borderStyle: "solid" },
   { kind: "EXTERNAL_UTILITY", label: "外部ユーティリティ", shape: "tag", shapeLabel: "タグ形", background: "#f2f2f2", border: "#8a8a8a", borderStyle: "solid" },
   { kind: "UNRESOLVED", label: "未解決", shape: "diamond", shapeLabel: "ひし形(破線)", background: "#fdeded", border: "#c50f1f", borderStyle: "dashed" },
+  { kind: "UNANALYZABLE", label: "解析不能", shape: "star", shapeLabel: "星形", background: "#dde1e4", border: "#3a4048", borderStyle: "solid" },
 ];
 
 /** 種別フィルタが扱うノード種別の並び(NODE_KIND_STYLES と同順)。 */
-export const NODE_KINDS: readonly GraphNodeKind[] = NODE_KIND_STYLES.map((style) => style.kind);
+export const NODE_KINDS: readonly AnyNodeKind[] = NODE_KIND_STYLES.map((style) => style.kind);
 
 const NODE_KIND_STYLE_BY_KIND = new Map<string, NodeKindStyle>(
   NODE_KIND_STYLES.map((style) => [style.kind, style]),
@@ -76,8 +89,8 @@ export function nodeKindStyle(kind: string): NodeKindStyle {
   };
 }
 
-/** 既知のノード種別(フィルタのキーになる 10 種)か。 */
-export function isGraphNodeKind(kind: string): kind is GraphNodeKind {
+/** 既知のノード種別(フィルタのキーになる 11 種)か。 */
+export function isGraphNodeKind(kind: string): kind is AnyNodeKind {
   return NODE_KIND_STYLE_BY_KIND.has(kind);
 }
 
@@ -93,7 +106,7 @@ export interface EdgeKindStyle {
 }
 
 /**
- * エッジ種別の並びと見え方。配色は design のエッジ種別(design:971 の D.EK)を踏襲し、
+ * エッジ種別の並びと見え方。配色は design のエッジ種別(design の D.EK)を踏襲し、
  * 矢頭形状を種別ごとに変える。線種は解決根拠(破線=DATAFLOW・UNRESOLVED)専用であり、
  * 種別の区別には用いない。
  */
@@ -145,13 +158,17 @@ export const SELECTED_NODE_CLASS = "ci-node-selected";
  * 部分展開の起点ノード ID。ジョブとトランザクションを起点とする。どちらも無いグラフ
  * (COBOL だけを解析した場合など)では入次数 0 のノードを起点とし、循環しかない場合は
  * 全ノードを起点として、起点が無くなって何も表示できない状態を避ける。
+ *
+ * エッジを一切持たない孤立ノード(解析不能ノードなど)は、展開による推移到達では永久に
+ * 表示に加わらないため、ジョブ・トランザクションが起点になる場合でも常に起点集合へ加える。
  */
 export function graphRootIds(data: CallGraphData): string[] {
   const roots = data.nodes
     .filter((node) => node.kind === "JOB" || node.kind === "TRANSACTION")
     .map((node) => node.id);
   if (roots.length > 0) {
-    return roots;
+    const rootSet = new Set(roots);
+    return [...roots, ...isolatedNodeIds(data).filter((id) => !rootSet.has(id))];
   }
   const hasIncoming = new Set(data.edges.map((edge) => edge.to));
   const sources = data.nodes.filter((node) => !hasIncoming.has(node.id)).map((node) => node.id);
@@ -163,7 +180,7 @@ export interface GraphVisibility {
   /** 展開したノード ID(値が真のものだけを展開として扱う)。 */
   readonly expanded: Record<string, boolean>;
   /** ノード種別フィルタの ON/OFF。 */
-  readonly kinds: Record<GraphNodeKind, boolean>;
+  readonly kinds: Record<AnyNodeKind, boolean>;
 }
 
 /** ノード ID から、エッジで隣接するノード ID の集合を引く索引を作る(向きは問わない)。 */
@@ -179,6 +196,12 @@ function adjacencyIndex(data: CallGraphData): Map<string, Set<string>> {
     add(edge.to, edge.from);
   }
   return index;
+}
+
+/** エッジを一切持たないノード(孤立ノード)の ID。解析不能ノードは呼出関係が分からず孤立して来る。 */
+function isolatedNodeIds(data: CallGraphData): string[] {
+  const adjacency = adjacencyIndex(data);
+  return data.nodes.filter((node) => (adjacency.get(node.id)?.size ?? 0) === 0).map((node) => node.id);
 }
 
 /**
@@ -390,6 +413,34 @@ export function graphStylesheet(): cytoscape.StylesheetJsonBlock[] {
   return [...base, ...byKind, ...edges, ...selected];
 }
 
+/**
+ * fit による自動ズームの上限倍率。Cytoscape の maxZoom はコア(cytoscape() の引数)の設定であり、
+ * レイアウト指定へ書いても無視される。graphCoreOptions を通してコアへ渡すこと。
+ */
+export const GRAPH_MAX_ZOOM = 1;
+
+/** Cytoscape のコア生成時の指定。 */
+export interface GraphCoreOptions {
+  readonly container: HTMLElement;
+  readonly style: cytoscape.StylesheetJsonBlock[];
+  readonly autoungrabify: boolean;
+  readonly maxZoom: number;
+}
+
+/**
+ * コアの指定。ノード数が少ない図(起点だけの初期表示など)で 1 ノードが画面の大半を占めるほど
+ * 拡大されることを maxZoom で防ぐ。レイアウトが決めた層の並びを保つため、ノードのドラッグ移動は
+ * 許さない。
+ */
+export function graphCoreOptions(container: HTMLElement): GraphCoreOptions {
+  return {
+    container,
+    style: graphStylesheet(),
+    autoungrabify: true,
+    maxZoom: GRAPH_MAX_ZOOM,
+  };
+}
+
 /** ELK レイアウトの指定。cytoscape-elk 経由で elkjs が層化レイアウトを計算する。 */
 export interface GraphLayoutOptions {
   readonly name: "elk";
@@ -420,8 +471,8 @@ export function graphLayoutOptions(): GraphLayoutOptions {
 }
 
 /** 種別ごとのノード件数(グラフ全体)。フィルタチップの件数表示に使う。 */
-export function nodeKindCounts(data: CallGraphData): Record<GraphNodeKind, number> {
-  const counts = Object.fromEntries(NODE_KINDS.map((kind) => [kind, 0])) as Record<GraphNodeKind, number>;
+export function nodeKindCounts(data: CallGraphData): Record<AnyNodeKind, number> {
+  const counts = Object.fromEntries(NODE_KINDS.map((kind) => [kind, 0])) as Record<AnyNodeKind, number>;
   for (const node of data.nodes) {
     if (isGraphNodeKind(node.kind)) {
       counts[node.kind] += 1;
@@ -597,10 +648,29 @@ export function graphExitBanner(exitCode: number): string | null {
     return null;
   }
   if (exitCode === 1) {
-    return "警告のある資産がある(callgraph 終了コード 1)。未解決の呼出は「未解決」ノードとして図に含めている。";
+    return "呼出関係の構築で警告のあった資産がある。未解決の呼出は「未解決」ノードとして図に含めている。";
   }
   return (
-    `解析エラーのある資産がある(callgraph 終了コード ${exitCode})。` +
-    "解析できなかった資産の呼出関係は図に現れないため、指摘一覧で失敗した資産を確認する。"
+    "呼出関係の構築で解析エラーのあった資産がある。" +
+    "構文解析に失敗した資産は呼出関係が分からないまま「解析不能」ノードとして図に含めている。"
+  );
+}
+
+/** 解析不能ノードの件数。構文解析に失敗した資産の数を表す。 */
+export function unanalyzableCount(data: CallGraphData): number {
+  return data.nodes.filter((node) => node.kind === "UNANALYZABLE").length;
+}
+
+/**
+ * 解析不能ノードが1件以上あるときに示す案内文。解析不能ノードは呼出関係が分からず孤立して
+ * 図に現れるため、その旨と件数を利用者へ伝えて図が全体像でないことを正直に示す。0件は null。
+ */
+export function unanalyzableBanner(count: number): string | null {
+  if (count <= 0) {
+    return null;
+  }
+  return (
+    `構文解析に失敗した資産が ${count} 件ある。呼出関係が分からないため、` +
+    "図には「解析不能」ノードとして孤立させて示す。"
   );
 }

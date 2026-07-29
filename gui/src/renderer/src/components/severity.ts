@@ -1,7 +1,7 @@
 /**
  * 重大度モデル。色 + 記号の二重符号化(色覚非依存)を単一の正として定義する。
  * 色はデザイントークン(--ci-sev-*)への参照、記号は文字そのものを持つ。
- * design/COBOL Insight.dc.html の SEV(高=●/中=◆/低=■/警告=▲)を移植したもの。
+ * 記号は 高=● / 中=◆ / 低=■ / 警告=▲ とし、画面デザイン(design/COBOL Insight.dc.html)と同じ割当を用いる。
  */
 
 export type Severity = "high" | "medium" | "low" | "warning";
@@ -29,7 +29,7 @@ export const SEVERITY_META: Record<Severity, SeverityMeta> = {
   warning: { severity: "warning", label: "警告", symbol: "▲", colorVar: "var(--ci-sev-warning)", modifier: "warning" },
 };
 
-/** design データが用いる日本語ラベル(高/中/低/警告)から Severity への写像。 */
+/** 画面表示ラベル(高/中/低/警告)から Severity を引く対応表。ルールカタログの重大度欄が使う。 */
 export const SEVERITY_BY_LABEL: Record<string, Severity> = {
   高: "high",
   中: "medium",

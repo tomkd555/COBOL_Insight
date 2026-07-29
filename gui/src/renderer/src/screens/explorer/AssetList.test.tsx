@@ -85,7 +85,7 @@ describe("AssetList(資産一覧)", () => {
     render(
       <AssetList groups={[]} collapsed={new Set()} showFindingColumn={true} onToggleDir={vi.fn()} onSelect={vi.fn()} />,
     );
-    expect(screen.getByText("該当する資産がありません。")).toBeInTheDocument();
+    expect(screen.getByText("該当する資産がない。")).toBeInTheDocument();
   });
 
   it("文字コード列が未判定の行を含むとき、既定の文字コードで表示する旨の注記を出す", () => {

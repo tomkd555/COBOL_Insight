@@ -1,10 +1,9 @@
 import { describe, it, expect } from "vitest";
 import type { CallGraphData } from "../../../../shared/engine-api";
-import type { GraphNodeKind } from "../../state/appState";
 import { initialState } from "../../state/appState";
-import { SAMPLE_GRAPH } from "./fixtures";
+import { SAMPLE_GRAPH, SAMPLE_GRAPH_WITH_UNANALYZABLE } from "./fixtures";
 import { SAMPLE_INVENTORY } from "../explorer/fixtures";
-import type { GraphEdgeElement, GraphNodeElement } from "./graphModel";
+import type { AnyNodeKind, GraphEdgeElement, GraphNodeElement } from "./graphModel";
 import {
   DEFAULT_DB_FILE,
   EDGE_KIND_STYLES,
@@ -14,27 +13,31 @@ import {
   edgeKindStyle,
   graphArtifactPaths,
   graphExitBanner,
+  graphCoreOptions,
   graphLayoutOptions,
   graphRootIds,
   graphSourcePaths,
   graphStylesheet,
   graphWarning,
   isDashedEdge,
+  isGraphNodeKind,
   nodeDetail,
   nodeKindCounts,
   nodeKindStyle,
+  unanalyzableBanner,
+  unanalyzableCount,
   visibleNodeIds,
 } from "./graphModel";
 
-/** 既定のノード種別フィルタ(全種別を表示)。 */
-const ALL_KINDS: Record<GraphNodeKind, boolean> = initialState.graphTypes;
+/** 既定のノード種別フィルタ(全種別を表示)。解析不能は AppState の graphTypes に無いため、ここで加える。 */
+const ALL_KINDS: Record<AnyNodeKind, boolean> = { ...initialState.graphTypes, UNANALYZABLE: true };
 
 function visible(expanded: Record<string, boolean>, kinds = ALL_KINDS): string[] {
   return [...visibleNodeIds(SAMPLE_GRAPH, { expanded, kinds })].sort();
 }
 
 describe("ノード種別の見え方", () => {
-  it("engine の NodeKind 10 種をすべて持ち、形と配色が種別ごとに異なる", () => {
+  it("engine の NodeKind 10 種に解析不能を加えた 11 種をすべて持ち、形と配色が種別ごとに異なる", () => {
     const kinds = NODE_KIND_STYLES.map((style) => style.kind);
     expect(kinds).toEqual([
       "JOB",
@@ -47,16 +50,30 @@ describe("ノード種別の見え方", () => {
       "BMS_MAP",
       "EXTERNAL_UTILITY",
       "UNRESOLVED",
+      "UNANALYZABLE",
     ]);
-    expect(new Set(NODE_KIND_STYLES.map((style) => style.shape)).size).toBe(10);
-    expect(new Set(NODE_KIND_STYLES.map((style) => style.border)).size).toBe(10);
-    expect(new Set(NODE_KIND_STYLES.map((style) => style.label)).size).toBe(10);
-    expect(new Set(NODE_KIND_STYLES.map((style) => style.shapeLabel)).size).toBe(10);
+    expect(new Set(NODE_KIND_STYLES.map((style) => style.shape)).size).toBe(11);
+    expect(new Set(NODE_KIND_STYLES.map((style) => style.border)).size).toBe(11);
+    expect(new Set(NODE_KIND_STYLES.map((style) => style.label)).size).toBe(11);
+    expect(new Set(NODE_KIND_STYLES.map((style) => style.shapeLabel)).size).toBe(11);
   });
 
   it("未解決ノードは破線の枠で示す", () => {
     expect(nodeKindStyle("UNRESOLVED").borderStyle).toBe("dashed");
     expect(nodeKindStyle("PROGRAM").borderStyle).toBe("solid");
+  });
+
+  it("解析不能は未解決と異なる形・色を持ち、別概念であることを視覚的に区別する", () => {
+    const unresolved = nodeKindStyle("UNRESOLVED");
+    const unanalyzable = nodeKindStyle("UNANALYZABLE");
+    expect(unanalyzable.label).toBe("解析不能");
+    expect(unanalyzable.shape).not.toBe(unresolved.shape);
+    expect(unanalyzable.background).not.toBe(unresolved.background);
+    expect(unanalyzable.border).not.toBe(unresolved.border);
+  });
+
+  it("解析不能も既知の種別として扱う", () => {
+    expect(isGraphNodeKind("UNANALYZABLE")).toBe(true);
   });
 
   it("列挙に無い種別は隠さず、種別名をそのまま表示名にした代替の見え方で扱う", () => {
@@ -135,6 +152,16 @@ describe("起点ノード", () => {
     };
     expect(graphRootIds(data)).toEqual(["program:A", "program:B"]);
   });
+
+  it("エッジを持たない孤立ノード(解析不能ノードなど)は、ジョブ・トランザクションが起点でも常に起点集合へ加える", () => {
+    // 孤立ノードは展開による推移到達では永久に表示に加わらないため、起点に含めないと図に一切現れない。
+    expect(graphRootIds(SAMPLE_GRAPH_WITH_UNANALYZABLE)).toEqual([
+      "job:SYKD010",
+      "job:SYKD020",
+      "transaction:SYK8",
+      "unanalyzable:BROKEN1.cbl",
+    ]);
+  });
 });
 
 describe("部分展開の可視集合", () => {
@@ -173,15 +200,26 @@ describe("部分展開の可視集合", () => {
   });
 
   it("種別フィルタを切ると、その種別のノードは表示しない", () => {
-    const kinds: Record<GraphNodeKind, boolean> = { ...ALL_KINDS, STEP: false };
+    const kinds: Record<AnyNodeKind, boolean> = { ...ALL_KINDS, STEP: false };
     const ids = visibleNodeIds(SAMPLE_GRAPH, { expanded: { "job:SYKD010": true }, kinds });
     expect([...ids]).not.toContain("step:SYKD010.STEP010");
     expect([...ids]).toContain("job:SYKD010");
   });
 
   it("起点の種別を切ると表示は空になる", () => {
-    const kinds: Record<GraphNodeKind, boolean> = { ...ALL_KINDS, JOB: false, TRANSACTION: false };
+    const kinds: Record<AnyNodeKind, boolean> = { ...ALL_KINDS, JOB: false, TRANSACTION: false };
     expect(visibleNodeIds(SAMPLE_GRAPH, { expanded: {}, kinds }).size).toBe(0);
+  });
+
+  it("解析不能ノードは孤立していても展開なしの初期表示に含まれる", () => {
+    const ids = visibleNodeIds(SAMPLE_GRAPH_WITH_UNANALYZABLE, { expanded: {}, kinds: ALL_KINDS });
+    expect(ids.has("unanalyzable:BROKEN1.cbl")).toBe(true);
+  });
+
+  it("種別フィルタで解析不能を切ると、孤立していても図から外れる", () => {
+    const kinds: Record<AnyNodeKind, boolean> = { ...ALL_KINDS, UNANALYZABLE: false };
+    const ids = visibleNodeIds(SAMPLE_GRAPH_WITH_UNANALYZABLE, { expanded: {}, kinds });
+    expect(ids.has("unanalyzable:BROKEN1.cbl")).toBe(false);
   });
 });
 
@@ -257,6 +295,15 @@ describe("スタイルとレイアウト", () => {
     expect(layout.name).toBe("elk");
     expect(layout.elk["algorithm"]).toBe("layered");
     expect(layout.elk["elk.direction"]).toBe("RIGHT");
+  });
+
+  it("fit による拡大は等倍(maxZoom 1)を超えない", () => {
+    // ノード数が少ない図(起点だけの初期表示など)で、1ノードが画面の大半を占めるほど
+    // 拡大されることを防ぐ。maxZoom はコアの設定であり、レイアウト指定へ書いても効かない。
+    const container = document.createElement("div");
+    expect(graphCoreOptions(container).maxZoom).toBe(1);
+    expect(graphCoreOptions(container).container).toBe(container);
+    expect(graphCoreOptions(container).autoungrabify).toBe(true);
   });
 });
 
@@ -383,9 +430,26 @@ describe("終了コードの提示", () => {
     expect(graphExitBanner(0)).toBeNull();
   });
 
-  it("警告あり(1)・エラーあり(2)は図を隠さず、終了コードを添えて示す", () => {
-    expect(graphExitBanner(1)).toContain("1");
-    expect(graphExitBanner(2)).toContain("2");
+  it("警告あり(1)・エラーあり(2)は図を隠さず、起きたことを内部の終了コードに触れずに示す", () => {
+    expect(graphExitBanner(1)).toContain("警告");
+    expect(graphExitBanner(1)).not.toContain("終了コード");
+    expect(graphExitBanner(2)).not.toContain("終了コード");
     expect(graphExitBanner(2)).toContain("解析エラー");
+    // 解析エラーの資産は図から消えるのではなく「解析不能」ノードとして現れることを伝える。
+    expect(graphExitBanner(2)).toContain("解析不能");
+  });
+});
+
+describe("解析不能ノードの案内", () => {
+  it("解析不能ノードが無ければ件数は0で、案内は出さない", () => {
+    expect(unanalyzableCount(SAMPLE_GRAPH)).toBe(0);
+    expect(unanalyzableBanner(0)).toBeNull();
+  });
+
+  it("解析不能ノードがあれば件数を数え、案内文に件数を含める", () => {
+    expect(unanalyzableCount(SAMPLE_GRAPH_WITH_UNANALYZABLE)).toBe(1);
+    const banner = unanalyzableBanner(1);
+    expect(banner).toContain("1");
+    expect(banner).toContain("解析不能");
   });
 });

@@ -6,7 +6,7 @@ import { ChipRadioGroup } from "./ChipRadioGroup";
 const OPTIONS = ["すべて", "JCL", "COBOL"] as const;
 type Option = (typeof OPTIONS)[number];
 
-/** 選択の変化を実際に反映する器(roving tabindex の追従を観測する)。 */
+/** 選択の変化を実際に反映するラッパー(roving tabindex の追従を観測する)。 */
 function Harness({ initial = "すべて" }: { initial?: Option }): ReactElement {
   const [value, setValue] = useState<Option>(initial);
   return <ChipRadioGroup label="種別フィルタ" options={OPTIONS} value={value} onChange={setValue} />;

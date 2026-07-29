@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { Toast } from "./Toast";
 
@@ -36,5 +36,18 @@ describe("Toast", () => {
     render(<Toast message="x" onDismiss={onDismiss} durationMs={1000} />);
     vi.advanceTimersByTime(1000);
     expect(onDismiss).toHaveBeenCalledOnce();
+  });
+
+  it("閉じるボタンを aria-label 付きで表示し、押すと onDismiss を呼ぶ", () => {
+    const onDismiss = vi.fn();
+    render(<Toast message="保存しました" onDismiss={onDismiss} />);
+    const closeButton = screen.getByRole("button", { name: "通知を閉じる" });
+    fireEvent.click(closeButton);
+    expect(onDismiss).toHaveBeenCalledOnce();
+  });
+
+  it("onDismiss を渡さない場合は閉じるボタンを描画しない", () => {
+    render(<Toast message="保存しました" />);
+    expect(screen.queryByRole("button", { name: "通知を閉じる" })).toBeNull();
   });
 });

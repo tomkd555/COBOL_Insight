@@ -30,8 +30,12 @@ const MAIN_CLASS = "jp.cobolinsight.cli.Main";
  *   <li>配布時: extraResources で同梱した jpackage app-image(内蔵 JRE)の実行ファイルを
  *       直接起動する。system の JRE を要さない。</li>
  *   <li>開発時: gradle :engine:cli:installDist の成果物 lib を classpath に、JAVA_HOME
- *       (無ければ PATH)の java でメインクラスを起動する。</li>
+ *       (無ければ PATH)の java でメインクラスを起動する。appRoot(gui/)の親がリポジトリルート
+ *       であり、その配下の engine/cli/build/install/cli を参照する。</li>
  * </ul>
+ *
+ * classpath 末尾の `lib/*` は java 自身が展開するワイルドカードである。spawn はシェルを介さない
+ * ため、この形のまま渡す必要がある。
  */
 export function resolveEngineLaunch(input: EngineLaunchInput): EngineLaunch {
   const isWindows = input.platform === "win32";

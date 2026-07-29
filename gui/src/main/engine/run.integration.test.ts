@@ -10,7 +10,7 @@ import { resolveEngineLaunch } from "./launch";
 /**
  * 実 engine CLI(installDist)を spawn する統合テスト。純ロジックのユニットとは層を分ける。
  * 前提: gradle :engine:cli:installDist が済み、かつ JAVA_HOME が設定されていること。
- * 前提が欠ける環境では skip する(npm test は緑のまま)。
+ * 前提が欠ける環境では skip し、npm test 全体は失敗させない。
  */
 
 const guiRoot = resolve(__dirname, "..", "..", "..");

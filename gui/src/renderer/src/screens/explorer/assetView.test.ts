@@ -193,7 +193,7 @@ describe("analysisStatus(解析状態)", () => {
       tone: "error",
     });
   });
-  it("results で復号は成功したが構文解析に失敗した資産は✗ 構文解析失敗(design:908 の PARSEF)", () => {
+  it("results で復号は成功したが構文解析に失敗した資産は✗ 構文解析失敗(design の PARSEF)", () => {
     expect(analysisStatus(item({ codepage: "windows-31j", findingCount: 1 }), "results")).toEqual({
       label: "✗ 構文解析失敗",
       tone: "error",

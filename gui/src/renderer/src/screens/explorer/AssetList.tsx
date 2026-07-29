@@ -11,7 +11,7 @@ export interface AssetListProps {
   onSelect: (path: string) => void;
 }
 
-/** 種別バッジの配色修飾子(design tyMeta)。 */
+/** 表示種別から種別バッジの配色修飾子(BEM)を引く対応表。 */
 const TYPE_MODIFIER: Record<string, string> = {
   JCL: "jcl",
   COBOL: "cobol",
@@ -28,7 +28,7 @@ export function AssetList({ groups, collapsed, showFindingColumn, onToggleDir, o
   if (groups.length === 0) {
     return (
       <div className="ci-asset-list ci-asset-list--empty">
-        <p className="ci-asset-list__empty-note">該当する資産がありません。</p>
+        <p className="ci-asset-list__empty-note">該当する資産がない。</p>
       </div>
     );
   }

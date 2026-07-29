@@ -20,7 +20,7 @@
   white-space: nowrap;
 }
 .ci-severity-badge__symbol {
-  font-size: 10px;
+  font-size: var(--ci-fs-note);
   line-height: 1;
 }
 .ci-severity-badge--high .ci-severity-badge__symbol {
@@ -53,6 +53,12 @@
 .ci-chip:hover:not(:disabled) {
   background: var(--ci-surface-header);
 }
+/* 押下中。地を一段濃くし、あわせて 1px 沈ませる(即時の変化でモーションは伴わない)。 */
+.ci-chip:active:not(:disabled) {
+  background: var(--ci-surface-alt);
+  border-color: var(--ci-text-subtle);
+  transform: translateY(1px);
+}
 /* 重大度しきい値で表示対象から外れたチップ。押せないことを薄色と既定カーソルで示す。 */
 .ci-chip:disabled {
   cursor: default;
@@ -64,7 +70,7 @@
   color: var(--ci-accent-strong);
 }
 .ci-chip__symbol {
-  font-size: 10px;
+  font-size: var(--ci-fs-note);
   line-height: 1;
 }
 .ci-chip__count {
@@ -77,20 +83,54 @@
   gap: var(--ci-space-1);
 }
 
-/* --- トースト --- */
+/*
+ * --- トースト ---
+ * シェルのフローに置く帯。コンテンツ領域とステータスバーの間に自身の高さ分を確保して挿入され、
+ * position:fixed のオーバーレイと違い本文の機能領域には重ならない。
+ */
 .ci-toast {
-  position: fixed;
-  bottom: 40px;
-  left: 50%;
-  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ci-space-3);
+  flex: none;
   background: var(--ci-toast-bg);
   color: var(--ci-toast-text);
   font-size: var(--ci-fs-sm);
-  padding: 8px 18px;
-  border-radius: var(--ci-radius-lg);
+  padding: var(--ci-space-2) var(--ci-space-5);
   box-shadow: var(--ci-shadow-toast);
-  z-index: 50;
-  animation: ci-pop 0.18s ease-out;
+  animation: ci-toast-pop 0.18s ease-out;
+}
+.ci-toast__message {
+  flex: 1;
+}
+.ci-toast__close {
+  flex: none;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: var(--ci-fs-md);
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--ci-radius-sm);
+}
+.ci-toast__close:hover {
+  background: var(--ci-toast-close-hover-bg);
+}
+.ci-toast__close:focus-visible {
+  outline: 2px solid var(--ci-focus-ring);
+  outline-offset: 2px;
+}
+@keyframes ci-toast-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* --- 空状態プレースホルダ --- */
@@ -105,16 +145,16 @@
   width: 470px;
   max-width: 100%;
   border: 2px dashed var(--ci-border-strong);
-  border-radius: 8px;
-  padding: 38px 30px;
+  border-radius: var(--ci-radius-badge);
+  padding: 38px var(--ci-space-9);
   text-align: center;
   background: var(--ci-surface-soft);
 }
 .ci-empty__icon {
   width: 48px;
   height: 48px;
-  margin: 0 auto 14px;
-  border-radius: 8px;
+  margin: 0 auto var(--ci-space-4);
+  border-radius: var(--ci-radius-badge);
   background: var(--ci-select-tint);
   color: var(--ci-accent);
   font-size: 24px;
@@ -137,7 +177,7 @@
 .ci-empty__note {
   font-size: var(--ci-fs-xs);
   color: var(--ci-text-subtle);
-  margin: 12px 0 0;
+  margin: var(--ci-space-3) 0 0;
 }
 
 /* --- 実行中インジケータ --- */
@@ -156,7 +196,7 @@
   background: var(--ci-surface-soft);
   border: 1px solid var(--ci-border);
   border-radius: var(--ci-radius-lg);
-  padding: 18px 26px;
+  padding: var(--ci-space-5) var(--ci-space-8);
 }
 .ci-running__spinner {
   width: 22px;
@@ -173,7 +213,7 @@
   margin: 0;
 }
 .ci-running__stages {
-  font-size: 11.5px;
+  font-size: var(--ci-fs-pane-title);
   color: var(--ci-text-muted);
   margin: 2px 0 0;
 }
@@ -188,7 +228,7 @@
 /* --- 注意バナー --- */
 .ci-banner {
   font-size: var(--ci-fs-sm);
-  padding: 8px 14px;
+  padding: var(--ci-space-2) var(--ci-space-4);
   border: 1px solid transparent;
   border-radius: var(--ci-radius-sm);
   margin: 10px;
@@ -213,8 +253,12 @@
   border: 1px solid var(--ci-border-strong);
   color: var(--ci-text);
 }
-.ci-btn--default:hover {
+.ci-btn--default:hover:not(:disabled) {
   background: var(--ci-surface-header);
+}
+.ci-btn--default:active:not(:disabled) {
+  background: var(--ci-surface-alt);
+  border-color: var(--ci-text-subtle);
 }
 .ci-btn--primary {
   background: var(--ci-accent);
@@ -223,13 +267,57 @@
   font-weight: 700;
   padding: 6px 16px;
 }
-.ci-btn--primary:hover {
+.ci-btn--primary:hover:not(:disabled) {
   background: var(--ci-accent-hover);
   border-color: var(--ci-accent-hover);
+}
+.ci-btn--primary:active:not(:disabled) {
+  background: var(--ci-accent-strong);
+  border-color: var(--ci-accent-strong);
+}
+/* 押下中は 1px 沈ませる。即時の変化でモーションは伴わない。 */
+.ci-btn:active:not(:disabled) {
+  transform: translateY(1px);
 }
 .ci-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+/*
+ * --- 分割ハンドル ---
+ * 隣り合う2つのペインの境界に置く。掴む対象であることを、常時見えるつまみと col-resize の
+ * カーソルで示す。幅そのものは各画面が CSS カスタムプロパティで隣のペインへ与える。
+ */
+.ci-split {
+  flex: none;
+  width: var(--ci-split-w);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: col-resize;
+  background: var(--ci-border-soft);
+  /* ドラッグ中にハンドル自身の文字選択が始まらないようにする。 */
+  user-select: none;
+}
+.ci-split:hover,
+.ci-split--dragging {
+  background: var(--ci-select-tint);
+}
+.ci-split:focus-visible {
+  outline: 2px solid var(--ci-focus-ring);
+  outline-offset: -2px;
+}
+/* つまみ。境界の位置と掴める幅を、色に頼らず形で示す。 */
+.ci-split__grip {
+  width: var(--ci-split-grip-w);
+  height: var(--ci-split-grip-h);
+  border-radius: var(--ci-radius-sm);
+  background: var(--ci-border-hover);
+}
+.ci-split:hover .ci-split__grip,
+.ci-split--dragging .ci-split__grip {
+  background: var(--ci-accent);
 }
 
 /* --- 基本テキスト入力 --- */
@@ -241,6 +329,23 @@
   border-radius: var(--ci-radius-sm);
   background: var(--ci-panel);
   color: var(--ci-text);
+}
+.ci-input:hover:not(:disabled) {
+  border-color: var(--ci-border-hover);
+}
+/* 入力値を受け付けない状態。理由は aria-describedby で結びつけた要素が述べる。 */
+.ci-input--invalid,
+.ci-input--invalid:hover:not(:disabled) {
+  border-color: var(--ci-invalid-border);
+  border-width: 2px;
+  /* 枠を 1px 太らせるぶん内側の余白を詰め、行の高さと文字位置を保つ。 */
+  padding: var(--ci-space-1) var(--ci-space-2);
+}
+.ci-input:disabled {
+  background: var(--ci-surface-alt);
+  border-color: var(--ci-border);
+  color: var(--ci-text-subtle);
+  cursor: not-allowed;
 }
 .ci-input::placeholder {
   color: var(--ci-text-subtle);

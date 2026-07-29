@@ -3,7 +3,7 @@ import { buildEngineArgs, collectRequestedOutputs } from "./args";
 import type { EngineInvocation } from "../../shared/engine-api";
 
 describe("buildEngineArgs", () => {
-  it("scan は位置引数 INPUT_DIR と --db を組み立てる", () => {
+  it("scan は位置引数 INPUT_DIR と --db、COPY 展開の出力先を組み立てる", () => {
     const inv: EngineInvocation = {
       subcommand: "scan",
       request: { inputDir: "C:/assets", db: "C:/ws/project.db" },
@@ -13,6 +13,8 @@ describe("buildEngineArgs", () => {
       "C:/assets",
       "--db",
       "C:/ws/project.db",
+      "--copy-expansion",
+      "cobol-insight-copy-expansion.json",
     ]);
   });
 
@@ -36,6 +38,8 @@ describe("buildEngineArgs", () => {
       "cobol/A.cbl=IBM-930",
       "--codepage",
       "B.cbl=UTF-8",
+      "--copy-expansion",
+      "cobol-insight-copy-expansion.json",
     ]);
   });
 
@@ -175,6 +179,13 @@ describe("collectRequestedOutputs", () => {
       db: "p.db",
       json: "out/cg.json",
       svg: "out/cg.svg",
+    });
+  });
+
+  it("scan は常に COPY 展開の対応表を出力先として持つ", () => {
+    const inv: EngineInvocation = { subcommand: "scan", request: { inputDir: "assets" } };
+    expect(collectRequestedOutputs(inv)).toEqual({
+      copyExpansion: "cobol-insight-copy-expansion.json",
     });
   });
 

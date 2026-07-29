@@ -19,7 +19,7 @@ const analyzed = withState({
 describe("deriveStatus(ステータスバー)", () => {
   it("empty は資産 0 とルール有効数を出す", () => {
     const status = deriveStatus(initialState);
-    expect(status.left).toBe("準備完了 ― 資産をインポートしてください");
+    expect(status.left).toBe("準備完了 ― 資産のインポート待ち");
     expect(status.counts).toBe("資産 0 ・ ルール 37 有効 ・ v1.0.0");
   });
 
@@ -75,7 +75,7 @@ describe("deriveRunBanner(解析実行の失敗バナー)", () => {
       mode: "error",
       inventory: { status: "error", message: "入力フォルダが見つかりません" },
     });
-    expect(banner).toContain("解析に失敗しました");
+    expect(banner).toContain("解析に失敗した");
     expect(banner).toContain("入力フォルダが見つかりません");
   });
 
@@ -85,7 +85,7 @@ describe("deriveRunBanner(解析実行の失敗バナー)", () => {
       mode: "error",
       findings: { status: "error", message: "lint が SARIF を出力しませんでした" },
     });
-    expect(banner).toContain("指摘の取得に失敗しました");
+    expect(banner).toContain("指摘の取得に失敗した");
     expect(banner).toContain("lint が SARIF を出力しませんでした");
   });
 
@@ -95,11 +95,11 @@ describe("deriveRunBanner(解析実行の失敗バナー)", () => {
       mode: "error",
       sqlAdvice: { status: "error", message: "sql-advise が異常終了しました" },
     });
-    expect(banner).toContain("SQL助言の取得に失敗しました");
+    expect(banner).toContain("SQL助言の取得に失敗した");
   });
 
   it("全段が成功していて error モードなら構文解析の部分的失敗として示す", () => {
     const banner = deriveRunBanner({ ...analyzed, mode: "error" });
-    expect(banner).toContain("一部の資産で構文解析に失敗しました");
+    expect(banner).toContain("一部の資産で構文解析に失敗した");
   });
 });

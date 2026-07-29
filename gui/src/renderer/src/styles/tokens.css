@@ -19,6 +19,9 @@
   --ci-select-tint: #e4f0fb;
   --ci-select-tint-soft: #eff6fd;
   --ci-select-border: #7fb3e3;
+  /* 選択行の左端に出す帯。地色(1.16)・枠線(2.22)だけでは 3:1 に届かないため、
+     非テキスト要素の 3:1 を満たすこの帯で選択位置を示す */
+  --ci-select-bar: var(--ci-accent);
   --ci-info-bg: #eff6fd;
   --ci-info-border: #bdd8f0;
   --ci-info-text: #0b4e8f;
@@ -27,28 +30,40 @@
   --ci-border: #d9dde3;
   --ci-border-strong: #c9cfd6;
   --ci-border-soft: #e4e7eb;
+  /* 入力欄をポインタで指したときの境界。非テキスト要素の 3:1 を白地で満たす濃さにする */
+  --ci-border-hover: #8593a3;
+  /* 入力値を受け付けない状態の境界 */
+  --ci-invalid-border: var(--ci-sev-high);
 
   /* 文字色 */
   --ci-text: #1f2328;
   --ci-text-secondary: #5f6b7a;
   --ci-text-muted: #5c6670;
-  --ci-text-subtle: #8a94a0;
+  --ci-text-subtle: #626c79;
   --ci-text-inverse: #ffffff;
   --ci-tab-text: #454c55;
   --ci-text-heading: #3a4149;
+  /* 無効化した検出ルールの名称。補助テキストと同じ薄さでは機能的な意味を伝えられないため一段濃くする */
+  --ci-rule-off-text: var(--ci-text-secondary);
 
   /* 重大度(色 + 記号の二重符号化。記号は severity.ts が持つ) */
   --ci-sev-high: #c50f1f;
-  --ci-sev-medium: #b25b00;
+  --ci-sev-medium: #a75500;
   --ci-sev-low: #005fb8;
   --ci-sev-warning: #5f6b7a;
+
+  /* 重大度の淡い地色(ソースビューアで指摘のある行に敷く) */
+  --ci-sev-high-tint: #fdecea;
+  --ci-sev-medium-tint: #fbeee0;
+  --ci-sev-low-tint: #e4f0fb;
+  --ci-sev-warning-tint: #eef0f3;
 
   /* 意味色(エラー・成功・注意) */
   --ci-error-bg: #fdecea;
   --ci-error-border: #e7b4ae;
   --ci-error-text: #7a1c13;
   --ci-success: #2f6d45;
-  --ci-caution: #8a6d1f;
+  --ci-caution: #83681e;
   --ci-caution-bg: #f5efe0;
 
   /* 資産種別バッジ(design tyMeta) */
@@ -57,7 +72,7 @@
   --ci-type-cobol-bg: #eaf2ea;
   --ci-type-cobol-text: #2f6d45;
   --ci-type-copybook-bg: #f5efe0;
-  --ci-type-copybook-text: #8a6d1f;
+  --ci-type-copybook-text: #83681e;
   --ci-type-bms-bg: #fbeee0;
   --ci-type-bms-text: #a05c1f;
   --ci-type-other-bg: #f0eaf7;
@@ -74,6 +89,7 @@
   /* トースト */
   --ci-toast-bg: #2b3138;
   --ci-toast-text: #f2f5f8;
+  --ci-toast-close-hover-bg: rgba(255, 255, 255, 0.15);
   --ci-shadow-toast: 0 4px 14px rgba(0, 0, 0, 0.25);
 
   /* コード表示の行装飾(相互ハイライト・ジャンプ先・注記行の枠) */
@@ -90,7 +106,7 @@
   --ci-copy-border: #cfe0c4;
   --ci-copy-title: #4a6b37;
   --ci-copy-text: #33512b;
-  --ci-copy-meta: #6e8b57;
+  --ci-copy-meta: #5f784b;
 
   /* タイポグラフィ */
   --ci-font-ui: "BIZ UDPGothic", "Yu Gothic UI", "Meiryo", sans-serif;
@@ -130,10 +146,17 @@
   /* 影 */
   --ci-shadow-sm: 0 1px 2px rgb(0 0 0 / 25%);
 
+  /* 分割ハンドル(隣り合うペインの境界)の寸法 */
+  --ci-split-w: 6px;
+  --ci-split-grip-w: 2px;
+  --ci-split-grip-h: 28px;
+
   /* シェルの固定寸法 */
   --ci-titlebar-h: 44px;
   --ci-statusbar-h: 24px;
   --ci-progress-h: 4px;
+  /* シェルの最小幅。main が開くウィンドウの幅と同じ値で、これより狭めると各画面の固定幅の枠を
+     縮めるのではなく横スクロールで見せる */
   --ci-min-width: 1280px;
 
   /* フォーカスリング */

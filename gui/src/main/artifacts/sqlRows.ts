@@ -1,6 +1,6 @@
 /**
- * sql.js(WASM・オフライン)で SQLite を読むときの共通型と行写像。列順に依存せず列名で値を取り出し、
- * SQLite の緩い型付けを TypeScript の値へ狭める。SQL 文と写像先の interface は各読取モジュールが持つ。
+ * sql.js(WASM・オフライン)で SQLite を読むときの共通型と行の読み口。列順に依存せず列名で値を取り出し、
+ * SQLite の緩い型付けを TypeScript の値へ狭める。SQL 文と取り出し先の interface は各読取モジュールが持つ。
  */
 
 /** sql.js の1セルの値域。 */
@@ -51,7 +51,7 @@ function rowReader(values: SqlCellValue[], index: Map<string, number>): SqlRow {
   };
 }
 
-/** exec の結果(先頭の1文分)を列名写像で1件ずつ変換する。結果が無ければ空配列。 */
+/** exec の結果(先頭の1文分)を列名で引きながら1件ずつ変換する。結果が無ければ空配列。 */
 export function mapRows<T>(results: SqlExecResult[], map: (row: SqlRow) => T): T[] {
   if (results.length === 0) {
     return [];

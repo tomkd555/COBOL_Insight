@@ -1,14 +1,15 @@
 /**
  * アプリ全体の状態モデル。design/COBOL Insight.dc.html の DCLogic(class Component extends
- * DCLogic、design:834-1558)の state 形(design:835)を React へ移植した単一の正である。
+ * DCLogic)の state 形を React へ移植した単一の正である。
  * 画面(screen)・解析ライフサイクル(mode)・各画面のフィルタ/選択/decisions を集約する。
  * mode は全画面で共有する1つの解析ライフサイクル状態で、各画面はこの mode に応じて
  * 空/実行中/結果/エラーの4状態を描き分ける。
  *
- * design の terse なキー名(aSearch/gTypes 等)は、gui 既存コードの記法(記述的な英語名)に
- * そろえて改名した。対応は各フィールドのコメントに残す。
+ * フィールド名は記述的な英語名を用いる。design 側の短いキー名(aSearch・gTypes 等)との対応は、
+ * 各フィールドのコメントに添える。
  */
 
+import type { ImportAssetKind } from "../../../shared/assetImport";
 import type { AssetInventoryItem, CallGraphData, SarifFinding } from "../../../shared/engine-api";
 import type { Severity } from "../components/severity";
 import type { ScreenId } from "../shell/screens";
@@ -16,15 +17,16 @@ import type { ScreenId } from "../shell/screens";
 /** 解析ライフサイクル。全画面が共有し、各画面はこの値で4状態を描き分ける(design mode)。 */
 export type ScreenMode = "empty" | "running" | "results" | "error";
 
-/** 実行中に提示する解析段(第1段=構文 / 第2段=制御フロー / 第3段=データフロー)。 */
+/** 実行中に提示する解析段(第1段=scan / 第2段=lint / 第3段=sql-advise)。 */
 export type RunStage = 1 | 2 | 3;
 
 /** 資産一覧の種別フィルタ(design aType)。 */
 export type AssetTypeFilter = "すべて" | "JCL" | "COBOL" | "コピー句" | "BMS" | "その他";
 
 /**
- * 呼出関係図のノード種別(design gTypes のキー)。値は engine の NodeKind(10種)と同一の綴りに
- * そろえ、callgraph JSON の kind をそのままフィルタのキーとして扱う。
+ * 呼出関係図のノード種別(design gTypes のキー)。値は engine の NodeKind(10種)に、構文解析に
+ * 失敗した資産を表す UNANALYZABLE(engine の列挙には無い GUI 限定の種別)を加えた11種。
+ * callgraph JSON のノードの kind をそのままフィルタのキーとして扱う。
  */
 export type GraphNodeKind =
   | "JOB"
@@ -36,10 +38,20 @@ export type GraphNodeKind =
   | "UNRESOLVED"
   | "EXTERNAL_UTILITY"
   | "TRANSACTION"
-  | "BMS_MAP";
+  | "BMS_MAP"
+  | "UNANALYZABLE";
 
-/** 指摘一覧のソート列(design fSort)。 */
-export type FindingSort = "sev" | "file" | "line";
+/** 指摘一覧・SQL助言の表でソート可能な列(design fSort に、ルール列を加える)。 */
+export type FindingSortColumn = "sev" | "rule" | "file" | "line";
+
+/** ソートの向き。 */
+export type SortDirection = "asc" | "desc";
+
+/** ソート状態(列と向きの組)。指摘一覧と SQL助言はそれぞれ独立に持つ。 */
+export interface FindingSort {
+  readonly column: FindingSortColumn;
+  readonly direction: SortDirection;
+}
 
 /** ソースビューアの逐語対訳の言語(design lang)。 */
 export type SourceLang = "py" | "java";
@@ -75,7 +87,7 @@ export type GraphArtifactState =
   | { readonly status: "error"; readonly message: string };
 
 /**
- * 解析対象プロジェクト。全画面がここから入力フォルダ・SQLite・コピー句検索パスを参照する(裁定 A7)。
+ * 解析対象プロジェクト。全画面がここから入力フォルダ・SQLite・コピー句検索パスを参照する。
  * 画面ごとの入力フォルダ定数は持たない。
  */
 export interface ProjectState {
@@ -85,6 +97,40 @@ export interface ProjectState {
   readonly dbPath: string | null;
   /** コピー句検索パスの順序付き一覧(--copybook-path、design cpyPaths)。設定画面が編集する。 */
   readonly copybookPaths: string[];
+}
+
+/**
+ * 幅を保持する分割ペイン。いずれも分割ハンドルの右側のペインで、画面ごとに独立した値を持つ。
+ * viewerTranslation はソースビューアの逐語対訳ペイン(左は COBOL 原本)である。
+ */
+export type SplitPaneId = "explorerDetail" | "graphDetail" | "sqlDetail" | "viewerTranslation";
+
+/** 分割ペインの初期幅と可動範囲(画素)。 */
+export interface SplitPaneLimits {
+  readonly initial: number;
+  readonly min: number;
+  readonly max: number;
+}
+
+/**
+ * 分割ペインの寸法。下限はペインが役目を果たす最小の幅、上限は隣のペインを潰さない幅である。
+ * viewerTranslation の下限 240px は、最小ウィンドウ幅 1280px でも COBOL 原本ペインへ
+ * 固定形式 80 桁と行番号 5 桁を横スクロールなしで描ける幅を残す。初期幅も同じ条件を満たす。
+ */
+export const SPLIT_PANES: Record<SplitPaneId, SplitPaneLimits> = {
+  explorerDetail: { initial: 330, min: 240, max: 560 },
+  graphDetail: { initial: 252, min: 200, max: 480 },
+  sqlDetail: { initial: 380, min: 280, max: 640 },
+  viewerTranslation: { initial: 520, min: 240, max: 900 },
+};
+
+/** SET_IMPORT で更新する項目。省略した項目は現在値を保つ。 */
+export interface ImportPatch {
+  readonly importText?: string;
+  readonly importKind?: ImportAssetKind;
+  readonly importFileName?: string;
+  readonly importColumnFrom?: number;
+  readonly importColumnTo?: number;
 }
 
 /** SET_PROJECT で更新する項目。省略した項目は現在値を保つ。 */
@@ -143,8 +189,13 @@ export interface AppState {
   readonly findingFile: string;
   /** 内容テキスト検索(design fText)。 */
   readonly findingText: string;
-  /** ソート列(design fSort)。 */
+  /** ソート状態(列・向きの組、design fSort に向きを加える)。 */
   readonly findingSort: FindingSort;
+  /**
+   * 選択中の指摘(design には無い)。行のクリック・Enter/Space は選択だけを行い、ソースへの
+   * ジャンプは行内の明示的なボタンで行う。選択は表の強調表示にだけ使う。
+   */
+  readonly findingSelected: SarifFinding | null;
   /** 空状態のバリアント(design emptyVariant)。0=未解析 / 1=指摘0件。 */
   readonly findingsEmptyVariant: number;
 
@@ -178,7 +229,7 @@ export interface AppState {
   readonly sqlFile: string;
   /** 内容テキスト検索。 */
   readonly sqlText: string;
-  /** ソート列。 */
+  /** ソート状態(列・向きの組)。指摘一覧とは独立に持つ。 */
   readonly sqlSort: FindingSort;
 
   /* diff(fix) */
@@ -198,6 +249,18 @@ export interface AppState {
   /** 出力先フォルダ(design repPath)。空文字はプロジェクトファイルの置き場所を用いることを表す。 */
   readonly reportPath: string;
 
+  /* 端末取込(GUI 専用) */
+  /** 貼り付けた本文。桁を切り出す前の原文である。 */
+  readonly importText: string;
+  /** 取り込む資産の種別。保存先のフォルダと拡張子を決める。 */
+  readonly importKind: ImportAssetKind;
+  /** 保存するファイル名(拡張子は種別から補う)。 */
+  readonly importFileName: string;
+  /** 取り込む開始桁(1起点・両端を含む)。 */
+  readonly importColumnFrom: number;
+  /** 取り込む終了桁(1起点・両端を含む)。 */
+  readonly importColumnTo: number;
+
   /* 設定(GUI 専用) */
   /** ルール検索(design ruleSearch)。 */
   readonly ruleSearch: string;
@@ -214,6 +277,12 @@ export interface AppState {
   /** 追加中のコピー句検索パス入力(design newPath)。 */
   readonly newCopybookPath: string;
 
+  /* 分割ペインの幅(GUI 専用) */
+  /** 画面ごとの分割ペインの幅(画素)。タブを移動しても保つ。 */
+  readonly paneWidths: Record<SplitPaneId, number>;
+  /** 呼出関係図の右ペインを畳んでいるか。畳むとペインとハンドルを出さず、図が全幅を使う。 */
+  readonly graphDetailCollapsed: boolean;
+
   /* 横断 */
   /** トースト通知の文言(design toastMsg)。null は非表示。 */
   readonly toastMsg: string | null;
@@ -221,7 +290,7 @@ export interface AppState {
 
 /**
  * 製品の初期状態。design のデモ既定(mode:'results')ではなく、解析未実行の空状態から始める
- * (状態切替 device は製品では実装しないため。裁定 A1)。フィルタ既定値は design:836-847 を踏襲する。
+ * (design が持つ状態切替の操作は製品では実装しないため)。フィルタ既定値は design の state 初期値を踏襲する。
  */
 export const initialState: AppState = {
   mode: "empty",
@@ -251,6 +320,7 @@ export const initialState: AppState = {
     EXTERNAL_UTILITY: true,
     TRANSACTION: true,
     BMS_MAP: true,
+    UNANALYZABLE: true,
   },
   graphExpanded: {},
   selectedNode: null,
@@ -259,7 +329,8 @@ export const initialState: AppState = {
   findingRule: "all",
   findingFile: "all",
   findingText: "",
-  findingSort: "sev",
+  findingSort: { column: "sev", direction: "asc" },
+  findingSelected: null,
   findingsEmptyVariant: 0,
 
   sourceFile: "",
@@ -275,7 +346,7 @@ export const initialState: AppState = {
   sqlRule: "all",
   sqlFile: "all",
   sqlText: "",
-  sqlSort: "sev",
+  sqlSort: { column: "sev", direction: "asc" },
 
   fixSelected: "",
   diffMode: "preview",
@@ -284,11 +355,25 @@ export const initialState: AppState = {
   reportFormat: "HTML",
   reportPath: "",
 
+  importText: "",
+  importKind: "cobol",
+  importFileName: "",
+  importColumnFrom: 1,
+  importColumnTo: 80,
+
   ruleSearch: "",
   rulesDisabled: {},
   severityThreshold: "warning",
   defaultEncoding: "手動: Shift_JIS",
   newCopybookPath: "",
+
+  paneWidths: {
+    explorerDetail: SPLIT_PANES.explorerDetail.initial,
+    graphDetail: SPLIT_PANES.graphDetail.initial,
+    sqlDetail: SPLIT_PANES.sqlDetail.initial,
+    viewerTranslation: SPLIT_PANES.viewerTranslation.initial,
+  },
+  graphDetailCollapsed: false,
 
   toastMsg: null,
 };

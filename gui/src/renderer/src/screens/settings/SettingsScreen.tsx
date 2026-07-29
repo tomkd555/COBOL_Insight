@@ -1,4 +1,4 @@
-import { useMemo, type ReactElement } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { Button } from "../../components/Button";
 import { ChipRadioGroup } from "../../components/ChipRadioGroup";
 import { TextInput } from "../../components/TextInput";
@@ -47,9 +47,40 @@ export function SettingsScreen(): ReactElement {
   const filtered = useMemo(() => groupedRuleIds(groups), [groups]);
   const paths = state.project.copybookPaths;
 
+  // コピー句探索パスの実在確認。パスごとの結果を保ち、追加操作の直後にも入力欄の近くへ
+  // 警告を出せるよう、最後に追加したパスを別に覚えておく。
+  const [pathExists, setPathExists] = useState<Record<string, boolean>>({});
+  const [lastAddedPath, setLastAddedPath] = useState<string | null>(null);
+  const checkedPathsRef = useRef<Set<string>>(new Set());
+
+  // 画面を開いた時点、および新しいパスが加わった時点で実在確認を行う。既に確認したパスは
+  // 再確認しない。
+  useEffect(() => {
+    const toCheck = paths.filter((path) => !checkedPathsRef.current.has(path));
+    for (const path of toCheck) {
+      checkedPathsRef.current.add(path);
+      window.cobolInsight
+        .checkDirectoryExists(path)
+        .then((exists) => setPathExists((prev) => ({ ...prev, [path]: exists })))
+        .catch(() => {
+          checkedPathsRef.current.delete(path);
+        });
+    }
+  }, [paths]);
+
+  const addWarning =
+    lastAddedPath !== null && pathExists[lastAddedPath] === false
+      ? `${lastAddedPath} が見つからない。`
+      : null;
+
   /** コピー句探索パスの並びを全画面へ反映する。 */
   function applyPaths(next: string[]): void {
     dispatch({ type: "SET_PROJECT", project: { copybookPaths: next } });
+  }
+
+  function onDraftChange(value: string): void {
+    setLastAddedPath(null);
+    dispatch({ type: "SET_NEW_COPYBOOK_PATH", value });
   }
 
   function onAddPath(): void {
@@ -60,29 +91,35 @@ export function SettingsScreen(): ReactElement {
     }
     applyPaths(result.paths);
     dispatch({ type: "SET_NEW_COPYBOOK_PATH", value: "" });
+    setLastAddedPath(result.paths[result.paths.length - 1] ?? null);
   }
 
   function onRemovePath(index: number): void {
     const removed = paths[index];
     applyPaths(removePath(paths, index));
+    if (removed === lastAddedPath) {
+      setLastAddedPath(null);
+    }
     dispatch({ type: "SHOW_TOAST", message: `コピー句探索パスから ${removed} を削除しました。` });
   }
 
   return (
     <div className="ci-settings">
       <div className="ci-settings__page">
+        <h3 className="ci-settings__title">設定</h3>
         {readOnly ? (
           <div className="ci-settings__lock" role="status">
-            解析の実行中は設定を変更できません（読み取り専用）。
+            解析の実行中は設定を変更できない（読み取り専用）。
           </div>
         ) : null}
 
         <section className="ci-settings__card">
-          <h3 className="ci-settings__title">既定の文字コード</h3>
+          <h4 className="ci-settings__title">既定の文字コード</h4>
           <p className="ci-settings__desc">
-            engine が文字コードを判定できなかった資産で、文字コード選択欄とデコードプレビューの
-            初期値として用いる。資産ごとの手動指定（資産エクスプローラー）が常に優先される。engine
-            には既定コードページの指定が無いため、解析実行へ渡るのは資産ごとの手動指定だけである。
+            解析エンジンが文字コードを判定できなかった資産で、文字コード選択欄とデコードプレビューの
+            初期値として用いる。資産ごとの手動指定（資産エクスプローラー）が常に優先される。
+            解析エンジンは既定の文字コードを受け取らないため、解析実行へ渡るのは資産ごとの
+            手動指定だけである。
           </p>
           <select
             className="ci-settings__select"
@@ -100,25 +137,27 @@ export function SettingsScreen(): ReactElement {
         </section>
 
         <section className="ci-settings__card">
-          <h3 className="ci-settings__title">コピー句検索パス</h3>
+          <h4 className="ci-settings__title">コピー句検索パス</h4>
           <p className="ci-settings__desc">
-            上から順に検索する。同名のコピー句が複数ある場合、先に見つかったものを使う。並びは
-            engine の --copybook-path へ同じ順序で渡る。
+            上から順に検索する。同名のコピー句が複数ある場合、先に見つかったものを使う。
+            解析エンジンはここで並べた順序のままコピー句を探索する。
           </p>
           <CopybookPathList
             paths={paths}
             draft={draft}
-            onDraftChange={(value) => dispatch({ type: "SET_NEW_COPYBOOK_PATH", value })}
+            onDraftChange={onDraftChange}
             onMove={(index, delta) => applyPaths(movePath(paths, index, delta))}
             onRemove={onRemovePath}
             onAdd={onAddPath}
             disabled={readOnly}
+            existence={pathExists}
+            addWarning={addWarning}
           />
         </section>
 
         <section className="ci-settings__card">
           <div className="ci-settings__head">
-            <h3 className="ci-settings__title">検出ルールの有効・無効</h3>
+            <h4 className="ci-settings__title">検出ルールの有効・無効</h4>
             <span className="ci-settings__count">{ruleCountLabel(disabledRules)}</span>
             <div className="ci-settings__spacer" />
             <TextInput
@@ -131,7 +170,7 @@ export function SettingsScreen(): ReactElement {
           </div>
           <p className="ci-settings__desc">
             バグ検出 31 件（R001〜R031）と SQL 最適化助言 6 件（S001〜S006）。すべて既定で有効である。
-            無効にしたルールは engine の --disable-rule として検出から除く。
+            無効にしたルールは解析実行の検出対象から除く。
           </p>
           <div className="ci-settings__bulk">
             <Button
@@ -158,7 +197,7 @@ export function SettingsScreen(): ReactElement {
         </section>
 
         <section className="ci-settings__card">
-          <h3 className="ci-settings__title">表示する重大度のしきい値</h3>
+          <h4 className="ci-settings__title">表示する重大度のしきい値</h4>
           <p className="ci-settings__desc">
             選んだ重大度以上の指摘・助言を指摘一覧と SQL助言へ表示する。しきい値より低い重大度は
             一覧から外れ、その重大度のフィルタチップも操作できなくなる。
@@ -175,10 +214,10 @@ export function SettingsScreen(): ReactElement {
         </section>
 
         <section className="ci-settings__card">
-          <h3 className="ci-settings__title">engine の実行</h3>
+          <h4 className="ci-settings__title">解析エンジンの実行</h4>
           <p className="ci-settings__desc">
-            解析は engine（Java の CLI）が担う。GUI は main プロセスから engine を子プロセスとして
-            起動し、結果はファイルで受け取る。ネットワーク接続は行わない。
+            解析は同梱の解析エンジンが担う。この画面から解析エンジンを別のプログラムとして起動し、
+            結果はファイルで受け取る。ネットワーク接続は行わない。
           </p>
           <dl className="ci-settings__versions">
             {ENGINE_LAUNCH_INFO.map((entry) => (

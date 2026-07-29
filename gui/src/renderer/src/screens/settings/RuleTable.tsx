@@ -26,7 +26,7 @@ export function RuleTable({ groups, onToggle, disabled }: RuleTableProps): React
     <div className="ci-rules">
       {groups.map((group) => (
         <section key={group.category} className="ci-rules__group" aria-label={group.category}>
-          <h4 className="ci-rules__category">{group.category}</h4>
+          <h5 className="ci-rules__category">{group.category}</h5>
           {group.rows.map((row) => (
             <div key={row.id} className="ci-rules__row">
               <button
@@ -43,6 +43,12 @@ export function RuleTable({ groups, onToggle, disabled }: RuleTableProps): React
               <span className="ci-rules__id">{row.id}</span>
               <span className={row.disabled ? "ci-rules__name ci-rules__name--off" : "ci-rules__name"}>
                 {row.name}
+                {/* 無効であることを色以外でも示す。読み上げは同じ行の switch が担うため隠す。 */}
+                {row.disabled ? (
+                  <span className="ci-rules__off-mark" aria-hidden="true">
+                    （無効）
+                  </span>
+                ) : null}
               </span>
               {row.hasFix ? <span className="ci-rules__fix-badge">修正案</span> : null}
               <SeverityBadge severity={row.severity} className="ci-rules__severity" />

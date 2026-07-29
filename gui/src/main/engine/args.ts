@@ -1,7 +1,8 @@
-import type {
-  EngineCommonOptions,
-  EngineInvocation,
-  EngineOutputs,
+import {
+  COPY_EXPANSION_FILE_NAME,
+  type EngineCommonOptions,
+  type EngineInvocation,
+  type EngineOutputs,
 } from "../../shared/engine-api";
 
 /**
@@ -13,7 +14,15 @@ export function buildEngineArgs(invocation: EngineInvocation): string[] {
   switch (invocation.subcommand) {
     case "scan": {
       const r = invocation.request;
-      return ["scan", ...common(r), ...opt("--db", r.db)];
+      // COPY 展開の対応表は常に書かせる。ソースビューアのインライン展開がこれを唯一の供給源とし、
+      // 出力先は engine が既定の SQLite を置く場所(作業ディレクトリ)へそろえる。
+      return [
+        "scan",
+        ...common(r),
+        ...opt("--db", r.db),
+        "--copy-expansion",
+        COPY_EXPANSION_FILE_NAME,
+      ];
     }
     case "callgraph": {
       const r = invocation.request;
@@ -70,12 +79,14 @@ export function buildEngineArgs(invocation: EngineInvocation): string[] {
 }
 
 /**
- * リクエストで明示指定した出力先ファイル/ディレクトリを {@link EngineOutputs} へ集約する純関数。
+ * 起動で書かれる出力先ファイル/ディレクトリを {@link EngineOutputs} へ集約する純関数。
+ * リクエストで明示指定したものと、サブコマンドが常に書くもの(scan の COPY 展開)を併せる。
  * renderer はここで返るパスを起点に成果物ファイルを読む。
  */
 export function collectRequestedOutputs(invocation: EngineInvocation): EngineOutputs {
   const r = invocation.request;
   const outputs: EngineOutputs = {};
+  if (invocation.subcommand === "scan") outputs.copyExpansion = COPY_EXPANSION_FILE_NAME;
   if ("db" in r && r.db !== undefined) outputs.db = r.db;
   if ("jsonFile" in r && r.jsonFile !== undefined) outputs.json = r.jsonFile;
   if ("dotFile" in r && r.dotFile !== undefined) outputs.dot = r.dotFile;

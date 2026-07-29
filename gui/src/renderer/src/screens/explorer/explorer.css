@@ -1,9 +1,9 @@
 /*
  * 資産エクスプローラー(scan)のスタイル。厳格 BEM で命名し、値は :root トークンを参照する。
- * design/COBOL Insight.dc.html の scExp(design:59-160)の配置・寸法を移植する。
+ * 配置は左の資産一覧と右の詳細ペインの2カラムで、境界の分割ハンドルで詳細ペインの幅を変えられる。
  */
 
-/* 画面全体: 左(一覧) + 右 330px(詳細) の2カラム */
+/* 画面全体: 左(一覧) + 分割ハンドル + 右(詳細) の2カラム */
 .ci-explorer {
   position: absolute;
   inset: 0;
@@ -24,6 +24,23 @@
   flex-direction: column;
   min-height: 0;
   overflow: auto;
+}
+
+/*
+ * 実行中インジケータを資産一覧の上に置くバナー。RunningIndicator(components.css の .ci-running)は
+ * 既定で残り高さいっぱいに中央寄せされるため、ここでは高さを段の分だけに縮めて資産一覧を押し
+ * のけないようにする。
+ */
+.ci-explorer__running {
+  flex: none;
+}
+.ci-explorer__running .ci-running {
+  flex: none;
+  justify-content: flex-start;
+  padding: var(--ci-space-2) var(--ci-space-3);
+}
+.ci-explorer__running .ci-running__box {
+  padding: var(--ci-space-2) 16px;
 }
 
 /* 上部ツールバー */
@@ -57,17 +74,24 @@
 }
 .ci-asset-list__note {
   flex: none;
-  padding: 4px var(--ci-space-3);
+  padding: var(--ci-space-1) var(--ci-space-3);
   background: var(--ci-surface-soft);
   border-bottom: 1px solid var(--ci-border-soft);
   font-size: var(--ci-fs-note);
   color: var(--ci-text-subtle);
 }
+/*
+ * 列見出しと資産行は同じグリッドを共有し、桁をそろえる。名前列だけを可変(最小 220px)にし、
+ * 種別・文字コード・解析・指摘の4列は固定幅にして、行が増えても列位置が動かないようにする。
+ * 左端の 3px は選択行の帯の場所である。選択の有無で桁がずれないよう見出しと全行に等しく取り、
+ * 選択行だけ色を載せる(--ci-select-bar は白地でも選択行の地色でも 3:1 を満たす)。
+ */
 .ci-asset-list__head,
 .ci-asset-row {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) 92px 158px 96px 64px;
   align-items: center;
+  border-left: 3px solid transparent;
 }
 .ci-asset-list__head {
   padding: 5px var(--ci-space-3);
@@ -111,8 +135,10 @@
 /* 資産行 */
 .ci-asset-row {
   width: 100%;
+  box-sizing: border-box;
   padding: 5px var(--ci-space-3);
-  border: none;
+  border-top: none;
+  border-right: none;
   border-bottom: 1px solid var(--ci-border-soft);
   background: var(--ci-panel);
   font-family: inherit;
@@ -128,8 +154,14 @@
   outline: 2px solid var(--ci-focus-ring);
   outline-offset: -2px;
 }
+/* 押下中。即時の変化でモーションは伴わない。 */
+.ci-asset-row:active,
+.ci-asset-group__header:active {
+  transform: translateY(1px);
+}
 .ci-asset-row--selected {
   background: var(--ci-select-tint);
+  border-left-color: var(--ci-select-bar);
 }
 .ci-asset-row__name {
   font-family: var(--ci-font-code);
@@ -138,11 +170,11 @@
   white-space: nowrap;
 }
 .ci-asset-row__enc {
-  font-size: 11.5px;
+  font-size: var(--ci-fs-pane-title);
   color: var(--ci-text-muted);
 }
 .ci-asset-row__status {
-  font-size: 11.5px;
+  font-size: var(--ci-fs-pane-title);
 }
 .ci-asset-row__status--muted {
   color: var(--ci-text-subtle);
@@ -158,14 +190,14 @@
 }
 .ci-asset-row__num {
   text-align: right;
-  font-size: 11.5px;
+  font-size: var(--ci-fs-pane-title);
   color: var(--ci-sev-high);
 }
 
 /* 種別バッジ */
 .ci-type-badge {
-  font-size: 10.5px;
-  padding: 1px 8px;
+  font-size: var(--ci-fs-legend);
+  padding: 1px var(--ci-space-2);
   border-radius: 9px;
 }
 .ci-type-badge--jcl {
@@ -189,9 +221,9 @@
   color: var(--ci-type-other-text);
 }
 
-/* --- 右 330px 詳細ペイン --- */
+/* --- 右の詳細ペイン(幅は ExplorerScreen が分割ハンドルの現在値から与える) --- */
 .ci-detail {
-  width: 330px;
+  width: var(--ci-explorer-detail-w);
   flex: none;
   display: flex;
   flex-direction: column;
@@ -199,8 +231,9 @@
   overflow: auto;
 }
 .ci-detail__title {
+  margin: 0;
   padding: 10px var(--ci-space-4) var(--ci-space-2);
-  font-size: 12.5px;
+  font-size: var(--ci-fs-detail-title);
   font-weight: 700;
   color: var(--ci-text);
   border-bottom: 1px solid var(--ci-border-soft);
@@ -232,13 +265,13 @@
 .ci-detail__meta {
   display: flex;
   gap: var(--ci-space-4);
-  font-size: 11.5px;
+  font-size: var(--ci-fs-pane-title);
   color: var(--ci-text-muted);
   margin: 0;
 }
 .ci-detail__meta div {
   display: flex;
-  gap: 4px;
+  gap: var(--ci-space-1);
 }
 .ci-detail__meta dt,
 .ci-detail__meta dd {
@@ -263,15 +296,15 @@
 /* 文字コード選択 */
 .ci-encsel__label {
   display: block;
-  font-size: 11.5px;
+  font-size: var(--ci-fs-pane-title);
   color: var(--ci-text-muted);
-  margin-bottom: 4px;
+  margin-bottom: var(--ci-space-1);
 }
 .ci-encsel__select {
   width: 100%;
   font-family: inherit;
   font-size: var(--ci-fs-sm);
-  padding: 5px 8px;
+  padding: 5px var(--ci-space-2);
   border: 1px solid var(--ci-border-strong);
   border-radius: var(--ci-radius-sm);
   background: var(--ci-panel);
@@ -287,23 +320,25 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 4px;
+  margin-bottom: var(--ci-space-1);
 }
 .ci-preview__title {
-  font-size: 11.5px;
+  margin: 0;
+  font-size: var(--ci-fs-pane-title);
+  font-weight: normal;
   color: var(--ci-text-muted);
 }
 .ci-preview__hint {
-  font-size: 10.5px;
+  font-size: var(--ci-fs-legend);
   color: var(--ci-text-subtle);
 }
 .ci-preview__box {
   border: 1px solid var(--ci-border-soft);
   border-radius: var(--ci-radius-md);
   background: var(--ci-panel);
-  padding: 8px 10px;
+  padding: var(--ci-space-2) 10px;
   font-family: var(--ci-font-code);
-  font-size: 11.5px;
+  font-size: var(--ci-fs-pane-title);
   line-height: 1.65;
   overflow: auto;
   color: var(--ci-text);
@@ -320,7 +355,7 @@
 }
 .ci-preview__warn {
   margin-top: 6px;
-  font-size: 11.5px;
+  font-size: var(--ci-fs-pane-title);
   color: var(--ci-error-text);
   background: var(--ci-error-bg);
   border: 1px solid var(--ci-error-border);

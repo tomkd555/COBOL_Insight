@@ -1,8 +1,8 @@
 /**
- * SQL助言の詳細ペインのビューモデル導出(React 非依存の純関数)。design scSql の詳細ペイン
- * (design:490-520)が持つ「SQL 文の本文」と「最適化助言の一覧」を、sql-advise の SARIF と
- * 原本ソースから組む。本文の供給源は main の readSourceText(表示専用の復号)であり、GUI は
- * SQL の構文解析を行わない。SQL 文の総数は SARIF から厳密に導けないため扱わない(裁定 A8)。
+ * SQL助言の詳細ペインのビューモデル導出(React 非依存の純関数)。詳細ペインが示す「SQL 文の本文」と
+ * 「最適化助言の一覧」を、sql-advise の SARIF と原本ソースから組む。本文の供給源は main の
+ * readSourceText(表示専用の復号)であり、GUI は SQL の構文解析を行わない。SQL 文の総数は SARIF から
+ * 厳密に導けないため扱わない。
  */
 
 import type { SarifFinding } from "../../../../shared/engine-api";

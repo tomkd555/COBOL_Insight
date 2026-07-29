@@ -30,7 +30,7 @@ export interface EngineLaunchEntry {
 export const ENGINE_LAUNCH_INFO: readonly EngineLaunchEntry[] = [
   { label: "配布時の起動対象", value: "resources\\engine\\COBOLInsight.exe（内蔵 JRE 同梱）" },
   { label: "開発時の起動対象", value: "JAVA_HOME の java（engine/cli の installDist を classpath に指定）" },
-  { label: "通信", value: "なし（子プロセスの標準出力とファイルだけで受け渡す）" },
+  { label: "通信", value: "なし（解析エンジンの出力とファイルだけで受け渡す）" },
 ];
 
 /**

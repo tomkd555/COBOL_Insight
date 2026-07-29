@@ -1,6 +1,8 @@
 /**
- * 各画面のプレースホルダ用メタ情報。空状態の誘導文と実行中の見出しを画面ごとに持つ。
- * WF-3 以降で各画面の本体が実装されると、results 本体はそれぞれのコンポーネントへ置き換わる。
+ * 各画面のメタ情報。画面ラベル・空状態の誘導文・実行中の見出しを画面ごとに持つ。
+ * 実行中の見出しは全画面が参照する。空状態の文言を用いるのは資産エクスプローラーだけで、
+ * 他の画面は状況ごとに文言を変えるため自前の EmptyState を組む。画面ラベルはソースビューアが
+ * ジャンプ元の提示に用いる。
  */
 
 import type { ScreenId } from "../shell/screens";
@@ -29,9 +31,16 @@ export const SCREEN_META: Record<ScreenId, ScreenMeta> = {
     label: "資産エクスプローラー",
     emptyIcon: "＋",
     emptyTitle: "資産がまだインポートされていません",
-    emptyDesc: "フォルダまたはファイルを取り込み、文字コードを確認してから解析を実行します。",
-    emptyAction: "フォルダ／ファイルをインポート",
+    emptyDesc: "資産フォルダを取り込み、文字コードを確認してから解析を実行する。",
+    emptyAction: "フォルダをインポート",
     emptyNote: "文字コードは自動判定（Shift_JIS / UTF-8）または推定（EBCDIC CP930/939）。",
+    runningTitle: "資産を解析しています…",
+  },
+  import: {
+    id: "import",
+    label: "端末取込",
+    emptyTitle: "端末取込",
+    emptyDesc: "端末エミュレータの画面から複写した本文を、桁位置を指定して資産フォルダへ保存する。",
     runningTitle: "資産を解析しています…",
   },
   graph: {
@@ -64,8 +73,8 @@ export const SCREEN_META: Record<ScreenId, ScreenMeta> = {
   },
   diff: {
     id: "diff",
-    label: "diff",
-    emptyTitle: "修正案 diff",
+    label: "修正案の差分",
+    emptyTitle: "修正案の差分",
     emptyDesc: "解析を実行すると、生成した修正案の差分をここに表示する。",
     runningTitle: "修正案を生成しています…",
   },

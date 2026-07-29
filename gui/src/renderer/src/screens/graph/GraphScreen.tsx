@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactElement } from "react";
 import type { CallGraphData } from "../../../../shared/engine-api";
+import { SPLIT_PANES } from "../../state/appState";
 import { useAppState, useAppDispatch } from "../../state/AppStateContext";
 import { EmptyState } from "../../components/EmptyState";
 import { RunningIndicator } from "../../components/RunningIndicator";
+import { SplitHandle } from "../../components/SplitHandle";
 import { SCREEN_META } from "../screenMeta";
 import { GraphToolbar } from "./GraphToolbar";
 import { GraphCanvas } from "./GraphCanvas";
@@ -17,10 +19,13 @@ import {
   nodeDetail,
   nodeKindCounts,
   nodeListItems,
+  unanalyzableBanner,
+  unanalyzableCount,
   visibleNodeIds,
+  type AnyNodeKind,
 } from "./graphModel";
 
-/** 呼出関係を構築している間に提示する段(design:196 の副見出し)。 */
+/** 呼出関係を構築している間に提示する段(design scGraph の実行中表示の副見出し)。 */
 const GRAPH_RUN_STAGES = ["CALL の解決根拠(定数由来 / データフロー由来 / 未解決)を判定中"];
 
 /** グラフ未取得のときに用いる空グラフ。useMemo の依存を安定させるため定数で持つ。 */
@@ -33,13 +38,14 @@ function messageOf(error: unknown): string {
 
 /**
  * 呼出関係図(callgraph)。engine の callgraph サブコマンドが書いた JSON を唯一の供給源とし、
- * GUI は種別フィルタ・部分展開・詳細表示を担う(裁定 A3)。全ノードの一括描画は約 3200 ノードで
+ * GUI は種別フィルタ・部分展開・詳細表示を担う。全ノードの一括描画は約 3200 ノードで
  * 劣化するため既定にせず、ジョブ・トランザクションを起点とする部分展開から始める。図の書出は
- * engine の callgraph --svg / --png を起動して行い、renderer からファイルは書かない(裁定 A7)。
+ * engine の callgraph --svg / --png を起動して行い、renderer からファイルは書かない。
  *
  * 4状態は実状態から導く。empty=解析未実行、running=解析実行中または callgraph 起動中、
  * results=グラフ取得済み、error=callgraph の起動または JSON 読取の失敗である。callgraph の
  * 非ゼロ終了(警告あり・エラーあり)はグラフ本体が書かれる部分的な失敗なので、図を隠さず警告で示す。
+ * 構文解析に失敗した資産も「解析不能」ノードとして図に含め、隠さず件数を案内する。
  */
 export function GraphScreen(): ReactElement {
   const state = useAppState();
@@ -53,9 +59,12 @@ export function GraphScreen(): ReactElement {
   const analyzed = state.mode === "results" || state.mode === "error";
   const data = graph.status === "ready" ? graph.data : EMPTY_GRAPH;
 
+  // 解析不能は AppState の graphTypes(GraphNodeKind の11種)に含めた種別のため、他の10種と
+  // 同じ TOGGLE_GRAPH_KIND で切り替える。ローカル状態は持たない(タブ移動でも既定へ戻さない)。
+  const kindFilters: Record<AnyNodeKind, boolean> = state.graphTypes;
   const visibleIds = useMemo(
-    () => visibleNodeIds(data, { expanded: state.graphExpanded, kinds: state.graphTypes }),
-    [data, state.graphExpanded, state.graphTypes],
+    () => visibleNodeIds(data, { expanded: state.graphExpanded, kinds: kindFilters }),
+    [data, state.graphExpanded, kindFilters],
   );
   const elements = useMemo(() => buildGraphElements(data, visibleIds), [data, visibleIds]);
   const nodeList = useMemo(() => nodeListItems(elements), [elements]);
@@ -84,7 +93,7 @@ export function GraphScreen(): ReactElement {
       });
       const json = result.outputs.json;
       if (json === undefined) {
-        throw new Error("callgraph が JSON の出力先を返しませんでした。");
+        throw new Error("呼出関係のデータの出力先を取得できなかった。");
       }
       const loaded = await window.cobolInsight.readCallgraphJson(json);
       dispatch({ type: "SET_GRAPH", result: { status: "ready", data: loaded, exitCode: result.exitCode } });
@@ -127,6 +136,11 @@ export function GraphScreen(): ReactElement {
     dispatch({ type: "SET_GRAPH", result: { status: "none" } });
   }
 
+  /** 種別フィルタチップの切替。解析不能を含む11種のいずれも AppState の graphTypes を切り替える。 */
+  function toggleKind(kind: AnyNodeKind): void {
+    dispatch({ type: "TOGGLE_GRAPH_KIND", kind });
+  }
+
   if (state.mode === "empty") {
     return (
       <EmptyState
@@ -158,7 +172,7 @@ export function GraphScreen(): ReactElement {
       <EmptyState
         icon="！"
         title="呼出関係図を取得できませんでした"
-        description={`callgraph の実行または JSON の読取に失敗しました。${graph.message}`}
+        description={`呼出関係の構築またはデータの読み取りに失敗した。${graph.message}`}
         actionLabel="再試行"
         onAction={rebuild}
       />
@@ -166,27 +180,39 @@ export function GraphScreen(): ReactElement {
   }
 
   const exitBanner = graphExitBanner(graph.exitCode);
+  const unanalyzableNotice = unanalyzableBanner(unanalyzableCount(data));
   const warning = graphWarning(visibleIds.size);
   const inventory = state.inventory.status === "ready" ? state.inventory.items : [];
   const sourcePaths = detail === null ? [] : graphSourcePaths(detail.node, inventory);
+  const detailWidth = state.paneWidths.graphDetail;
+  const detailCollapsed = state.graphDetailCollapsed;
+  // 詳細ペインの幅は CSS カスタムプロパティで渡す(寸法の指定は CSS 側に置く)。
+  const paneStyle = { "--ci-graph-detail-w": `${detailWidth}px` } as CSSProperties;
 
   return (
-    <div className="ci-graph">
+    <div className="ci-graph" style={paneStyle}>
       <div className="ci-graph__main">
         <GraphToolbar
-          kinds={state.graphTypes}
+          kinds={kindFilters}
           counts={counts}
-          onToggleKind={(kind) => dispatch({ type: "TOGGLE_GRAPH_KIND", kind })}
+          onToggleKind={toggleKind}
           visibleCount={visibleIds.size}
           totalCount={data.nodes.length}
           onRebuild={rebuild}
           onExportSvg={() => void exportImage("svg")}
           onExportPng={() => void exportImage("png")}
           busy={exporting}
+          detailCollapsed={detailCollapsed}
+          onToggleDetail={() => dispatch({ type: "TOGGLE_GRAPH_DETAIL" })}
         />
         {exitBanner === null ? null : (
           <div className="ci-banner ci-banner--error" role="alert">
             {exitBanner}
+          </div>
+        )}
+        {unanalyzableNotice === null ? null : (
+          <div className="ci-graph__warning" role="status">
+            {unanalyzableNotice}
           </div>
         )}
         {warning === null ? null : (
@@ -197,7 +223,7 @@ export function GraphScreen(): ReactElement {
         {data.nodes.length === 0 ? (
           <EmptyState
             title="呼出関係が検出されませんでした"
-            description="解析した資産に、ジョブ・プログラム・データセットの呼出関係は見つかりませんでした。"
+            description="解析した資産に、ジョブ・プログラム・データセットの呼出関係は見つからなかった。"
           />
         ) : visibleIds.size === 0 ? (
           <p className="ci-graph__notice">
@@ -218,17 +244,29 @@ export function GraphScreen(): ReactElement {
           </div>
         )}
       </div>
-      <GraphDetail
-        detail={detail}
-        expanded={state.selectedNode !== null && state.graphExpanded[state.selectedNode] === true}
-        onToggleExpanded={() => {
-          if (state.selectedNode !== null) {
-            dispatch({ type: "TOGGLE_GRAPH_EXPANDED", id: state.selectedNode });
-          }
-        }}
-        sources={sourcePaths}
-        onOpenSource={(file) => dispatch({ type: "JUMP", file, line: null, from: "呼出関係図" })}
-      />
+      {/* 畳んだときはハンドルもろとも出さない。ハンドルの下限は「ペインが見える最小の幅」である。 */}
+      {detailCollapsed ? null : (
+        <>
+          <SplitHandle
+            width={detailWidth}
+            min={SPLIT_PANES.graphDetail.min}
+            max={SPLIT_PANES.graphDetail.max}
+            onWidthChange={(width) => dispatch({ type: "SET_PANE_WIDTH", pane: "graphDetail", width })}
+            ariaLabel="ノード情報と凡例のペインの幅"
+          />
+          <GraphDetail
+            detail={detail}
+            expanded={state.selectedNode !== null && state.graphExpanded[state.selectedNode] === true}
+            onToggleExpanded={() => {
+              if (state.selectedNode !== null) {
+                dispatch({ type: "TOGGLE_GRAPH_EXPANDED", id: state.selectedNode });
+              }
+            }}
+            sources={sourcePaths}
+            onOpenSource={(file) => dispatch({ type: "JUMP", file, line: null, from: "呼出関係図" })}
+          />
+        </>
+      )}
     </div>
   );
 }

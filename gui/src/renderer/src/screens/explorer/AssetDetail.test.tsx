@@ -17,6 +17,14 @@ describe("AssetDetail(選択資産の詳細)", () => {
     expect(screen.queryByRole("combobox", { name: "文字コード" })).toBeNull();
   });
 
+  it("ペインの題目を見出しレベル3、プレビューの小見出しをレベル4として伝える", () => {
+    render(
+      <AssetDetail item={cobol} mode="results" findingCount={0} encodingValue="" onEncodingChange={vi.fn()} preview={idle} />,
+    );
+    expect(screen.getByRole("heading", { level: 3 })).toHaveTextContent("資産の詳細と文字コード");
+    expect(screen.getByRole("heading", { level: 4 })).toHaveTextContent("デコードプレビュー");
+  });
+
   it("選択資産の名称・パス・種別・解析状態と lint 指摘件数を出す", () => {
     render(
       <AssetDetail item={cobol} mode="results" findingCount={4} encodingValue="自動判定: Shift_JIS" onEncodingChange={vi.fn()} preview={idle} />,
@@ -71,6 +79,6 @@ describe("AssetDetail(選択資産の詳細)", () => {
         preview={{ status: "unsupported", codepage: "不明" }}
       />,
     );
-    expect(screen.getByRole("alert")).toHaveTextContent("表示に対応していません");
+    expect(screen.getByRole("alert")).toHaveTextContent("表示に対応していない");
   });
 });

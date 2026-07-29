@@ -12,12 +12,12 @@ export interface SqlDetailProps {
   advice: readonly SqlAdviceEntry[];
   /** 原本から読んだ SQL 本文の取得状態。 */
   body: SqlBodyState;
-  /** 「該当ソース行へ →」でソースビューアへ遷移する。 */
+  /** 「該当ソース行へ」でソースビューアへ遷移する。 */
   onJump: () => void;
 }
 
 /**
- * SQL助言の詳細ペイン(design scSql の右ペイン)。選択した指摘の位置・SQL 本文・その位置の
+ * SQL助言の詳細ペイン(一覧の右)。選択した指摘の位置・SQL 本文・その位置の
  * 最適化助言を示す。本文は原本を読んで表示するだけであり、読取に失敗した場合や復号に対応しない
  * コードページの場合は、本文が空の状態と区別してその旨を示す。
  */
@@ -28,15 +28,15 @@ export function SqlDetail({ selected, advice, body, onJump }: SqlDetailProps): R
         <p className="ci-sql-detail__empty">
           一覧から助言を選ぶと
           <br />
-          SQL 本文と助言の詳細を表示します
+          SQL 本文と助言の詳細を表示する
         </p>
       ) : (
         <div className="ci-sql-detail__body">
           <div className="ci-sql-detail__head">
-            <span className="ci-sql-detail__title">{`${selected.ruleId} の対象 SQL`}</span>
+            <h3 className="ci-sql-detail__title">{`${selected.ruleId} の対象 SQL`}</h3>
             <span className="ci-sql-detail__loc">{`${selected.file}:${selected.startLine}`}</span>
             <Button variant="primary" onClick={onJump}>
-              該当ソース行へ →
+              該当ソース行へ
             </Button>
           </div>
           <section className="ci-sql-detail__section" aria-label="SQL 文">
@@ -70,20 +70,20 @@ function SqlBody({ body }: { body: SqlBodyState }): ReactElement {
   if (body.status === "unsupported") {
     return (
       <div className="ci-sql-detail__warn" role="alert">
-        コードページ {codepageLabel(body.codepage)} は本文の表示に対応していません。資産エクスプローラーで
-        文字コードを指定し直すと表示できる場合があります。
+        コードページ {codepageLabel(body.codepage)} は本文の表示に対応していない。資産エクスプローラーで
+        文字コードを指定し直すと表示できる場合がある。
       </div>
     );
   }
   if (body.status === "error") {
     return (
       <div className="ci-sql-detail__warn" role="alert">
-        SQL 本文を読み取れませんでした。{body.message}
+        SQL 本文を読み取れなかった。{body.message}
       </div>
     );
   }
   if (body.status === "idle" || body.lines.length === 0) {
-    return <div className="ci-sql-detail__sql-empty">表示する SQL 本文がありません</div>;
+    return <div className="ci-sql-detail__sql-empty">表示する SQL 本文がない</div>;
   }
   return (
     <div className="ci-sql-detail__sql">

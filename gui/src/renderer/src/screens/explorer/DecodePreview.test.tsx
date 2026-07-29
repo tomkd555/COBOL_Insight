@@ -22,10 +22,10 @@ describe("DecodePreview(デコードプレビュー)", () => {
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent("EBCDIC CP930");
     expect(alert).not.toHaveTextContent("x-IBM930");
-    expect(alert).toHaveTextContent("表示に対応していません");
+    expect(alert).toHaveTextContent("表示に対応していない");
   });
 
-  it("写像を持たないコードページ(不明)はそのまま添える", () => {
+  it("対応する変換を持たないコードページ(不明)はそのまま添える", () => {
     render(<DecodePreview preview={{ status: "unsupported", codepage: "不明" }} />);
     expect(screen.getByRole("alert")).toHaveTextContent("不明");
   });
@@ -43,11 +43,11 @@ describe("DecodePreview(デコードプレビュー)", () => {
 
   it("行が無ければプレースホルダを出す", () => {
     render(<DecodePreview preview={{ status: "ready", lines: [], codepage: "UTF-8" }} />);
-    expect(screen.getByText("プレビューする内容がありません")).toBeInTheDocument();
+    expect(screen.getByText("プレビューする内容がない")).toBeInTheDocument();
   });
 
   it("未選択(idle)でもプレースホルダを出す", () => {
     render(<DecodePreview preview={{ status: "idle" }} />);
-    expect(screen.getByText("プレビューする内容がありません")).toBeInTheDocument();
+    expect(screen.getByText("プレビューする内容がない")).toBeInTheDocument();
   });
 });

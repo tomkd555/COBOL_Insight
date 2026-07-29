@@ -14,6 +14,8 @@ import {
   extractUnifiedDiff,
   fixCountLabel,
   fixOutputPaths,
+  fixRuleDescriptionLabel,
+  fixRuleIdLabel,
   joinPath,
   readFixSummary,
   reparseWarning,
@@ -78,6 +80,30 @@ describe("buildFixCandidates", () => {
     expect(built[0].findings.map((f) => f.ruleId)).toEqual(["R017"]);
   });
 
+  it("R021(CICS応答コード未検査)も修正案の内訳に含める", () => {
+    const findings: SarifFinding[] = [
+      {
+        ruleId: "R021",
+        level: "error",
+        message: "EXEC CICS の実行後、RESP を検査していない。",
+        file: "cobol/A.cbl",
+        startLine: 40,
+        startColumn: 1,
+      },
+    ];
+    const built = buildFixCandidates(summaryOf({ files: ["cobol/A.cbl"] }), findings);
+    expect(built[0].findings).toEqual([
+      {
+        ruleId: "R021",
+        ruleName: "CICS応答コード(RESP/RESP2)未検査",
+        line: 40,
+        message: "EXEC CICS の実行後、RESP を検査していない。",
+      },
+    ]);
+    expect(candidateRuleSummary(built[0])).toBe("R021 CICS応答コード(RESP/RESP2)未検査");
+    expect(candidateLocation(built[0])).toBe("cobol/A.cbl:40");
+  });
+
   it("同一ファイルの複数の指摘を行の昇順で並べる", () => {
     const findings: SarifFinding[] = [
       { ruleId: "R018", level: "error", message: "b", file: "cobol/A.cbl", startLine: 90, startColumn: 1 },
@@ -102,8 +128,20 @@ describe("buildFixCandidates", () => {
 describe("見出しの文言", () => {
   const candidates = buildFixCandidates(readFixSummary(SAMPLE_PREVIEW_SUMMARY), SAMPLE_FINDINGS);
 
-  it("件数見出しは修正案を持つ3ルールを併記する", () => {
-    expect(fixCountLabel(candidates)).toBe("3 件（R004 / R017 / R018）");
+  it("件数見出しは修正案を持つルールを併記する", () => {
+    expect(fixCountLabel(candidates)).toBe("3 件（R004 / R017 / R018 / R021）");
+  });
+
+  it("ルール ID の一覧は区切り文字を指定でき、FIX_RULE_IDS の増減に追随する", () => {
+    expect(fixRuleIdLabel()).toBe("R004・R017・R018・R021");
+    expect(fixRuleIdLabel(" / ")).toBe("R004 / R017 / R018 / R021");
+  });
+
+  it("ルールの説明一覧はカタログの名称を添える", () => {
+    expect(fixRuleDescriptionLabel()).toBe(
+      "R004（ON SIZE ERROR句の欠如）・R017（ファイル状態(FILE STATUS)未検査）・" +
+        "R018（SQLCODE/SQLSTATE未検査）・R021（CICS応答コード(RESP/RESP2)未検査）",
+    );
   });
 
   it("単一ルールはルール名を添える", () => {

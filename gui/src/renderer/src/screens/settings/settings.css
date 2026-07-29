@@ -1,6 +1,6 @@
 /*
  * 設定画面のスタイル。厳格 BEM で命名し、値は :root トークンを参照する。
- * design/COBOL Insight.dc.html の scSet(design:738-818)のカード配置を移植する。
+ * design/COBOL Insight.dc.html の scSet のカード配置にそろえる。
  */
 
 .ci-settings {
@@ -11,14 +11,11 @@
   background: var(--ci-bg);
 }
 .ci-settings__page {
-  max-width: 920px;
-  margin: 0 auto;
   padding: var(--ci-space-4) var(--ci-space-6) var(--ci-space-9);
   display: flex;
   flex-direction: column;
   gap: var(--ci-space-3);
 }
-
 /* 実行中の読み取り専用の告知 */
 .ci-settings__lock {
   padding: var(--ci-space-2) 13px;
@@ -51,8 +48,10 @@
   font-weight: 700;
   color: var(--ci-text-heading);
 }
+/* カード自体は全幅のまま、説明文だけ読みやすい行長にとどめる。 */
 .ci-settings__desc {
   margin: 0;
+  max-width: 760px;
   font-size: var(--ci-fs-pane-title);
   color: var(--ci-text-muted);
   line-height: 1.7;
@@ -92,7 +91,7 @@
   gap: var(--ci-space-2);
 }
 
-/* 実行環境の版 */
+/* engine の起動対象と製品の版。列数は ENGINE_LAUNCH_INFO の 3 件に版の 1 件を加えた数である */
 .ci-settings__versions {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -165,6 +164,19 @@
   flex: 1;
   font-family: var(--ci-font-code);
 }
+.ci-paths__missing {
+  color: var(--ci-error-text);
+  font-weight: 700;
+}
+.ci-paths__add-warn {
+  margin: 0;
+  padding: 6px 9px;
+  background: var(--ci-error-bg);
+  border: 1px solid var(--ci-error-border);
+  border-radius: var(--ci-radius-sm);
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-error-text);
+}
 
 /* --- 検出ルールの一覧 --- */
 .ci-rules {
@@ -208,7 +220,12 @@
   color: var(--ci-text);
 }
 .ci-rules__name--off {
-  color: var(--ci-text-subtle);
+  color: var(--ci-rule-off-text);
+}
+/* 無効であることを色以外でも示す語。 */
+.ci-rules__off-mark {
+  margin-left: var(--ci-space-1);
+  font-size: var(--ci-fs-xs);
 }
 .ci-rules__fix-badge {
   flex: none;
@@ -240,6 +257,9 @@
 .ci-switch--on {
   background: var(--ci-accent);
 }
+.ci-switch:active:not(:disabled) {
+  transform: translateY(1px);
+}
 .ci-switch:disabled {
   cursor: default;
   opacity: 0.55;
@@ -259,6 +279,7 @@
   box-shadow: var(--ci-shadow-sm);
   transition: left 0.15s;
 }
+/* 有効側のつまみの位置。軌道の幅 30px からつまみ 12px と右の余白 2px を引いた値である */
 .ci-switch--on .ci-switch__knob {
   left: 16px;
 }

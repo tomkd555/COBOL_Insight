@@ -19,7 +19,7 @@ function rangeText(range: LineRange): string {
 export function TranslationNotes({ notes, onSelect }: TranslationNotesProps): ReactElement {
   return (
     <section className="ci-viewer__notes" aria-label="直訳不能の注記">
-      <h3 className="ci-viewer__notes-title">{`直訳不能の注記 ${notes.length} 件`}</h3>
+      <h4 className="ci-viewer__notes-title">{`直訳不能の注記 ${notes.length} 件`}</h4>
       {notes.length === 0 ? (
         <p className="ci-viewer__notes-empty">この生成物には直訳できなかった箇所の注記はない。</p>
       ) : (

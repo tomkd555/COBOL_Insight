@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import type { ScreenId } from "../shell/screens";
 import { ExplorerScreen } from "./explorer/ExplorerScreen";
+import { ImportScreen } from "./import/ImportScreen";
 import { GraphScreen } from "./graph/GraphScreen";
 import { FindingsScreen } from "./findings/FindingsScreen";
 import { SqlAdviseScreen } from "./findings/SqlAdviseScreen";
@@ -16,6 +17,7 @@ export interface ScreenRouterProps {
 /** 画面ルーティングの分岐点。state.screen に対応する画面本体を返す。 */
 export function ScreenRouter({ screen }: ScreenRouterProps): ReactElement {
   if (screen === "explorer") return <ExplorerScreen />;
+  if (screen === "import") return <ImportScreen />;
   if (screen === "graph") return <GraphScreen />;
   if (screen === "findings") return <FindingsScreen />;
   if (screen === "sql") return <SqlAdviseScreen />;

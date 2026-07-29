@@ -1,8 +1,8 @@
 /*
  * ソースビューア(transpile 統合)のスタイル。厳格 BEM で命名し、値は :root トークンを参照する。
- * design/COBOL Insight.dc.html の scSrc(design:349-447)の配置・寸法を移植する。
- * コードの本体は Monaco が自前の DOM を描くため、CSS は枠・ツールバー・欄の見出し・注記一覧・
- * コピー句展開と、Monaco の行へ付ける装飾クラスを担う。
+ * design/COBOL Insight.dc.html の scSrc の配置・寸法にそろえる。
+ * コードの本体は Monaco が自前の DOM を描くため、CSS は枠・ツールバー・欄の見出し・注記一覧と、
+ * Monaco の行へ付ける装飾クラス・コピー句展開のビューゾーンを担う。
  */
 
 .ci-viewer {
@@ -31,7 +31,7 @@
 .ci-viewer__file-select,
 .ci-viewer__gen-select {
   font-size: var(--ci-fs-sm);
-  padding: 4px 8px;
+  padding: var(--ci-space-1) var(--ci-space-2);
   border: 1px solid var(--ci-border-strong);
   border-radius: var(--ci-radius-sm);
   font-family: var(--ci-font-code);
@@ -52,15 +52,39 @@
 .ci-viewer__spacer {
   flex: 1;
 }
+/* 項目が多く1行に収まらないため、右へ寄せたうえで折り返す。 */
 .ci-viewer__legend {
   display: flex;
   align-items: center;
-  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  column-gap: 10px;
+  row-gap: 2px;
   margin: 0;
   padding: 0;
   list-style: none;
   font-size: var(--ci-fs-legend);
   color: var(--ci-text-muted);
+}
+.ci-viewer__legend-heading {
+  color: var(--ci-text-subtle);
+  padding-left: var(--ci-space-2);
+  border-left: 1px solid var(--ci-border-soft);
+}
+.ci-viewer__sev {
+  line-height: 1;
+}
+.ci-viewer__sev--high {
+  color: var(--ci-sev-high);
+}
+.ci-viewer__sev--medium {
+  color: var(--ci-sev-medium);
+}
+.ci-viewer__sev--low {
+  color: var(--ci-sev-low);
+}
+.ci-viewer__sev--warning {
+  color: var(--ci-sev-warning);
 }
 .ci-viewer__legend-item {
   display: flex;
@@ -90,7 +114,7 @@
   border: 1px dashed var(--ci-border-strong);
 }
 
-/* 左右2ペイン */
+/* 左右2ペイン(境界の分割ハンドルで対訳ペインの幅を変える。原本ペインは残りを取る) */
 .ci-viewer__panes {
   flex: 1;
   display: flex;
@@ -107,6 +131,11 @@
   border: 1px solid var(--ci-border);
   border-radius: var(--ci-radius-lg);
   overflow: hidden;
+}
+/* 対訳ペインは幅を持ち、原本ペインへ固定形式 80 桁ぶんの幅を残す。幅は ViewerScreen が与える。 */
+.ci-viewer__pane--translation {
+  flex: none;
+  width: var(--ci-viewer-translation-w);
 }
 .ci-viewer__pane-head {
   display: flex;
@@ -136,10 +165,14 @@
   position: relative;
 }
 
-/* 固定形式の欄の見出し(1-6 一連番号欄 / 7 標識 / 8-72 本体 / 73-80 識別欄) */
+/*
+ * 固定形式の欄の見出し(1-6 一連番号欄 / 7 標識 / 8-72 本体 / 73-80 識別欄)。
+ * ラベルは桁境界へ絶対位置で置き、左位置は ViewerScreen が Monaco の実測寸法から与える。
+ * 区画を固定幅で組むと、行番号ガターの幅と字送りが変わるたびに桁位置とずれる。
+ */
 .ci-viewer__columns {
-  display: flex;
-  align-items: stretch;
+  position: relative;
+  height: 15px;
   font-family: var(--ci-font-code);
   font-size: var(--ci-fs-ruler);
   line-height: 15px;
@@ -150,25 +183,22 @@
   overflow: hidden;
 }
 .ci-viewer__column {
-  text-align: center;
+  position: absolute;
+  top: 0;
   white-space: nowrap;
-  flex: none;
+  padding: 0 3px;
 }
-.ci-viewer__column--sequence {
-  width: 12ch;
-  background: var(--ci-surface-column);
+/* 桁境界から右へ伸ばす。左端の罫線が境界そのものを示す。 */
+.ci-viewer__column--start {
+  border-left: 1px solid var(--ci-border-strong);
 }
-.ci-viewer__column--indicator {
-  width: 6ch;
-  background: var(--ci-border-soft);
+/* 桁境界から左へ伸ばす。右端の罫線が境界そのものを示す。 */
+.ci-viewer__column--end {
+  transform: translateX(-100%);
+  border-right: 1px solid var(--ci-border-strong);
 }
-.ci-viewer__column--body {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-}
+.ci-viewer__column--head,
 .ci-viewer__column--identification {
-  width: 12ch;
   background: var(--ci-surface-column);
 }
 
@@ -194,16 +224,90 @@
   border-bottom: 1px dashed var(--ci-border-strong);
 }
 
+/*
+ * 指摘のある行。地色は最も弱い層に敷き、対応行・ジャンプ先の強調が同じ行に載っても隠さない。
+ * 重大度は記号(グリフ)と色帯で示すため、地色が上書きされても指摘の在り処は判る。
+ */
+.ci-code__line--finding-high {
+  background: var(--ci-sev-high-tint);
+}
+.ci-code__line--finding-medium {
+  background: var(--ci-sev-medium-tint);
+}
+.ci-code__line--finding-low {
+  background: var(--ci-sev-low-tint);
+}
+.ci-code__line--finding-warning {
+  background: var(--ci-sev-warning-tint);
+}
+
+/*
+ * 重大度の記号(●◆■▲)をグリフ余白へ描き、余白の左端を重大度色の帯にする。
+ * 帯は本文の左端に付く注記行の帯(ci-code__line--noted)より左にあり、両者が重ならない。
+ */
+.ci-code__glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--ci-fs-xs);
+  line-height: 1;
+}
+.ci-code__glyph--high {
+  color: var(--ci-sev-high);
+  box-shadow: inset 3px 0 0 0 var(--ci-sev-high);
+}
+.ci-code__glyph--high::before {
+  content: "●";
+}
+.ci-code__glyph--medium {
+  color: var(--ci-sev-medium);
+  box-shadow: inset 3px 0 0 0 var(--ci-sev-medium);
+}
+.ci-code__glyph--medium::before {
+  content: "◆";
+}
+.ci-code__glyph--low {
+  color: var(--ci-sev-low);
+  box-shadow: inset 3px 0 0 0 var(--ci-sev-low);
+}
+.ci-code__glyph--low::before {
+  content: "■";
+}
+.ci-code__glyph--warning {
+  color: var(--ci-sev-warning);
+  box-shadow: inset 3px 0 0 0 var(--ci-sev-warning);
+}
+.ci-code__glyph--warning::before {
+  content: "▲";
+}
+
+/*
+ * 同じ行に複数の指摘があるときに行末へ添える「記号+件数」。Monaco が構文着色のクラス(mtk1 等)を
+ * 同じ要素へ付けるため、クラスを2つ重ねて着色の指定を勝たせる。
+ */
+.ci-code__finding-count.ci-code__finding-count--high {
+  color: var(--ci-sev-high);
+}
+.ci-code__finding-count.ci-code__finding-count--medium {
+  color: var(--ci-sev-medium);
+}
+.ci-code__finding-count.ci-code__finding-count--low {
+  color: var(--ci-sev-low);
+}
+.ci-code__finding-count.ci-code__finding-count--warning {
+  color: var(--ci-sev-warning);
+}
+
 /* 読み込み中・相互ハイライトの状態 */
 .ci-viewer__loading {
   margin: 0;
-  padding: var(--ci-space-5) 12px;
+  padding: var(--ci-space-5) var(--ci-space-3);
   font-size: var(--ci-fs-sm);
   color: var(--ci-text-muted);
 }
 .ci-viewer__status {
   margin: 0;
-  padding: 4px 10px;
+  padding: var(--ci-space-1) 10px;
   flex: none;
   font-size: var(--ci-fs-xs);
   color: var(--ci-text-muted);
@@ -226,17 +330,12 @@
   font-weight: 700;
   color: var(--ci-caution);
 }
-.ci-viewer__notes-empty,
-.ci-viewer__copy-note {
+.ci-viewer__notes-empty {
   margin: 0;
   font-size: var(--ci-fs-xs);
   color: var(--ci-text-subtle);
 }
-.ci-viewer__copy-note--warn {
-  color: var(--ci-caution);
-}
-.ci-viewer__notes-list,
-.ci-viewer__copy-list {
+.ci-viewer__notes-list {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -273,51 +372,45 @@
   color: var(--ci-text);
 }
 
-/* コピー句の展開 */
-.ci-viewer__copy {
-  flex: none;
-  max-height: 32%;
-  overflow: auto;
-  padding: var(--ci-space-2) 10px;
-  border-top: 1px solid var(--ci-border);
+/*
+ * コピー句のインライン展開(Monaco のビューゾーン)。COPY 文の直後へ差し込む領域であり、
+ * 原本の行番号は消費しない。字送り・字体・行の高さは Monaco の実測値を CodePane が要素へ与えるため、
+ * ここでは指定しない(指定すると桁が原本の行とずれる)。
+ */
+/* 枠は inset の影で描く。境界線は差し込みの高さを Monaco の割り当て(行数×行の高さ)より広げる。 */
+.ci-code__expansion {
   background: var(--ci-copy-bg);
-}
-.ci-viewer__copy-head {
-  display: flex;
-  align-items: center;
-  gap: var(--ci-space-2);
-  margin-bottom: var(--ci-space-1);
-}
-.ci-viewer__copy-count {
-  font-size: var(--ci-fs-pane-title);
-  font-weight: 700;
-  color: var(--ci-copy-title);
-}
-.ci-viewer__copy-item {
-  font-family: var(--ci-font-code);
-  font-size: var(--ci-fs-xs);
+  box-shadow:
+    inset 3px 0 0 0 var(--ci-copy-title),
+    inset 0 1px 0 0 var(--ci-copy-border),
+    inset 0 -1px 0 0 var(--ci-copy-border);
   color: var(--ci-copy-text);
+  white-space: pre;
 }
-.ci-viewer__copy-statement,
-.ci-viewer__copy-replacing,
-.ci-viewer__copy-source {
-  margin: 0;
+.ci-code__expansion-title {
+  color: var(--ci-copy-title);
+  font-weight: 700;
 }
-.ci-viewer__copy-replacing,
-.ci-viewer__copy-source {
-  font-family: var(--ci-font-ui);
-  font-size: var(--ci-fs-note);
+.ci-code__expansion-note {
   color: var(--ci-copy-meta);
 }
-.ci-viewer__copy-body {
-  margin: var(--ci-space-1) 0 var(--ci-space-2);
-  padding: var(--ci-space-1) var(--ci-space-2);
-  background: var(--ci-panel);
-  border: 1px solid var(--ci-copy-border);
-  border-radius: var(--ci-radius-sm);
-  font-family: var(--ci-font-code);
-  font-size: var(--ci-fs-xs);
-  line-height: 1.5;
+/* 原本のコピー句から補った注記行。engine の展開そのものではないことを色で分ける。 */
+.ci-code__expansion-line--restored {
+  color: var(--ci-copy-meta);
+}
+/* 展開行の行番号(コピー句の中での行番号)。原本の行番号ガターの位置へ右寄せで置く。 */
+.ci-code__expansion-margin {
+  background: var(--ci-copy-bg);
+  color: var(--ci-copy-meta);
+  text-align: right;
+  /* 見出しの行の空白を保ち、行番号が展開行と1対1でそろうようにする。 */
   white-space: pre;
-  overflow-x: auto;
+}
+.ci-code__expansion-lineno {
+  padding-right: var(--ci-space-2);
+}
+
+/* ソースペインの見出しに置くコピー句展開の切替 */
+.ci-viewer__copy-toggle {
+  font-size: var(--ci-fs-xs);
 }

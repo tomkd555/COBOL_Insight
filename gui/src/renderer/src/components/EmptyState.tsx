@@ -16,6 +16,7 @@ export interface EmptyStateProps {
 /**
  * 空状態プレースホルダ。破線枠の中に見出し・説明・任意の主アクションを置き、
  * 次に取るべき操作へ誘導する。領域として aria-label にタイトルを与える。
+ * 画面の題目は Screen の隠し見出し(h2)が担うため、この見出しは h3 とする。
  */
 export function EmptyState({ icon, title, description, actionLabel, onAction, note }: EmptyStateProps): ReactElement {
   return (
@@ -26,7 +27,7 @@ export function EmptyState({ icon, title, description, actionLabel, onAction, no
             {icon}
           </div>
         ) : null}
-        <p className="ci-empty__title">{title}</p>
+        <h3 className="ci-empty__title">{title}</h3>
         {description ? <p className="ci-empty__desc">{description}</p> : null}
         {actionLabel ? (
           <Button variant="primary" onClick={onAction}>

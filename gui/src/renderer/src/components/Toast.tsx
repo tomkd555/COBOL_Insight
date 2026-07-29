@@ -5,7 +5,7 @@ export interface ToastProps {
   message: string | null;
   /** 自動消滅時に呼ぶ。メッセージ状態のクリアは呼び出し側の責務。 */
   onDismiss?: () => void;
-  /** 自動消滅までの時間(ミリ秒)。design の pop に合わせ既定 2600。 */
+  /** 自動消滅までの時間(ミリ秒)。既定 2600 は画面デザインのトースト表示時間と同じ値である。 */
   durationMs?: number;
 }
 
@@ -23,7 +23,17 @@ export function Toast({ message, onDismiss, durationMs = 2600 }: ToastProps): Re
   if (message === null || message === "") return null;
   return (
     <div className="ci-toast" role="status" aria-live="polite">
-      {message}
+      <span className="ci-toast__message">{message}</span>
+      {onDismiss ? (
+        <button
+          type="button"
+          className="ci-toast__close"
+          aria-label="通知を閉じる"
+          onClick={onDismiss}
+        >
+          ×
+        </button>
+      ) : null}
     </div>
   );
 }

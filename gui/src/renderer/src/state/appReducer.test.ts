@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { appReducer } from "./appReducer";
-import { initialState, type AppState } from "./appState";
+import { SPLIT_PANES, initialState, type AppState, type SplitPaneId } from "./appState";
 import { MANUAL_ENCODING_OPTIONS } from "../screens/explorer/assetView";
 import { SAMPLE_INVENTORY } from "../screens/explorer/fixtures";
 import { SAMPLE_FINDINGS, SAMPLE_SQL_FINDINGS } from "../screens/findings/fixtures";
@@ -91,7 +91,7 @@ describe("appReducer", () => {
     });
   });
 
-  describe("JUMP(画面横断ジャンプ、design:1263)", () => {
+  describe("JUMP(画面横断ジャンプ、design の jump)", () => {
     it("行付きジャンプでソースビューアへ遷移し、ジャンプ文言を組む", () => {
       const seed = withState({ screen: "findings", copybookOpen: true, linkedCobolLines: [85], linkedTranspileLines: [3] });
       const next = appReducer(seed, { type: "JUMP", file: "SYK001.cbl", line: 85, from: "指摘一覧" });
@@ -206,14 +206,34 @@ describe("appReducer", () => {
       let next = appReducer(initialState, { type: "SET_SQL_RULE", value: "S002" });
       next = appReducer(next, { type: "SET_SQL_FILE", value: "cobol/SYK007.cbl" });
       next = appReducer(next, { type: "SET_SQL_TEXT", value: "SARGable" });
-      next = appReducer(next, { type: "SET_SQL_SORT", sort: "line" });
+      next = appReducer(next, { type: "SET_SQL_SORT", sort: { column: "line", direction: "asc" } });
       expect(next.sqlRule).toBe("S002");
       expect(next.sqlFile).toBe("cobol/SYK007.cbl");
       expect(next.sqlText).toBe("SARGable");
-      expect(next.sqlSort).toBe("line");
-      // 指摘一覧のフィルタは独立に保たれる。
+      expect(next.sqlSort).toEqual({ column: "line", direction: "asc" });
+      // 指摘一覧のフィルタ・ソートは独立に保たれる。
       expect(next.findingRule).toBe("all");
-      expect(next.findingSort).toBe("sev");
+      expect(next.findingSort).toEqual({ column: "sev", direction: "asc" });
+    });
+
+    it("SET_FINDING_SORT・SELECT_FINDING を保持する(SQL助言とは独立)", () => {
+      const target = SAMPLE_FINDINGS[2];
+      let next = appReducer(initialState, {
+        type: "SET_FINDING_SORT",
+        sort: { column: "rule", direction: "desc" },
+      });
+      next = appReducer(next, { type: "SELECT_FINDING", finding: target });
+      expect(next.findingSort).toEqual({ column: "rule", direction: "desc" });
+      expect(next.findingSelected).toBe(target);
+      // SQL助言のソート・選択は独立に保たれる。
+      expect(next.sqlSort).toEqual({ column: "sev", direction: "asc" });
+      expect(next.sqlSelected).toBeNull();
+    });
+
+    it("START_RUN は指摘一覧の選択も捨てる(古い成果物の指摘を残さない)", () => {
+      const seed = withState({ findingSelected: SAMPLE_FINDINGS[0] });
+      const next = appReducer(seed, { type: "START_RUN" });
+      expect(next.findingSelected).toBeNull();
     });
 
     it("SELECT_SQL_ADVICE で詳細ペインの対象を保持する", () => {
@@ -253,6 +273,27 @@ describe("appReducer", () => {
         dbPath: "proj.db",
         copybookPaths: ["C:\\copy"],
       });
+    });
+
+    it("SET_IMPORT は指定しなかった項目を保つ", () => {
+      const seed = withState({ importText: "貼り付けた本文", importColumnFrom: 8 });
+      const next = appReducer(seed, {
+        type: "SET_IMPORT",
+        patch: { importFileName: "SYK001" },
+      });
+      expect(next.importText).toBe("貼り付けた本文");
+      expect(next.importColumnFrom).toBe(8);
+      expect(next.importFileName).toBe("SYK001");
+    });
+
+    it("SET_IMPORT は undefined を渡された項目を現在値のまま残す", () => {
+      const seed = withState({ importText: "貼り付けた本文" });
+      const next = appReducer(seed, {
+        type: "SET_IMPORT",
+        patch: { importText: undefined, importFileName: "SYK001" },
+      });
+      expect(next.importText).toBe("貼り付けた本文");
+      expect(next.importFileName).toBe("SYK001");
     });
 
     it("SET_INVENTORY(ready)で資産一覧と DB パスを保持する", () => {
@@ -401,6 +442,77 @@ describe("appReducer", () => {
       expect("reportIncludeGraph" in initialState).toBe(false);
       expect("reportIncludeFindings" in initialState).toBe(false);
       expect("reportIncludeSql" in initialState).toBe(false);
+    });
+  });
+
+  describe("分割ペインの幅と畳み込み", () => {
+    it("初期幅は SPLIT_PANES の initial であり、可動範囲に収まる", () => {
+      for (const pane of Object.keys(SPLIT_PANES) as SplitPaneId[]) {
+        const limits = SPLIT_PANES[pane];
+        expect(initialState.paneWidths[pane]).toBe(limits.initial);
+        expect(limits.initial).toBeGreaterThanOrEqual(limits.min);
+        expect(limits.initial).toBeLessThanOrEqual(limits.max);
+      }
+    });
+
+    it("SET_PANE_WIDTH は指定した画面の幅だけを変える", () => {
+      const next = appReducer(initialState, {
+        type: "SET_PANE_WIDTH",
+        pane: "viewerTranslation",
+        width: 300,
+      });
+      expect(next.paneWidths.viewerTranslation).toBe(300);
+      expect(next.paneWidths.explorerDetail).toBe(SPLIT_PANES.explorerDetail.initial);
+      expect(next.paneWidths.graphDetail).toBe(SPLIT_PANES.graphDetail.initial);
+      expect(next.paneWidths.sqlDetail).toBe(SPLIT_PANES.sqlDetail.initial);
+    });
+
+    it("画面を移っても幅を保つ", () => {
+      const resized = appReducer(initialState, {
+        type: "SET_PANE_WIDTH",
+        pane: "explorerDetail",
+        width: 420,
+      });
+      const moved = appReducer(appReducer(resized, { type: "NAV", screen: "graph" }), {
+        type: "NAV",
+        screen: "explorer",
+      });
+      expect(moved.paneWidths.explorerDetail).toBe(420);
+    });
+
+    it("解析の実行と完了で幅を初期値へ戻さない", () => {
+      const resized = appReducer(initialState, {
+        type: "SET_PANE_WIDTH",
+        pane: "graphDetail",
+        width: 300,
+      });
+      const finished = appReducer(appReducer(resized, { type: "START_RUN" }), { type: "FINISH_RUN" });
+      expect(finished.paneWidths.graphDetail).toBe(300);
+    });
+
+    it("TOGGLE_GRAPH_DETAIL は呼出関係図の右ペインの畳み込みを切り替える", () => {
+      expect(initialState.graphDetailCollapsed).toBe(false);
+      const collapsed = appReducer(initialState, { type: "TOGGLE_GRAPH_DETAIL" });
+      expect(collapsed.graphDetailCollapsed).toBe(true);
+      expect(appReducer(collapsed, { type: "TOGGLE_GRAPH_DETAIL" }).graphDetailCollapsed).toBe(false);
+    });
+
+    it("畳んでも幅は保つ(戻したときに元の幅で開く)", () => {
+      const resized = appReducer(initialState, {
+        type: "SET_PANE_WIDTH",
+        pane: "graphDetail",
+        width: 320,
+      });
+      const collapsed = appReducer(resized, { type: "TOGGLE_GRAPH_DETAIL" });
+      expect(collapsed.paneWidths.graphDetail).toBe(320);
+    });
+
+    it("ソースビューアの対訳ペインは、最小ウィンドウ幅でも原本へ 85 桁分を残せる下限である", () => {
+      // 最小ウィンドウ幅 1280px(tokens の --ci-min-width)から、2ペインの外周(左右の余白 24px)と
+      // ペインの間(余白 20px + ハンドル 6px)、対訳ペインの下限を引いた残りが原本ペインの幅である。
+      const remaining = 1280 - 24 - 26 - SPLIT_PANES.viewerTranslation.min;
+      // 固定形式 80 桁 + 行番号 5 桁を 12px 等幅(送り 7.2px)で描くのに要する幅。
+      expect(remaining).toBeGreaterThanOrEqual(85 * 7.2);
     });
   });
 

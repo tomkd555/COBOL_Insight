@@ -135,7 +135,7 @@ function renderDiff(seed?: AppState): void {
   );
 }
 
-/** タブ移動で画面を捨てる器。選択・判定・表示モードが AppState に残ることを観測する。 */
+/** タブ移動で画面をアンマウントするラッパー。選択・判定・表示モードが AppState に残ることを観測する。 */
 function TabHarness(): ReactElement {
   const state = useAppState();
   const dispatch = useAppDispatch();
@@ -187,7 +187,7 @@ describe("DiffScreen の4状態", () => {
       inputDir: INPUT_DIR,
       copybookPaths: ["D:\\共通コピー句"],
     });
-    expect(screen.getByText("修正案 3 件（R004 / R017 / R018）")).toBeInTheDocument();
+    expect(screen.getByText("修正案 3 件（R004 / R017 / R018 / R021）")).toBeInTheDocument();
     expect(screen.getAllByRole("option")).toHaveLength(3);
   });
 
@@ -250,10 +250,10 @@ describe("DiffScreen の差分表示", () => {
     await waitForList();
     fireEvent.click(screen.getByText(COPYBOOK));
     await waitFor(() =>
-      expect(screen.getByLabelText(`unified diff ${COPYBOOK}`)).toBeInTheDocument(),
+      expect(screen.getByLabelText(`統一形式の差分 ${COPYBOOK}`)).toBeInTheDocument(),
     );
     expect(screen.getByText("取込プログラム: SYK001、 SYK002")).toBeInTheDocument();
-    expect(screen.getByLabelText(`unified diff ${COPYBOOK}`)).toHaveTextContent(
+    expect(screen.getByLabelText(`統一形式の差分 ${COPYBOOK}`)).toHaveTextContent(
       "+ 05 ORD-状態 PIC X(1).",
     );
     expect(monacoStore.editors.filter((entry) => !entry.disposed)).toHaveLength(0);
@@ -265,7 +265,7 @@ describe("DiffScreen の差分表示", () => {
     );
     await waitForList();
     await waitFor(() => expect(currentEditor().fixedText).toBe(SAMPLE_FIXED_TEXT));
-    // 指摘が無いためルール名は騙らず、ファイル単位の修正案として示す。
+    // 指摘が無いためルール名は示さず、ファイル単位の修正案として示す。
     expect(screen.getAllByText("修正案")).not.toHaveLength(0);
     expect(readFixResult).toHaveBeenCalledTimes(1);
   });
@@ -282,9 +282,9 @@ describe("DiffScreen の差分表示", () => {
     renderDiff(analyzedState());
     await waitForList();
     await waitFor(() =>
-      expect(screen.getByLabelText(`unified diff ${COBOL}`)).toBeInTheDocument(),
+      expect(screen.getByLabelText(`統一形式の差分 ${COBOL}`)).toBeInTheDocument(),
     );
-    expect(screen.getByLabelText(`unified diff ${COBOL}`)).toHaveTextContent("ON SIZE ERROR");
+    expect(screen.getByLabelText(`統一形式の差分 ${COBOL}`)).toHaveTextContent("ON SIZE ERROR");
   });
 });
 
@@ -293,7 +293,7 @@ describe("DiffScreen の採用・棄却", () => {
     renderDiff(analyzedState());
     await waitForList();
     expect(screen.getAllByText("未判定")).toHaveLength(3);
-    fireEvent.click(screen.getByRole("button", { name: "✓ 採用" }));
+    fireEvent.click(screen.getByRole("button", { name: "採用" }));
     expect(screen.getByText("✓ 採用済")).toBeInTheDocument();
     expect(screen.getByText("判定: 採用 1 ・ 棄却 0 ・ 未判定 2")).toBeInTheDocument();
   });
@@ -301,15 +301,15 @@ describe("DiffScreen の採用・棄却", () => {
   it("棄却するとカードの判定が棄却済へ変わる", async () => {
     renderDiff(analyzedState());
     await waitForList();
-    fireEvent.click(screen.getByRole("button", { name: "✗ 棄却" }));
+    fireEvent.click(screen.getByRole("button", { name: "棄却" }));
     expect(screen.getByText("✗ 棄却済")).toBeInTheDocument();
   });
 
   it("同じ判定を押し直すと未判定へ戻す", async () => {
     renderDiff(analyzedState());
     await waitForList();
-    fireEvent.click(screen.getByRole("button", { name: "✓ 採用" }));
-    fireEvent.click(screen.getByRole("button", { name: "✓ 採用" }));
+    fireEvent.click(screen.getByRole("button", { name: "採用" }));
+    fireEvent.click(screen.getByRole("button", { name: "採用" }));
     expect(screen.getAllByText("未判定")).toHaveLength(3);
   });
 
@@ -331,9 +331,9 @@ describe("DiffScreen の採用・棄却", () => {
   it("修正案を選び替えると判定は選んだ修正案のものを示す", async () => {
     renderDiff(analyzedState());
     await waitForList();
-    fireEvent.click(screen.getByRole("button", { name: "✓ 採用" }));
+    fireEvent.click(screen.getByRole("button", { name: "採用" }));
     fireEvent.click(screen.getByText(COPYBOOK));
-    await waitFor(() => expect(screen.getByRole("button", { name: "✓ 採用" })).toHaveAttribute("aria-pressed", "false"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "採用" })).toHaveAttribute("aria-pressed", "false"));
   });
 });
 
@@ -346,14 +346,14 @@ describe("DiffScreen の状態の保持", () => {
     );
     await waitForList();
     fireEvent.click(screen.getByText(COPYBOOK));
-    fireEvent.click(screen.getByRole("button", { name: "✗ 棄却" }));
+    fireEvent.click(screen.getByRole("button", { name: "棄却" }));
     fireEvent.click(screen.getByRole("button", { name: "適用（書き出し）" }));
 
     fireEvent.click(screen.getByRole("button", { name: "資産タブ" }));
     fireEvent.click(screen.getByRole("button", { name: "diff タブ" }));
     await waitForList();
     expect(screen.getByText("✗ 棄却済")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "✗ 棄却" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "棄却" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "適用（書き出し）" })).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -392,7 +392,7 @@ describe("DiffScreen の適用(書き出し)", () => {
     fireEvent.click(screen.getByRole("button", { name: "適用（書き出し）" }));
     fireEvent.click(screen.getByRole("button", { name: "修正版を書き出す" }));
     await waitFor(() =>
-      expect(screen.getByText(/2 件を書き出しました/)).toBeInTheDocument(),
+      expect(screen.getByText(/2 件を書き出した/)).toBeInTheDocument(),
     );
     expect(screen.getByText(/コピー句 1 件/)).toBeInTheDocument();
   });
@@ -400,9 +400,9 @@ describe("DiffScreen の適用(書き出し)", () => {
   it("棄却があるときは engine が全件を書き出す旨を書き出し前に示す", async () => {
     renderDiff(analyzedState());
     await waitForList();
-    fireEvent.click(screen.getByRole("button", { name: "✗ 棄却" }));
+    fireEvent.click(screen.getByRole("button", { name: "棄却" }));
     fireEvent.click(screen.getByRole("button", { name: "適用（書き出し）" }));
-    expect(screen.getByText(/棄却した 1 件も書き出しに含まれます/)).toBeInTheDocument();
+    expect(screen.getByText(/棄却した 1 件も書き出しに含まれる/)).toBeInTheDocument();
   });
 
   it("書き出しの失敗は理由を残す", async () => {
@@ -424,7 +424,7 @@ describe("DiffScreen の検証・解析の警告", () => {
     renderDiff(analyzedState());
     await waitForList();
     await waitFor(() =>
-      expect(screen.getByText(/2 件が検証に失敗しました/)).toBeInTheDocument(),
+      expect(screen.getByText(/2 件が検証に失敗した/)).toBeInTheDocument(),
     );
   });
 
@@ -442,6 +442,6 @@ describe("DiffScreen の検証・解析の警告", () => {
     );
     renderDiff(analyzedState({ mode: "error" }));
     await waitForList();
-    expect(screen.getByText(/解析で 3 件のエラーがあります/)).toBeInTheDocument();
+    expect(screen.getByText(/解析で 3 件のエラーがある/)).toBeInTheDocument();
   });
 });

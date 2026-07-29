@@ -1,0 +1,198 @@
+/*
+ * 端末取込のスタイル。厳格 BEM で命名し、値は :root トークンを参照する。
+ * 配置は左 400px のフォームと、右の貼り付け欄・プレビューの2カラムである。
+ */
+
+.ci-import {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  min-height: 0;
+  background: var(--ci-panel);
+}
+
+/* 保存先の資産フォルダが無い状態の枠 */
+.ci-import--placeholder {
+  flex-direction: column;
+}
+.ci-import__title {
+  flex: none;
+  margin: 0;
+  font-size: var(--ci-fs-md);
+  font-weight: 700;
+  color: var(--ci-text-heading);
+}
+.ci-import--placeholder .ci-import__title {
+  padding: 9px var(--ci-space-4);
+  border-bottom: 1px solid var(--ci-border-soft);
+}
+
+/* --- 左のフォーム(400px) --- */
+.ci-import__form {
+  width: 400px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-space-4);
+  padding: var(--ci-space-3) var(--ci-space-4);
+  overflow-y: auto;
+  border-right: 1px solid var(--ci-border);
+}
+.ci-import__intro {
+  margin: 0;
+  font-size: var(--ci-fs-sm);
+  color: var(--ci-text-secondary);
+}
+.ci-import__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-space-1);
+}
+.ci-import__label {
+  margin: 0;
+  font-size: var(--ci-fs-pane-title);
+  color: var(--ci-text-muted);
+}
+.ci-import__note {
+  margin: 0;
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-subtle);
+  line-height: 1.5;
+}
+.ci-import__kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ci-space-1);
+}
+.ci-import__columns {
+  display: flex;
+  gap: var(--ci-space-3);
+}
+.ci-import__column {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-1);
+  font-size: var(--ci-fs-sm);
+  color: var(--ci-text-secondary);
+}
+.ci-import__column .ci-input {
+  width: 72px;
+}
+.ci-import__confirm-text {
+  margin: 0 0 var(--ci-space-2);
+}
+.ci-import__confirm-actions {
+  display: flex;
+  gap: var(--ci-space-2);
+}
+
+/* --- 右の貼り付け欄とプレビュー --- */
+.ci-import__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-space-1);
+  min-width: 0;
+  min-height: 0;
+  padding: var(--ci-space-3) var(--ci-space-4);
+}
+.ci-import__paste {
+  flex: none;
+  height: 200px;
+  resize: vertical;
+  padding: var(--ci-space-2);
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius-sm);
+  background: var(--ci-surface-soft);
+  color: var(--ci-text);
+  font-family: var(--ci-font-code);
+  font-size: var(--ci-fs-sm);
+  line-height: 1.5;
+  white-space: pre;
+  overflow: auto;
+}
+
+/* --- プレビュー --- */
+.ci-import-preview {
+  /* 行番号欄の幅。桁定規の左余白と行の字下げをそろえる。 */
+  --ci-import-gutter: 3.5em;
+
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: var(--ci-space-3);
+  border: 1px solid var(--ci-border);
+  border-radius: var(--ci-radius-sm);
+  background: var(--ci-surface-soft);
+}
+.ci-import-preview__head {
+  flex: none;
+  padding: var(--ci-space-2) var(--ci-space-3);
+  border-bottom: 1px solid var(--ci-border-soft);
+  background: var(--ci-surface-header);
+}
+.ci-import-preview__title {
+  margin: 0;
+  font-size: var(--ci-fs-detail-title);
+  font-weight: 700;
+  color: var(--ci-text-heading);
+}
+.ci-import-preview__note {
+  margin: var(--ci-space-1) 0 0;
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-subtle);
+}
+.ci-import-preview__blank {
+  margin: 0;
+  padding: var(--ci-space-4);
+  font-size: var(--ci-fs-sm);
+  color: var(--ci-text-subtle);
+}
+.ci-import-preview__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 var(--ci-space-3) var(--ci-space-2);
+  font-family: var(--ci-font-code);
+  font-size: var(--ci-fs-sm);
+  line-height: 1.5;
+}
+/* 行数が多くても桁を確かめられるよう、桁定規は縦スクロールでも上端へ残す。 */
+.ci-import-preview__ruler {
+  position: sticky;
+  top: 0;
+  margin: 0;
+  padding: var(--ci-space-2) 0 var(--ci-space-1) var(--ci-import-gutter);
+  background: var(--ci-surface-soft);
+  color: var(--ci-text-subtle);
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.2;
+  white-space: pre;
+}
+.ci-import-preview__lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ci-import-preview__line {
+  display: flex;
+  white-space: pre;
+}
+.ci-import-preview__no {
+  flex: none;
+  box-sizing: border-box;
+  width: var(--ci-import-gutter);
+  color: var(--ci-text-subtle);
+  text-align: right;
+  padding-right: var(--ci-space-2);
+  user-select: none;
+}
+.ci-import-preview__text {
+  margin: 0;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  white-space: pre;
+}

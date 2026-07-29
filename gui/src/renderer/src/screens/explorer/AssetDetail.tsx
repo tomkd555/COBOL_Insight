@@ -22,6 +22,8 @@ export interface AssetDetailProps {
 /**
  * 右 330px の詳細ペイン。選択資産の名称・パス・種別・解析状態・指摘件数を示し、文字コード選択と
  * デコードプレビューを添える。未選択のときは選択を促す。
+ *
+ * ペインの題目は画面内の区画なので見出しレベル3とする。
  */
 export function AssetDetail({
   item,
@@ -33,12 +35,12 @@ export function AssetDetail({
 }: AssetDetailProps): ReactElement {
   return (
     <aside className="ci-detail" aria-label="資産の詳細と文字コード">
-      <div className="ci-detail__title">資産の詳細と文字コード</div>
+      <h3 className="ci-detail__title">資産の詳細と文字コード</h3>
       {item === null ? (
         <p className="ci-detail__empty">
           資産を選択すると詳細と
           <br />
-          デコードプレビューを表示します
+          デコードプレビューを表示する
         </p>
       ) : (
         <DetailBody

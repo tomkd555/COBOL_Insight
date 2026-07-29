@@ -1,8 +1,12 @@
 /**
  * renderer↔main の IPC 契約(型とチャネル名)。preload・main・renderer の3ビルドが共有する。
- * ここで公開する API は engine CLI サブプロセスの起動と、その成果物ファイルの読取だけを扱う。
- * ネットワーク通信・ソケットは用いない。
+ * ここで公開する API が扱うのは、engine CLI サブプロセスの起動、その成果物ファイルの読取、
+ * および資産フォルダへのソース取込である。
+ * ネットワーク通信・ソケットは用いない。やり取りはすべて renderer 発の invoke/handle で1往復し、
+ * main から renderer へ送る通知チャネルは持たない。
  */
+
+import type { ImportAssetKind } from "./assetImport";
 
 /** engine CLI の起動対象サブコマンド。fix は preview/apply を別値として区別する。 */
 export type EngineSubcommand =
@@ -90,6 +94,8 @@ export interface EngineOutputs {
   html?: string;
   text?: string;
   outDir?: string;
+  /** scan が書く COPY 展開の対応表(JSON)。 */
+  copyExpansion?: string;
 }
 
 /** サブプロセス起動の結果。stdout 末尾のサマリ JSON をパースして summary へ格納する。 */
@@ -261,6 +267,72 @@ export interface TranspileArtifacts {
   lineMap: LineMapEntry[];
 }
 
+/**
+ * scan が書く COPY 展開の対応表のファイル名。engine の既定の出力先(cobol-insight.db)と同じ場所へ
+ * 置くため、main は引数の組立で、renderer はプロジェクトファイルの位置から、この名前で同じパスを指す。
+ */
+export const COPY_EXPANSION_FILE_NAME = "cobol-insight-copy-expansion.json";
+
+/** COPY 文1件の展開行。 */
+export interface CopyExpansionLine {
+  /** コピー句の中での行番号(1 起点)。 */
+  copybookLine: number;
+  /**
+   * REPLACING 適用後のテキスト。engine の前処理を通した後の姿であり、注記行・一連番号欄(1〜6桁)・
+   * 識別欄(73桁以降)は空白になる。原本の姿を要する側は copybookLine で引き直す。
+   */
+  text: string;
+}
+
+/** COPY 文1件のインライン展開。入れ子の COPY と暗黙のコピー句(SQLCA)は対象外。 */
+export interface CopyExpansion {
+  /** 原本の COPY 文の行番号(1 起点)。 */
+  copyStatementLine: number;
+  copybookName: string;
+  /** 資産フォルダからの相対パス。資産フォルダの外にあるコピー句は絶対パス。 */
+  copybookPath: string;
+  lines: CopyExpansionLine[];
+}
+
+/** 1プログラム分の展開。COPY 文を持たないプログラムは現れない。 */
+export interface CopyExpansionProgram {
+  /** 資産フォルダからの相対パス(AssetInventoryItem.path と同形)。 */
+  path: string;
+  programId: string;
+  expansions: CopyExpansion[];
+}
+
+/** scan の --copy-expansion が書く対応表。programs は相対パス昇順。 */
+export interface CopyExpansionData {
+  programs: CopyExpansionProgram[];
+}
+
+/**
+ * 端末エミュレータの画面から複写した本文の取込要求。桁の切り出しは renderer で済ませ、
+ * 保存する行の並びとして渡す。
+ */
+export interface ImportSourceRequest {
+  /** 取込先の資産フォルダ。 */
+  inputDir: string;
+  /** 資産の種別。保存先のフォルダと拡張子を決める。 */
+  kind: ImportAssetKind;
+  /** ファイル名。種別の拡張子で終わっていなければ補う。 */
+  fileName: string;
+  /** 保存する本文の各行。 */
+  lines: string[];
+  /** 同名のファイルがあるとき上書きしてよいか。 */
+  overwrite: boolean;
+}
+
+/** 取込の結果。exists は同名のファイルがあり、上書きの許可を得ていないことを表す。 */
+export interface ImportSourceResult {
+  status: "written" | "exists";
+  /** 資産フォルダからの相対パス(例: cobol/SYK001.cbl)。 */
+  relPath: string;
+  /** 書き込んだ行数。exists のときは0。 */
+  lineCount: number;
+}
+
 /** renderer へ contextBridge で公開する API の型。window.cobolInsight として参照する。 */
 export interface CobolInsightApi {
   runScan(request: ScanRequest): Promise<EngineResult>;
@@ -271,8 +343,12 @@ export interface CobolInsightApi {
   runTranspile(request: TranspileRequest): Promise<EngineResult>;
   runFixPreview(request: FixPreviewRequest): Promise<EngineResult>;
   runFixApply(request: FixApplyRequest): Promise<EngineResult>;
+  /** 実行中の engine を止める。実行中でなければ何もしない。 */
+  cancelRun(): Promise<void>;
   /** 資産フォルダ選択ダイアログを開く。キャンセルは null。 */
   selectInputFolder(): Promise<string | null>;
+  /** 指定パスがディレクトリとして実在するか(コピー句探索パスの検査に用いる)。 */
+  checkDirectoryExists(path: string): Promise<boolean>;
   readSarif(path: string): Promise<SarifFinding[]>;
   readCallgraphJson(path: string): Promise<CallGraphData>;
   readFixResult(request: FixResultRequest): Promise<FixDiff>;
@@ -281,6 +357,10 @@ export interface CobolInsightApi {
   readAssetInventory(dbPath: string): Promise<AssetInventoryItem[]>;
   readSourceText(request: SourceTextRequest): Promise<SourceTextResult>;
   readTranspileArtifacts(request: TranspileArtifactsRequest): Promise<TranspileArtifacts>;
+  /** scan が書いた COPY 展開の対応表を読む。 */
+  readCopyExpansion(path: string): Promise<CopyExpansionData>;
+  /** 端末エミュレータから複写した本文を、資産フォルダへソースファイルとして書き出す。 */
+  importSource(request: ImportSourceRequest): Promise<ImportSourceResult>;
   versions: { chrome: string; node: string; electron: string };
 }
 
@@ -294,7 +374,9 @@ export const ENGINE_CHANNELS = {
   runTranspile: "engine:run-transpile",
   runFixPreview: "engine:run-fix-preview",
   runFixApply: "engine:run-fix-apply",
+  cancelRun: "engine:cancel-run",
   selectInputFolder: "dialog:select-input-folder",
+  checkDirectoryExists: "fs:check-directory-exists",
   readSarif: "artifact:read-sarif",
   readCallgraphJson: "artifact:read-callgraph-json",
   readFixResult: "artifact:read-fix-result",
@@ -303,4 +385,6 @@ export const ENGINE_CHANNELS = {
   readAssetInventory: "artifact:read-asset-inventory",
   readSourceText: "artifact:read-source-text",
   readTranspileArtifacts: "artifact:read-transpile-artifacts",
+  readCopyExpansion: "artifact:read-copy-expansion",
+  importSource: "asset:import-source",
 } as const;

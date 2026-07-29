@@ -39,7 +39,7 @@
   background: var(--ci-info-bg);
   border: 1px solid var(--ci-info-border);
   border-radius: var(--ci-radius-md);
-  padding: 4px 10px;
+  padding: var(--ci-space-1) 10px;
 }
 .ci-titlebar__spinner {
   width: 14px;
@@ -50,7 +50,7 @@
   animation: ci-spin 0.9s linear infinite;
 }
 .ci-titlebar__running-text {
-  font-size: 11.5px;
+  font-size: var(--ci-fs-pane-title);
   color: var(--ci-info-text);
 }
 
@@ -65,8 +65,8 @@
 }
 .ci-tab {
   font-family: inherit;
-  font-size: 12.5px;
-  padding: 8px 15px;
+  font-size: var(--ci-fs-detail-title);
+  padding: var(--ci-space-2) 15px;
   border: none;
   border-right: 1px solid var(--ci-border-soft);
   border-top: 2px solid transparent;
@@ -88,7 +88,12 @@
   outline-offset: -2px;
 }
 
-/* --- 進捗バー(4px) --- */
+/*
+ * --- 進捗バー(4px) ---
+ * 縞を1枚のタイルとして敷き、そのタイルを横へ流して進行を示す。background-size の幅 28px は
+ * ci-bar が 1 周で動かす距離(base.css)と同じ値であり、1周ごとに元と同じ描画へ戻るため縞が
+ * 継ぎ目なく循環する。片方だけを変えると縞が飛ぶ。
+ */
 .ci-progress {
   height: var(--ci-progress-h);
   flex: none;

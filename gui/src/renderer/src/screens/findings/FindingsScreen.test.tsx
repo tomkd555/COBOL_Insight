@@ -101,10 +101,10 @@ describe("FindingsScreen(指摘一覧)", () => {
   it("修正案ありルール(R017/R018/R004)には diff ありバッジを出す", () => {
     renderFindings(resultsSeed);
     const r017 = screen.getByRole("row", { name: /^R017 /  });
-    expect(within(r017).getByText("diff あり")).toBeInTheDocument();
+    expect(within(r017).getByText("差分あり")).toBeInTheDocument();
     const r008 = screen.getByRole("row", { name: /^R008 /  });
-    expect(within(r008).queryByText("diff あり")).toBeNull();
-    expect(screen.getAllByText("diff あり")).toHaveLength(3); // R017 / R018 / R004
+    expect(within(r008).queryByText("差分あり")).toBeNull();
+    expect(screen.getAllByText("差分あり")).toHaveLength(3); // R017 / R018 / R004
   });
 
   it("重大度チップ(高)を切ると高の指摘が消える", () => {
@@ -142,7 +142,7 @@ describe("FindingsScreen(指摘一覧)", () => {
   it("フィルタで 0 件になると no-hit メッセージを出す(空バリアントとは別)", () => {
     renderFindings(resultsSeed);
     fireEvent.change(screen.getByRole("textbox", { name: "内容で検索" }), { target: { value: "該当しない語XYZ" } });
-    expect(screen.getByText("現在のフィルタ条件に一致する指摘はありません")).toBeInTheDocument();
+    expect(screen.getByText("現在のフィルタ条件に一致する指摘はない")).toBeInTheDocument();
   });
 
   it("行ソート(行)で startLine 昇順になる", () => {
@@ -152,16 +152,34 @@ describe("FindingsScreen(指摘一覧)", () => {
     expect(rowNames()[0]).toMatch(/R002/);
   });
 
-  it("行クリックで JUMP し viewer へ該当行付きで遷移する", () => {
+  it("行クリックでは選択だけを行い、viewer へは遷移しない", () => {
     renderFindings(resultsSeed);
-    fireEvent.click(screen.getByRole("row", { name: /^R017 /  }));
+    const row = screen.getByRole("row", { name: /^R017 /  });
+    fireEvent.click(row);
+    expect(screen.getByTestId("probe")).toHaveTextContent("findings||");
+    expect(row).toHaveAttribute("aria-current", "true");
+    expect(row).toHaveClass("ci-findings-table__row--selected");
+  });
+
+  it("行は Enter でも選択できる(ジャンプはしない)", () => {
+    renderFindings(resultsSeed);
+    const row = screen.getByRole("row", { name: /^R017 / });
+    fireEvent.keyDown(row, { key: "Enter" });
+    expect(row).toHaveAttribute("aria-current", "true");
+    expect(screen.getByTestId("probe")).toHaveTextContent("findings||");
+  });
+
+  it("ファイル・行のセルはジャンプ操作のボタンで、押すと viewer へ該当行付きで遷移する", () => {
+    renderFindings(resultsSeed);
+    fireEvent.click(screen.getByRole("button", { name: "cobol/SYK001.cbl:85 のソースへジャンプ" }));
     expect(screen.getByTestId("probe")).toHaveTextContent("viewer|cobol/SYK001.cbl|85");
   });
 
-  it("行は Enter でも活性化できる", () => {
+  it("ジャンプ操作のボタンは見た目を CSS の修飾で整え、インラインスタイルを持たない", () => {
     renderFindings(resultsSeed);
-    fireEvent.keyDown(screen.getByRole("row", { name: /^R017 / }), { key: "Enter" });
-    expect(screen.getByTestId("probe")).toHaveTextContent("viewer|cobol/SYK001.cbl|85");
+    const jump = screen.getByRole("button", { name: "cobol/SYK001.cbl:85 のソースへジャンプ" });
+    expect(jump).toHaveClass("ci-findings-table__line", "ci-findings-table__line--jump");
+    expect(jump.getAttribute("style")).toBeNull();
   });
 
   it("一覧を表として意味づけ、6 列の見出しを持つ", () => {
@@ -179,6 +197,31 @@ describe("FindingsScreen(指摘一覧)", () => {
     fireEvent.click(screen.getByRole("button", { name: "行で並べ替え" }));
     expect(screen.getByRole("columnheader", { name: /^行/ })).toHaveAttribute("aria-sort", "ascending");
     expect(screen.getByRole("columnheader", { name: /重大度/ })).toHaveAttribute("aria-sort", "none");
+  });
+
+  it("ルールソート(ルール)で ID 昇順になる", () => {
+    renderFindings(resultsSeed);
+    fireEvent.click(screen.getByRole("button", { name: "ルールで並べ替え" }));
+    expect(screen.getByRole("columnheader", { name: /ルール/ })).toHaveAttribute("aria-sort", "ascending");
+    // ID 昇順の先頭は R001。
+    expect(rowNames()[0]).toMatch(/^R001 /);
+  });
+
+  it("同じ見出しを再度押すと向きが反転し、aria-sort が descending になる", () => {
+    renderFindings(resultsSeed);
+    const sevHeader = screen.getByRole("columnheader", { name: /重大度/ });
+    fireEvent.click(screen.getByRole("button", { name: "重大度で並べ替え" }));
+    expect(sevHeader).toHaveAttribute("aria-sort", "descending");
+    // 昇順(高→中→低→警告)の末尾は警告(R009)のみ。降順はその逆順になるため先頭に来る。
+    expect(rowNames()[0]).toMatch(/^R009 /);
+  });
+
+  it("別の見出しを押すと昇順から始まる(直前の列の向きを引き継がない)", () => {
+    renderFindings(resultsSeed);
+    fireEvent.click(screen.getByRole("button", { name: "行で並べ替え" }));
+    fireEvent.click(screen.getByRole("button", { name: "行で並べ替え" })); // 行を降順にする
+    fireEvent.click(screen.getByRole("button", { name: "重大度で並べ替え" })); // 別列へ切替
+    expect(screen.getByRole("columnheader", { name: /重大度/ })).toHaveAttribute("aria-sort", "ascending");
   });
 
   it("設定の重大度しきい値より低い指摘を一覧から除く", () => {
@@ -208,7 +251,7 @@ describe("FindingsScreen(指摘一覧)", () => {
 
   it("レポート出力ボタンで report 画面へ遷移する", () => {
     renderFindings(resultsSeed);
-    fireEvent.click(screen.getByRole("button", { name: "レポート出力 →" }));
+    fireEvent.click(screen.getByRole("button", { name: "レポート出力へ" }));
     expect(screen.getByTestId("probe")).toHaveTextContent("report|");
   });
 });

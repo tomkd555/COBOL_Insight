@@ -27,8 +27,9 @@ export interface ShellProps {
 
 /**
  * アプリの固定シェル。上から タイトルバー / タブバー / 実行中進捗バー / 中央コンテンツ領域 /
- * ステータスバー の5段で構成する。中央領域は position:relative で、各画面を絶対配置の
- * オーバーレイとして重ねる。トーストはシェル全体に対する fixed 要素として最後に置く。
+ * トースト帯 / ステータスバー の6段で構成する。中央領域は position:relative で、各画面を絶対配置の
+ * オーバーレイとして重ねる。トーストはフローに置いた帯であり、コンテンツ領域を押し上げる形で
+ * 表示するため、本文の機能領域には重ならない。
  */
 export function Shell({
   tabs,
@@ -49,8 +50,8 @@ export function Shell({
       <TabBar tabs={tabs} activeId={activeScreen} onSelect={onSelectScreen} />
       {isRunning ? <ProgressBar /> : null}
       <main className="ci-shell__content">{children}</main>
-      <StatusBar left={statusLeft} counts={statusCounts} />
       <Toast message={toast} onDismiss={onToastDismiss} />
+      <StatusBar left={statusLeft} counts={statusCounts} />
     </div>
   );
 }

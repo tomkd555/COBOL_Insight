@@ -6,9 +6,9 @@ describe("RunningIndicator", () => {
   it("既定で解析実行の3段(scan→lint→sql-advise)の進行を提示する", () => {
     render(<RunningIndicator />);
     expect(RUN_STAGES).toEqual([
-      "第1段 資産の走査と構文解析(scan)",
-      "第2段 バグ検出(lint)",
-      "第3段 SQL助言(sql-advise)",
+      "第1段 資産の走査と構文解析",
+      "第2段 バグ検出",
+      "第3段 SQL助言",
     ]);
     RUN_STAGES.forEach((label) => {
       expect(screen.getByText(label)).toBeInTheDocument();
@@ -28,7 +28,7 @@ describe("RunningIndicator", () => {
 
   it("activeStage を渡すと該当段を現在ステップとして示す", () => {
     render(<RunningIndicator activeStage={2} />);
-    const current = screen.getByText("第2段 バグ検出(lint)");
+    const current = screen.getByText("第2段 バグ検出");
     expect(current).toHaveAttribute("aria-current", "step");
   });
 });

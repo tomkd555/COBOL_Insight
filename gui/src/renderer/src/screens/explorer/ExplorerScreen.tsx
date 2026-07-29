@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState, type ReactElement } from "react";
-import type { AssetTypeFilter } from "../../state/appState";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactElement } from "react";
+import { SPLIT_PANES, type AssetTypeFilter } from "../../state/appState";
 import { useAppState, useAppDispatch } from "../../state/AppStateContext";
 import { deriveRunBanner } from "../../state/status";
 import { EmptyState } from "../../components/EmptyState";
 import { RunningIndicator } from "../../components/RunningIndicator";
+import { SplitHandle } from "../../components/SplitHandle";
 import { SCREEN_META } from "../screenMeta";
 import { ExplorerToolbar } from "./ExplorerToolbar";
 import { AssetList } from "./AssetList";
@@ -18,7 +19,7 @@ import {
   toCodepageOverrides,
 } from "./assetView";
 
-/** デコードプレビューの表示行数(design のプレビュー枠は先頭5行)。 */
+/** デコードプレビューの行数。main へ要求する行数であり、DecodePreview の表示上限とそろえる。 */
 const PREVIEW_LINES = 5;
 
 /** 例外・非 Error 値から表示用の文言を取り出す。 */
@@ -105,13 +106,20 @@ export function ExplorerScreen(): ReactElement {
 
   /** 資産フォルダを選び、プロジェクトの入力フォルダとして共有する。キャンセル時は何も変えない。 */
   async function onImport(): Promise<void> {
-    const selected = await window.cobolInsight.selectInputFolder();
-    if (selected === null) return;
-    dispatch({ type: "SET_PROJECT", project: { inputDir: selected } });
-    dispatch({
-      type: "SHOW_TOAST",
-      message: `資産フォルダを取り込みました（${selected}）。「▶ 解析実行」で解析を開始します。`,
-    });
+    try {
+      const selected = await window.cobolInsight.selectInputFolder();
+      if (selected === null) return;
+      dispatch({ type: "SET_PROJECT", project: { inputDir: selected } });
+      dispatch({
+        type: "SHOW_TOAST",
+        message: `資産フォルダを取り込みました（${selected}）。「▶ 解析実行」で解析を開始します。`,
+      });
+    } catch (error) {
+      dispatch({
+        type: "SHOW_TOAST",
+        message: `資産フォルダを取り込めなかった（${messageOf(error)}）。`,
+      });
+    }
   }
 
   /** scan を起動し、SQLite から資産一覧を読む。失敗を呼び出し側へ真偽で返す。 */
@@ -143,7 +151,7 @@ export function ExplorerScreen(): ReactElement {
       });
       const sarif = result.outputs.sarif;
       if (sarif === undefined) {
-        throw new Error("lint が SARIF を出力しませんでした。");
+        throw new Error("バグ検出の結果が出力されなかった。");
       }
       const findings = await window.cobolInsight.readSarif(sarif);
       dispatch({ type: "SET_FINDINGS", result: { status: "ready", items: findings } });
@@ -165,7 +173,7 @@ export function ExplorerScreen(): ReactElement {
       });
       const sarif = result.outputs.sarif;
       if (sarif === undefined) {
-        throw new Error("sql-advise が SARIF を出力しませんでした。");
+        throw new Error("SQL 助言の結果が出力されなかった。");
       }
       const advice = await window.cobolInsight.readSarif(sarif);
       dispatch({ type: "SET_SQL_ADVICE", result: { status: "ready", items: advice } });
@@ -216,9 +224,12 @@ export function ExplorerScreen(): ReactElement {
       ? ""
       : encodingSelectValue(selectedItem, state.encodingSel, state.defaultEncoding);
   const banner = deriveRunBanner(state);
+  const detailWidth = state.paneWidths.explorerDetail;
+  // 詳細ペインの幅は CSS カスタムプロパティで渡す(寸法の指定は CSS 側に置く)。
+  const paneStyle = { "--ci-explorer-detail-w": `${detailWidth}px` } as CSSProperties;
 
   return (
-    <div className="ci-explorer">
+    <div className="ci-explorer" style={paneStyle}>
       <div className="ci-explorer__main">
         <ExplorerToolbar
           search={state.assetSearch}
@@ -244,19 +255,31 @@ export function ExplorerScreen(): ReactElement {
               onAction={() => void onImport()}
               note={meta.emptyNote}
             />
-          ) : state.mode === "running" ? (
-            <RunningIndicator title={meta.runningTitle} activeStage={state.runStage} />
           ) : (
-            <AssetList
-              groups={groups}
-              collapsed={collapsed}
-              showFindingColumn={analyzed}
-              onToggleDir={onToggleDir}
-              onSelect={(path) => dispatch({ type: "SELECT_ASSET", path })}
-            />
+            <>
+              {state.mode === "running" ? (
+                <div className="ci-explorer__running">
+                  <RunningIndicator title={meta.runningTitle} activeStage={state.runStage} />
+                </div>
+              ) : null}
+              <AssetList
+                groups={groups}
+                collapsed={collapsed}
+                showFindingColumn={analyzed}
+                onToggleDir={onToggleDir}
+                onSelect={(path) => dispatch({ type: "SELECT_ASSET", path })}
+              />
+            </>
           )}
         </div>
       </div>
+      <SplitHandle
+        width={detailWidth}
+        min={SPLIT_PANES.explorerDetail.min}
+        max={SPLIT_PANES.explorerDetail.max}
+        onWidthChange={(width) => dispatch({ type: "SET_PANE_WIDTH", pane: "explorerDetail", width })}
+        ariaLabel="資産の詳細ペインの幅"
+      />
       <AssetDetail
         item={selectedItem}
         mode={state.mode}

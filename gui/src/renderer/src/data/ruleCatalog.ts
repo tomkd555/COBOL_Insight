@@ -4,9 +4,7 @@
  *
  * SARIF の level(error/warning/note)は 3 段だが、画面表示の重大度は 4 段(高/中/低/警告)で
  * ルール固有の属性である。したがって重大度は SARIF の level ではなく、このカタログを引いて決める。
- * 修正案 diff の有無(hasFix)は engine の FixProducer 実装と一致させ、R004(OnSizeErrorMissingRule)・
- * R017(FileStatusUncheckedRule)・R018(SqlCodeUncheckedRule)の 3 件だけを true とする。
- * R021(CicsResponseUncheckedRule)は FixProducer を実装しないため修正案を生成できない。
+ * 修正案 diff の有無(hasFix)は engine の FixProducer 実装と一致させる。
  */
 
 import { SEVERITY_BY_LABEL, type Severity } from "../components/severity";
@@ -20,7 +18,7 @@ export interface RuleInfo {
   readonly category: string;
   /** 画面表示の重大度(高/中/低/警告)。 */
   readonly severity: Severity;
-  /** 修正案 diff を生成できるルールか(R004/R017/R018 のみ true)。 */
+  /** 修正案 diff を生成できるルールか。engine の FixProducer 実装があるルールだけ true。 */
   readonly hasFix: boolean;
 }
 
@@ -46,7 +44,7 @@ const RULE_TABLE: readonly [string, string, string, string, boolean][] = [
   ["R018", "SQLCODE/SQLSTATE未検査", "例外処理", "高", true],
   ["R019", "SQLカーソルのCLOSE漏れ", "SQL", "中", false],
   ["R020", "動的SQL文への外部入力の未検証組み込み", "SQL", "高", false],
-  ["R021", "CICS応答コード(RESP/RESP2)未検査", "例外処理", "高", false],
+  ["R021", "CICS応答コード(RESP/RESP2)未検査", "例外処理", "高", true],
   ["R022", "CICS RETURN文欠如による疑似会話の途絶", "制御フロー", "中", false],
   ["R023", "パラグラフ・セクション名の重複", "制御フロー", "中", false],
   ["R024", "COPY REPLACINGによる置換漏れ", "データ定義", "中", false],
@@ -83,9 +81,8 @@ const ANALYSIS_ERROR_NAMES: Readonly<Record<string, string>> = {
 };
 
 /**
- * カタログにない ID へのフォールバック。design:1065 の既定に倣い重大度は高とし、名称は
- * 解析エラーの ID だけをその内容で名付ける。engine が出さない ID を「構文解析失敗」と
- * 名乗らせない。
+ * カタログにない ID へのフォールバック。見落としを防ぐため重大度は高とし、名称は解析エラーの ID
+ * だけをその内容で名付ける。engine が出さない ID を「構文解析失敗」として示さない。
  */
 function fallbackRule(id: string): RuleInfo {
   return {
@@ -97,7 +94,7 @@ function fallbackRule(id: string): RuleInfo {
   };
 }
 
-/** ルール ID からメタ情報を引く。未知の ID はフォールバックを返す(design ruleOf)。 */
+/** ルール ID からメタ情報を引く。未知の ID はフォールバックを返す。 */
 export function ruleOf(id: string): RuleInfo {
   return RULE_CATALOG[id] ?? fallbackRule(id);
 }

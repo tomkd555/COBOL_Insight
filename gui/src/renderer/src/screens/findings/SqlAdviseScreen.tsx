@@ -1,20 +1,25 @@
-import { useEffect, useMemo, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactElement } from "react";
+import { SPLIT_PANES } from "../../state/appState";
 import { useAppState, useAppDispatch } from "../../state/AppStateContext";
 import { EmptyState } from "../../components/EmptyState";
 import { RunningIndicator } from "../../components/RunningIndicator";
+import { SplitHandle } from "../../components/SplitHandle";
 import { SCREEN_META } from "../screenMeta";
 import { previewCodepage } from "../explorer/assetView";
 import { FindingsView } from "./FindingsView";
 import { SqlDetail } from "./SqlDetail";
-import type { FindingFilters } from "./findingsModel";
+import { nextSortState, type FindingFilters } from "./findingsModel";
 import { adviceAt, extractSqlStatement, type SqlBodyState } from "./sqlDetailModel";
 
-/** SQL助言の running 表示の段(構文木の走査。3 段の構文→制御フロー→データフローではない)。 */
+/**
+ * 実行中に提示する段。この画面が扱うのは sql-advise だけなので、解析実行の3段
+ * (scan → lint → sql-advise)ではなく、SQL 構文木の走査だけを示す。
+ */
 const SQL_RUN_STAGES = ["SQL 構文木の走査（S001〜S006）"];
 
-/** 画面上部の説明(design:454)。判定が構文レベルに限られることを明示する。 */
+/** 画面上部の説明。助言が構文レベルの判定に限られることを、一覧を見る前に明示する。 */
 const SQL_INTRO =
-  "埋め込み Db2 SQL（EXEC SQL … END-EXEC）を抽出し、構文レベルの最適化助言（S001〜S006）を提示します。実行計画やカタログには依存しません。";
+  "埋め込み Db2 SQL（EXEC SQL … END-EXEC）を抽出し、構文レベルの最適化助言（S001〜S006）を提示する。実行計画やカタログには依存しない。";
 
 /** 例外・非 Error 値から表示用の文言を取り出す。 */
 function messageOf(error: unknown): string {
@@ -26,9 +31,9 @@ function messageOf(error: unknown): string {
  * 収めたもので、この画面は sql-advise を起動しない。一覧 UI は指摘一覧と共有し(FindingsView)、
  * フィルタ・ソート・選択はいずれも AppState に持つためタブを移動しても失われない。
  *
- * 行を選ぶと右の詳細ペインへ、原本から読んだ SQL 本文とその位置の助言を出す(design scSql)。
- * ソースビューアへの遷移は詳細ペインの「該当ソース行へ →」で行う。SQL 文の総数は SARIF から
- * 厳密に導けないため提示しない(裁定 A8)。起動または SARIF 読取の失敗は 0 件と区別する。
+ * 行を選ぶと右の詳細ペインへ、原本から読んだ SQL 本文とその位置の助言を出す。ソースビューアへの
+ * 遷移は詳細ペインの「該当ソース行へ」で行う。SQL 文の総数は SARIF から厳密に導けないため
+ * 提示しない。起動または SARIF 読取の失敗は 0 件と区別する。
  */
 export function SqlAdviseScreen(): ReactElement {
   const state = useAppState();
@@ -83,7 +88,7 @@ export function SqlAdviseScreen(): ReactElement {
     return (
       <EmptyState
         title="表示できる SQL がありません"
-        description="解析がまだ実行されていないか、解析対象に埋め込み SQL が見つかりませんでした。"
+        description="解析がまだ実行されていないか、解析対象に埋め込み SQL が見つからなかった。"
       />
     );
   }
@@ -95,7 +100,7 @@ export function SqlAdviseScreen(): ReactElement {
       <EmptyState
         icon="！"
         title="SQL 助言を取得できませんでした"
-        description={`sql-advise の実行または SARIF の読取に失敗したため、助言の件数は不明です。${result.message}`}
+        description={`SQL 助言の実行または検出結果の読み取りに失敗したため、助言の件数は分からない。${result.message}`}
         actionLabel="資産エクスプローラーへ"
         onAction={() => dispatch({ type: "NAV", screen: "explorer" })}
       />
@@ -105,7 +110,7 @@ export function SqlAdviseScreen(): ReactElement {
     return (
       <EmptyState
         title="SQL 助言をまだ取得していません"
-        description="解析実行が完了していないため、SQL 助言を表示できません。資産エクスプローラーで解析を実行してください。"
+        description="解析実行が完了していないため、SQL 助言を表示できない。資産エクスプローラーで解析を実行する。"
         actionLabel="資産エクスプローラーへ"
         onAction={() => dispatch({ type: "NAV", screen: "explorer" })}
       />
@@ -115,7 +120,7 @@ export function SqlAdviseScreen(): ReactElement {
     return (
       <EmptyState
         title="表示できる SQL がありません"
-        description="解析対象に、埋め込み SQL の最適化助言（S001〜S006）は見つかりませんでした。"
+        description="解析対象に、埋め込み SQL の最適化助言（S001〜S006）は見つからなかった。"
       />
     );
   }
@@ -126,11 +131,14 @@ export function SqlAdviseScreen(): ReactElement {
     rule: state.sqlRule,
     file: state.sqlFile,
     text: state.sqlText,
-    sort: state.sqlSort,
   };
 
+  const detailWidth = state.paneWidths.sqlDetail;
+  // 詳細ペインの幅は CSS カスタムプロパティで渡す(寸法の指定は CSS 側に置く)。
+  const paneStyle = { "--ci-sql-detail-w": `${detailWidth}px` } as CSSProperties;
+
   return (
-    <div className="ci-sql">
+    <div className="ci-sql" style={paneStyle}>
       <p className="ci-sql__intro">{SQL_INTRO}</p>
       <div className="ci-sql__body">
         <FindingsView
@@ -141,14 +149,22 @@ export function SqlAdviseScreen(): ReactElement {
             onRuleChange: (value) => dispatch({ type: "SET_SQL_RULE", value }),
             onFileChange: (value) => dispatch({ type: "SET_SQL_FILE", value }),
             onTextChange: (value) => dispatch({ type: "SET_SQL_TEXT", value }),
-            onSortChange: (sort) => dispatch({ type: "SET_SQL_SORT", sort }),
           }}
           onActivateRow={(row) => dispatch({ type: "SELECT_SQL_ADVICE", finding: row.finding })}
           rowHint="SQL 本文と助言の詳細を表示"
           tableLabel="SQL 助言一覧"
           selectedFinding={selected}
+          sort={state.sqlSort}
+          onSortChange={(column) => dispatch({ type: "SET_SQL_SORT", sort: nextSortState(state.sqlSort, column) })}
           onGoReport={() => dispatch({ type: "NAV", screen: "report" })}
-          noHitMessage="現在のフィルタ条件に一致する SQL 助言はありません"
+          noHitMessage="現在のフィルタ条件に一致する SQL 助言はない"
+        />
+        <SplitHandle
+          width={detailWidth}
+          min={SPLIT_PANES.sqlDetail.min}
+          max={SPLIT_PANES.sqlDetail.max}
+          onWidthChange={(width) => dispatch({ type: "SET_PANE_WIDTH", pane: "sqlDetail", width })}
+          ariaLabel="SQL 文と助言の詳細ペインの幅"
         />
         <SqlDetail
           selected={selected}

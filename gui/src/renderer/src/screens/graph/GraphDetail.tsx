@@ -16,8 +16,13 @@ export interface GraphDetailProps {
 }
 
 /**
- * 右の詳細ペイン。選択ノードの種別・ID・表示名・属性・入出力エッジを示し、隣接の展開と畳み込み、
- * ソースへのジャンプを操作として置く。下段に凡例を常時表示して、図の記号の意味を参照できるようにする。
+ * 右の詳細ペイン。選択ノードの種別・ID・表示名・属性を示した直後にソースを開く操作を置き(SQL助言の
+ * 詳細ペインでジャンプ操作を対象の識別情報のすぐ下に置くのと位置をそろえる)、続けて入出力エッジと
+ * 隣接の展開・畳み込みを示す。下段に凡例を常時表示して、図の記号の意味を参照できるようにする。
+ *
+ * クリック・Enter/Space は選択だけを行う規則(指摘一覧・SQL助言と共通)のもと、ソースを開く操作は
+ * 常にこのボタンで行う。呼出関係はノードに行番号を持たないため、SQL助言の「該当ソース行へ」とは
+ * 揃えず「ソースを開く」とし、行を指定せず開くことを文言でも示す。
  *
  * 対応するソースが複数ある(同名のファイルが別フォルダにある)場合は、相対パス全体を添えて
  * すべてを操作として出す。先頭の候補を黙って開くと別フォルダの同名ファイルを取り違える。
@@ -31,7 +36,7 @@ export function GraphDetail({
 }: GraphDetailProps): ReactElement {
   return (
     <aside className="ci-graph-detail" aria-label="ノード情報と凡例">
-      <div className="ci-graph-detail__title">ノード情報</div>
+      <h3 className="ci-graph-detail__title">ノード情報</h3>
       {detail === null ? (
         <p className="ci-graph-detail__empty">
           ノードを選択すると詳細を表示する。選択したノードの「隣接を展開」で、そのノードに
@@ -62,6 +67,29 @@ export function GraphDetail({
               </div>
             ))}
           </dl>
+          {sources.length === 0 ? null : (
+            // SQL助言の詳細ペインと同じく、ソースを開く操作はノードを特定する情報のすぐ下に置く。
+            // 呼出関係はノードに行番号を持たないため、行指定なしで開くことを文言でも示す
+            // (「該当ソース行へ」ではなく「ソースを開く」とする)。
+            <div className="ci-graph-detail__actions">
+              {sources.length === 1 ? (
+                <Button variant="primary" onClick={() => onOpenSource(sources[0])}>
+                  ソースを開く
+                </Button>
+              ) : (
+                <>
+                  <p className="ci-graph-detail__note">
+                    同名の資産が複数ある。開く資産を相対パスで選ぶ。
+                  </p>
+                  {sources.map((path) => (
+                    <Button key={path} variant="primary" onClick={() => onOpenSource(path)}>
+                      {`ソースを開く ― ${path}`}
+                    </Button>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
           <EdgeList title="入ってくるエッジ" edges={detail.incoming} direction="←" />
           <EdgeList title="出ていくエッジ" edges={detail.outgoing} direction="→" />
           <div className="ci-graph-detail__actions">
@@ -71,22 +99,6 @@ export function GraphDetail({
               </Button>
             ) : (
               <p className="ci-graph-detail__note">このノードに隣接はない。</p>
-            )}
-            {sources.length === 0 ? null : sources.length === 1 ? (
-              <Button variant="primary" onClick={() => onOpenSource(sources[0])}>
-                ソースを開く →
-              </Button>
-            ) : (
-              <>
-                <p className="ci-graph-detail__note">
-                  同名の資産が複数ある。開く資産を相対パスで選ぶ。
-                </p>
-                {sources.map((path) => (
-                  <Button key={path} variant="primary" onClick={() => onOpenSource(path)}>
-                    {`ソースを開く → ${path}`}
-                  </Button>
-                ))}
-              </>
             )}
           </div>
         </div>

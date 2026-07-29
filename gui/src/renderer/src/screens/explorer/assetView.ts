@@ -1,21 +1,20 @@
 /**
- * 資産エクスプローラーのビューモデル導出。design gvExplorer(design:1107-1178)の
- * 種別写像・種別チップフィルタ・名前フィルタ・ディレクトリ集約・解析状態を、React 非依存の
- * 純関数として持つ。資産の供給源は window.cobolInsight.readAssetInventory が返す
- * AssetInventoryItem(SQLite の SOURCE を NODE.type と結合したもの)であり、指摘件数の供給源は
- * lint の SARIF である(design fileFindCount と同じ数え方)。
+ * 資産エクスプローラーのビューモデル導出。種別の対応付け・種別チップフィルタ・名前フィルタ・
+ * ディレクトリ集約・解析状態を、React 非依存の純関数として持つ。資産の供給源は
+ * window.cobolInsight.readAssetInventory が返す AssetInventoryItem(SQLite の SOURCE を NODE.type と
+ * 結合したもの)であり、指摘件数の供給源は lint の SARIF である。
  */
 
 import type { AssetInventoryItem, SarifFinding } from "../../../../shared/engine-api";
 import type { AssetTypeFilter, ScreenMode } from "../../state/appState";
 
-/** 一覧・チップで用いる表示用の種別(design tyMeta のキー)。 */
+/** 一覧・チップで用いる表示用の種別。 */
 export type AssetDisplayType = "JCL" | "COBOL" | "コピー句" | "BMSマップ" | "その他";
 
 /**
- * 文字コード選択肢(design encOpts の自動判定 SJIS/UTF-8 と手動 SJIS/UTF-8/EBCDIC CP930・CP939)に、
- * EBCDIC の推定2件を加えたもの。engine の CodePageDetector は EBCDIC を推定で返すため
- * (design:97 の「推定（EBCDIC CP930/939）」)、検出結果がそのまま選択欄の値になるようにする。
+ * 文字コード選択肢。自動判定(Shift_JIS / UTF-8)・EBCDIC の推定(CP930 / CP939)・手動指定の4件から成る。
+ * engine の CodePageDetector は EBCDIC を推定として返すため、推定の2件を選択肢へ持たせ、
+ * 検出結果がそのまま選択欄の値になるようにする。
  */
 export const ENCODING_OPTIONS: readonly string[] = [
   "自動判定: Shift_JIS",
@@ -43,8 +42,8 @@ const MANUAL_CHARSET: Record<string, string> = {
 export const MANUAL_ENCODING_OPTIONS: readonly string[] = Object.keys(MANUAL_CHARSET);
 
 /**
- * engine の charset 名(CodePage.charsetName)→ 利用者向けの文字コード表記(裁定 A8)。
- * UTF-8 は engine の値がそのまま利用者向けの表記であるため写像を持たない。
+ * engine の charset 名(CodePage.charsetName)から利用者向けの文字コード表記を引く対応表。
+ * UTF-8 は engine の値がそのまま利用者向けの表記であるため、この表には持たない。
  */
 const CODEPAGE_LABELS: Readonly<Record<string, string>> = {
   "WINDOWS-31J": "Shift_JIS",
@@ -59,7 +58,7 @@ const DETECTED_SELECTION: Readonly<Record<string, string>> = {
   "X-IBM939": "推定: EBCDIC CP939",
 };
 
-/** 写像を持たない検出値(UTF-8 など)に用いる選択欄の値。 */
+/** 対応表に載らない検出値(UTF-8 など)に用いる選択欄の値。 */
 const FALLBACK_SELECTION = "自動判定: UTF-8";
 
 /** engine の charset 名の別名を大文字へそろえる(SOURCE.codepage は charsetName だが別名も受ける)。 */
@@ -73,12 +72,12 @@ function normalizeCodepage(codepage: string): string {
   return upper;
 }
 
-/** engine の charset 名を利用者向けの表記へ写す。写像を持たない値はそのまま返す(裁定 A8)。 */
+/** engine の charset 名を利用者向けの表記へ言い換える。対応表に無い値はそのまま返す。 */
 export function codepageLabel(codepage: string): string {
   return CODEPAGE_LABELS[normalizeCodepage(codepage)] ?? codepage;
 }
 
-/** engine の NODE.type を表示用の種別へ写す。未登録・未知(DATASET 等)は「その他」。 */
+/** engine の NODE.type を表示用の種別へ対応させる。未登録・未知(DATASET 等)は「その他」。 */
 export function displayType(nodeType: string): AssetDisplayType {
   switch (nodeType) {
     case "PROGRAM":
@@ -94,7 +93,7 @@ export function displayType(nodeType: string): AssetDisplayType {
   }
 }
 
-/** 種別チップの選択に資産の表示種別が合致するか(design match の種別部)。 */
+/** 種別チップの選択に資産の表示種別が合致するか。 */
 export function matchesType(type: AssetDisplayType, filter: AssetTypeFilter): boolean {
   if (filter === "すべて") return true;
   if (filter === "BMS") return type === "BMSマップ";
@@ -110,8 +109,7 @@ export function matchesSearch(name: string, search: string): boolean {
 
 /**
  * 一覧・詳細で表示する文字コード文字列。手動指定(encodingSel)が自動判定より優先し、
- * 未指定なら検出コードページの利用者向け表記、復号失敗(null)なら「未判定」を返す
- * (design encSel[n] || enc)。
+ * 未指定なら検出コードページの利用者向け表記、復号失敗(null)なら「未判定」を返す。
  */
 export function effectiveEncoding(item: AssetInventoryItem, encodingSel: Record<string, string>): string {
   const manual = encodingSel[item.path];
@@ -175,11 +173,10 @@ export interface AssetStatus {
 }
 
 /**
- * 資産の解析状態(design の status 導出)。running は「解析中…」、empty は「—」。
- * results/error では復号失敗と構文解析失敗を区別する(裁定 A8)。scan が SOURCE へ紐づけて記録する
- * finding は復号失敗と構文解析失敗の 2 種だけなので、codepage が null でない資産の findingCount が
- * 構文解析失敗の直接の証拠になる(design:908 の PARSEF に対応)。復号失敗も finding を 1 件持つため、
- * codepage の判定を先に行う。
+ * 資産の解析状態。running は「解析中…」、empty は「—」を返し、results/error では復号失敗と
+ * 構文解析失敗を区別する。scan が SOURCE へ紐づけて記録する finding は復号失敗と構文解析失敗の
+ * 2 種だけなので、codepage が null でない資産の findingCount が構文解析失敗の直接の証拠になる。
+ * 復号失敗も finding を 1 件持つため、codepage の判定を先に行う。
  */
 export function analysisStatus(item: AssetInventoryItem, mode: ScreenMode): AssetStatus {
   if (mode === "running") return { label: "解析中…", tone: "info" };
@@ -226,7 +223,7 @@ export interface BuildGroupsOptions {
   readonly mode: ScreenMode;
   readonly selectedPath: string;
   /**
-   * 相対パスごとの指摘件数(design fileFindCount)。供給源は lint の SARIF であり、
+   * 相対パスごとの指摘件数。供給源は lint の SARIF であり、
    * AssetInventoryItem.findingCount(scan 由来の復号・構文解析の失敗)とは別物である。
    */
   readonly findingCounts: Readonly<Record<string, number>>;

@@ -3,8 +3,8 @@ import type cytoscape from "cytoscape";
 import { graphLibrary } from "../../vendor/graphLibrary";
 import {
   SELECTED_NODE_CLASS,
+  graphCoreOptions,
   graphLayoutOptions,
-  graphStylesheet,
   type GraphElement,
 } from "./graphModel";
 
@@ -35,12 +35,7 @@ export function GraphCanvas({ elements, selectedId, onSelectNode }: GraphCanvasP
     if (container === null) {
       return;
     }
-    const core = graphLibrary()({
-      container,
-      style: graphStylesheet(),
-      // レイアウトが決めた層の並びを保つため、ノードのドラッグ移動を許さない。
-      autoungrabify: true,
-    });
+    const core = graphLibrary()(graphCoreOptions(container));
     core.on("tap", "node", (event: cytoscape.EventObjectNode) => {
       selectRef.current(event.target.id());
     });

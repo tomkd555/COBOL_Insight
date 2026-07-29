@@ -46,3 +46,21 @@ export const SAMPLE_GRAPH: CallGraphData = {
     { from: "transaction:SYK8", to: "program:SYK008", kind: "TRANSACTION_TRANSITION", resolution: "CONSTANT" },
   ],
 };
+
+/**
+ * 解析不能ノードを1件含む fixture。構文解析に失敗した資産はエッジを持たない孤立ノードとして
+ * 来るため、SAMPLE_GRAPH に足すと総ノード数の前提(全 18 ノード)を使う既存テストを崩す。
+ * そのため SAMPLE_GRAPH に解析不能ノードを1件加えた別 fixture として持つ。
+ */
+export const SAMPLE_GRAPH_WITH_UNANALYZABLE: CallGraphData = {
+  nodes: [
+    ...SAMPLE_GRAPH.nodes,
+    {
+      id: "unanalyzable:BROKEN1.cbl",
+      kind: "UNANALYZABLE",
+      label: "BROKEN1.cbl",
+      attributes: { path: "cobol/BROKEN1.cbl", reason: "予期しないトークンで構文解析が中断した" },
+    },
+  ],
+  edges: SAMPLE_GRAPH.edges,
+};

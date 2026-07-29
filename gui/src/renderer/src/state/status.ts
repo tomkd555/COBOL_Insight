@@ -1,5 +1,5 @@
 /**
- * ステータスバー文言と解析実行の失敗バナーの導出。design gvGlobal(design:1099-1104)の mode 別
+ * ステータスバー文言と解析実行の失敗バナーの導出。design gvGlobal の mode 別
  * statusLeft/statusCounts を移植する。件数は解析実行が得た成果物(inventory=scan・findings=lint・
  * sqlAdvice=sql-advise)の実件数から取り、実行中・未取得・取得失敗は「―」で示して 0 件と混同させない。
  * ルールの有効数は設定で無効化した集合(rulesDisabled)から導く。
@@ -28,7 +28,7 @@ export function deriveStatus(state: AppState): StatusText {
 
   if (state.mode === "empty") {
     return {
-      left: "準備完了 ― 資産をインポートしてください",
+      left: "準備完了 ― 資産のインポート待ち",
       counts: `資産 0 ・ ルール ${rulesEnabled} 有効 ・ v${version}`,
     };
   }
@@ -37,7 +37,7 @@ export function deriveStatus(state: AppState): StatusText {
   const left = running
     ? "解析実行中… ローカル解析ジョブ(Java) ― キャンセル可能"
     : state.mode === "error"
-      ? "解析完了 ― 部分的成功（失敗した処理があります）"
+      ? "解析完了 ― 部分的成功（失敗した処理がある）"
       : "解析完了 ― 正常終了";
 
   const assets = countText(state.inventory, running);
@@ -60,17 +60,17 @@ export function deriveRunBanner(state: AppState): string | null {
     return null;
   }
   if (state.inventory.status === "error") {
-    return `解析に失敗しました。${state.inventory.message}`;
+    return `解析に失敗した。${state.inventory.message}`;
   }
   const parts: string[] = [];
   if (state.findings.status === "error") {
-    parts.push(`指摘の取得に失敗しました。${state.findings.message}`);
+    parts.push(`指摘の取得に失敗した。${state.findings.message}`);
   }
   if (state.sqlAdvice.status === "error") {
-    parts.push(`SQL助言の取得に失敗しました。${state.sqlAdvice.message}`);
+    parts.push(`SQL助言の取得に失敗した。${state.sqlAdvice.message}`);
   }
   if (parts.length > 0) {
     return parts.join(" ");
   }
-  return "一部の資産で構文解析に失敗しました。失敗した資産は一覧に表示され、他の資産の結果は利用できます（部分的な結果）。";
+  return "一部の資産で構文解析に失敗した。失敗した資産は一覧に表示され、他の資産の結果は利用できる（部分的な結果）。";
 }

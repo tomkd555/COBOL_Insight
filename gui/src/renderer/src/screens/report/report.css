@@ -1,7 +1,7 @@
 /*
  * レポート出力(report)画面のスタイル。厳格 BEM で命名し、値は :root トークンを参照する。
- * design/COBOL Insight.dc.html の scRep(design:635-736)の配置(左 400px のフォーム +
- * 右のプレビュー)を移植する。
+ * design/COBOL Insight.dc.html の scRep の配置(左 400px のフォーム +
+ * 右のプレビュー)にそろえる。
  */
 
 .ci-report {
@@ -93,7 +93,7 @@
   overflow-wrap: anywhere;
 }
 
-/* 指標(engine のサマリが返した実件数) */
+/* 指標(engine のサマリが返した実件数)。列数は reportModel の reportMetrics が返す 5 件に対応する */
 .ci-report-preview__metrics {
   flex: none;
   display: grid;

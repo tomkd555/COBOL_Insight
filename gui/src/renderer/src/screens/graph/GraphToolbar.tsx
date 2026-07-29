@@ -1,25 +1,28 @@
 import type { ReactElement } from "react";
-import type { GraphNodeKind } from "../../state/appState";
 import { Button } from "../../components/Button";
 import { FilterChip } from "../../components/FilterChip";
-import { NODE_KIND_STYLES } from "./graphModel";
+import { NODE_KIND_STYLES, type AnyNodeKind } from "./graphModel";
 
 export interface GraphToolbarProps {
-  /** ノード種別フィルタの ON/OFF。 */
-  kinds: Record<GraphNodeKind, boolean>;
+  /** ノード種別フィルタの ON/OFF(解析不能を含む 11 種)。 */
+  kinds: Record<AnyNodeKind, boolean>;
   /** 種別ごとのグラフ全体でのノード件数。 */
-  counts: Record<GraphNodeKind, number>;
-  onToggleKind: (kind: GraphNodeKind) => void;
+  counts: Record<AnyNodeKind, number>;
+  onToggleKind: (kind: AnyNodeKind) => void;
   visibleCount: number;
   totalCount: number;
   /** callgraph を再実行してグラフを取り直す。 */
   onRebuild: () => void;
-  /** engine の callgraph --svg で図を書き出す。 */
+  /** 解析エンジンで図を SVG として書き出す。 */
   onExportSvg: () => void;
-  /** engine の callgraph --png で図を書き出す。 */
+  /** 解析エンジンで図を PNG として書き出す。 */
   onExportPng: () => void;
   /** 起動中は二重起動を防ぐため操作を止める。 */
   busy: boolean;
+  /** 右の詳細ペイン(ノード情報と凡例)を畳んでいるか。 */
+  detailCollapsed: boolean;
+  /** 詳細ペインの畳み込みを切り替える。 */
+  onToggleDetail: () => void;
 }
 
 /**
@@ -27,6 +30,9 @@ export interface GraphToolbarProps {
  * 再構築、SVG／PNG 出力を並べる。チップは複数選択なのでトグルボタン(aria-pressed)として表す。
  * 種別と図形・配色の対応は凡例(GraphLegend)が示す。書出は engine の callgraph サブコマンドが
  * 行い、renderer はファイルを書かない。
+ *
+ * 右の詳細ペインを畳む操作もここに置く。畳むとペインは消えるため、戻す操作は常に見えている
+ * このツールバーに要る。畳み込みは実行・追加・採否のいずれでもないため、ラベルに記号を付けない。
  */
 export function GraphToolbar({
   kinds,
@@ -38,6 +44,8 @@ export function GraphToolbar({
   onExportSvg,
   onExportPng,
   busy,
+  detailCollapsed,
+  onToggleDetail,
 }: GraphToolbarProps): ReactElement {
   return (
     <div className="ci-graph__toolbar">
@@ -65,6 +73,9 @@ export function GraphToolbar({
       </Button>
       <Button onClick={onExportPng} disabled={busy}>
         PNG 出力
+      </Button>
+      <Button aria-expanded={!detailCollapsed} onClick={onToggleDetail}>
+        {detailCollapsed ? "ノード情報と凡例を開く" : "ノード情報と凡例を畳む"}
       </Button>
     </div>
   );

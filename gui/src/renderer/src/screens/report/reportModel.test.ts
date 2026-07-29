@@ -138,7 +138,7 @@ describe("exitCodeWarning", () => {
   });
 
   it("警告ありではレポート本体が書かれた旨を添える", () => {
-    expect(exitCodeWarning(1)).toContain("書き出されています");
+    expect(exitCodeWarning(1)).toContain("書き出されている");
   });
 
   it("エラーありでは解析できていない可能性を示す", () => {

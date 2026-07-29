@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ExplorerScreen } from "./ExplorerScreen";
 import { ScreenRouter } from "../ScreenRouter";
 import { AppStateProvider, useAppState, useAppDispatch } from "../../state/AppStateContext";
-import { initialState, type AppState } from "../../state/appState";
+import { SPLIT_PANES, initialState, type AppState } from "../../state/appState";
 import { deriveStatus } from "../../state/status";
 import { SAMPLE_INVENTORY } from "./fixtures";
 import { SAMPLE_FINDINGS, SAMPLE_SQL_FINDINGS } from "../findings/fixtures";
@@ -92,7 +92,7 @@ function seedState(overrides: Partial<AppState>): AppState {
 }
 
 /**
- * 画面ルーティングとステータスバーを含む器。タブ移動で画面がアンマウントされる実アプリと
+ * 画面ルーティングとステータスバーを含むラッパー。タブ移動で画面がアンマウントされる実アプリと
  * 同じ条件を作り、状態の保持と件数表示を観測する。
  */
 function Harness(): ReactElement {
@@ -122,14 +122,14 @@ function renderApp(): void {
 
 /** インポート(フォルダ選択ダイアログ)を実行し、解析実行が有効になるまで待つ。 */
 async function importFolder(): Promise<void> {
-  fireEvent.click(screen.getByRole("button", { name: "＋ インポート" }));
-  await waitFor(() => expect(screen.getByRole("button", { name: "▶ 解析実行" })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", { name: "インポート" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "解析実行" })).toBeEnabled());
 }
 
 /** インポート→解析実行 の順に操作し、一覧が出るまで待つ。 */
 async function importAndRun(): Promise<void> {
   await importFolder();
-  fireEvent.click(screen.getByRole("button", { name: "▶ 解析実行" }));
+  fireEvent.click(screen.getByRole("button", { name: "解析実行" }));
   await screen.findByRole("button", { name: /SYK001\.cbl/ });
 }
 
@@ -137,22 +137,38 @@ describe("ExplorerScreen(資産エクスプローラー container)", () => {
   it("空状態ではインポート誘導を出し、解析実行は無効", () => {
     renderExplorer();
     expect(screen.getByRole("region", { name: "資産がまだインポートされていません" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "▶ 解析実行" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "解析実行" })).toBeDisabled();
+  });
+
+  it("ボタンの記号は目で見えるだけで、読み上げ名には混ざらない", () => {
+    renderExplorer();
+    const run = screen.getByRole("button", { name: "解析実行" });
+    // 表示文字はスモークテストが押下対象を選ぶ手がかりでもあるため、厳密に照合する。
+    expect(run.textContent).toBe("▶ 解析実行");
+    expect(run).toHaveAccessibleName("解析実行");
+    const importButton = screen.getByRole("button", { name: "インポート" });
+    expect(importButton.textContent).toBe("＋ インポート");
+    expect(importButton).toHaveAccessibleName("インポート");
+  });
+
+  it("空状態の誘導はフォルダの取込だけを示す", () => {
+    renderExplorer();
+    expect(screen.getByRole("button", { name: "フォルダをインポート" })).toBeInTheDocument();
   });
 
   it("インポートで選んだフォルダをプロジェクトの入力フォルダにする", async () => {
     renderExplorer();
     await importFolder();
     expect(selectInputFolder).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("button", { name: "▶ 解析実行" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "解析実行" })).toBeEnabled();
   });
 
   it("インポートをキャンセルしたら入力フォルダを変えない", async () => {
     selectInputFolder.mockResolvedValue(null);
     renderExplorer();
-    fireEvent.click(screen.getByRole("button", { name: "＋ インポート" }));
+    fireEvent.click(screen.getByRole("button", { name: "インポート" }));
     await waitFor(() => expect(selectInputFolder).toHaveBeenCalledTimes(1));
-    expect(screen.getByRole("button", { name: "▶ 解析実行" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "解析実行" })).toBeDisabled();
   });
 
   it("解析実行で scan・lint・sql-advise を順に起動し資産一覧を表示する(ゲート経路)", async () => {
@@ -184,18 +200,18 @@ describe("ExplorerScreen(資産エクスプローラー container)", () => {
 
     renderExplorer();
     await importFolder();
-    fireEvent.click(screen.getByRole("button", { name: "▶ 解析実行" }));
+    fireEvent.click(screen.getByRole("button", { name: "解析実行" }));
 
     const stageOf = (label: string): HTMLElement => screen.getByText(label);
-    expect(stageOf("第1段 資産の走査と構文解析(scan)")).toHaveAttribute("aria-current", "step");
-    expect(stageOf("第2段 バグ検出(lint)")).not.toHaveAttribute("aria-current");
+    expect(stageOf("第1段 資産の走査と構文解析")).toHaveAttribute("aria-current", "step");
+    expect(stageOf("第2段 バグ検出")).not.toHaveAttribute("aria-current");
 
     pending.shift()?.();
-    await waitFor(() => expect(stageOf("第2段 バグ検出(lint)")).toHaveAttribute("aria-current", "step"));
-    expect(stageOf("第1段 資産の走査と構文解析(scan)")).not.toHaveAttribute("aria-current");
+    await waitFor(() => expect(stageOf("第2段 バグ検出")).toHaveAttribute("aria-current", "step"));
+    expect(stageOf("第1段 資産の走査と構文解析")).not.toHaveAttribute("aria-current");
 
     pending.shift()?.();
-    await waitFor(() => expect(stageOf("第3段 SQL助言(sql-advise)")).toHaveAttribute("aria-current", "step"));
+    await waitFor(() => expect(stageOf("第3段 SQL助言")).toHaveAttribute("aria-current", "step"));
 
     pending.shift()?.();
     await screen.findByRole("button", { name: /SYK001\.cbl/ });
@@ -243,11 +259,11 @@ describe("ExplorerScreen(資産エクスプローラー container)", () => {
     renderApp();
     await importAndRun();
     fireEvent.click(screen.getByRole("button", { name: "指摘一覧タブ" }));
-    expect(screen.queryByRole("button", { name: "▶ 解析実行" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "解析実行" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "資産タブ" }));
     expect(screen.getByRole("button", { name: /SYK001\.cbl/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "▶ 解析実行" })).toBeEnabled();
-    expect(screen.queryByText("該当する資産がありません。")).toBeNull();
+    expect(screen.getByRole("button", { name: "解析実行" })).toBeEnabled();
+    expect(screen.queryByText("該当する資産がない。")).toBeNull();
     // 再取得は起こらない。
     expect(runScan).toHaveBeenCalledTimes(1);
     expect(runLint).toHaveBeenCalledTimes(1);
@@ -322,7 +338,7 @@ describe("ExplorerScreen(資産エクスプローラー container)", () => {
         maxLines: 5,
       }),
     );
-    expect(await screen.findByText(/表示に対応していません/)).toBeInTheDocument();
+    expect(await screen.findByText(/表示に対応していない/)).toBeInTheDocument();
   });
 
   it("プレビューの読取失敗は理由を示す", async () => {
@@ -340,7 +356,7 @@ describe("ExplorerScreen(資産エクスプローラー container)", () => {
     fireEvent.change(screen.getByRole("combobox", { name: "文字コード" }), {
       target: { value: "手動: EBCDIC CP930" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "▶ 解析実行" }));
+    fireEvent.click(screen.getByRole("button", { name: "解析実行" }));
     await waitFor(() => expect(runScan).toHaveBeenCalledTimes(2));
     expect(runScan.mock.calls[1][0].codepageOverrides).toEqual({ "cobol/SYK001.cbl": "CP930" });
   });
@@ -357,7 +373,7 @@ describe("ExplorerScreen(資産エクスプローラー container)", () => {
     runScan.mockRejectedValue(new Error("入力フォルダが見つかりません"));
     renderExplorer();
     await importFolder();
-    fireEvent.click(screen.getByRole("button", { name: "▶ 解析実行" }));
+    fireEvent.click(screen.getByRole("button", { name: "解析実行" }));
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("入力フォルダが見つかりません"));
   });
 
@@ -397,10 +413,40 @@ describe("ExplorerScreen(資産エクスプローラー container)", () => {
     runLint.mockRejectedValue(new Error("lint が異常終了しました"));
     renderApp();
     await importAndRun();
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("指摘の取得に失敗しました"));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("指摘の取得に失敗した"));
     expect(screen.getByRole("alert")).toHaveTextContent("lint が異常終了しました");
     expect(screen.getByRole("button", { name: /SYK001\.cbl/ })).toBeInTheDocument();
     expect(screen.getByTestId("status")).toHaveTextContent("指摘 ―");
     expect(screen.getByTestId("status")).not.toHaveTextContent("指摘 0");
+  });
+});
+
+describe("ExplorerScreen の詳細ペインの幅", () => {
+  /** 詳細ペインへ渡っている幅。 */
+  function detailWidth(): string {
+    const explorer = document.querySelector(".ci-explorer");
+    if (explorer === null) {
+      throw new Error("資産エクスプローラーの枠が無い");
+    }
+    return (explorer as HTMLElement).style.getPropertyValue("--ci-explorer-detail-w");
+  }
+
+  it("一覧と詳細ペインの境界に分割ハンドルを置く", () => {
+    renderExplorer();
+    const handle = screen.getByRole("separator", { name: "資産の詳細ペインの幅" });
+    expect(handle).toHaveAttribute("aria-orientation", "vertical");
+    expect(handle).toHaveAttribute("aria-valuenow", String(SPLIT_PANES.explorerDetail.initial));
+    expect(handle).toHaveAttribute("aria-valuemin", String(SPLIT_PANES.explorerDetail.min));
+    expect(handle).toHaveAttribute("aria-valuemax", String(SPLIT_PANES.explorerDetail.max));
+    expect(detailWidth()).toBe(`${SPLIT_PANES.explorerDetail.initial}px`);
+  });
+
+  it("← キーで詳細ペインを広げ、Home キーで下限まで詰める", () => {
+    renderExplorer();
+    const handle = screen.getByRole("separator", { name: "資産の詳細ペインの幅" });
+    fireEvent.keyDown(handle, { key: "ArrowLeft" });
+    expect(detailWidth()).toBe(`${SPLIT_PANES.explorerDetail.initial + 24}px`);
+    fireEvent.keyDown(handle, { key: "Home" });
+    expect(detailWidth()).toBe(`${SPLIT_PANES.explorerDetail.min}px`);
   });
 });

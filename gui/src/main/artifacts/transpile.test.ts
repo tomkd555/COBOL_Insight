@@ -53,7 +53,7 @@ describe("readLineMap(LINE_MAP と SOURCE の結合)", () => {
     ]);
   });
 
-  it("行範囲・種別・注記・アンカーを列名で写す", () => {
+  it("行範囲・種別・注記・アンカーを列名で取り出す", () => {
     const entries = readLineMap(db, "cobol/SYK001.cbl");
     const withNote = entries.find((entry) => entry.note !== "");
     expect(withNote).toEqual<LineMapEntry>({

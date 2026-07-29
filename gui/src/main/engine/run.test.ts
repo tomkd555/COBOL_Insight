@@ -1,24 +1,37 @@
 import { describe, it, expect } from "vitest";
 import { EventEmitter } from "node:events";
-import { runEngine, type EngineSpawn } from "./run";
+import { runEngine, type EngineProcess, type EngineSpawn } from "./run";
 import type { EngineInvocation } from "../../shared/engine-api";
 
-/** stdout/stderr を1回発火して close するモック spawn を作る。起動時の command/args を記録する。 */
+/**
+ * stdout/stderr を1回発火して close するモック spawn を作る。起動時の command/args と、
+ * kill の呼出回数を記録する。
+ */
 function fakeSpawn(script: {
   stdout?: string;
   stderr?: string;
   code?: number;
   error?: Error;
-}): { spawn: EngineSpawn; calls: { command: string; args: string[] }[] } {
+}): {
+  spawn: EngineSpawn;
+  calls: { command: string; args: string[] }[];
+  killed: { count: number };
+} {
   const calls: { command: string; args: string[] }[] = [];
+  const killed = { count: 0 };
   const spawn: EngineSpawn = (command, args) => {
     calls.push({ command, args });
     const proc = new EventEmitter() as unknown as EventEmitter & {
       stdout: EventEmitter;
       stderr: EventEmitter;
+      kill: () => boolean;
     };
     proc.stdout = new EventEmitter();
     proc.stderr = new EventEmitter();
+    proc.kill = () => {
+      killed.count += 1;
+      return true;
+    };
     setImmediate(() => {
       if (script.error !== undefined) {
         proc.emit("error", script.error);
@@ -30,7 +43,7 @@ function fakeSpawn(script: {
     });
     return proc as unknown as ReturnType<EngineSpawn>;
   };
-  return { spawn, calls };
+  return { spawn, calls, killed };
 }
 
 const launch = { command: "java", prefixArgs: ["-cp", "lib/*", "Main"] };
@@ -45,7 +58,17 @@ describe("runEngine", () => {
     await runEngine({ spawn }, launch, inv);
     expect(calls).toHaveLength(1);
     expect(calls[0].command).toBe("java");
-    expect(calls[0].args).toEqual(["-cp", "lib/*", "Main", "scan", "assets", "--db", "p.db"]);
+    expect(calls[0].args).toEqual([
+      "-cp",
+      "lib/*",
+      "Main",
+      "scan",
+      "assets",
+      "--db",
+      "p.db",
+      "--copy-expansion",
+      "cobol-insight-copy-expansion.json",
+    ]);
   });
 
   it("stdout 末尾のサマリ JSON をパースし終了コードを返す", async () => {
@@ -98,6 +121,20 @@ describe("runEngine", () => {
     );
     expect(result.summary).toBeNull();
     expect(result.outputs.json).toBe("out/cg.json");
+  });
+
+  it("onStart へ子プロセスを渡し、呼び手が停止できるようにする", async () => {
+    const { spawn, killed } = fakeSpawn({ stdout: '{"exitCode":0}' });
+    let started: EngineProcess | null = null;
+    await runEngine(
+      { spawn, onStart: (child) => (started = child) },
+      launch,
+      { subcommand: "scan", request: { inputDir: "assets" } },
+    );
+    expect(started).not.toBeNull();
+    expect(killed.count).toBe(0);
+    started!.kill();
+    expect(killed.count).toBe(1);
   });
 
   it("spawn の error を reject する", async () => {

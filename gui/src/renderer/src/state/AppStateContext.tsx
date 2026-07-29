@@ -1,8 +1,8 @@
 /**
  * アプリ状態の Context と hooks。useReducer で AppState を保持し、状態(useAppState)と
- * dispatch(useAppDispatch)を分離して提供する。各画面(WF-3 以降)はこの hooks を共有点にして
- * 状態を読み、action をディスパッチする。initialState を上書きできるので、テストや復元で
- * 任意のモード/画面から描画できる。
+ * dispatch(useAppDispatch)を分離して提供する。各画面はこの hooks を共有点にして状態を読み、
+ * action をディスパッチする。initialState を上書きできるので、テストや復元で任意のモード・
+ * 画面から描画できる。
  */
 
 import {

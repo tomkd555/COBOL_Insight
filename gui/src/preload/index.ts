@@ -6,6 +6,7 @@ import {
   type FixApplyRequest,
   type FixPreviewRequest,
   type FixResultRequest,
+  type ImportSourceRequest,
   type LintRequest,
   type ReportRequest,
   type ScanRequest,
@@ -19,6 +20,10 @@ import {
  * preload。contextIsolation・sandbox 下で、renderer→main の型付き API を contextBridge で公開する。
  * renderer から Node・child_process・fs へ直接触れさせず、engine CLI の起動と成果物読取はすべて
  * ipcRenderer.invoke で main へ委ねる。
+ *
+ * 公開するのはここに並べた関数だけであり、ipcRenderer 自身は渡さない。チャネル名は
+ * ENGINE_CHANNELS の固定値をこの層で与えるため、renderer が任意のチャネルへ invoke することはない。
+ * IPC を渡る引数と戻り値は構造化複製できる値に限る(関数・クラスのインスタンスは渡せない)。
  */
 const api: CobolInsightApi = {
   runScan: (request: ScanRequest) => ipcRenderer.invoke(ENGINE_CHANNELS.runScan, request),
@@ -34,7 +39,10 @@ const api: CobolInsightApi = {
     ipcRenderer.invoke(ENGINE_CHANNELS.runFixPreview, request),
   runFixApply: (request: FixApplyRequest) =>
     ipcRenderer.invoke(ENGINE_CHANNELS.runFixApply, request),
+  cancelRun: () => ipcRenderer.invoke(ENGINE_CHANNELS.cancelRun),
   selectInputFolder: () => ipcRenderer.invoke(ENGINE_CHANNELS.selectInputFolder),
+  checkDirectoryExists: (path: string) =>
+    ipcRenderer.invoke(ENGINE_CHANNELS.checkDirectoryExists, path),
   readSarif: (path: string) => ipcRenderer.invoke(ENGINE_CHANNELS.readSarif, path),
   readCallgraphJson: (path: string) =>
     ipcRenderer.invoke(ENGINE_CHANNELS.readCallgraphJson, path),
@@ -48,6 +56,10 @@ const api: CobolInsightApi = {
     ipcRenderer.invoke(ENGINE_CHANNELS.readSourceText, request),
   readTranspileArtifacts: (request: TranspileArtifactsRequest) =>
     ipcRenderer.invoke(ENGINE_CHANNELS.readTranspileArtifacts, request),
+  readCopyExpansion: (path: string) => ipcRenderer.invoke(ENGINE_CHANNELS.readCopyExpansion, path),
+  importSource: (request: ImportSourceRequest) =>
+    ipcRenderer.invoke(ENGINE_CHANNELS.importSource, request),
+  // renderer には process が無いため、版数は preload の時点で読んだ値を複製して渡す。
   versions: {
     chrome: process.versions.chrome,
     node: process.versions.node,

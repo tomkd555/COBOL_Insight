@@ -30,9 +30,22 @@ describe("App シェル", () => {
     expect(screen.getByRole("banner")).toHaveTextContent("COBOL Insight");
   });
 
-  it("8タブを提示し、既定は資産エクスプローラーを選択する", () => {
+  it("アプリ名が文書で唯一の h1 であり、画面の題目は h2 から始まる", () => {
     render(<App />);
-    expect(screen.getAllByRole("tab")).toHaveLength(8);
+    const level1 = screen.getAllByRole("heading", { level: 1 });
+    expect(level1).toHaveLength(1);
+    expect(level1[0]).toHaveTextContent("COBOL Insight");
+    // 画面の題目は Screen の隠し見出しが h2 として担い、資産エクスプローラーの空状態の見出しは h3 になる
+    // (右の詳細ペインの題目も同じ h3 のため、空状態の見出しを名前で絞って確かめる)。
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("資産エクスプローラー");
+    expect(
+      screen.getByRole("heading", { level: 3, name: "資産がまだインポートされていません" }),
+    ).toBeInTheDocument();
+  });
+
+  it("9タブを提示し、既定は資産エクスプローラーを選択する", () => {
+    render(<App />);
+    expect(screen.getAllByRole("tab")).toHaveLength(9);
     expect(screen.getByRole("tab", { name: "資産エクスプローラー" })).toHaveAttribute("aria-selected", "true");
   });
 
@@ -44,9 +57,9 @@ describe("App シェル", () => {
     expect(screen.getByRole("tabpanel")).toHaveTextContent("レポート出力");
   });
 
-  it("8タブすべてを順に選択でき、対応するオーバーレイへ切り替わる", () => {
+  it("9タブすべてを順に選択でき、対応するオーバーレイへ切り替わる", () => {
     render(<App />);
-    const tabs = ["資産エクスプローラー", "呼出関係図", "指摘一覧", "ソースビューア", "SQL助言", "diff", "レポート出力", "設定"];
+    const tabs = ["資産エクスプローラー", "端末取込", "呼出関係図", "指摘一覧", "ソースビューア", "SQL助言", "修正案の差分", "レポート出力", "設定"];
     tabs.forEach((name) => {
       fireEvent.click(screen.getByRole("tab", { name }));
       expect(screen.getByRole("tab", { name })).toHaveAttribute("aria-selected", "true");
@@ -70,8 +83,23 @@ describe("App シェル", () => {
     it("running は進捗バーと3段の進行提示を描画する", () => {
       renderShell({ ...initialState, mode: "running" });
       expect(screen.getByRole("progressbar")).toBeInTheDocument();
-      expect(screen.getByText(/第1段 資産の走査と構文解析\(scan\)/)).toBeInTheDocument();
+      expect(screen.getByText(/第1段 資産の走査と構文解析/)).toBeInTheDocument();
       expect(screen.getByRole("banner")).toHaveTextContent("解析実行中");
+    });
+
+    it("running では資産フォルダが未設定なら実行段だけをタイトルバーへ表示する", () => {
+      renderShell({ ...initialState, mode: "running", runStage: 1 });
+      expect(screen.getByRole("banner")).toHaveTextContent("解析実行中 ― 資産の走査と構文解析");
+    });
+
+    it("running では資産フォルダ名と現在の実行段をタイトルバーへ表示する", () => {
+      renderShell({
+        ...initialState,
+        mode: "running",
+        runStage: 2,
+        project: { inputDir: "C:\\assets\\SYK006", dbPath: null, copybookPaths: [] },
+      });
+      expect(screen.getByRole("banner")).toHaveTextContent("解析実行中 ― SYK006（バグ検出）");
     });
 
     it("results は本体プレースホルダを描画し、エラーバナーは出さない", () => {

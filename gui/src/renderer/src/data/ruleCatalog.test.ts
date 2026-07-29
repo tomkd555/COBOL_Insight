@@ -17,18 +17,17 @@ describe("ruleCatalog(検出ルールカタログ)", () => {
     expect(ruleOf("S005").severity).toBe("low");
   });
 
-  it("修正案 diff を持つのは R004/R017/R018 の 3 件だけ(engine の FixProducer 実装と一致)", () => {
-    for (const id of ["R004", "R017", "R018"]) {
+  it("修正案 diff を持つのは R004/R017/R018/R021 の 4 件だけ(engine の FixProducer 実装と一致)", () => {
+    for (const id of ["R004", "R017", "R018", "R021"]) {
       expect(ruleOf(id).hasFix).toBe(true);
     }
-    // R021 は engine の CicsResponseUncheckedRule が FixProducer を実装しないため生成できない。
-    for (const id of ["R001", "R008", "R021", "R031", "S001"]) {
+    for (const id of ["R001", "R008", "R031", "S001"]) {
       expect(ruleOf(id).hasFix).toBe(false);
     }
     const withFix = Object.values(RULE_CATALOG)
       .filter((rule) => rule.hasFix)
       .map((rule) => rule.id);
-    expect(withFix).toEqual(["R004", "R017", "R018"]);
+    expect(withFix).toEqual(["R004", "R017", "R018", "R021"]);
   });
 
   it("名称はルールカタログの名称と一致する", () => {

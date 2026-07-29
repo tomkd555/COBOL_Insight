@@ -4,10 +4,10 @@ import { TabBar } from "./TabBar";
 import { SCREENS } from "./screens";
 
 describe("TabBar", () => {
-  it("8画面すべてをタブとして tablist に並べる", () => {
+  it("9画面すべてをタブとして tablist に並べる", () => {
     render(<TabBar tabs={SCREENS} activeId="explorer" onSelect={() => {}} />);
     const tabs = screen.getAllByRole("tab");
-    expect(tabs).toHaveLength(8);
+    expect(tabs).toHaveLength(9);
     expect(screen.getByRole("tablist")).toBeInTheDocument();
   });
 
@@ -33,10 +33,10 @@ describe("TabBar", () => {
     const onSelect = vi.fn();
     const { rerender } = render(<TabBar tabs={SCREENS} activeId="explorer" onSelect={onSelect} />);
     fireEvent.keyDown(screen.getByRole("tablist"), { key: "ArrowRight" });
-    expect(onSelect).toHaveBeenCalledWith("graph");
-    expect(screen.getByRole("tab", { name: "呼出関係図" })).toHaveFocus();
+    expect(onSelect).toHaveBeenCalledWith("import");
+    expect(screen.getByRole("tab", { name: "端末取込" })).toHaveFocus();
 
-    rerender(<TabBar tabs={SCREENS} activeId="graph" onSelect={onSelect} />);
+    rerender(<TabBar tabs={SCREENS} activeId="import" onSelect={onSelect} />);
     fireEvent.keyDown(screen.getByRole("tablist"), { key: "ArrowLeft" });
     expect(onSelect).toHaveBeenLastCalledWith("explorer");
     expect(screen.getByRole("tab", { name: "資産エクスプローラー" })).toHaveFocus();
@@ -62,6 +62,12 @@ describe("TabBar", () => {
 
   it("タブは対応する tabpanel を aria-controls で指す", () => {
     render(<TabBar tabs={SCREENS} activeId="explorer" onSelect={() => {}} />);
-    expect(screen.getByRole("tab", { name: "diff" })).toHaveAttribute("aria-controls", "ci-screen-diff");
+    expect(screen.getByRole("tab", { name: "修正案の差分" })).toHaveAttribute("aria-controls", "ci-screen-diff");
+  });
+
+  it("nav ランドマークが tablist を包み、aria-label を持つ", () => {
+    render(<TabBar tabs={SCREENS} activeId="explorer" onSelect={() => {}} />);
+    const nav = screen.getByRole("navigation", { name: "画面切り替え" });
+    expect(nav).toContainElement(screen.getByRole("tablist"));
   });
 });

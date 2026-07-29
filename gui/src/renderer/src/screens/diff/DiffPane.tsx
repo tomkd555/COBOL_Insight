@@ -14,7 +14,7 @@ export interface DiffPaneProps {
 
 /**
  * Monaco DiffEditor による読み取り専用の左右2ペイン差分表示。左=原本、右=修正後で、engine が出した
- * 原本/修正後テキストの対をそのまま渡す(裁定 A3)。GUI は unified diff を再計算しない。
+ * 原本/修正後テキストの対をそのまま渡す。GUI は unified diff を再計算しない。
  *
  * 固定形式 COBOL の桁は空白の有無で意味が変わるため、空白の差を無視しない
  * (ignoreTrimWhitespace: false)。文法とテーマはソースビューアと同じ COBOL Monarch を共有する。
@@ -44,6 +44,7 @@ export function DiffPane({ originalText, fixedText, ariaLabel }: DiffPaneProps):
       lineNumbersMinChars: 5,
       renderLineHighlight: "none",
       scrollBeyondLastLine: false,
+      // 固定形式 COBOL は桁位置に意味があるため、行を折り返さず横スクロールで見せる。
       wordWrap: "off",
       folding: false,
       glyphMargin: false,

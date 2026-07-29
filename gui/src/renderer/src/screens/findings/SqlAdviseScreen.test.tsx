@@ -6,7 +6,7 @@ import { SAMPLE_SQL_FINDINGS } from "./fixtures";
 import { SAMPLE_INVENTORY } from "../explorer/fixtures";
 import { ScreenRouter } from "../ScreenRouter";
 import { AppStateProvider, useAppState, useAppDispatch } from "../../state/AppStateContext";
-import { initialState, type AppState } from "../../state/appState";
+import { SPLIT_PANES, initialState, type AppState } from "../../state/appState";
 import type { AssetInventoryItem, CobolInsightApi, SarifFinding } from "../../../../shared/engine-api";
 
 /** 助言の対象ファイルを資産一覧へ足す(本文の復号に用いるコードページの供給源)。 */
@@ -61,7 +61,7 @@ function renderSql(seed: AppState): void {
 }
 
 /**
- * 画面ルーティングを含む器。タブ移動で画面がアンマウントされる実アプリと同じ条件を作り、
+ * 画面ルーティングを含むラッパー。タブ移動で画面がアンマウントされる実アプリと同じ条件を作り、
  * フィルタ状態が保たれることを観測する。
  */
 function Harness(): ReactElement {
@@ -111,9 +111,9 @@ describe("SqlAdviseScreen(SQL助言)", () => {
     expect(readSarif).not.toHaveBeenCalled();
   });
 
-  it("判定範囲の説明を上部に出す(design:454)", () => {
+  it("判定範囲の説明を上部に出す(design scSql)", () => {
     renderSql(resultsSeed);
-    expect(screen.getByText(/構文レベルの最適化助言（S001〜S006）を提示します/)).toBeInTheDocument();
+    expect(screen.getByText(/構文レベルの最適化助言（S001〜S006）を提示する/)).toBeInTheDocument();
   });
 
   it("解析済みで 0 件でも空状態を出す", () => {
@@ -214,7 +214,7 @@ describe("SqlAdviseScreen(SQL助言)", () => {
   it("詳細ペインの「該当ソース行へ →」で viewer へ該当行付きで遷移する", async () => {
     renderSql(resultsSeed);
     fireEvent.click(screen.getByRole("row", { name: /^S002 / }));
-    fireEvent.click(await screen.findByRole("button", { name: "該当ソース行へ →" }));
+    fireEvent.click(await screen.findByRole("button", { name: "該当ソース行へ" }));
     expect(screen.getByTestId("probe")).toHaveTextContent("viewer|cobol/SYK007.cbl|84");
   });
 
@@ -231,7 +231,7 @@ describe("SqlAdviseScreen(SQL助言)", () => {
     renderSql(resultsSeed);
     fireEvent.click(screen.getByRole("row", { name: /^S001 / }));
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("本文の表示に対応していません");
+    expect(alert).toHaveTextContent("本文の表示に対応していない");
     expect(alert).toHaveTextContent("EBCDIC CP930");
     expect(alert).not.toHaveTextContent("x-IBM930");
   });
@@ -272,7 +272,37 @@ describe("SqlAdviseScreen(SQL助言)", () => {
 
   it("未選択のうちは原本を読まず、選択を促す", () => {
     renderSql(resultsSeed);
-    expect(screen.getByText(/SQL 本文と助言の詳細を表示します/)).toBeInTheDocument();
+    expect(screen.getByText(/SQL 本文と助言の詳細を表示する/)).toBeInTheDocument();
     expect(readSourceText).not.toHaveBeenCalled();
+  });
+});
+
+describe("SqlAdviseScreen の詳細ペインの幅", () => {
+  /** 詳細ペインへ渡っている幅。 */
+  function detailWidth(): string {
+    const sql = document.querySelector(".ci-sql");
+    if (sql === null) {
+      throw new Error("SQL助言の枠が無い");
+    }
+    return (sql as HTMLElement).style.getPropertyValue("--ci-sql-detail-w");
+  }
+
+  it("一覧と詳細ペインの境界に分割ハンドルを置く", () => {
+    renderSql(resultsSeed);
+    const handle = screen.getByRole("separator", { name: "SQL 文と助言の詳細ペインの幅" });
+    expect(handle).toHaveAttribute("aria-orientation", "vertical");
+    expect(handle).toHaveAttribute("aria-valuenow", String(SPLIT_PANES.sqlDetail.initial));
+    expect(handle).toHaveAttribute("aria-valuemin", String(SPLIT_PANES.sqlDetail.min));
+    expect(handle).toHaveAttribute("aria-valuemax", String(SPLIT_PANES.sqlDetail.max));
+    expect(detailWidth()).toBe(`${SPLIT_PANES.sqlDetail.initial}px`);
+  });
+
+  it("→ キーで詳細ペインを狭め、Home キーで下限まで詰める", () => {
+    renderSql(resultsSeed);
+    const handle = screen.getByRole("separator", { name: "SQL 文と助言の詳細ペインの幅" });
+    fireEvent.keyDown(handle, { key: "ArrowRight" });
+    expect(detailWidth()).toBe(`${SPLIT_PANES.sqlDetail.initial - 24}px`);
+    fireEvent.keyDown(handle, { key: "Home" });
+    expect(detailWidth()).toBe(`${SPLIT_PANES.sqlDetail.min}px`);
   });
 });

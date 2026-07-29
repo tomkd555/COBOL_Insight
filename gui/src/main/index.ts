@@ -1,8 +1,9 @@
 import { app, BrowserWindow } from "electron";
 import { accessSync, constants, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { registerEngineIpc } from "./ipc";
+import { registerEngineIpc, stopRunningEngine } from "./ipc";
 import { resolvePortableUserData } from "./portable";
+import { buildWindowOptions } from "./windowOptions";
 
 /** 保存先ディレクトリを作成し、書込可能かを確かめる。 */
 function ensureWritable(dir: string): boolean {
@@ -33,21 +34,12 @@ function applyPortableUserData(): void {
 /**
  * main プロセス。renderer(React)を contextIsolation・sandbox 有効の BrowserWindow へ読み込む。
  * ネットワーク通信は行わず、dev はローカル Vite サーバー、本番はローカルの index.html から描画する。
+ *
+ * renderer は取り込んだ COBOL 資産の本文と engine が生成したレポート HTML を描くため、Node へ
+ * 到達させない。ファイル読取と engine の起動は preload が公開する IPC 経由で main だけが行う。
  */
 function createWindow(): void {
-  const mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
-    show: false,
-    title: "COBOL Insight",
-    backgroundColor: "#ECEEF1",
-    webPreferences: {
-      preload: join(__dirname, "../preload/index.js"),
-      contextIsolation: true,
-      sandbox: true,
-      nodeIntegration: false,
-    },
-  });
+  const mainWindow = new BrowserWindow(buildWindowOptions(join(__dirname, "../preload/index.js")));
 
   mainWindow.on("ready-to-show", () => {
     mainWindow.show();
@@ -73,6 +65,12 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+});
+
+// 終了時に子プロセスを残さない。engine は main から切り離して起動しないため、止めないと
+// アプリを閉じた後も解析が走り続ける。
+app.on("before-quit", () => {
+  stopRunningEngine();
 });
 
 app.on("window-all-closed", () => {

@@ -216,6 +216,12 @@ const api = {
       ],
       lineMap: LINE_MAP,
     }),
+  importSource: (request) =>
+    Promise.resolve({
+      status: "written",
+      relPath: `cobol/${request.fileName}.cbl`,
+      lineCount: request.lines.length,
+    }),
   versions: {
     chrome: process.versions.chrome,
     node: process.versions.node,

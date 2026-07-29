@@ -1,10 +1,10 @@
 /*
  * 呼出関係図(callgraph)のスタイル。厳格 BEM で命名し、値は :root トークンを参照する。
- * design/COBOL Insight.dc.html の scGraph(design:163-263)の配置・寸法を移植する。
+ * design/COBOL Insight.dc.html の scGraph の配置・寸法にそろえる。
  * 図そのものは Cytoscape が canvas へ描くため、CSS は枠・ツールバー・詳細ペイン・凡例を担う。
  */
 
-/* 画面全体: 左(図) + 右 252px(ノード情報と凡例) の2カラム */
+/* 画面全体: 左(図) + 分割ハンドル + 右(ノード情報と凡例) の2カラム。右は畳める。 */
 .ci-graph {
   position: absolute;
   inset: 0;
@@ -50,7 +50,7 @@
 /* 閾値超過の警告と、表示ノードが無いときの案内 */
 .ci-graph__warning {
   font-size: var(--ci-fs-sm);
-  padding: 8px 14px;
+  padding: var(--ci-space-2) var(--ci-space-4);
   margin: 10px;
   flex: none;
   background: var(--ci-caution-bg);
@@ -110,12 +110,14 @@
   flex: 1;
   min-height: 0;
 }
+/* 左端の 3px は選択の帯の場所である。選択の有無で字下げが動かないよう全項目に等しく取る。 */
 .ci-graph__node {
   display: flex;
   flex-direction: column;
   gap: 1px;
   padding: 3px 6px;
   border: 1px solid transparent;
+  border-left-width: 3px;
   border-radius: var(--ci-radius-sm);
   cursor: pointer;
 }
@@ -126,9 +128,14 @@
   outline: 2px solid var(--ci-focus-ring);
   outline-offset: 1px;
 }
+/* 押下中。即時の変化でモーションは伴わない。 */
+.ci-graph__node:active {
+  transform: translateY(1px);
+}
 .ci-graph__node--selected {
   background: var(--ci-select-tint);
   border-color: var(--ci-select-border);
+  border-left-color: var(--ci-select-bar);
 }
 .ci-graph__node-label {
   font-family: var(--ci-font-code);
@@ -141,9 +148,9 @@
   color: var(--ci-text-subtle);
 }
 
-/* --- 右の詳細ペイン --- */
+/* --- 右の詳細ペイン(幅は GraphScreen が分割ハンドルの現在値から与える) --- */
 .ci-graph-detail {
-  width: 252px;
+  width: var(--ci-graph-detail-w);
   flex: none;
   display: flex;
   flex-direction: column;
@@ -152,7 +159,8 @@
   overflow: auto;
 }
 .ci-graph-detail__title {
-  padding: 10px 13px 8px;
+  margin: 0;
+  padding: 10px 13px var(--ci-space-2);
   font-size: var(--ci-fs-detail-title);
   font-weight: 700;
   color: var(--ci-tab-text);
@@ -175,7 +183,7 @@
 }
 .ci-graph-detail__kind {
   font-size: var(--ci-fs-note);
-  padding: 1px 8px;
+  padding: 1px var(--ci-space-2);
   border-radius: var(--ci-radius-pill);
   border: 1px solid transparent;
 }
@@ -261,7 +269,7 @@
   font-size: var(--ci-fs-xs);
   font-weight: 700;
   color: var(--ci-tab-text);
-  margin: 6px 0 4px;
+  margin: 6px 0 var(--ci-space-1);
 }
 .ci-graph-legend__nodes,
 .ci-graph-legend__edges {
@@ -270,9 +278,14 @@
   gap: 3px;
   list-style: none;
 }
+/*
+ * 項目は「記号 + テキスト」の1行だが、テキストは名称と形状の説明を縦に積む(1項目1列)。
+ * 詳細ペインの幅では名称と形状の説明を横に並べると幅が足りず語の途中で折り返るため、
+ * 各テキストへ行の全幅を与えて折り返りを避ける。
+ */
 .ci-graph-legend__item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   font-size: var(--ci-fs-legend);
   color: var(--ci-tab-text);
@@ -283,16 +296,28 @@
   border-radius: 3px;
   border-width: 1.5px;
   flex: none;
+  /* 項目は align-items: flex-start のため、テキスト1行目の中央へ手動でそろえる。 */
+  margin-top: 2px;
 }
 .ci-graph-legend__line {
   width: 26px;
   border-top-width: 2px;
   border-top-style: solid;
   flex: none;
+  /* 線は高さを持たないため、上の swatch より深く沈めてテキスト1行目の中央へそろえる。 */
+  margin-top: 6px;
 }
 .ci-graph-legend__line--dashed {
   border-top-style: dashed;
   border-top-color: var(--ci-text-secondary);
+}
+.ci-graph-legend__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 .ci-graph-legend__shape {
   color: var(--ci-text-subtle);
