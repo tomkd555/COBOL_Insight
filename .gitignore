@@ -15,4 +15,18 @@ node_modules/
 # 修正案の既定出力先(リポジトリ直下のみ)
 /fix/
 
+# CLIの既定出力先(リポジトリ直下のみ)
+/cobol-insight.db
+/cobol-insight-report.txt
+
+# graphifyの知識グラフ生成物
+graphify-out/
+
+# Claude Code(作業用ディレクトリと指示ファイル)
+.claude/
+/CLAUDE.md
+
+# GUIの手動確認用データ(Windows予約デバイス名を含み、gitがindexへ入れられない)
+gui/devtest/
+
 *.class
