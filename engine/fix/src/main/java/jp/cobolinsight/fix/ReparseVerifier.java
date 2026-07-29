@@ -37,8 +37,8 @@ public final class ReparseVerifier {
     }
 
     /**
-     * 修正後バイト列を指定コードページで復号して再パースする。fix の往復と同じ符号で数えるため、
-     * 原本と同一のコードページ名を渡す。
+     * 修正後バイト列を指定コードページで復号して再パースする。桁を修正適用時と同じ文字コードで
+     * 数えるため、原本と同一のコードページ名を渡す。
      */
     public ReparseResult verify(String path, byte[] fixedBytes, String charsetName,
             List<Path> copybookSearchPaths) {

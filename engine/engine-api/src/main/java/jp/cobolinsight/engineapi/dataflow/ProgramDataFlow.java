@@ -10,9 +10,9 @@ import java.util.Set;
  * 1プログラムの不動点解析結果。問い合わせは {@link CfgNode} の同一性で引く(結果を算出した
  * CFG と同一インスタンスを渡す前提)。変数名は正規化(大文字化)して照合する。
  *
- * <p>rules(本番依存が engine-api のみ)が消費するため、契約型を engine-api に置く。生成は
- * dataflow モジュールが担い、{@link jp.cobolinsight.engineapi.cfg.ControlFlowGraphs} と同じ
- * 「型=engine-api・生成=dataflow・消費=rules」の配置を踏襲する。
+ * <p>生成は dataflow モジュールが担い、消費は rules が担う。rules は dataflow へ依存しないため、
+ * 両者をつなぐ契約型は双方が依存する engine-api に置く。
+ * {@link jp.cobolinsight.engineapi.cfg.ControlFlowGraphs} も同じ配置を採る。
  */
 public interface ProgramDataFlow {
 

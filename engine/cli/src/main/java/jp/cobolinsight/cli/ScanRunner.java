@@ -20,7 +20,9 @@ import jp.cobolinsight.engineapi.semantic.EmbeddedBlock;
 import jp.cobolinsight.engineapi.semantic.EmbeddedBlockKind;
 import jp.cobolinsight.engineapi.semantic.Procedure;
 import jp.cobolinsight.engineapi.source.CopyExpansionEntry;
+import jp.cobolinsight.engineapi.source.CopyInlineExpansion;
 import jp.cobolinsight.engineapi.source.DecodedSource;
+import jp.cobolinsight.engineapi.source.ExpandedCopyLine;
 import jp.cobolinsight.engineapi.source.SourcePosition;
 import jp.cobolinsight.engineapi.spi.CharsetProvider;
 import jp.cobolinsight.engineapi.spi.CobolParser;
@@ -31,6 +33,7 @@ import jp.cobolinsight.engineapi.sql.SqlStatementModel;
 import jp.cobolinsight.engineapi.callgraph.CallGraph;
 import jp.cobolinsight.engineapi.callgraph.CallGraphEdge;
 import jp.cobolinsight.engineapi.callgraph.CallGraphNode;
+import jp.cobolinsight.engineapi.callgraph.NodeKind;
 import jp.cobolinsight.linker.CallGraphLinker;
 import jp.cobolinsight.linker.LinkResult;
 import jp.cobolinsight.linker.LinkerInput;
@@ -89,6 +92,8 @@ public final class ScanRunner {
      */
     static final long GRAPH_ID_BASE = 1_000_000_000_000L;
     private static final String DECODE_FAILURE_RULE_ID = "decode-failure";
+    /** 解析不能ノードのID接頭辞。相対パスと組んで他種別のノードIDと衝突しない値になる。 */
+    private static final String UNANALYZABLE_NODE_ID_PREFIX = "unanalyzable:";
 
     public record Options(Path inputDir, Path databaseFile, List<Path> copybookSearchPaths,
             Map<String, String> codepageOverrides) {
@@ -97,13 +102,22 @@ public final class ScanRunner {
     public record Summary(List<String> analyzed, List<String> skipped, List<String> removed,
             int findingCount, int exitCode) {
 
-        public String toJson() {
+        /**
+         * 保存先のSQLiteプロジェクトファイルを添えたサマリJSON。GUIはこの値から資産一覧を読む。
+         * copyExpansionFile はコピー句展開の成果物の書き出し先で、書き出していない場合は null を
+         * 渡す(キー自体を出さない)。
+         */
+        public String toJson(String databaseFile, String copyExpansionFile) {
             JsonWriter writer = new JsonWriter();
             writer.beginObject();
             writeArray(writer, "analyzed", analyzed);
             writeArray(writer, "skipped", skipped);
             writeArray(writer, "removed", removed);
             writer.name("findingCount").value(findingCount);
+            writer.name("dbFile").value(databaseFile);
+            if (copyExpansionFile != null) {
+                writer.name("copyExpansionFile").value(copyExpansionFile);
+            }
             writer.name("exitCode").value(exitCode);
             writer.endObject();
             return writer.toString();
@@ -118,8 +132,61 @@ public final class ScanRunner {
         }
     }
 
-    /** scan の全結果。呼出関係グラフと linker 由来の findings(解決根拠の記録)を含む。 */
-    public record Result(Summary summary, CallGraph callGraph, List<Finding> linkerFindings) {
+    /**
+     * コピー句のインライン展開の成果物。プログラムごとに、原本の COPY 文の位置へ差し込まれる
+     * コピー句の各行(コピー句内の由来行と REPLACING 適用後のテキスト)を持つ。原本へコピー句を
+     * 展開した姿を示す用途に用いる。
+     */
+    public record CopyExpansions(List<ProgramExpansion> programs) {
+
+        public CopyExpansions {
+            programs = List.copyOf(programs);
+        }
+
+        /** 1プログラム分の展開。relPath は資産フォルダからの相対パス。 */
+        public record ProgramExpansion(String relPath, String programId,
+                List<CopyInlineExpansion> expansions) {
+
+            public ProgramExpansion {
+                expansions = List.copyOf(expansions);
+            }
+        }
+
+        public String toJson() {
+            JsonWriter writer = new JsonWriter();
+            writer.beginObject().name("programs").beginArray();
+            for (ProgramExpansion program : programs) {
+                writer.beginObject()
+                        .name("path").value(program.relPath())
+                        .name("programId").value(program.programId())
+                        .name("expansions").beginArray();
+                for (CopyInlineExpansion expansion : program.expansions()) {
+                    writer.beginObject()
+                            .name("copyStatementLine").value(expansion.copyStatementLine())
+                            .name("copybookName").value(expansion.copybookName())
+                            .name("copybookPath").value(expansion.copybookPath())
+                            .name("lines").beginArray();
+                    for (ExpandedCopyLine line : expansion.lines()) {
+                        writer.beginObject()
+                                .name("copybookLine").value(line.copybookLine())
+                                .name("text").value(line.text())
+                                .endObject();
+                    }
+                    writer.endArray().endObject();
+                }
+                writer.endArray().endObject();
+            }
+            writer.endArray().endObject();
+            return writer.toString();
+        }
+    }
+
+    /**
+     * scan の全結果。呼出関係グラフ・linker 由来の findings(解決根拠の記録)・コピー句の
+     * インライン展開を含む。
+     */
+    public record Result(Summary summary, CallGraph callGraph, List<Finding> linkerFindings,
+            CopyExpansions copyExpansions) {
 
         public Result {
             linkerFindings = List.copyOf(linkerFindings);
@@ -157,6 +224,8 @@ public final class ScanRunner {
     private final Map<Long, List<BmsMapset>> bmsMapsetsById = new TreeMap<>();
     private final Map<String, List<SqlStatementModel>> sqlModelsByProgramId = new TreeMap<>();
     private final Map<Long, Integer> findingSeqBySource = new HashMap<>();
+    /** 復号・パースに失敗した資産の相対パス→失敗理由。呼出関係グラフの孤立ノードの材料。 */
+    private final Map<String, String> unanalyzableReasonByRel = new TreeMap<>();
     private final List<Finding> runFindings = new ArrayList<>();
     private LinkResult linkResult;
 
@@ -191,15 +260,23 @@ public final class ScanRunner {
         for (ScanFile file : files) {
             byte[] bytes = readBytes(file.absPath());
             bytesByRel.put(file.relPath(), bytes);
-            hashByRel.put(file.relPath(), sha256(bytes));
+            // 適用するコードページをハッシュへ含める。--codepage の変更は原本のバイト列を
+            // 変えないため、バイト列だけのハッシュでは復号のやり直しを促せない。
+            hashByRel.put(file.relPath(),
+                    sha256(bytes) + ":" + String.valueOf(codepageOverrideOf(file)));
         }
 
+        String root = rootOf(options.inputDir());
         try (PersistenceDatabase database = PersistenceDatabase.open(options.databaseFile())) {
             dao = new PersistenceDao(database.connection());
             Map<String, SourceRecord> existingByPath = new LinkedHashMap<>();
-            for (SourceRecord source : dao.findAllSources()) {
+            for (SourceRecord source : dao.findSourcesByRoot(root)) {
                 existingByPath.put(source.path(), source);
             }
+            Set<String> currentPaths = new LinkedHashSet<>();
+            files.forEach(file -> currentPaths.add(file.relPath()));
+            List<String> removed = existingByPath.keySet().stream()
+                    .filter(path -> !currentPaths.contains(path)).toList();
 
             // 変更検知と依存伝播(コピー句→取込プログラム、プログラム→呼出JCL)
             IncrementalAnalysisPlanner planner = new IncrementalAnalysisPlanner(dao);
@@ -211,23 +288,28 @@ public final class ScanRunner {
                             hashByRel.get(file.relPath())));
                 }
             }
+            // 資産フォルダから消えたソースの依存元も解析し直す。取り込んでいたコピー句が消えれば、
+            // 取込プログラムの解析結果は現物と合わなくなる。
+            for (String path : removed) {
+                reanalysisIds.addAll(planner.dependentsOf(existingByPath.get(path).id()));
+            }
 
-            long maxId = existingByPath.values().stream().mapToLong(SourceRecord::id).max().orElse(0);
+            // ID は全資産フォルダを通じて一意にする。別の資産フォルダの行と衝突させない。
+            long maxId = dao.maxSourceId();
             List<ScanFile> targets = new ArrayList<>();
             List<String> skipped = new ArrayList<>();
             for (ScanFile file : files) {
                 SourceRecord existing = existingByPath.get(file.relPath());
                 long id = existing != null ? existing.id() : ++maxId;
                 idByRel.put(file.relPath(), id);
-                if (existing == null || reanalysisIds.contains(id)) {
+                // NODE 行が無いソースは、内容ハッシュが一致しても解析済みではない。transpile が
+                // 行対応表の外部キーを満たすために登録した SOURCE 行がこれにあたる。
+                if (existing == null || reanalysisIds.contains(id) || dao.findNode(id).isEmpty()) {
                     targets.add(file);
                 } else {
                     skipped.add(file.relPath());
                 }
             }
-
-            List<String> removed = existingByPath.keySet().stream()
-                    .filter(path -> !idByRel.containsKey(path)).toList();
 
             dao.inTransaction(() -> {
                 for (String path : removed) {
@@ -235,7 +317,7 @@ public final class ScanRunner {
                     dao.deleteSourceCascade(id);
                     dao.deleteNode(id);
                 }
-                replaceSources(targets, existingByPath, bytesByRel, hashByRel);
+                replaceSources(root, targets, existingByPath, bytesByRel, hashByRel);
                 registerCopybookNodes(targets);
                 analyzeCobol(targets);
                 analyzeJcl(targets, files);
@@ -267,7 +349,8 @@ public final class ScanRunner {
                     targets.stream().map(ScanFile::relPath).toList(),
                     skipped, removed,
                     runFindings.size() + persistedFindings, exitCode);
-            return new Result(summary, linkResult.graph(), linkResult.findings());
+            return new Result(summary, linkResult.graph(), linkResult.findings(),
+                    collectCopyExpansions());
         }
     }
 
@@ -313,6 +396,11 @@ public final class ScanRunner {
         }
     }
 
+    /** 資産フォルダの識別子。同じフォルダを別表記で指しても同じ値になるよう絶対化・正規化する。 */
+    static String rootOf(Path inputDir) {
+        return inputDir.toAbsolutePath().normalize().toString();
+    }
+
     private static String sha256(byte[] bytes) {
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
@@ -323,7 +411,8 @@ public final class ScanRunner {
 
     // ---- SOURCE・ENCODING_INFO の入替と復号 ----
 
-    private void replaceSources(List<ScanFile> targets, Map<String, SourceRecord> existingByPath,
+    private void replaceSources(String root, List<ScanFile> targets,
+            Map<String, SourceRecord> existingByPath,
             Map<String, byte[]> bytesByRel, Map<String, String> hashByRel) {
         for (ScanFile file : targets) {
             long id = idByRel.get(file.relPath());
@@ -341,7 +430,7 @@ public final class ScanRunner {
                 decodeError = e.getMessage();
             }
             String codepage = decoded == null ? null : decoded.encoding().detectedCharset();
-            dao.insertSource(new SourceRecord(id, file.relPath(), codepage,
+            dao.insertSource(new SourceRecord(id, root, file.relPath(), codepage,
                     hashByRel.get(file.relPath()), bytes.length));
             if (decoded != null) {
                 decodedById.put(id, decoded);
@@ -357,11 +446,14 @@ public final class ScanRunner {
         }
     }
 
-    private DecodedSource decode(ScanFile file, byte[] bytes) {
+    /** 当該ファイルへ適用するコードページ手動指定。相対パス優先、無ければファイル名で引く。 */
+    private String codepageOverrideOf(ScanFile file) {
         String override = options.codepageOverrides().get(file.relPath());
-        if (override == null) {
-            override = options.codepageOverrides().get(file.fileName());
-        }
+        return override != null ? override : options.codepageOverrides().get(file.fileName());
+    }
+
+    private DecodedSource decode(ScanFile file, byte[] bytes) {
+        String override = codepageOverrideOf(file);
         return override == null
                 ? charsetProvider.decode(file.absPath().toString(), bytes)
                 : charsetProvider.decode(file.absPath().toString(), bytes, override);
@@ -509,6 +601,7 @@ public final class ScanRunner {
             }
             BmsParseResult result = parser.parse(decodedById.get(id).text());
             for (BmsParseError error : result.errors()) {
+                // BmsParseError の桁は0起点、SourcePosition の桁は1起点のため1加える。
                 recordFinding(id, file.relPath(), Finding.parseFailure(
                         new SourcePosition(file.relPath(), Math.max(1, error.line()),
                                 error.column() + 1, SourcePosition.UNKNOWN_BYTE_OFFSET),
@@ -522,6 +615,8 @@ public final class ScanRunner {
                 dao.insertBmsMapset(new BmsMapsetRecord(mapsetId, id, mapset.name()));
                 long mapSeq = 0;
                 for (BmsMap map : mapset.maps()) {
+                    // マップ・フィールドの行IDは親IDへ1,000刻みで連番を足して導出する。
+                    // 前提: 1マップセットあたりのマップ、1マップあたりのフィールドはいずれも999以内。
                     long mapId = mapsetId * 1000 + (++mapSeq);
                     dao.insertBmsMap(new BmsMapRecord(mapId, mapsetId, map.name(),
                             map.sizeRows(), map.sizeCols()));
@@ -538,12 +633,53 @@ public final class ScanRunner {
         }
     }
 
-    // ---- 呼出関係グラフ(M2) ----
+    // ---- コピー句のインライン展開 ----
+
+    /**
+     * 全 COBOL の COPY 文インライン展開を相対パス昇順で集める。コピー句のパスは資産フォルダ配下に
+     * あれば相対パスへ直し、外にあれば絶対パスのまま残す。展開の無いプログラムは載せない。
+     */
+    private CopyExpansions collectCopyExpansions() {
+        Map<Long, String> relPathById = new TreeMap<>();
+        idByRel.forEach((rel, id) -> relPathById.put(id, rel));
+        List<CopyExpansions.ProgramExpansion> programs = new ArrayList<>();
+        for (Map.Entry<Long, CobolSemanticModel> entry
+                : new TreeMap<>(cobolModelsById).entrySet()) {
+            CobolSemanticModel model = entry.getValue();
+            if (model.copyInlineExpansions().isEmpty()) {
+                continue;
+            }
+            List<CopyInlineExpansion> expansions = model.copyInlineExpansions().stream()
+                    .map(expansion -> new CopyInlineExpansion(expansion.copyStatementLine(),
+                            expansion.copybookName(),
+                            relativize(options.inputDir(), Path.of(expansion.copybookPath())),
+                            expansion.lines()))
+                    .toList();
+            programs.add(new CopyExpansions.ProgramExpansion(relPathById.get(entry.getKey()),
+                    model.programId(), expansions));
+        }
+        programs.sort(java.util.Comparator.comparing(
+                CopyExpansions.ProgramExpansion::relPath));
+        return new CopyExpansions(programs);
+    }
+
+    /** 資産フォルダ配下なら相対パス(区切りは '/')、外なら絶対パスのまま。 */
+    private static String relativize(Path inputDir, Path file) {
+        Path base = inputDir.toAbsolutePath().normalize();
+        Path abs = file.toAbsolutePath().normalize();
+        return abs.startsWith(base) ? base.relativize(abs).toString().replace('\\', '/')
+                : abs.toString().replace('\\', '/');
+    }
+
+    // ---- 呼出関係グラフ ----
 
     /**
      * グラフ構築は全ソースのモデルを要するため、増分scanで再解析対象にならなかったファイルも
      * ここでメモリ上に限りパースして補完する(SQLiteの各表は変更しない。復号・パースの失敗は
      * 前回scanでfindingとして記録済みのため、ここでは記録しない)。
+     *
+     * <p>ここは意味モデルを持たない資産が全て通る唯一の地点であり、復号・パースの失敗理由を
+     * {@link #unanalyzableReasonByRel} へ集める。この理由はグラフの孤立ノードの属性になる。
      */
     private void ensureAllModels(List<ScanFile> files, Map<String, byte[]> bytesByRel) {
         BmsSourceParser bmsParser = new BmsSourceParser();
@@ -562,13 +698,18 @@ public final class ScanRunner {
             try {
                 decoded = decode(file, bytesByRel.get(file.relPath()));
             } catch (IllegalArgumentException e) {
+                unanalyzableReasonByRel.put(file.relPath(), "復号に失敗した: " + e.getMessage());
                 continue;
             }
             switch (file.kind()) {
                 case COBOL -> {
                     ParseOutcome<CobolSemanticModel> outcome =
                             cobolParser.parse(decoded, options.copybookSearchPaths());
-                    outcome.value().ifPresent(model -> {
+                    if (outcome instanceof ParseOutcome.Failure<CobolSemanticModel> failure) {
+                        unanalyzableReasonByRel.put(file.relPath(),
+                                failure.finding().message());
+                    } else {
+                        CobolSemanticModel model = outcome.value().orElseThrow();
                         cobolModelsById.put(id, model);
                         for (EmbeddedBlock block : model.embeddedBlocks()) {
                             if (block.kind() != EmbeddedBlockKind.SQL) {
@@ -578,11 +719,17 @@ public final class ScanRunner {
                                     sqlModelsByProgramId.computeIfAbsent(model.programId(),
                                             k -> new ArrayList<>()).add(statement));
                         }
-                    });
+                    }
                 }
-                case JCL -> jclParser.parse(decoded,
-                                List.of(options.inputDir().resolve("jcl"))).value()
-                        .ifPresent(job -> jclModelsById.put(id, job));
+                case JCL -> {
+                    ParseOutcome<JclJobModel> outcome = jclParser.parse(decoded,
+                            List.of(options.inputDir().resolve("jcl")));
+                    if (outcome instanceof ParseOutcome.Failure<JclJobModel> failure) {
+                        unanalyzableReasonByRel.put(file.relPath(), failure.finding().message());
+                    } else {
+                        jclModelsById.put(id, outcome.value().orElseThrow());
+                    }
+                }
                 case BMS -> bmsMapsetsById.put(id, BmsModelMapper.toEngineApi(
                         bmsParser.parse(decoded.text()), file.relPath()));
                 default -> {
@@ -600,11 +747,13 @@ public final class ScanRunner {
     private LinkResult linkAndPersistCallGraph() {
         List<BmsMapset> mapsets = new ArrayList<>();
         bmsMapsetsById.values().forEach(mapsets::addAll);
-        LinkResult result = CallGraphLinker.link(new LinkerInput(
+        LinkResult linked = CallGraphLinker.link(new LinkerInput(
                 cobolModelsById.entrySet().stream().sorted(Map.Entry.comparingByKey())
                         .map(Map.Entry::getValue).toList(),
                 List.copyOf(jclModelsById.values()), mapsets, sqlModelsByProgramId,
                 readTransactionTable()));
+        LinkResult result = new LinkResult(withUnanalyzableNodes(linked.graph()),
+                linked.findings(), linked.dynamicCallVariables());
 
         dao.deleteFindingsIdAtLeast(GRAPH_ID_BASE);
         dao.deleteCallEdgesIdAtLeast(GRAPH_ID_BASE);
@@ -618,9 +767,27 @@ public final class ScanRunner {
     }
 
     /**
-     * ノード写像構築: NODE.id=SOURCE.id 規約の既存行を参照するプログラム・ジョブノードについて、
-     * グラフノードID→ソースIDの写像を作る。プログラム名のキーはノードラベル(大文字化済み)と
-     * 揃えるため大文字化する。
+     * 解析不能な資産を孤立ノードとして足したグラフ。呼出関係を読み取れない資産を図から落とすと
+     * 図が資産の全体を表すと誤読されるため、辺を持たないノードとして残す。
+     */
+    private CallGraph withUnanalyzableNodes(CallGraph graph) {
+        if (unanalyzableReasonByRel.isEmpty()) {
+            return graph;
+        }
+        List<CallGraphNode> nodes = new ArrayList<>(graph.nodes());
+        for (Map.Entry<String, String> entry : unanalyzableReasonByRel.entrySet()) {
+            String relPath = entry.getKey();
+            nodes.add(new CallGraphNode(UNANALYZABLE_NODE_ID_PREFIX + relPath,
+                    NodeKind.UNANALYZABLE, relPath.substring(relPath.lastIndexOf('/') + 1),
+                    Map.of("path", relPath, "reason", entry.getValue())));
+        }
+        return new CallGraph(nodes, graph.edges());
+    }
+
+    /**
+     * ノード対応の構築: NODE.id=SOURCE.id 規約の既存行を参照するプログラム・ジョブ・解析不能
+     * ノードについて、グラフノードID→ソースIDの対応表を作る。プログラム名のキーはノードラベル
+     * (大文字化済み)と揃えるため大文字化する。
      */
     private Map<String, Long> sourceBackedNodeIds(LinkResult result) {
         Map<String, Long> programSourceIdByName = new HashMap<>();
@@ -637,6 +804,7 @@ public final class ScanRunner {
             Long sourceBacked = switch (node.kind()) {
                 case PROGRAM -> programSourceIdByName.get(node.label());
                 case JOB -> jobSourceIdByName.get(node.label());
+                case UNANALYZABLE -> idByRel.get(node.attributes().get("path"));
                 default -> null;
             };
             if (sourceBacked != null) {
@@ -648,7 +816,7 @@ public final class ScanRunner {
 
     /**
      * ノード永続化: ソース非対応ノードへ {@link #GRAPH_ID_BASE} からの連番をノードID昇順で
-     * 採番して保存し、全グラフノードの数値ID写像を返す。
+     * 採番して保存し、全グラフノードの数値IDの対応表を返す。
      */
     private Map<String, Long> persistGraphNodes(List<CallGraphNode> nodes,
             Map<String, Long> sourceBackedByGraphNodeId) {
@@ -707,7 +875,10 @@ public final class ScanRunner {
         }
     }
 
-    /** トランザクション定義表のトランザクションID・プログラム名の値の妥当性検証(資産名の形式)。 */
+    /**
+     * トランザクション定義表のトランザクションID・プログラム名の値の妥当性検証(資産名の形式)。
+     * 上限8桁と使用可能文字はメインフレームのメンバ名の規則に合わせる。
+     */
     private static final java.util.regex.Pattern MEMBER_NAME_PATTERN =
             java.util.regex.Pattern.compile("[A-Za-z0-9@#$-]{1,8}");
 

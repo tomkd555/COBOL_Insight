@@ -9,6 +9,10 @@ final class UriPaths {
     private UriPaths() {
     }
 
+    /**
+     * Che4z が暗黙に差し込むコード(SQLCA など)の URI か。実ファイルが無いため、原文の取得や
+     * コピー句展開の対応表からは除く。
+     */
     static boolean isImplicit(String uri) {
         return uri == null || uri.startsWith("implicit:") || uri.contains("implicit-code");
     }

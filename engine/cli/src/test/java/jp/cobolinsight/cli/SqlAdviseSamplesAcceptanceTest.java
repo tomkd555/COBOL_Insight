@@ -16,8 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * samples/ 全体の sql-advise 受入回帰テスト。埋め込みSQLを SqlParser SPI で写像し、SQL助言
- * (id が "S" のルール)のみを実行して、m5-spec §5.2 の発火予測どおりに検出することを突合する。
+ * samples/ 全体の sql-advise 受入回帰テスト。埋め込みSQLを SqlParser SPI で SQL文モデルへ変換し、
+ * SQL助言(id が "S" のルール)のみを実行して、次のとおりに検出することを突合する。
  * SYK006 は S004・S006 をカーソル宣言行(145)で、S005 を SELECT INTO(96)とカーソル宣言(145)で
  * 検出し、SYK007 は S005 を SELECT INTO(69)で検出する。S001〜S003 は samples に該当構文が無いため
  * 陰性である。SQL助言の最上位は S004(中→警告)のため終了コードは1になる。
@@ -54,13 +54,13 @@ class SqlAdviseSamplesAcceptanceTest {
     @Test
     void onlySqlAdviceRulesRunAndNoBugDetectionRulesLeak() {
         assertTrue(result.findings().stream().allMatch(f -> f.ruleId().startsWith("S")),
-                "sql-advise の検出は全て SQL助言(S接頭辞)であること(裁定A5): " + result.findings());
+                "sql-advise の検出は全て SQL助言(S接頭辞)であること: " + result.findings());
         assertTrue(result.findings().stream().noneMatch(f -> f.ruleId().startsWith("R")),
-                "バグ検出(R接頭辞)が混じらないこと(裁定A5)");
+                "バグ検出(R接頭辞)が混じらないこと");
         assertTrue(result.sarifJson().contains("\"id\":\"S001\""),
                 "sql-advise の SARIF driver.rules に S接頭辞のルールが載ること");
         assertTrue(!result.sarifJson().contains("\"id\":\"R"),
-                "sql-advise の SARIF driver.rules に R接頭辞のルールが載らないこと(裁定A5)");
+                "sql-advise の SARIF driver.rules に R接頭辞のルールが載らないこと");
     }
 
     @Test

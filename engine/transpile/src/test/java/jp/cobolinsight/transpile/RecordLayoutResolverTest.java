@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * SYKCPY1.cpy の期待バイトレイアウトを検証する。SYK003 は SYKCPY1 を置換なしで LINKAGE SECTION
- * に展開する。オラクルは samples/期待結果.md 及び WF-1 裁定(受注番号@0/受注日@10/YMD REDEFINES@10/
+ * に展開する。正解の出所は samples/期待結果.md とレコードレイアウト解決の規則(受注番号@0/受注日@10/YMD REDEFINES@10/
  * 得意先@18/金額合計@24 len6/明細件数@30 len2/明細行@32 要素22×10/処理区分@252、総長253)。
  */
 class RecordLayoutResolverTest {

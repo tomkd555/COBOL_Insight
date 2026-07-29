@@ -60,9 +60,9 @@ class OnSizeErrorMissingFixTest {
 
     @Test
     void keepsMovedPeriodInsideColumn72WhenReceiverNameIsOneByteLonger() {
-        // samples が生む挿入行はちょうど72バイトで、原ソースの終止ピリオドを担ぎ込む余地が無い。
-        // 受信名が1バイト長い入力(挿入文が61バイト=B領域の予算いっぱい)でも、73桁目の識別欄へ
-        // 食い込まないことを表明する。
+        // samples から生まれる挿入行はちょうど72バイトで、原本の終止ピリオドを同じ行へ移す余地が
+        // 無い。受信名が1バイト長い入力(挿入文が61バイトで、B領域に収まる上限に等しい)でも、
+        // 73桁目の識別欄へ食い込まないことを表明する。
         String text = String.join("\n",
                 "       IDENTIFICATION DIVISION.",
                 "       PROGRAM-ID. FIX004P.",

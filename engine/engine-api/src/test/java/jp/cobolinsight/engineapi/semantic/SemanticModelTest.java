@@ -30,6 +30,7 @@ class SemanticModelTest {
                 Optional.of("100"), Optional.empty(), Optional.empty(), List.of(), List.of(), pos(10));
         assertEquals(5, elementary.level());
         assertEquals(Optional.of("100"), elementary.value());
+        // レベル77は他の項目に従属しない独立項目を表し、1〜49と同じく項目として受け付ける
         DataItem level77 = new DataItem(77, "WS-FLAG", Optional.of("X"), Optional.empty(),
                 Optional.empty(), Optional.empty(), Optional.empty(), List.of(), List.of(), pos(11));
         assertEquals(77, level77.level());
@@ -39,6 +40,7 @@ class SemanticModelTest {
     void dataItemRejectsInvalidLevel() {
         assertThrows(IllegalArgumentException.class, () -> new DataItem(0, "X", Optional.empty(),
                 Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), List.of(), List.of(), pos(1)));
+        // レベル88の条件名は ConditionName が持つため、DataItem のレベルとしては受け付けない
         assertThrows(IllegalArgumentException.class, () -> new DataItem(88, "X", Optional.empty(),
                 Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), List.of(), List.of(), pos(1)));
     }
@@ -147,7 +149,7 @@ class SemanticModelTest {
     void cobolSemanticModelAggregatesAllComponents() {
         CobolSemanticModel model = new CobolSemanticModel("PGMA", "A.cbl",
                 List.of(), List.of(), List.of(), List.of(), List.of(),
-                List.of(new CopyExpansionEntry(10, 20, "CPYA.cpy", 1)));
+                List.of(new CopyExpansionEntry(10, 20, "CPYA.cpy", 1)), List.of());
         assertEquals("PGMA", model.programId());
         assertEquals("CPYA.cpy", model.copyExpansions().get(0).copybookPath());
         assertThrows(UnsupportedOperationException.class, () -> model.dataItems().clear());
@@ -156,6 +158,6 @@ class SemanticModelTest {
     @Test
     void cobolSemanticModelRejectsBlankProgramId() {
         assertThrows(IllegalArgumentException.class, () -> new CobolSemanticModel(" ", "A.cbl",
-                List.of(), List.of(), List.of(), List.of(), List.of(), List.of()));
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of()));
     }
 }

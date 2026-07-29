@@ -15,11 +15,12 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * ライブラリ組込み用の言語クライアント。コピー句を探索パス順の先勝ちで解決し、
- * ワークスペース設定の問い合わせには中立の応答を返す。
+ * ライブラリ組込み用の言語クライアント。コピー句を探索パス順の先勝ちで解決する。診断通知・
+ * メッセージ表示・設定取得は編集機能のための呼出しであり、解析には要らないため空応答を返す。
  */
 final class SearchPathClient implements CobolLanguageClient {
 
+    /** 探索する拡張子。COPY 文はメンバ名だけを書くため、拡張子なしと .cpy をこの順で試す。 */
     private static final List<String> COPYBOOK_EXTENSIONS = List.of("", ".cpy", ".CPY");
 
     private volatile List<Path> searchPaths = List.of();

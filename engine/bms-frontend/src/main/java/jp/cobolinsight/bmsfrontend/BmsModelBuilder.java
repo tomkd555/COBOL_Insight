@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /** 構文木からマップセット→マップ→フィールドの階層モデルを組み立てる。 */
@@ -27,7 +28,14 @@ final class BmsModelBuilder {
         for (BmsMapParser.StatementContext stmt : tree.statement()) {
             BmsMapParser.MacroContext macro = stmt.macro();
             if (macro == null) {
-                continue; // END
+                continue; // ソース終端のアセンブラ END 文はマクロを持たない。
+            }
+            if (macro.kind.getStartIndex() < 0) {
+                // ANTLR がエラー回復で補った擬似トークンは、期待集合の先頭である DFHMSD の型を
+                // 持つ。実在するトークンと区別しないと、原本に無いマップセットができる。
+                errors.add(new BmsParseError(macro.kind.getLine(),
+                        macro.kind.getCharPositionInLine(), "マクロ名を読み取れない"));
+                continue;
             }
             String label = stmt.label != null ? stmt.label.getText() : null;
             int line = (stmt.label != null ? stmt.label : macro.kind).getLine();
@@ -46,6 +54,7 @@ final class BmsModelBuilder {
 
     private void onMapset(String label, int line, Map<String, BmsMapParser.ValueContext> params) {
         List<String> type = flatten(params.get("TYPE"));
+        // TYPE=FINAL の DFHMSD はマップセット定義の終端を示すマクロであり、新しいマップセットを開始しない。
         boolean isFinal = type.stream().anyMatch(t -> t.equalsIgnoreCase("FINAL"));
         closeMapset();
         if (!isFinal) {
@@ -100,13 +109,16 @@ final class BmsModelBuilder {
         Map<String, BmsMapParser.ValueContext> params = new LinkedHashMap<>();
         if (macro.paramList() != null) {
             for (BmsMapParser.ParamContext param : macro.paramList().param()) {
-                params.put(param.key.getText().toUpperCase(), param.value());
+                params.put(param.key.getText().toUpperCase(Locale.ROOT), param.value());
             }
         }
         return params;
     }
 
-    /** 値を平坦な文字列並びにする。括弧はネストごとに展開し、文字列は引用符を外す。 */
+    /**
+     * 値を平坦な文字列並びにする。括弧はネストごとに展開する。文字列は囲みの引用符を外し、
+     * 引用符1個を表す二重引用符 '' を1個の ' へ戻す。
+     */
     private static List<String> flatten(BmsMapParser.ValueContext value) {
         List<String> out = new ArrayList<>();
         collect(value, out);

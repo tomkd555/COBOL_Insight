@@ -190,6 +190,8 @@ public final class CfgBuilder {
             ends.add(node);
             return new Chain(node, ends);
         }
+        // 分岐(IF/EVALUATE)。ELSE・WHEN OTHER を持たない分岐はどの枝も通らない経路があるため、
+        // 分岐ノード自身を実行後の到達点に加えて後続へ流下させる。
         boolean exhaustive = false;
         for (StatementBlock block : compound.blocks()) {
             if ("ELSE".equals(block.label()) || "OTHER".equals(block.label())) {
@@ -211,6 +213,7 @@ public final class CfgBuilder {
         return new Chain(node, ends);
     }
 
+    /** 実行を打ち切る文か。EXIT は EXIT PROGRAM のみ終端で、EXIT PARAGRAPH などは流下する。 */
     private static boolean isTerminator(SimpleStatement statement) {
         String verb = statement.verb();
         if ("STOP".equals(verb) || "GOBACK".equals(verb)) {
@@ -220,6 +223,7 @@ public final class CfgBuilder {
                 && statement.text().toUpperCase(Locale.ROOT).contains("PROGRAM");
     }
 
+    /** 段落 PERFORM が UNTIL 句を持つか。意味モデルは句を分解しないため文テキストで判定する。 */
     private boolean isUntilPerform(CfgNode node) {
         return node.statement().orElseThrow() instanceof SimpleStatement simple
                 && simple.text().toUpperCase(Locale.ROOT).contains("UNTIL");

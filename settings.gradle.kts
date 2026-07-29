@@ -1,4 +1,5 @@
 pluginManagement {
+    // 規約プラグイン jp.cobolinsight.java-conventions を、同一リポジトリ内のビルドから解決する。
     includeBuild("gradle/build-logic")
 }
 

@@ -18,7 +18,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 
 /**
- * `report` サブコマンド(FR-07・裁定A4)。scan 済み SQLite(--db)から資産インベントリ・呼出関係の
+ * `report` サブコマンド。scan 済み SQLite(--db)から資産インベントリ・呼出関係の
  * 要約・scan 由来 finding を読み、同じ資産フォルダに対し lint 検出と SQL 助言をメモリ上で再実行して
  * 統合し、HTML とテキストの両形式でレポートを書き出す。処理サマリを JSON で標準出力へ書き、
  * 終了コードは統合した検出結果で分岐する(成功=0・警告あり=1・エラー=2)。

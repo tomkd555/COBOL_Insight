@@ -19,6 +19,7 @@ import jp.cobolinsight.engineapi.semantic.CallRelation;
 import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
 import jp.cobolinsight.engineapi.semantic.CompoundStatement;
 import jp.cobolinsight.engineapi.semantic.ControlKind;
+import jp.cobolinsight.engineapi.semantic.DataItem;
 import jp.cobolinsight.engineapi.semantic.EmbeddedBlock;
 import jp.cobolinsight.engineapi.semantic.EmbeddedBlockKind;
 import jp.cobolinsight.engineapi.semantic.Procedure;
@@ -58,7 +59,7 @@ class CallGraphLinkerTest {
         Procedure main = new Procedure("0000-MAIN", ProcedureKind.PARAGRAPH, Optional.empty(),
                 statements, range(file, 10));
         return new CobolSemanticModel(programId, file, List.of(), List.of(main), calls, List.of(),
-                embeddedBlocks, List.of());
+                embeddedBlocks, List.of(), List.of());
     }
 
     private static JclJobModel job(String jobName, List<JclStep> steps) {
@@ -387,6 +388,30 @@ class CallGraphLinkerTest {
                 Resolution.CONSTANT), "未定義マップでも参照辺を張る(存在検査はR031の責務)");
         assertEquals(NodeKind.BMS_MAP, node(result, "bmsmap:SYKMAP1.SYKM01").kind());
         assertEquals(NodeKind.BMS_MAP, node(result, "bmsmap:SYKMAP1.SYKM99").kind());
+    }
+
+    @Test
+    void resolvesCicsProgramOperandGivenAsVariable() {
+        DataItem variable = new DataItem(1, "WS-NEXT-PGM", Optional.of("X(08)"), Optional.empty(),
+                Optional.empty(), Optional.empty(), Optional.empty(), List.of(), List.of(),
+                new SourcePosition("PGM8.cbl", 20, 1, -1));
+        Statement move = stmt("MOVE", "MOVE 'PGM9' TO WS-NEXT-PGM", "PGM8.cbl", 40);
+        Procedure main = new Procedure("0000-MAIN", ProcedureKind.PARAGRAPH, Optional.empty(),
+                List.of(move), range("PGM8.cbl", 40));
+        CobolSemanticModel pgm8 = new CobolSemanticModel("PGM8", "PGM8.cbl", List.of(variable),
+                List.of(main), List.of(), List.of(),
+                List.of(cics(EmbeddedBlockKind.CICS_XCTL, Map.of("PROGRAM", "WS-NEXT-PGM"),
+                        "PGM8.cbl", 76)),
+                List.of(), List.of());
+        LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(pgm8), List.of(),
+                List.of(), Map.of(), Map.of()));
+
+        assertTrue(hasEdge(result, "program:PGM8", "program:PGM9",
+                EdgeKind.TRANSACTION_TRANSITION, Resolution.CONSTANT),
+                "変数指定のXCTLはMOVE定数伝播で飛び先を解決する");
+        assertTrue(result.graph().nodes().stream()
+                        .noneMatch(n -> n.id().equals("program:WS-NEXT-PGM")),
+                "データ名をプログラムのノードにしないこと");
     }
 
     @Test

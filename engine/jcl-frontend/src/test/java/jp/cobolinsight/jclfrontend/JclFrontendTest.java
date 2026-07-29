@@ -101,7 +101,7 @@ class JclFrontendTest {
 		assertEquals("SYKV.ORDER.MASTER", dsn(step020, "ORDMSTR"));
 	}
 
-	/** MAPA 上流の回帰確認: 継続 JOB カードを含む testdata がパースできること。 */
+	/** 継続する JOB カードを含む MAPA 同梱のテストデータを、全ジョブそろってパースできること。 */
 	@Test
 	void parsesMapaTest0003WithContinuedJobCards() throws Exception {
 		JclParseResult result = new JclFrontend().parse(
@@ -119,7 +119,7 @@ class JclFrontendTest {
 
 	@Test
 	void jobCardContinuationKeepsFollowingStatementsInRange() throws Exception {
-		// JOB カード2行継続の上流欠陥の直接確認: SET/EXEC/DD が範囲外にならないこと
+		// JOB カードが2行に継続しても、後続の SET/EXEC/DD が同一ジョブの範囲に入ること
 		JclParseResult result = parseSample("SYKD010.jcl");
 		ParsedJob job = result.jobs().get(0);
 		assertNotNull(job);

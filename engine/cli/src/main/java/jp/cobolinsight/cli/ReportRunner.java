@@ -13,6 +13,7 @@ import jp.cobolinsight.persistence.model.NodeRecord;
 import jp.cobolinsight.persistence.model.SourceRecord;
 import jp.cobolinsight.rules.sarif.SarifWriter;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -23,11 +24,10 @@ import java.util.Set;
 import java.util.TreeMap;
 
 /**
- * `report` の中核処理(FR-07・裁定A4)。scan 済み SQLite を入力に、資産インベントリ・呼出関係の
+ * `report` の中核処理。scan 済み SQLite を入力に、資産インベントリ・呼出関係の
  * 要約・scan 由来 finding を DB から読む。lint 検出(id が "R")と SQL 助言(id が "S")は scan が
  * 永続化しないため、DB と同じ資産フォルダに対し {@link LintRunner}・{@link SqlAdviseRunner} を
- * メモリ上で再実行して収集する({@code CallGraphCommand} が {@code ScanRunner} を再利用する既存
- * パターンと同型)。統合結果を HTML とテキストの両形式へ整形し、CI 向け終了コードを
+ * メモリ上で再実行して収集する。統合結果を HTML とテキストの両形式へ整形し、CI 向け終了コードを
  * {@link ExitCodes#fromFindings} で返す。
  */
 public final class ReportRunner {
@@ -92,6 +92,13 @@ public final class ReportRunner {
     }
 
     public static Result run(Options options) {
+        // SQLite は指定ファイルが無ければ新規作成する。存在検査を置かないと、パスの誤りが
+        // 「資産0件のレポート」として通り、空のDBファイルだけが残る。
+        if (!Files.isRegularFile(options.databaseFile())) {
+            throw new IllegalStateException(
+                    "SQLiteプロジェクトファイルが無い: " + options.databaseFile()
+                            + "。先に scan を実行すること。");
+        }
         List<AssetEntry> inventory;
         List<Finding> scanFindings;
         CallGraphSummary callGraph;

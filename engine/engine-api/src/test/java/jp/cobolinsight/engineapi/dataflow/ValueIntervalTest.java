@@ -31,6 +31,7 @@ class ValueIntervalTest {
 
     @Test
     void upperUnboundedAlwaysMayExceed() {
+        // 上端のみ非有界な [0, +∞)。hi の 0 は非有界側なので値としての意味を持たない
         ValueInterval counter = new ValueInterval(0, 0, false, true);
         assertTrue(counter.mayExceed(20));
         assertFalse(counter.mayBeNegative());

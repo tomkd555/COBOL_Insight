@@ -33,6 +33,24 @@ class EmitterFrameworkTest {
     }
 
     @Test
+    void figurativeConstantsAreResolvedToValues() {
+        assertEquals("0", Literals.resolve("ZERO"));
+        assertEquals("0", Literals.resolve("ZEROES"));
+        assertEquals(" ", Literals.resolve("SPACES"));
+        assertEquals("A", Literals.resolve("'A'"));
+        assertTrue(Literals.isCodePageDependentFigurative("HIGH-VALUES"));
+        assertFalse(Literals.isCodePageDependentFigurative("'HIGH-VALUES'"));
+    }
+
+    @Test
+    void thruInsideQuotesIsNotARangeSeparator() {
+        assertEquals(3, Literals.indexOfThru("'A' THRU 'Z'"));
+        assertEquals(-1, Literals.indexOfThru("'A THRU B'"),
+                "引用符の中の THRU は文字列 literal の一部であり区切りではない");
+        assertEquals(-1, Literals.indexOfThru("'X'"));
+    }
+
+    @Test
     void mappingKindIsDerivedFromLineCounts() {
         assertEquals(MappingKind.ONE_TO_ONE,
                 LineTrackingEmitter.kindOf(new LineRange(3, 3), new LineRange(7, 7)));

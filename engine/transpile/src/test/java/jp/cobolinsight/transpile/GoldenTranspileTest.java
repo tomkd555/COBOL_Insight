@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * A8 二層ゴールデン: (a) 同一入力を2回対訳して生成ファイルと行対応がバイト一致すること(決定論)、
+ * 対訳結果を二層で検証する: (a) 同一入力を2回対訳して生成ファイルと行対応がバイト一致すること(決定論)、
  * (b) 全9本(SYK001〜SYK009)×{Python,Java}の全生成ファイル(ランタイムヘルパ・レコードクラス群・
  * プログラム)がコミット済み golden(/golden/&lt;programId&gt;/&lt;fileName&gt;)とバイト一致すること。
  * golden を作り直すときは {@code -Dgolden.regenerate=true} を付けて実行すると、golden ディレクトリを
@@ -141,6 +141,7 @@ class GoldenTranspileTest {
                 .replace('\\', '/');
     }
 
+    /** 作業ディレクトリがモジュール配下でも解決できるよう、samples を持つ親をリポジトリルートとして遡る。 */
     private static Path repoRoot() {
         Path dir = Paths.get("").toAbsolutePath();
         while (dir != null && !Files.isDirectory(dir.resolve("samples"))) {

@@ -18,6 +18,7 @@ class AnalysisServicesTest {
         assertEquals(List.of("R900", "R901"),
                 services.rules().stream().map(Rule::id).toList());
         assertEquals(1, services.charsetProviders().size());
+        // engine-api のテスト実行時には構文解析器の実装がclasspathに無いため、パーサーは空になる
         assertTrue(services.cobolParsers().isEmpty());
         assertTrue(services.jclParsers().isEmpty());
         assertTrue(services.sqlParsers().isEmpty());

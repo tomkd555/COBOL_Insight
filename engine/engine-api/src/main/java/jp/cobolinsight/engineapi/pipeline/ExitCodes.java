@@ -15,6 +15,7 @@ public final class ExitCodes {
     private ExitCodes() {
     }
 
+    /** findings に含まれる最も高いレベルから終了コードを決める。findings が空なら成功。 */
     public static int fromFindings(Collection<Finding> findings) {
         int code = SUCCESS;
         for (Finding finding : findings) {

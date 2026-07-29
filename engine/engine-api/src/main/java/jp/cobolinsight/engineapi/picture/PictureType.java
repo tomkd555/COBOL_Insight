@@ -6,9 +6,9 @@ import java.util.Objects;
 /**
  * PICTURE 句と USAGE を解析した結果。副作用なし・不変。
  *
- * <p>{@code integerDigits}/{@code fractionDigits} は数字項目の整数部・小数部の桁数、
- * {@code fractionDigits} はスケール(小数桁)を表す。{@code totalDigits} は数字項目では
- * {@code integerDigits + fractionDigits}、英数字・英字項目では文字位置数である。
+ * <p>{@code integerDigits} と {@code fractionDigits} は数字項目の整数部・小数部の桁数を表す。
+ * {@code totalDigits} は数字項目では {@code integerDigits + fractionDigits}、英数字・英字項目では
+ * 文字位置数である。
  * {@code V}(暗黙小数点)と {@code S}(符号)は桁として数えず、{@code signed} に反映する。
  */
 public record PictureType(PictureCategory category, boolean signed, int integerDigits,
@@ -99,6 +99,7 @@ public record PictureType(PictureCategory category, boolean signed, int integerD
                     // 想定小数位取り。格納位置を持たないため桁数に数えない。
                 }
                 default -> {
+                    // Z・*・,・.・$・+・- などの編集用記号。文字位置は占めるが数字桁には数えない。
                     hasEdit = true;
                     charPositions += count;
                 }

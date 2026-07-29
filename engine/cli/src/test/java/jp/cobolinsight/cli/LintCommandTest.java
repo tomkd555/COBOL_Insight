@@ -40,6 +40,7 @@ class LintCommandTest {
             "           GOBACK.",
             "");
 
+    /** 警告どまりの資産。THRUなし単独段落PERFORM(R008)を含む。 */
     private static final String WARNING = String.join("\n",
             "       IDENTIFICATION DIVISION.",
             "       PROGRAM-ID.  WARN1.",
@@ -55,6 +56,7 @@ class LintCommandTest {
             "           MOVE 1 TO WS-COUNT.",
             "");
 
+    /** エラーを含む資産。VALUE 句へ認証情報を直書きした項目(R026)を含む。 */
     private static final String ERROR = String.join("\n",
             "       IDENTIFICATION DIVISION.",
             "       PROGRAM-ID.  ERR1.",
@@ -80,6 +82,7 @@ class LintCommandTest {
             "           GOBACK.",
             "");
 
+    /** 参照されない項目だけを持つ外部コピー句。未使用変数(R002)をコピー句側の位置で検出させる。 */
     private static final String EXT_COPYBOOK =
             "       01  EXT-UNUSED                  PIC X(01).\n";
 

@@ -38,7 +38,7 @@ class ScanIncrementalTest {
         assertEquals(16, first.analyzed().size());
         assertEquals(0, first.exitCode());
 
-        // コピー句の変更は、取り込むプログラム(SYK001〜SYK003)だけを道連れに再解析する
+        // コピー句の変更では、取り込むプログラム(SYK001〜SYK003)までを再解析の対象に含める
         appendCommentLine(assets.resolve("copybook").resolve("SYKCPY1.cpy"));
         ScanRunner.Summary second = ScanRunner.run(options);
         assertEquals(List.of("cobol/SYK001.cbl", "cobol/SYK002.cbl", "cobol/SYK003.cbl",
@@ -47,7 +47,7 @@ class ScanIncrementalTest {
         assertEquals(0, second.exitCode());
         assertEdgeCounts(databaseFile, 6, 6);
 
-        // プログラムの変更は、それを呼ぶJCL(SYKD010・SYKD030)だけを道連れに再解析する
+        // プログラムの変更では、それを呼ぶJCL(SYKD010・SYKD030)までを再解析の対象に含める
         appendCommentLine(assets.resolve("cobol").resolve("SYK001.cbl"));
         ScanRunner.Summary third = ScanRunner.run(options);
         assertEquals(List.of("cobol/SYK001.cbl", "jcl/SYKD010.jcl", "jcl/SYKD030.jcl"),
@@ -73,7 +73,7 @@ class ScanIncrementalTest {
             long execution = 0;
             for (var source : dao.findAllSources()) {
                 for (var edge : dao.findEdgesFrom(source.id())) {
-                    // M2の呼出関係グラフ層(ID下限以上)は対象外。scanの増分用エッジのみ数える
+                    // 呼出関係グラフ層(ID下限以上)は対象外。scanの増分用エッジのみ数える
                     if (edge.id() >= ScanRunner.GRAPH_ID_BASE) {
                         continue;
                     }

@@ -213,7 +213,10 @@ public final class JavaProcedureDialect implements ProcedureDialect {
         }
         List<String> rendered = new ArrayList<>();
         for (DisplayPart part : parts) {
-            rendered.add(part.text());
+            // 数値項目は long として宣言される。先頭が文字列でないと + が連結ではなく加算になり、
+            // 複数の値の合計を1つ印字してしまう。先頭だけ String.valueOf で包めば連結になる。
+            rendered.add(rendered.isEmpty() && !part.isString()
+                    ? "String.valueOf(" + part.text() + ")" : part.text());
         }
         out.emit("System.out.println(" + String.join(" + ", rendered) + ");");
     }

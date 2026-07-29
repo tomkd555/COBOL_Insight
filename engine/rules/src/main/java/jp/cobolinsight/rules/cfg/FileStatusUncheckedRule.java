@@ -31,14 +31,16 @@ import java.util.regex.Pattern;
 /**
  * R017 ファイルステータス未検査。record-access I/O(READ/WRITE/REWRITE/DELETE)の実行後、次の
  * 同一ファイル I/O に達するまでの前方経路で、その FD の FILE STATUS 変数を条件参照しない箇所を
- * 検出する。AT END・INVALID KEY 句の存在は検査とみなさない。FILE STATUS 変数名は意味モデルに
- * 無いため、SourceTextIndex の原ソース(および COPY 先コピー句)から SELECT・FD の記述で解決する。
+ * 検出する。FILE STATUS を検査しないと、入出力の異常が後続処理で検知されない。AT END・
+ * INVALID KEY 句は特定の事象だけを捉えるため、その存在は検査とみなさない。FILE STATUS 変数名は
+ * 意味モデルに無いため、SourceTextIndex の原ソース(および COPY 先コピー句)から SELECT・FD の
+ * 記述で解決する。
  */
 public final class FileStatusUncheckedRule implements Rule {
 
     private static final String NAME = "[\\p{L}\\p{N}$#_-]+";
     private static final Pattern SELECT_STATUS = Pattern.compile(
-            "(?is)\\bSELECT\\s+(" + NAME + ")[^.]*?FILE\\s+STATUS\\s+IS\\s+(" + NAME + ")");
+            "(?is)\\bSELECT\\s+(" + NAME + ")[^.]*?FILE\\s+STATUS\\s+(?:IS\\s+)?(" + NAME + ")");
     private static final Pattern FD_HEADER = Pattern.compile("(?is)\\bFD\\s+(" + NAME + ")");
     private static final Pattern SECTION_BREAK = Pattern.compile(
             "(?is)\\bFD\\s+" + NAME + "|\\bWORKING-STORAGE\\b|\\bLOCAL-STORAGE\\b|\\bLINKAGE\\b"
@@ -167,6 +169,7 @@ public final class FileStatusUncheckedRule implements Rule {
             // 外側の ELSE・END-IF との結合は変わらない。
             String terminator =
                     FixEdits.endsSentence(source, io.range().end().line()) ? "." : "";
+            // FILE STATUS の '00' は入出力の正常完了を表す。それ以外の値はすべて異常として扱う。
             String statement = "IF " + var + " NOT = '00' DISPLAY 'FILE ERROR: " + fd + " ' "
                     + var + " END-IF" + terminator;
             TextEdit edit = FixEdits.insertStatementAfter(io.range(), statement);

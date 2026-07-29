@@ -10,8 +10,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * 同梱サンプルの判別と復号の検証。993文字はサンプルの文字数、1,124バイトはShift_JIS版のファイル長で、
+ * いずれもサンプルを測った値である。
+ */
 class SampleDecodingTest {
 
+    /** テストの作業ディレクトリはモジュール直下であるため、2階層上のリポジトリ直下を起点にする。 */
     private static final Path SAMPLES = Path.of("..", "..", "samples", "encoding");
 
     private final SourceDecoder decoder = new SourceDecoder();

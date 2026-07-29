@@ -12,6 +12,7 @@ repositories {
 
 dependencies {
     implementation(project(":engine:engine-api"))
+    implementation(project(":engine:encoding"))
     implementation("org.eclipse.lsp.cobol:engine:1.0.0-SNAPSHOT") {
         // 通常版 Guice 4.2.3 は JDK21 でクラス生成に失敗するため no_aop 版へ置き換える
         exclude(group = "com.google.inject", module = "guice")

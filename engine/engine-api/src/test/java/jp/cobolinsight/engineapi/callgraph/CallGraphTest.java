@@ -20,9 +20,11 @@ class CallGraphTest {
         return new CallGraph(List.of(b, a, u), List.of(e2, e1));
     }
 
+    // NodeKind と EdgeKind の名前はJSON・DOT出力にそのまま現れる語彙であり、種別の増減は
+    // 出力の互換性に影響する。件数を固定して、意図しない追加・削除を検出する。
     @Test
-    void nodeKindsCoverAllTenKinds() {
-        assertEquals(10, NodeKind.values().length);
+    void nodeKindsCoverAllElevenKinds() {
+        assertEquals(11, NodeKind.values().length);
     }
 
     @Test

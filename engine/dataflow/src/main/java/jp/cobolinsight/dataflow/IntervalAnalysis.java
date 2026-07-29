@@ -25,11 +25,14 @@ import java.util.Set;
 /**
  * 前進データフローで各変数の整数区間 {@link ValueInterval} を追跡する区間値域解析。束は変数ごとの
  * 区間の直積、合流は区間包(hull)。転送関数は MOVE/SET/ADD/SUBTRACT/MULTIPLY/COMPUTE と
- * PERFORM VARYING の制御変数歩進を区間演算で写し、追跡不能な代入・外部入力・未知PICは非有界へ倒す。
+ * PERFORM VARYING の制御変数の歩進を区間演算で求め、追跡できない代入・外部入力・PIC 不明の項目は
+ * 非有界とする。
  *
  * <p>区間束は無限昇鎖のため、ループ後行辺の合流点(後退辺の終端ノード)で widening を適用して有限回で
  * 収束させる。widening 後に PERFORM UNTIL の継続条件から narrowing で上下端を絞り精度を回復する。
- * 分岐(IF/EVALUATE)は true/false 辺の区別が CFG に無いため区間の絞り込みを行わない(健全側)。
+ * 絞った状態を流すのは反復本体へ向かう辺に限り、ループ脱出辺へは継続条件の否定で絞った状態を流す。
+ * 分岐(IF/EVALUATE)は true/false 辺の区別が CFG に無いため、区間の絞り込みを行わず過大近似のまま
+ * 残す。
  *
  * <p>段落 PERFORM VARYING は文テキストに FROM/BY/UNTIL が残るため制御変数を初期値から歩進で追跡する。
  * インライン PERFORM は VARYING/FROM/BY 句が conditionText へ残らず UNTIL 条件のみが得られるため、
@@ -84,6 +87,7 @@ final class IntervalAnalysis {
                 return java.util.Optional.empty();
             }
             int digits = pt.integerDigits();
+            // 19桁以上の整数部は long で表せる範囲を超えるため、境界を持たない(非有界)扱いにする。
             if (digits <= 0 || digits > 18) {
                 return java.util.Optional.empty();
             }
@@ -124,17 +128,23 @@ final class IntervalAnalysis {
     private Map<CfgNode, Map<String, ValueInterval>> solve(ControlFlowGraph cfg) {
         Map<CfgNode, LoopClause> loopClauses = loopClauses(cfg);
         Set<CfgNode> wideningNodes = wideningNodes(cfg);
+        Map<CfgNode, Set<CfgNode>> loopExits = loopExitTargets(cfg, loopClauses);
 
         Map<CfgNode, Map<String, ValueInterval>> flowIn = new IdentityHashMap<>();
         Map<CfgNode, Map<String, ValueInterval>> flowOut = new IdentityHashMap<>();
+        // ループ脱出辺へ流す状態。継続条件で絞った flowOut と別に持つ。
+        Map<CfgNode, Map<String, ValueInterval>> exitOut = new IdentityHashMap<>();
         for (CfgNode node : cfg.nodes()) {
             flowIn.put(node, new LinkedHashMap<>());
             flowOut.put(node, new LinkedHashMap<>());
+            exitOut.put(node, new LinkedHashMap<>());
         }
 
         Deque<CfgNode> work = new ArrayDeque<>(cfg.nodes());
         Set<CfgNode> queued = new LinkedHashSet<>(cfg.nodes());
         long pops = 0;
+        // 取り出し回数の上限は暴走を防ぐ保険である。widening が効いていれば各ノードの状態は有限回で
+        // 安定するため、上限に達するのは widening 点の同定に不備がある場合だけである。
         long cap = Math.max(200_000L, (long) cfg.nodes().size() * cfg.nodes().size());
         while (!work.isEmpty()) {
             if (++pops > cap) {
@@ -149,18 +159,26 @@ final class IntervalAnalysis {
                 newIn.putAll(valueSeeds);
             }
             for (CfgNode pred : cfg.predecessors(node)) {
-                joinInto(newIn, flowOut.get(pred));
+                joinInto(newIn, loopExits.get(pred).contains(node)
+                        ? exitOut.get(pred) : flowOut.get(pred));
             }
             flowIn.put(node, newIn);
 
-            Map<String, ValueInterval> cand = transfer(node, newIn, loopClauses.get(node));
+            LoopClause clause = loopClauses.get(node);
+            Map<String, ValueInterval> cand = transfer(node, newIn, clause);
             if (wideningNodes.contains(node)) {
                 cand = widenState(flowOut.get(node), cand);
             }
-            narrow(cand, loopClauses.get(node));
+            Map<String, ValueInterval> exitCand = cand;
+            if (!loopExits.get(node).isEmpty()) {
+                exitCand = new LinkedHashMap<>(cand);
+                narrowExit(exitCand, newIn, clause);
+            }
+            narrow(cand, clause);
 
-            if (!cand.equals(flowOut.get(node))) {
+            if (!cand.equals(flowOut.get(node)) || !exitCand.equals(exitOut.get(node))) {
                 flowOut.put(node, cand);
+                exitOut.put(node, exitCand);
                 for (CfgNode succ : cfg.successors(node)) {
                     if (queued.add(succ)) {
                         work.addLast(succ);
@@ -223,6 +241,67 @@ final class IntervalAnalysis {
             default -> {
             }
         }
+    }
+
+    /**
+     * ループ脱出辺へ流す状態を、継続条件の否定(= UNTIL 条件の成立)で絞る。反復は UNTIL が真に
+     * なって初めて止まるため、脱出後の制御変数は境界の外側にある。継続用に絞った区間をそのまま
+     * 流すと、脱出後の参照で区間が実際より狭くなり、範囲超過を見逃す。
+     */
+    private void narrowExit(Map<String, ValueInterval> state, Map<String, ValueInterval> in,
+            LoopClause clause) {
+        if (clause == null || clause.until() == null || clause.until().var() == null) {
+            return;
+        }
+        Comparison cond = clause.until();
+        ValueInterval bound = resolve(cond.boundToken(), in);
+        ValueInterval v = resolve(cond.var(), in);
+        switch (cond.rel()) {
+            case GT -> {
+                if (!bound.hiUnbounded()) {
+                    state.put(cond.var(), Intervals.capLo(v, bound.hi() + 1));
+                }
+            }
+            case GE -> {
+                if (!bound.hiUnbounded()) {
+                    state.put(cond.var(), Intervals.capLo(v, bound.hi()));
+                }
+            }
+            case LT -> {
+                if (!bound.loUnbounded()) {
+                    state.put(cond.var(), Intervals.capHi(v, bound.lo() - 1));
+                }
+            }
+            case LE -> {
+                if (!bound.loUnbounded()) {
+                    state.put(cond.var(), Intervals.capHi(v, bound.lo()));
+                }
+            }
+            default -> {
+            }
+        }
+    }
+
+    /**
+     * ループ header ごとの脱出先。UNTIL を持つノードから出る辺のうち、自ノードへ戻ってこない
+     * 先を脱出辺とみなす。戻ってくる先は反復の本体である。
+     */
+    private static Map<CfgNode, Set<CfgNode>> loopExitTargets(ControlFlowGraph cfg,
+            Map<CfgNode, LoopClause> loopClauses) {
+        Map<CfgNode, Set<CfgNode>> exits = new IdentityHashMap<>();
+        for (CfgNode node : cfg.nodes()) {
+            Set<CfgNode> targets = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
+            LoopClause clause = loopClauses.get(node);
+            if (clause != null && clause.until() != null && clause.until().var() != null) {
+                for (CfgNode succ : cfg.successors(node)) {
+                    if (!forwardReach(cfg, succ).contains(node)) {
+                        targets.add(succ);
+                    }
+                }
+            }
+            exits.put(node, targets);
+        }
+        return exits;
     }
 
     // ---- 転送関数 ----
@@ -429,6 +508,7 @@ final class IntervalAnalysis {
         }
     }
 
+    /** INITIALIZE は数字項目を 0 で埋める。PIC 境界を持たない項目は数字か判別できず非有界とする。 */
     private void initialize(String u, Map<String, ValueInterval> out) {
         int replacing = kw(u, "REPLACING");
         String items = replacing >= 0 ? u.substring(0, replacing) : u;

@@ -17,6 +17,7 @@ public final class DataFlowFacts {
 
     private final Map<String, ProgramDataFlow> byProgramId;
 
+    /** 同じ programId の解析結果が複数含まれる場合は、投入順で最初のものだけを採る。 */
     public DataFlowFacts(Collection<ProgramDataFlow> flows) {
         Map<String, ProgramDataFlow> map = new LinkedHashMap<>();
         for (ProgramDataFlow flow : flows) {

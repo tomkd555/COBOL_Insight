@@ -4,12 +4,14 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
- * 不正・端の BMS 入力に対しても、解析は例外を投げず {@link BmsParseResult#errors()} へ集約する
- * （BmsSourceParser の契約）。認識できないマクロを含む解析木でも writer/写像がクラッシュしないことを守る。
+ * 不正な BMS 入力と境界の入力に対しても、解析は例外を投げず {@link BmsParseResult#errors()} へ
+ * エラーを集約する（BmsSourceParser の契約）。認識できないマクロを含む構文木でも、
+ * engine-api のモデルへの変換が例外で終わらないことを確かめる。
  */
 class BmsMalformedSourceTest {
 
@@ -33,7 +35,7 @@ class BmsMalformedSourceTest {
             BmsParseResult result = parser.parse(source);
             List<jp.cobolinsight.engineapi.bms.BmsMapset> mapsets =
                     BmsModelMapper.toEngineApi(result, "bms/probe.bms");
-            assertTrue(mapsets.size() >= 0, "写像は例外を投げないこと");
+            assertNotNull(mapsets, "変換は例外を投げず結果を返すこと");
         }
     }
 
@@ -42,5 +44,18 @@ class BmsMalformedSourceTest {
         BmsParseResult result = new BmsSourceParser().parse("!@#$%^&*() garbage tokens 123");
         assertFalse(result.errors().isEmpty(),
                 "認識できないマクロは例外でなく errors() へ集約すること");
+    }
+
+    @Test
+    void errorRecoveryDoesNotFabricateMapsets() {
+        // DFHMSD が実在する入力は対象外。ここで問うのは、原本に無いマクロ名から生じる擬似トークンである。
+        for (String source : List.of(
+                "!@#$%^&*() garbage tokens 123",
+                "PART1    DFHPSD TYPE=INITIAL",
+                "XINIT=1D")) {
+            BmsParseResult result = new BmsSourceParser().parse(source);
+            assertEquals(List.of(), BmsModelMapper.toEngineApi(result, "bms/probe.bms"),
+                    () -> "エラー回復で補った擬似トークンからマップセットを作らないこと: " + source);
+        }
     }
 }

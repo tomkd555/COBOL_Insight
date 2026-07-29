@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 解析結果を engine-api のBMSマップモデルへ写像する公開アダプタ。engine-api 側は必須値のため、
+ * 解析結果を engine-api のBMSマップモデルへ変換する公開アダプタ。engine-api 側は必須値のため、
  * 未指定の SIZE は端末画面の既定 24x80、未指定の POS は (1,1)、未指定の LENGTH は 0、
  * ラベル無しフィールド名は空文字列で補う。
  */
@@ -48,6 +48,7 @@ public final class BmsModelMapper {
         return mapped;
     }
 
+    /** engine-api はマップセット名・マップ名を必須とするため、ラベル無しには行番号を添えた名前を与える。 */
     private static String nameOrFallback(String name, int sourceLine) {
         return name == null || name.isBlank() ? "UNNAMED-" + sourceLine : name;
     }

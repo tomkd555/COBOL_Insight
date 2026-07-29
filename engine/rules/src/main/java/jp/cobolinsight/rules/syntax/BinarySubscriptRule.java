@@ -22,7 +22,8 @@ import java.util.regex.Pattern;
 
 /**
  * R006 添字への二進項目未使用。表(OCCURS句を持つ項目、またはその内側の項目)への添字付き参照の
- * うち、添字に使うデータ項目のUSAGE句がBINARY(COMP)以外である箇所を検出する。文テキスト上の
+ * うち、添字に使うデータ項目のUSAGE句がBINARY(COMP)以外である箇所を検出する。DISPLAY形式の
+ * 添字は参照のたびに二進数への変換を伴い、表参照の性能を落とす。文テキスト上の
  * 「名前(添字)」形式を走査し、INDEXED BY の指標名やリテラル添字は対象外とする。
  */
 public final class BinarySubscriptRule implements Rule {

@@ -44,7 +44,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * SarifWriter の出力が SARIF 2.1.0 の公式JSONスキーマ(src/test/resources/sarif)に違反しない
- * ことの検証。合成findingsと、samples/ 全体を構文段階の全ルールでlintした結果の両方を検証する。
+ * ことの検証。合成した finding 群と、samples/ 全体を構文段の全ルールで lint した結果の両方を
+ * 対象とする。
  */
 class SarifSchemaValidationTest {
 
@@ -59,6 +60,8 @@ class SarifSchemaValidationTest {
     @Test
     void syntheticFindingsProduceSchemaValidSarif() {
         List<Rule> rules = AnalysisServices.load().rules(AnalysisPhase.SYNTAX);
+        // 1件目のファイル名には空白・#・非ASCII文字を含める。URI へ変換したうえでスキーマへ
+        // 適合することまで確認する。
         List<Finding> findings = List.of(
                 Finding.of("R026", FindingLevel.ERROR, "認証情報の直書き",
                         new SourcePosition("cobol\\B 資産#1.cbl", 5, 12,
@@ -164,6 +167,10 @@ class SarifSchemaValidationTest {
         }
     }
 
+    /**
+     * テキストを DecodedSource へ包む。offsets は文字位置からUTF-8バイト位置への対応表であり、
+     * サロゲートペアの2文字目にもコードポイント先頭のバイト位置を入れる。
+     */
     private static DecodedSource decoded(String path, String text) {
         int[] offsets = new int[text.length()];
         int byteOffset = 0;

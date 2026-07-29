@@ -19,8 +19,8 @@ repositories {
     }
 }
 
-// M1配布検証: installDist成果物(bin/lib)を入力に、内蔵JRE同梱のWindows app-imageをjpackageで生成する。
-// 出力はbuild配下(git追跡外)。生成物のサイズ・起動時間はengine/distribution-notes.mdに記録する。
+// installDist成果物(bin/lib)を入力に、内蔵JRE同梱のWindows app-imageをjpackageで生成する。
+// 出力はbuild配下(git追跡外)。
 val jpackageAppImageDir = layout.buildDirectory.dir("jpackage/app-image")
 
 tasks.register<Exec>("jpackageAppImage") {
@@ -84,7 +84,7 @@ dependencies {
     runtimeOnly(project(":engine:sql-frontend"))
 }
 
-// M1完了条件: Che4z(EPL-2.0)とMAPA(MIT)のライセンスファイルを配布物(cli.jar)へ同梱する。
+// Che4z(EPL-2.0)とMAPA(MIT)のライセンスファイルを配布物(cli.jar)へ同梱する。
 tasks.processResources {
     from(rootProject.layout.projectDirectory.file("vendor/che4z/LICENSE.md")) {
         into("licenses/che4z")

@@ -17,6 +17,7 @@ class SourceModelTest {
     void sourcePositionRejectsInvalidCoordinates() {
         assertThrows(IllegalArgumentException.class, () -> new SourcePosition("A.cbl", 0, 1, -1));
         assertThrows(IllegalArgumentException.class, () -> new SourcePosition("A.cbl", 1, 0, -1));
+        // byteOffset は不明を表す -1 を許し、-2 以下は受け付けない
         assertThrows(IllegalArgumentException.class, () -> new SourcePosition("A.cbl", 1, 1, -2));
     }
 
@@ -96,6 +97,24 @@ class SourceModelTest {
         CopyExpansionEntry e = new CopyExpansionEntry(10, 20, "CPYA.cpy", 3);
         assertEquals("CPYA.cpy", e.copybookPath());
         assertFalse(e.copybookPath().isEmpty());
+    }
+
+    @Test
+    void copyInlineExpansionRejectsInvalidValuesAndCopiesLines() {
+        assertThrows(IllegalArgumentException.class, () -> new ExpandedCopyLine(0, "X"));
+        assertThrows(IllegalArgumentException.class,
+                () -> new CopyInlineExpansion(0, "CPYA", "CPYA.cpy", java.util.List.of()));
+        assertThrows(IllegalArgumentException.class,
+                () -> new CopyInlineExpansion(1, " ", "CPYA.cpy", java.util.List.of()));
+        assertThrows(IllegalArgumentException.class,
+                () -> new CopyInlineExpansion(1, "CPYA", " ", java.util.List.of()));
+
+        java.util.List<ExpandedCopyLine> lines =
+                new java.util.ArrayList<>(java.util.List.of(new ExpandedCopyLine(7, "01 A.")));
+        CopyInlineExpansion expansion = new CopyInlineExpansion(32, "CPYA", "CPYA.cpy", lines);
+        lines.clear();
+        assertEquals(1, expansion.lines().size(), "引数のリストを防御的に複製すること");
+        assertEquals(7, expansion.lines().get(0).copybookLine());
     }
 
     @Test

@@ -32,9 +32,17 @@ public final class IdenticalOperandsRule implements Rule {
 
     /** 文字列リテラルの内容一致トークンに使う制御文字(データ名・演算子と衝突しない)。 */
     private static final char LITERAL_MARK = '';
+    /**
+     * 条件式で両辺の同一性を問う演算子。{@link #isOperand} が演算子トークンを除く判定にも用いる
+     * ため、条件演算子に加えて算術の - と / を含める。
+     */
     private static final Set<String> CONDITION_OPS =
             Set.of("=", ">", "<", ">=", "<=", "<>", "AND", "OR", "-", "/");
+    /** COMPUTE 右辺で両辺が同一なら結果が定数になる演算子。+ と * は同一でも誤りとは言えない。 */
     private static final Set<String> ARITHMETIC_OPS = Set.of("-", "/");
+    /** COBOL の語境界。ハイフンを語の構成文字に含める点で Java の {@code \b} と異なる。 */
+    private static final String WORD_BOUNDARY_BEFORE = "(?<![\\p{L}\\p{N}$#_-])";
+    private static final String WORD_BOUNDARY_AFTER = "(?![\\p{L}\\p{N}$#_-])";
 
     @Override
     public String id() {
@@ -147,16 +155,26 @@ public final class IdenticalOperandsRule implements Rule {
         return sb.toString();
     }
 
+    /**
+     * 語形式の演算子を記号へ置き換える。COBOL の語はハイフンを含むため、境界には Java の
+     * {@code \b} ではなく WS-IS-FLAG のような名前の内側に一致しない境界を課す。
+     */
     private static String normalizeWordedOperators(String s) {
-        String r = s.replaceAll("\\bIS\\b", " ");
-        r = r.replaceAll("\\bNOT\\s*=", " <> ");
-        r = r.replaceAll("\\bNOT\\s+EQUAL(\\s+TO)?\\b", " <> ");
-        r = r.replaceAll("\\bGREATER\\s+THAN\\s+OR\\s+EQUAL(\\s+TO)?\\b", " >= ");
-        r = r.replaceAll("\\bLESS\\s+THAN\\s+OR\\s+EQUAL(\\s+TO)?\\b", " <= ");
-        r = r.replaceAll("\\bGREATER\\s+THAN\\b", " > ");
-        r = r.replaceAll("\\bLESS\\s+THAN\\b", " < ");
-        r = r.replaceAll("\\bEQUAL(\\s+TO)?\\b", " = ");
+        String r = replaceWord(s, "IS", " ");
+        // NOT = は記号で終わるため、語の終わりの境界を課さない。
+        r = r.replaceAll(WORD_BOUNDARY_BEFORE + "NOT\\s*=", " <> ");
+        r = replaceWord(r, "NOT\\s+EQUAL(?:\\s+TO)?", " <> ");
+        r = replaceWord(r, "GREATER\\s+THAN\\s+OR\\s+EQUAL(?:\\s+TO)?", " >= ");
+        r = replaceWord(r, "LESS\\s+THAN\\s+OR\\s+EQUAL(?:\\s+TO)?", " <= ");
+        r = replaceWord(r, "GREATER\\s+THAN", " > ");
+        r = replaceWord(r, "LESS\\s+THAN", " < ");
+        r = replaceWord(r, "EQUAL(?:\\s+TO)?", " = ");
         return r;
+    }
+
+    private static String replaceWord(String s, String wordRegex, String replacement) {
+        return s.replaceAll(WORD_BOUNDARY_BEFORE + "(?:" + wordRegex + ")" + WORD_BOUNDARY_AFTER,
+                replacement);
     }
 
     /** 記号演算子(= &lt; &gt; &gt;= &lt;= &lt;&gt; / * +)を空白で囲む。ハイフンは名前の一部なので除く。 */

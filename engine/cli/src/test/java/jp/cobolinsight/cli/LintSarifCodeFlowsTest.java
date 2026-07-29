@@ -29,6 +29,10 @@ class LintSarifCodeFlowsTest {
     @TempDir
     Path tempDir;
 
+    /**
+     * 汚染追跡の検体。ACCEPT で受けた外部入力を STRING で連結して EXECUTE IMMEDIATE へ渡す経路
+     * (R020)と、末尾が -CARD-NO の機密項目をマスキングせず DISPLAY へ渡す経路(R027)を持つ。
+     */
     private static final String TAINTED = String.join("\n",
             "       IDENTIFICATION DIVISION.",
             "       PROGRAM-ID.  TAINT1.",

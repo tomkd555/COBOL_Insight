@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** 段落・文種別・CALL/PERFORM 関係・GO TO の写像の検証。 */
+/** 段落・文種別・CALL/PERFORM 関係・GO TO の変換の検証。 */
 class StatementAndRelationMappingTest {
 
     private static Procedure procedure(String fileName, String name) {

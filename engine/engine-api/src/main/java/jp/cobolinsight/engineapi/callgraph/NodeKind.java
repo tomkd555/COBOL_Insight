@@ -1,6 +1,6 @@
 package jp.cobolinsight.engineapi.callgraph;
 
-/** 呼出関係グラフのノード10種別。 */
+/** 呼出関係グラフのノード11種別。 */
 public enum NodeKind {
     /** JCLのJOB単位。 */
     JOB,
@@ -21,5 +21,10 @@ public enum NodeKind {
     /** CICSトランザクション(トランザクションID)。 */
     TRANSACTION,
     /** BMSのマップセット・マップ。 */
-    BMS_MAP
+    BMS_MAP,
+    /**
+     * 復号・構文解析に失敗して呼出関係を読み取れない資産(相対パスと失敗理由を属性に保持)。
+     * 呼出関係が不明なため辺を持たない孤立ノードとして置き、図が全体を表すという誤読を防ぐ。
+     */
+    UNANALYZABLE
 }

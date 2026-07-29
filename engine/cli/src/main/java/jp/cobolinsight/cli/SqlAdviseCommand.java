@@ -20,7 +20,7 @@ import java.util.concurrent.Callable;
 /**
  * `sql-advise` サブコマンド。資産フォルダの埋め込みSQLをSQL助言ルール(S001〜S006)で解析し、
  * SARIF 2.1.0ファイルを書き出して処理サマリをJSONで標準出力へ書く。終了コードは検出結果で
- * 分岐する(成功=0・警告あり=1・エラー=2)。バグ検出は lint サブコマンドが担う(裁定A5・A6)。
+ * 分岐する(成功=0・警告あり=1・エラー=2)。バグ検出は lint サブコマンドが担う。
  */
 @Command(name = "sql-advise", mixinStandardHelpOptions = true,
         description = "資産フォルダの埋め込みSQLをSQL助言ルールで解析し、SARIFを出力する")

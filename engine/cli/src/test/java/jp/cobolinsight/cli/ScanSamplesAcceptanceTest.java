@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * M1受入回帰テスト。samples/ 全体の scan が成功し、SQLiteへ期待どおりの
+ * scan の受入回帰テスト。samples/ 全体の scan が成功し、SQLiteへ期待どおりの
  * 行が入ることを、期待結果.md 4・6・9章の値と突合して検証する。
  */
 class ScanSamplesAcceptanceTest {
@@ -227,7 +227,7 @@ class ScanSamplesAcceptanceTest {
         Set<String> pairs = new TreeSet<>();
         for (SourceRecord source : dao.findAllSources()) {
             for (CallEdgeRecord edge : dao.findEdgesFrom(source.id())) {
-                // M2の呼出関係グラフ層(ID下限以上)は対象外。ここではscanの増分用エッジのみ数える
+                // 呼出関係グラフ層(ID下限以上)は対象外。ここではscanの増分用エッジのみ数える
                 if (edge.id() >= ScanRunner.GRAPH_ID_BASE) {
                     continue;
                 }

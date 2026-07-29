@@ -13,6 +13,9 @@ import java.util.Arrays;
  */
 public final class SourceDecoder {
 
+    /** 復号後の先頭に現れるバイト順マーク(U+FEFF)。 */
+    private static final char BYTE_ORDER_MARK = '﻿';
+
     private final CodePageDetector detector = new CodePageDetector();
 
     /** 自動判別で復号する。 */
@@ -34,13 +37,17 @@ public final class SourceDecoder {
                 .onMalformedInput(CodingErrorAction.REPORT)
                 .onUnmappableCharacter(CodingErrorAction.REPORT);
         ByteBuffer in = ByteBuffer.wrap(bytes);
+        // 1文字の産出には最低1バイトを要するため、産出される文字数はバイト数を超えない。
         CharBuffer out = CharBuffer.allocate(bytes.length + 1);
+        // 末尾に、文字位置 charCount(全バイト長を指す要素)の枠を1つ余分に取る。
         int[] charStarts = new int[bytes.length + 1];
         int pendingStart = 0;
 
         // 1バイトずつ入力を広げて復号し、産出された文字を未対応バイト群の先頭へ対応付ける。
         // SO/SIのように文字を産出せず消費されたバイトは対応付けから除く。
         if (bytes.length == 0) {
+            // CharsetDecoder.flush は endOfInput=true の decode を済ませていないと呼べない。
+            // 入力が空のときは下のループが1度も回らないため、ここで呼ぶ。
             charsetDecoder.decode(in, out, true);
         }
         for (int limit = 1; limit <= bytes.length; limit++) {
@@ -54,8 +61,12 @@ public final class SourceDecoder {
         requireNoError(charsetDecoder.flush(out), info, bytes.length);
         record(charStarts, out, before, pendingStart, bytes.length);
 
-        String text = new String(out.array(), 0, out.position());
-        int[] table = Arrays.copyOf(charStarts, text.length() + 1);
+        // バイト順マークは符号化の印であって本文の文字ではない。本文に残すと1行目の桁が1つずれ、
+        // 固定形式の一連番号領域・標識領域の桁がすべてずれる。原バイト列とオフセット表は保つ。
+        String decoded = new String(out.array(), 0, out.position());
+        int from = decoded.isEmpty() || decoded.charAt(0) != BYTE_ORDER_MARK ? 0 : 1;
+        String text = decoded.substring(from);
+        int[] table = Arrays.copyOfRange(charStarts, from, from + text.length() + 1);
         table[text.length()] = bytes.length;
         return new DecodedSource(text, bytes, new ByteOffsetTable(text, table), info);
     }

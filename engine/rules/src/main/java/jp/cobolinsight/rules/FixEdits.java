@@ -24,7 +24,8 @@ import java.util.function.Predicate;
  *
  * <p>挿入文の桁折り返しは UTF-8 相対のバイト長で行う({@link #LAYOUT_CHARSET})。折り返しは
  * バイト長が広いエンコーディングほど早く発生するため、UTF-8 で決めた物理行は Shift_JIS など
- * より短い符号で書き戻しても72桁を超えない。M7 の対象samplesは全て UTF-8 で、桁は厳密一致する。
+ * より短い符号で書き戻しても72桁を超えない。修正案の対象となる samples 配下のソースは
+ * すべて UTF-8 であり、桁は厳密に一致する。
  */
 public final class FixEdits {
 

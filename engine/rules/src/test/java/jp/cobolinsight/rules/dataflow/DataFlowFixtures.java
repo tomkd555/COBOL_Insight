@@ -30,7 +30,8 @@ import java.util.stream.Stream;
  * データフロー段ルールのテスト補助。samples および合成ソースを実パーサー(cobol-frontend)で解析し、
  * CFG・不動点結果(DataFlowFacts)・SourceTextIndex を artifact として載せた AnalysisContext を組む。
  * 事実の供給経路は {@code parse → CfgBuilder.build → DataFlowEngine.analyzeAll} で、消費側ルールが
- * 本番で受け取るのと同じ artifact 形をテストでも再現する。M4 の {@code CfgFixtures} を踏襲する。
+ * 本番で受け取るのと同じ artifact 形をテストでも再現する。制御フロー段の {@code CfgFixtures} と
+ * 同じ構成を採る。
  */
 final class DataFlowFixtures {
 
@@ -118,6 +119,10 @@ final class DataFlowFixtures {
         }
     }
 
+    /**
+     * テキストを DecodedSource へ包む。offsets は文字位置からUTF-8バイト位置への対応表であり、
+     * サロゲートペアの2文字目にもコードポイント先頭のバイト位置を入れる。
+     */
     static DecodedSource decoded(String path, String text) {
         int[] offsets = new int[text.length()];
         int byteOffset = 0;

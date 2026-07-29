@@ -5,7 +5,7 @@ import java.util.Deque;
 
 /**
  * 最小限のJSONライター。呼出順のとおりにコンパクトなJSONテキストを組み立てる。
- * 決定論的な直列化(呼出関係グラフのJSON正本など)に用いる。
+ * 決定論的な直列化(呼出関係グラフのJSON出力など)に用いる。
  */
 public final class JsonWriter {
 
@@ -68,6 +68,8 @@ public final class JsonWriter {
         return this;
     }
 
+    // 同じ入れ子の2件目以降の値の前へ区切りのカンマを補う。elementCounts は入れ子ごとの
+    // 出力済み要素数を持つ。name() の直後は name() 側でカンマを出しているため補わない。
     private void beforeValue() {
         if (pendingName) {
             pendingName = false;
@@ -95,6 +97,7 @@ public final class JsonWriter {
                 case '\b' -> sb.append("\\b");
                 case '\f' -> sb.append("\\f");
                 default -> {
+                    // JSONの文字列は制御文字をそのまま置けないため、Unicodeエスケープ形式へ変換する。
                     if (c < 0x20) {
                         sb.append(String.format("\\u%04x", (int) c));
                     } else {

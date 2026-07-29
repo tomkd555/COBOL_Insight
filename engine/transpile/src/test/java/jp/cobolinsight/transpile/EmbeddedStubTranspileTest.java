@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * WF-3 後半(直訳不能構文の注記スタブと N:1 可視化)を検証する。EXEC CICS(SYK008)・EXEC SQL(SYK006/007)を
+ * 直訳不能構文の注記スタブと N:1 の行対応を検証する。EXEC CICS(SYK008)・EXEC SQL(SYK006/007)を
  * 注記スタブへ、作業部 SQL 指令を注記コメントへ落とし、行対応が全生成行を覆い anchorId が決定論であること、
  * 全9本の生成 Java がコンパイルでき決定論であること、88レベル述語がレコードクラスに載ることを確認する。
  */
@@ -220,6 +220,8 @@ class EmbeddedStubTranspileTest {
         }
         assertFalse(covered.isEmpty(), sample + " / " + f.fileName() + " に対応が無い");
         String[] lines = f.content().split("\n", -1);
+        // 検査範囲は対応の付いた最小行から最大行まで。package 宣言・import・クラス冒頭の宣言は
+        // COBOL 文に由来しないため、この範囲の外に置かれ検査対象から外れる。
         for (int l = min; l <= max; l++) {
             if (covered.contains(l)) {
                 continue;

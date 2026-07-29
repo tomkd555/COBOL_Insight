@@ -21,7 +21,7 @@ import java.util.Set;
  * の反復法)から後退辺を同定して可約性を判定し、可約なら同値グラフをそのまま返す。不可約な強連結
  * 領域は controlled node duplication(Hendren, DOI:10.1109/ICCL.1994.288377)で各流入経路ごとに
  * 領域を複製して単一入口化する。複製ノードは元ノードの Statement・procedureName・原座標を保ち、
- * originalNodeId で複製元へ写像できる。
+ * originalNodeId から複製元のノードをたどれる。
  */
 public final class GotoNormalizer {
 
@@ -33,6 +33,8 @@ public final class GotoNormalizer {
         ControlFlowGraph current = cfg;
         int guard = 0;
         int nodeCount = current.nodes().size();
+        // 反復回数の上限は暴走を防ぐ保険である。1回の反復で1つの不可約領域が単一入口化されるため
+        // 通常は数回で終わり、上限に達するのは領域の同定に不備がある場合である。
         int maxIterations = nodeCount * nodeCount + 8;
         while (!isReducible(current)) {
             ControlFlowGraph split = splitFirstIrreducibleRegion(current);
@@ -125,6 +127,7 @@ public final class GotoNormalizer {
         return idom;
     }
 
+    /** 支配木上の最近共通祖先。postorder 番号が小さい側を親へ登らせて合流させる。 */
     private static CfgNode intersect(CfgNode a, CfgNode b, Map<CfgNode, CfgNode> idom,
             Map<CfgNode, Integer> postNumber) {
         CfgNode f1 = a;
@@ -307,6 +310,8 @@ public final class GotoNormalizer {
             }
         }
 
+        // Statement からノードを引く索引は複製前のノードだけを載せる。1つの文は複数の複製ノードへ
+        // 対応し得るため、原座標の問い合わせが一意に定まる複製元を代表にする。
         Map<Statement, CfgNode> byStatement = new IdentityHashMap<>();
         for (CfgNode node : nodes) {
             if (node.originalNodeId().isEmpty()) {

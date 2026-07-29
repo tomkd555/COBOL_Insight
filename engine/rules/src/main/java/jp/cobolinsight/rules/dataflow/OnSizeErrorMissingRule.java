@@ -164,7 +164,7 @@ public final class OnSizeErrorMissingRule implements Rule {
         }
     }
 
-    /** 累算でない算術文の受信項目名。累算(在来値を含む in-place 演算)なら空リストを返す。 */
+    /** 累算でない算術文の受信項目名。受信項目の現在値を演算対象に含む累算なら空リストを返す。 */
     private static List<String> receivers(String verb, String text) {
         String masked = maskLiterals(text);
         if (verb.equals("COMPUTE")) {
@@ -178,7 +178,9 @@ public final class OnSizeErrorMissingRule implements Rule {
         }
         int giving = indexOfWord(masked.toUpperCase(Locale.ROOT), "GIVING");
         if (giving < 0) {
-            return List.of(); // GIVING 無しは在来値への累算
+            // GIVING を持たない ADD/SUBTRACT などは、最終オペランドが送信と受信を兼ねる
+            // 累算(カウンタ・合計)であり、対象外とする。
+            return List.of();
         }
         List<String> targets = names(masked.substring(giving + "GIVING".length()));
         Set<String> source = new LinkedHashSet<>(names(masked.substring(0, giving)));
@@ -203,7 +205,10 @@ public final class OnSizeErrorMissingRule implements Rule {
         return false;
     }
 
-    /** 受信項目の整数部が保持できる最大値。桁数が範囲外なら 0(=いかなる正値も超過)。 */
+    /**
+     * 受信項目の整数部が保持できる最大値。桁数が範囲外なら 0(=いかなる正値も超過)。範囲の上限
+     * 18 桁は、標準COBOLの数字項目が保持できる最大桁数である。
+     */
     private static long capacity(PictureType pt) {
         int digits = pt.integerDigits();
         if (digits <= 0 || digits > 18) {

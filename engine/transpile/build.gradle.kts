@@ -14,7 +14,7 @@ repositories {
 
 dependencies {
     implementation(project(":engine:engine-api"))
-    // GO TO 構造化で CfgBuilder/GotoNormalizer/ControlFlowGraph を後続フェーズで直接呼ぶ。
+    // GO TO 構造化で GotoNormalizer を呼び、段落単位の部分 CFG を可約化する。
     implementation(project(":engine:dataflow"))
     testImplementation(project(":engine:cobol-frontend"))
 }

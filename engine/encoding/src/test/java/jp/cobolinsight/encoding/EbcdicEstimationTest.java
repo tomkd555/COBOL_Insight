@@ -13,6 +13,11 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * EBCDICの推定と復号の検証。実機のEBCDICファイルを持たないため、UTF-8のサンプルを各EBCDIC
+ * コードページへ再変換したバイト列を入力にする。自動判別はIBM930とIBM939を区別しないため、
+ * 推定側はコードページの一致ではなくEBCDICであることだけを表明する。
+ */
 class EbcdicEstimationTest {
 
     private static final Path UTF8_SAMPLE =

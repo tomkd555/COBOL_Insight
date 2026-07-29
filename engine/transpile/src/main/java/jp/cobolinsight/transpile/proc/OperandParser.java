@@ -146,6 +146,8 @@ public final class OperandParser {
     private List<ProcStmt> parseMove(String text, SourceRange range) {
         List<String> toks = splitTokens(stripFirstWord(text));
         int toIdx = indexOfKeyword(toks, "TO");
+        // 送信項目が1語で、その直後が TO である形だけを解釈する。TO の後ろは受信項目の並びとみなし、
+        // 受信項目1件ごとに代入文を1つ起こす。
         if (toIdx != 1 || toks.size() <= toIdx + 1) {
             return untranslated(text, range, "MOVE の構文を解釈できない(集団/CORR/参照修正)");
         }
@@ -232,6 +234,10 @@ public final class OperandParser {
         if (arith.isEmpty()) {
             return untranslated(text, range, "COMPUTE の式に未解決の項目がある");
         }
+        // ROUNDED は受信項目の桁数へ丸めることを指示する。対訳の代入式は丸めを行わないため、
+        // 指定を落としたことを注記する。ROUNDED は受信項目の後に書くため、注記は先に決める。
+        String note = toks.subList(0, eqIdx).stream().anyMatch(t -> t.equalsIgnoreCase("ROUNDED"))
+                ? "ROUNDED の丸めは対訳へ反映しない" : "";
         List<ProcStmt> result = new ArrayList<>();
         for (int i = 0; i < eqIdx; i++) {
             if (toks.get(i).equalsIgnoreCase("ROUNDED")) {
@@ -241,7 +247,7 @@ public final class OperandParser {
             if (target.isEmpty() || !(target.get() instanceof PExpr.Ref ref)) {
                 return untranslated(text, range, "COMPUTE 受信項目が未解決");
             }
-            result.add(new ProcStmt.Assign(ref, arith.get(), range, ""));
+            result.add(new ProcStmt.Assign(ref, arith.get(), range, note));
         }
         return result.isEmpty() ? untranslated(text, range, "COMPUTE 受信項目が無い") : result;
     }
@@ -361,6 +367,8 @@ public final class OperandParser {
             case "SPACE", "SPACES" -> {
                 return Optional.of(new PExpr.Lit(" ", true));
             }
+            // 表意定数のうち、バイト値が文字コード系(EBCDIC/ASCII)に依存するものは値へ写すと原意と
+            // 食い違う。解決できなかったものとして返し、呼び手が注記付きの非対訳へ落とす。
             case "HIGH-VALUE", "HIGH-VALUES", "LOW-VALUE", "LOW-VALUES", "QUOTE", "QUOTES",
                     "NULL", "NULLS" -> {
                 return Optional.empty();
@@ -432,6 +440,8 @@ public final class OperandParser {
                 parts.add(new PExpr.Op("("));
                 rest = rest.substring(1);
             }
+            // 末尾の ')' は、トークン内で対応が取れていない分だけを式の閉じ括弧として切り出す。
+            // 添字の括弧(A(1) の ')')を誤って外さないための条件である。
             while (rest.endsWith(")") && count(rest, ')') > count(rest, '(')) {
                 trailing.add(new PExpr.Op(")"));
                 rest = rest.substring(0, rest.length() - 1);
@@ -639,10 +649,10 @@ public final class OperandParser {
     }
 
     private PCond valueCondition(PExpr parent, boolean parentIsString, String value) {
-        int thru = value.toUpperCase(Locale.ROOT).indexOf(" THRU ");
+        int thru = Literals.indexOfThru(value);
         if (thru >= 0) {
             PExpr lo = valueLiteral(value.substring(0, thru), parentIsString);
-            PExpr hi = valueLiteral(value.substring(thru + " THRU ".length()), parentIsString);
+            PExpr hi = valueLiteral(value.substring(thru + Literals.thruLength()), parentIsString);
             return new PCond.And(new PCond.Rel(parent, RelOp.GE, lo, parentIsString),
                     new PCond.Rel(parent, RelOp.LE, hi, parentIsString));
         }

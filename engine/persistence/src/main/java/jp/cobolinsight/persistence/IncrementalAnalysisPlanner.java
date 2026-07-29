@@ -8,8 +8,8 @@ import java.util.Set;
 /**
  * ソースの内容ハッシュ比較により、再解析が必要なソースID集合を決定する。
  * 依存範囲は「当該コピー句を取り込むプログラム」と
- * 「当該プログラムを呼ぶJCL」の2種に限る。呼出関係グラフのNODEは、対象ソースについては
- * NODE.id = SOURCE.id の規約で1件登録されている前提で、CALL_EDGEのkindで両依存を区別する。
+ * 「当該プログラムを呼ぶJCL」の2種に限る。対象ソースのノードは NODE.id = SOURCE.id の規約で
+ * 1件登録されている前提とし、2種の依存は CALL_EDGE.kind の値で区別する。
  */
 public final class IncrementalAnalysisPlanner {
 
@@ -33,16 +33,26 @@ public final class IncrementalAnalysisPlanner {
 
         Set<Long> targets = new LinkedHashSet<>();
         targets.add(sourceId);
+        targets.addAll(dependentsOf(sourceId));
+        return targets;
+    }
+
+    /**
+     * 当該ソースの変更・削除にともなって解析をやり直す必要がある他のソース。当該ソース自身は含まない。
+     * 資産フォルダから消えたソースは内容ハッシュを比較できないため、削除の伝播はこの問い合わせで行う。
+     */
+    public Set<Long> dependentsOf(long sourceId) {
+        Set<Long> dependents = new LinkedHashSet<>();
         for (CallEdgeRecord edge : dao.findEdgesFrom(sourceId)) {
             if (COPY_EDGE_KIND.equals(edge.kind())) {
-                targets.add(edge.toNode());
+                dependents.add(edge.toNode());
             }
         }
         for (CallEdgeRecord edge : dao.findEdgesTo(sourceId)) {
             if (EXECUTION_EDGE_KIND.equals(edge.kind())) {
-                targets.add(edge.fromNode());
+                dependents.add(edge.fromNode());
             }
         }
-        return targets;
+        return dependents;
     }
 }

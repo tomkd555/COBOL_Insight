@@ -21,10 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * コピー句内修正の機構を表明する。M7 の自動修正対象(R004/R017/R018)の finding は意味モデルの
- * sourceFile(=プログラム本体)に係留するため、samples ではコピー句由来の修正は発生しない。そこで
+ * コピー句内修正の機構を表明する。自動修正の対象規則(R004/R017/R018)の finding は意味モデルの
+ * sourceFile(=プログラム本体)へ紐づくため、samples ではコピー句由来の修正は発生しない。そこで
  * 機構が備わることを、実 samples に対する取り込みプログラム解決と、合成したコピー句修正の
- * present-only 適用(原本を書き換えず差分提示・取り込み一覧併記)で表明する。
+ * 提示のみの適用(原本を書き換えず差分提示・取り込み一覧併記)で表明する。
  */
 class CopybookFixMechanismTest {
 
@@ -78,7 +78,7 @@ class CopybookFixMechanismTest {
         byte[] originalBytes = Files.readAllBytes(originalCopybook);
         String originalText = new String(originalBytes, StandardCharsets.UTF_8);
 
-        // コピー句へ検査文を挿入した合成修正(実際の R004/R017/R018 は本体へ係留するため合成)。
+        // コピー句へ検査文を挿入した合成の修正(実際の R004/R017/R018 は本体へ紐づくため合成する)。
         String insertedLine = "           IF WS-SYNTH-STATUS NOT = '00' END-IF.";
         String fixedText = originalText + insertedLine + "\n";
         List<String> importers =
@@ -90,7 +90,7 @@ class CopybookFixMechanismTest {
         FixApplyCommand.ApplyOutcome outcome = FixApplyCommand.applyFixes(
                 List.of(copybookFix), out, new ReparseVerifier(), List.of());
 
-        // present-only: 出力先へ書き出さず、書き出したプログラム一覧にも載らない。
+        // 提示のみ: 出力先へ書き出さず、書き出したプログラム一覧にも載らない。
         assertTrue(outcome.written().isEmpty(), "コピー句修正は書き出さないこと");
         assertFalse(Files.exists(out.resolve("copybook").resolve("SYKCPY1.cpy")),
                 "コピー句は出力先へ書き出されないこと");

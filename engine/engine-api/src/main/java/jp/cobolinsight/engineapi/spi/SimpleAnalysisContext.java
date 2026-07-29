@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+/** {@link AnalysisContext} の不変な実装。{@link AnalysisContext#of} が生成する。 */
 final class SimpleAnalysisContext implements AnalysisContext {
 
     private final List<CobolSemanticModel> cobolPrograms;
@@ -29,6 +30,7 @@ final class SimpleAnalysisContext implements AnalysisContext {
         this.bmsMapsets = List.copyOf(bmsMapsets);
         this.callGraph = Objects.requireNonNull(callGraph, "callGraph");
         this.artifacts = Map.copyOf(artifacts);
+        // 型の不一致を artifact(Class) の取得時ではなく生成時に検出するため、キーの型と値の型を照合する。
         for (Map.Entry<Class<?>, Object> entry : this.artifacts.entrySet()) {
             if (!entry.getKey().isInstance(entry.getValue())) {
                 throw new IllegalArgumentException("artifact value is not an instance of its key type: "

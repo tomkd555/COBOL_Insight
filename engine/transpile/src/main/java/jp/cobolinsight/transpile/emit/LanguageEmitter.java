@@ -9,7 +9,6 @@ import java.util.Optional;
  * 対象言語ごとのレンダリング責務。走査(どの項目をどの順で出すか)は {@link RecordClassGenerator} が担い、
  * 本インターフェースは各要素の言語別の字面(クラス枠・アクセサ・述語・ランタイムヘルパ)を出力に書き込む。
  * 各 emit メソッドは {@link LineTrackingEmitter} へ行を追記するだけで、行対応の記録は呼び手の生成器が行う。
- * 後続フェーズ(手続き文の生成)も同じインターフェースへメソッドを足して同じ基盤に載せる。
  */
 public interface LanguageEmitter {
 

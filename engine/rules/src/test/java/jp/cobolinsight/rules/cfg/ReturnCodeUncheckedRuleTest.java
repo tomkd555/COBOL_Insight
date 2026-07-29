@@ -36,7 +36,7 @@ class ReturnCodeUncheckedRuleTest {
             "           GOBACK.",
             "");
 
-    // RETURN-CODE を一切参照しない。素朴な未検査CALLは対象外。
+    // RETURN-CODE を一切参照しないプログラム。この場合は未検査のCALLがあっても対象外とする。
     private static final String NO_RC_REFERENCE = String.join("\n",
             "       IDENTIFICATION DIVISION.",
             "       PROGRAM-ID. FIX029B.",

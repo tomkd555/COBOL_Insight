@@ -35,32 +35,51 @@ public final class PersistenceDao {
     // ---- SOURCE ----
 
     public void insertSource(SourceRecord source) {
-        update("INSERT INTO SOURCE(id, path, codepage, content_hash, byte_size) VALUES (?,?,?,?,?)",
-                source.id(), source.path(), source.codepage(), source.contentHash(), source.byteSize());
+        update("INSERT INTO SOURCE(id, root, path, codepage, content_hash, byte_size) "
+                        + "VALUES (?,?,?,?,?,?)",
+                source.id(), source.root(), source.path(), source.codepage(), source.contentHash(),
+                source.byteSize());
     }
 
     public Optional<SourceRecord> findSource(long id) {
-        return queryOne("SELECT id, path, codepage, content_hash, byte_size FROM SOURCE WHERE id = ?",
-                PersistenceDao::mapSource, id);
+        return queryOne(SELECT_SOURCE + " WHERE id = ?", PersistenceDao::mapSource, id);
     }
 
-    public Optional<SourceRecord> findSourceByPath(String path) {
-        return queryOne("SELECT id, path, codepage, content_hash, byte_size FROM SOURCE WHERE path = ?",
-                PersistenceDao::mapSource, path);
+    public Optional<SourceRecord> findSourceByPath(String root, String path) {
+        return queryOne(SELECT_SOURCE + " WHERE root = ? AND path = ?", PersistenceDao::mapSource,
+                root, path);
     }
 
+    /** 指定の資産フォルダから取り込んだ行だけを返す。他の資産フォルダの行は含まない。 */
+    public List<SourceRecord> findSourcesByRoot(String root) {
+        return queryList(SELECT_SOURCE + " WHERE root = ? ORDER BY id", PersistenceDao::mapSource,
+                root);
+    }
+
+    /** 全資産フォルダを通じた SOURCE.id の最大値。新規行のID採番の起点にする。無ければ0。 */
+    public long maxSourceId() {
+        return queryOne("SELECT COALESCE(MAX(id), 0) AS max_id FROM SOURCE",
+                rs -> rs.getLong("max_id")).orElse(0L);
+    }
+
+    /**
+     * 指定ソースの行と、これを参照する子表の行をまとめて消す。子表の削除はDDLの
+     * ON DELETE CASCADE に依るため、外部キー制約が有効な接続でのみ連鎖する。
+     */
     public void deleteSourceCascade(long sourceId) {
         update("DELETE FROM SOURCE WHERE id = ?", sourceId);
     }
 
     public List<SourceRecord> findAllSources() {
-        return queryList("SELECT id, path, codepage, content_hash, byte_size FROM SOURCE ORDER BY id",
-                PersistenceDao::mapSource);
+        return queryList(SELECT_SOURCE + " ORDER BY id", PersistenceDao::mapSource);
     }
 
+    private static final String SELECT_SOURCE =
+            "SELECT id, root, path, codepage, content_hash, byte_size FROM SOURCE";
+
     private static SourceRecord mapSource(ResultSet rs) throws SQLException {
-        return new SourceRecord(rs.getLong("id"), rs.getString("path"), rs.getString("codepage"),
-                rs.getString("content_hash"), rs.getLong("byte_size"));
+        return new SourceRecord(rs.getLong("id"), rs.getString("root"), rs.getString("path"),
+                rs.getString("codepage"), rs.getString("content_hash"), rs.getLong("byte_size"));
     }
 
     // ---- ENCODING_INFO ----
@@ -209,17 +228,21 @@ public final class PersistenceDao {
         update("DELETE FROM CALL_EDGE WHERE to_node = ? AND kind = ?", nodeId, kind);
     }
 
-    /** 指定ID以上のノードを一括削除する。呼出関係グラフ層(ソース非対応ノード)の入替に使う。 */
+    // NODE・CALL_EDGE・FINDING では、ソース単位の解析が書く行と、呼出関係グラフの構築が書く行とを
+    // IDの下限で分ける。前者は SOURCE.id を基点に採番し、後者は呼び出し側が定める下限以上に採番する。
+    // 下限以上をまとめて消してから入れ直せば、ソース単位の行を残したままグラフだけを作り直せる。
+
+    /** 指定ID以上のノードを一括削除する。ソースに対応しないノード(ジョブステップ・データセット等)の入替に使う。 */
     public void deleteNodesIdAtLeast(long idFloor) {
         update("DELETE FROM NODE WHERE id >= ?", idFloor);
     }
 
-    /** 指定ID以上のエッジを一括削除する。呼出関係グラフ層のエッジの入替に使う。 */
+    /** 指定ID以上のエッジを一括削除する。呼出関係グラフのエッジの入替に使う。 */
     public void deleteCallEdgesIdAtLeast(long idFloor) {
         update("DELETE FROM CALL_EDGE WHERE id >= ?", idFloor);
     }
 
-    /** 指定ID以上のfindingを一括削除する。linker由来findingの入替に使う。 */
+    /** 指定ID以上のfindingを一括削除する。呼出関係グラフの構築が生むfindingの入替に使う。 */
     public void deleteFindingsIdAtLeast(long idFloor) {
         update("DELETE FROM FINDING WHERE id >= ?", idFloor);
     }
@@ -330,7 +353,7 @@ public final class PersistenceDao {
 
     // ---- トランザクション ----
 
-    /** work全体を単一トランザクションとして実行し、失敗時はロールバックする。 */
+    /** 渡した処理の全体を単一のトランザクションとして実行し、実行時例外が出た場合はロールバックして投げ直す。 */
     public void inTransaction(Runnable work) {
         try {
             connection.setAutoCommit(false);

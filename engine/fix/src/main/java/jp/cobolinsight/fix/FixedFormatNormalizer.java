@@ -15,7 +15,7 @@ import java.util.List;
  * <p>1つの語やリテラルが単独でB領域(12-72桁)へ収まらない場合に限り、継続行(7桁目に {@code -})で
  * 途中分割する。リテラルを途中分割するときは、COBOL の継続規則に従い継続行のB領域先頭へ開き引用符を
  * 再挿入する。分割途中の物理行は72桁ちょうどまで本文で埋める。72桁に満たない行末の欄はコンパイラが
- * 空白とみなし、リテラルの途中分割ではその空白が黙って literal 値へ混入するためである。
+ * 空白とみなし、リテラルの途中分割ではその空白がリテラルの値へ混入するためである。
  *
  * <p>桁計算は引数の {@link Charset} 相対にバイト単位で行う。同じ文字でも Shift_JIS(全角2バイト)と
  * UTF-8(全角3バイト)で1行に収まる文字数が変わる。全角文字は分断しない。
@@ -27,7 +27,7 @@ public final class FixedFormatNormalizer {
 
     /** B領域の開始桁(1始まり)。 */
     public static final int B_AREA_START_COLUMN = 12;
-    /** 本文を収められる最終桁(1始まり)。73桁目以降は識別欄で不可侵。 */
+    /** 本文を収められる最終桁(1始まり)。73桁目以降は識別欄であり本文を置かない。 */
     public static final int CONTENT_END_COLUMN = 72;
     /** 7桁目指示欄の継続指示。 */
     private static final char CONTINUATION_INDICATOR = '-';

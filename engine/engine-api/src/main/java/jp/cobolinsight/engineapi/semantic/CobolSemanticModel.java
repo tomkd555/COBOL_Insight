@@ -1,6 +1,7 @@
 package jp.cobolinsight.engineapi.semantic;
 
 import jp.cobolinsight.engineapi.source.CopyExpansionEntry;
+import jp.cobolinsight.engineapi.source.CopyInlineExpansion;
 
 import java.util.List;
 
@@ -10,7 +11,8 @@ import java.util.List;
  */
 public record CobolSemanticModel(String programId, String sourceFile, List<DataItem> dataItems,
         List<Procedure> procedures, List<CallRelation> calls, List<PerformRelation> performs,
-        List<EmbeddedBlock> embeddedBlocks, List<CopyExpansionEntry> copyExpansions) {
+        List<EmbeddedBlock> embeddedBlocks, List<CopyExpansionEntry> copyExpansions,
+        List<CopyInlineExpansion> copyInlineExpansions) {
 
     public CobolSemanticModel {
         if (programId == null || programId.isBlank()) {
@@ -25,5 +27,6 @@ public record CobolSemanticModel(String programId, String sourceFile, List<DataI
         performs = List.copyOf(performs);
         embeddedBlocks = List.copyOf(embeddedBlocks);
         copyExpansions = List.copyOf(copyExpansions);
+        copyInlineExpansions = List.copyOf(copyInlineExpansions);
     }
 }

@@ -112,6 +112,10 @@ public final class RecordClassGenerator {
         return "";
     }
 
+    /**
+     * COBOL は同じ名前の項目を別の集団の下に置けるため、正規化後の名前が衝突しうる。走査順に
+     * {@code _2}, {@code _3}, … を付けて一意にする(順序が決まるので生成は決定論的)。
+     */
     private static String uniqueMember(String cobolName, Set<String> usedMembers) {
         String base = Identifiers.sanitize(cobolName);
         String candidate = base;

@@ -12,6 +12,10 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+/**
+ * 再帰CTEによる到達性問い合わせ({@link PersistenceDao#reachableFrom})の検証。到達集合に始点自身が
+ * 入るのは、始点へ戻る循環がある場合に限る。
+ */
 class CallGraphReachabilityTest {
 
     private static final long JCL = 1L;

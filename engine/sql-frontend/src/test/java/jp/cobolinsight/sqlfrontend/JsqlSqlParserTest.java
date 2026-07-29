@@ -16,7 +16,7 @@ import java.util.ServiceLoader;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** engine-api の SqlParser SPI への写像の検証。 */
+/** engine-api の SqlParser SPI への変換の検証。 */
 class JsqlSqlParserTest {
 
     private final JsqlSqlParser parser = new JsqlSqlParser();

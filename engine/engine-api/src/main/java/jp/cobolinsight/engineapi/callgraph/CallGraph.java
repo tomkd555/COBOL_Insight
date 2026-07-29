@@ -12,8 +12,8 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * 呼出関係グラフの単一モデル(機能(1)の正本)。ノード・エッジはID順に正規化して保持し、
- * JSON・DOTへの直列化は挿入順に依存しない決定論的な出力を返す。
+ * 呼出関係グラフの単一モデル。呼出関係の解析結果はこの型へ集約する。ノード・エッジはID順に
+ * 正規化して保持し、JSON・DOTへの直列化は挿入順に依存しない決定論的な出力を返す。
  */
 public final class CallGraph {
 
@@ -59,6 +59,7 @@ public final class CallGraph {
         return edges;
     }
 
+    /** JSON表現。attributes が空のノードでは attributes キー自体を出さない。 */
     public String toJson() {
         JsonWriter w = new JsonWriter();
         w.beginObject().name("nodes").beginArray();

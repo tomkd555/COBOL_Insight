@@ -32,7 +32,7 @@ class PersistenceDatabaseTest {
         Path dbFile = dir.resolve("insight.db");
         try (PersistenceDatabase db = PersistenceDatabase.open(dbFile)) {
             PersistenceDao dao = new PersistenceDao(db.connection());
-            dao.insertSource(new SourceRecord(1L, "PROG.cbl", "IBM930", "hash-1", 100L));
+            dao.insertSource(new SourceRecord(1L, "/assets", "PROG.cbl", "IBM930", "hash-1", 100L));
         }
 
         try (PersistenceDatabase db = PersistenceDatabase.open(dbFile)) {

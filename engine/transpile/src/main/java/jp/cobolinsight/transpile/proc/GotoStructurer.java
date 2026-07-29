@@ -35,7 +35,7 @@ import java.util.function.Function;
  * 還元する。GO TO の飛び先段落は自前のメソッドとしても出力されるため、region への取り込みは複製となり、
  * 同一 COBOL 行が複数生成箇所へ対応する(1:N)。GotoNormalizer が不可約領域を複製した場合は
  * originalNodeId で複製と分かり、複製側の対応へ注記を付す。構造化できない形は null を返し、呼び手は
- * 従来の逐次走査(GO TO を注記付き非対訳とする)へ退避する。
+ * 逐次走査(GO TO を注記付き非対訳とする)へ退避する。
  */
 final class GotoStructurer {
 
@@ -516,6 +516,8 @@ final class GotoStructurer {
     /** 構造化対象外の形(未対応の GO TO 入れ子・非可約・後支配不能等)を検知して退避する内部シグナル。 */
     private static final class Unsupported extends RuntimeException {
         Unsupported() {
+            // 構造化を打ち切るための内部シグナルであり、記録も再送出もしない。そのためメッセージと
+            // スタックトレースを持たせない。
             super(null, null, false, false);
         }
     }

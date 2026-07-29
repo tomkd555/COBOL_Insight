@@ -88,6 +88,7 @@ public final class UnreachableCodeRule implements Rule {
 
         for (int i = 0; i < procedures.size(); i++) {
             Procedure procedure = procedures.get(i);
+            // 先頭の手続きは手続き部の入口であり、どこからも参照されなくても実行される。
             if (i == 0 || procedure.kind() != ProcedureKind.PARAGRAPH) {
                 continue;
             }

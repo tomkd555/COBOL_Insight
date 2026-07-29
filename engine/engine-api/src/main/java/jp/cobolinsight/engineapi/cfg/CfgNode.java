@@ -8,7 +8,7 @@ import java.util.Optional;
 /**
  * CFGの1ノード。STATEMENTノードは意味モデルの文への参照と所属手続き名を持つ。
  * id は同一グラフ内で一意で、生成順(意味モデルの定義順)に振る。GO TO正規化で複製された
- * ノードは originalNodeId に複製元のidを持ち、原座標へ写像できる。
+ * ノードは originalNodeId に複製元のidを持ち、複製元のソース位置へたどれる。
  */
 public final class CfgNode {
 

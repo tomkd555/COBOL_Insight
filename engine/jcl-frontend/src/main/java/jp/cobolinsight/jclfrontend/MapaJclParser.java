@@ -22,7 +22,7 @@ import jp.cobolinsight.engineapi.spi.ParseOutcome;
 
 /**
  * {@link JclParser} の MAPA 実装。{@link JclFrontend} のパース結果を engine-api の
- * ジョブ構造モデルへ写像する。
+ * ジョブ構造モデルへ変換する。
  *
  * <p>EXEC PROC のステップは、PROC 呼出ステップ(execKind=PROC)に続けて、展開後の
  * 内部ステップを修飾名「ステップ名.PROC内ステップ名」で平坦化して並べる。

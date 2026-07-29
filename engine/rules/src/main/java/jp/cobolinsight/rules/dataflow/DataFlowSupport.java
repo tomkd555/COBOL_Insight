@@ -22,10 +22,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * データフロー段ルールが共有するデータ項目リゾルバ。1プログラム分の意味モデルと原ソース索引から、
+ * データフロー解析のルールが共有するデータ項目リゾルバ。1プログラム分の意味モデルと原ソース索引から、
  * データ名の PICTURE(符号・桁)・OCCURS 上限・宣言節・88レベルの親項目・PROCEDURE DIVISION USING
  * 引数を解決する。解決はまず意味モデル {@link DataItem} を引き、必要な字句情報(宣言節・COPY 文)は
- * {@link SourceTextIndex} から補う(R017 のコピー句解決を踏襲)。状態を1プログラムに閉じて持つ。
+ * {@link SourceTextIndex} から補う(コピー句の解決手順は R017 と同一)。状態を1プログラムに閉じて持つ。
  */
 final class DataFlowSupport {
 
@@ -43,6 +43,8 @@ final class DataFlowSupport {
             "(?i)\\b(FILE|WORKING-STORAGE|LOCAL-STORAGE|LINKAGE)\\s+SECTION\\b");
     private static final Pattern USING_CLAUSE = Pattern.compile(
             "(?is)\\bPROCEDURE\\s+DIVISION\\b(.*?)\\.");
+    // データ名は英字を1文字以上含むという規定に合わせ、英字を必須とする。これにより数値リテラルを
+    // 名前として拾わない。
     private static final Pattern NAME_TOKEN = Pattern.compile("[" + NAME_CHARS + "]*\\p{L}[" + NAME_CHARS + "]*");
     private static final Set<String> SPECIAL_REGISTERS =
             Set.of("SQLCODE", "SQLSTATE", "RETURN-CODE", "SQLCA", "WHEN-COMPILED");
@@ -51,6 +53,7 @@ final class DataFlowSupport {
     private final SourceTextIndex texts;
     private final Map<String, DataItem> itemByName = new LinkedHashMap<>();
     private final Map<String, Integer> occursMaxByName = new LinkedHashMap<>();
+    private final Map<String, List<Integer>> occursDimsByName = new LinkedHashMap<>();
     private final Map<String, String> parentByConditionName = new LinkedHashMap<>();
     private final Set<String> externallyInitialized = new LinkedHashSet<>();
     private final Map<String, Section> sectionCache = new LinkedHashMap<>();
@@ -59,7 +62,7 @@ final class DataFlowSupport {
         this.model = model;
         this.texts = texts;
         for (DataItem item : model.dataItems()) {
-            index(item, null);
+            index(item, List.of());
         }
         resolveUsingParameters();
     }
@@ -72,18 +75,23 @@ final class DataFlowSupport {
 
     // ---- データ項目索引 ----
 
-    private void index(DataItem item, Integer inheritedOccurs) {
+    private void index(DataItem item, List<Integer> inheritedDims) {
         String name = norm(item.name());
         itemByName.putIfAbsent(name, item);
-        Integer occurs = item.occurs().map(o -> o.maxTimes()).orElse(inheritedOccurs);
-        if (occurs != null) {
-            occursMaxByName.putIfAbsent(name, occurs);
+        List<Integer> dims = inheritedDims;
+        if (item.occurs().isPresent()) {
+            dims = new ArrayList<>(inheritedDims);
+            dims.add(item.occurs().get().maxTimes());
+        }
+        if (!dims.isEmpty()) {
+            occursMaxByName.putIfAbsent(name, dims.get(dims.size() - 1));
+            occursDimsByName.putIfAbsent(name, List.copyOf(dims));
         }
         for (ConditionName cn : item.conditionNames()) {
             parentByConditionName.putIfAbsent(norm(cn.name()), name);
         }
         for (DataItem child : item.children()) {
-            index(child, occurs);
+            index(child, dims);
         }
     }
 
@@ -163,6 +171,14 @@ final class DataFlowSupport {
 
     Optional<Integer> occursMax(String name) {
         return Optional.ofNullable(occursMaxByName.get(norm(name)));
+    }
+
+    /**
+     * 表の各次元の OCCURS 上限を、外側の次元から順に返す。多次元表の添字は外側から並ぶため、
+     * この並びが添字の並びと対応する。表でなければ空。
+     */
+    List<Integer> occursDims(String name) {
+        return occursDimsByName.getOrDefault(norm(name), List.of());
     }
 
     /** PICTURE を解析した型。意味モデルの picture/usage が空なら empty。 */

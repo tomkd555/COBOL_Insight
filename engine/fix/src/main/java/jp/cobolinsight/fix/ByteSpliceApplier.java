@@ -91,10 +91,8 @@ public final class ByteSpliceApplier {
 
     /** 置換テキストの改行を原本の改行様式へそろえる。混在した改行を作らないためである。 */
     private static String withSeparator(String replacement, String separator) {
-        if (separator.equals("\n")) {
-            return replacement;
-        }
-        return replacement.replace("\r\n", "\n").replace("\n", separator);
+        String normalized = replacement.replace("\r\n", "\n");
+        return separator.equals("\n") ? normalized : normalized.replace("\n", separator);
     }
 
     private static void rejectOverlap(List<ByteEdit> edits) {

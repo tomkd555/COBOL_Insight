@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** engine-api の CharsetProvider SPI への写像の検証(期待結果.md 7.1)。 */
+/** engine-api の CharsetProvider SPI への変換の検証。 */
 class EncodingCharsetProviderTest {
 
     private static final Path SAMPLES = Path.of("..", "..", "samples", "encoding");

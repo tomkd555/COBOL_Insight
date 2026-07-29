@@ -18,6 +18,7 @@ import jp.cobolinsight.engineapi.semantic.CallKind;
 import jp.cobolinsight.engineapi.semantic.CallRelation;
 import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
 import jp.cobolinsight.engineapi.semantic.CompoundStatement;
+import jp.cobolinsight.engineapi.semantic.DataItem;
 import jp.cobolinsight.engineapi.semantic.EmbeddedBlock;
 import jp.cobolinsight.engineapi.semantic.Procedure;
 import jp.cobolinsight.engineapi.semantic.SimpleStatement;
@@ -217,6 +218,28 @@ public final class CallGraphLinker {
         }
     }
 
+    /**
+     * EXEC CICS のオペランド値を、辺を張る対象の名前の集合へ解決する。値が当該プログラムの
+     * データ項目名であれば変数指定であり、MOVE 定数伝播で解決する。定数を特定できない変数は
+     * 空集合を返し、データ名でなければ定数指定としてそのまま返す。
+     */
+    private static Set<String> resolveCicsOperand(String operand, Set<String> dataNames,
+            Map<String, Set<String>> constantsByVariable) {
+        String upper = operand.toUpperCase(Locale.ROOT);
+        if (!dataNames.contains(upper)) {
+            return Set.of(operand);
+        }
+        return constantsByVariable.getOrDefault(upper, Set.of());
+    }
+
+    private static Set<String> dataItemNames(CobolSemanticModel model) {
+        Set<String> names = new TreeSet<>();
+        for (DataItem item : model.dataItems()) {
+            names.add(item.name().toUpperCase(Locale.ROOT));
+        }
+        return names;
+    }
+
     /** プログラム内の全MOVE文から「変数名(大文字化)→設定される定数リテラルの集合」を集める。 */
     private static Map<String, Set<String>> collectMoveConstants(CobolSemanticModel model) {
         Map<String, Set<String>> constants = new TreeMap<>();
@@ -273,23 +296,32 @@ public final class CallGraphLinker {
     private void linkCics() {
         for (CobolSemanticModel model : input.cobolModels()) {
             String callerId = programId(model.programId().toUpperCase(Locale.ROOT));
+            Map<String, Set<String>> constantsByVariable = collectMoveConstants(model);
+            Set<String> dataNames = dataItemNames(model);
             for (EmbeddedBlock block : model.embeddedBlocks()) {
                 switch (block.kind()) {
                     case CICS_XCTL, CICS_LINK -> {
                         String target = block.operands().get("PROGRAM");
                         if (target != null) {
-                            addEdge(callerId, ensureProgramNode(target.toUpperCase(Locale.ROOT)),
-                                    EdgeKind.TRANSACTION_TRANSITION, Resolution.CONSTANT);
+                            for (String resolved
+                                    : resolveCicsOperand(target, dataNames, constantsByVariable)) {
+                                addEdge(callerId,
+                                        ensureProgramNode(resolved.toUpperCase(Locale.ROOT)),
+                                        EdgeKind.TRANSACTION_TRANSITION, Resolution.CONSTANT);
+                            }
                         }
                     }
                     case CICS_START, CICS_RETURN_TRANSID -> {
-                        String transId = block.operands().get("TRANSID");
-                        if (transId != null) {
-                            String id = TRANSACTION_ID_PREFIX + transId;
-                            putNode(new CallGraphNode(id, NodeKind.TRANSACTION, transId));
-                            addEdge(callerId, id, EdgeKind.TRANSACTION_TRANSITION,
-                                    Resolution.CONSTANT);
-                            transactionRanges.putIfAbsent(transId, block.range());
+                        String operand = block.operands().get("TRANSID");
+                        if (operand != null) {
+                            for (String transId
+                                    : resolveCicsOperand(operand, dataNames, constantsByVariable)) {
+                                String id = TRANSACTION_ID_PREFIX + transId;
+                                putNode(new CallGraphNode(id, NodeKind.TRANSACTION, transId));
+                                addEdge(callerId, id, EdgeKind.TRANSACTION_TRANSITION,
+                                        Resolution.CONSTANT);
+                                transactionRanges.putIfAbsent(transId, block.range());
+                            }
                         }
                     }
                     case CICS_SEND_MAP, CICS_RECEIVE_MAP -> {

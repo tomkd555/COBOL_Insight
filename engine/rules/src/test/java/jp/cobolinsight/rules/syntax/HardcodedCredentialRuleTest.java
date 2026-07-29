@@ -30,6 +30,7 @@ class HardcodedCredentialRuleTest {
             /* 14 */ "           MOVE 'K1' TO",
             /* 15 */ "      -        TOKEN",
             /* 16 */ "           MOVE SPACES TO WS-X *> TOKEN 'NOTE'",
+            // 空白43個で 'ZZZ' を73桁目まで押し出し、識別領域(73〜80桁)に置く。
             /* 17 */ "           MOVE ID-1 TO TOKEN" + " ".repeat(43) + "'ZZZ'",
             /* 18 */ "           GOBACK.",
             "");
@@ -39,6 +40,7 @@ class HardcodedCredentialRuleTest {
         List<Finding> findings = new HardcodedCredentialRule()
                 .evaluate(Fixtures.context(List.of(), Map.of("FIX026.cbl", SOURCE)));
 
+        // 13行は1行に文字列リテラルを2つ持つため、期待する行番号にも2度現れる。
         assertEquals(List.of(5, 7, 10, 13, 13, 14),
                 findings.stream().map(f -> f.location().line()).sorted().toList(),
                 () -> "検出: " + findings);

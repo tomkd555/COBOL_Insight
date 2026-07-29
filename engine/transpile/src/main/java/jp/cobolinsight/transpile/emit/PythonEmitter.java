@@ -241,26 +241,28 @@ public final class PythonEmitter implements LanguageEmitter {
         };
     }
 
+    /**
+     * 88レベル VALUE の1件を親項目との比較式へ写す。VALUE が引用符付きなら親が数値項目でも文字列として
+     * 比較し、原文の表記に従う。{@code low THRU high} は下限・上限の範囲比較へ展開する。表意定数は
+     * 値へ写し、文字コード系に依存して写せないものは常に偽の式と注記へ落とす。
+     */
     private static String condition(String call, FieldKind parentKind, String value) {
+        if (Literals.isCodePageDependentFigurative(value)) {
+            return "False  # " + value.trim() + " は文字コード系に依存するため対訳しない";
+        }
         boolean asString = parentKind == FieldKind.ALPHANUMERIC || Literals.isQuoted(value);
-        int thru = indexOfThru(value);
+        int thru = Literals.indexOfThru(value);
         if (thru >= 0) {
             String lo = value.substring(0, thru).trim();
-            String hi = value.substring(thru + THRU.length()).trim();
+            String hi = value.substring(thru + Literals.thruLength()).trim();
             return literal(lo, asString) + " <= " + call + " <= " + literal(hi, asString);
         }
         return call + " == " + literal(value, asString);
     }
 
     private static String literal(String value, boolean asString) {
-        String bare = Literals.unquote(value);
+        String bare = Literals.resolve(value);
         return asString ? "\"" + bare + "\"" : bare;
-    }
-
-    private static final String THRU = " THRU ";
-
-    private static int indexOfThru(String value) {
-        return value.toUpperCase(java.util.Locale.ROOT).indexOf(THRU);
     }
 
     private static String pyBool(boolean value) {

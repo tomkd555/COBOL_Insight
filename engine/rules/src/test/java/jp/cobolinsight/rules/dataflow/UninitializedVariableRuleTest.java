@@ -52,6 +52,31 @@ class UninitializedVariableRuleTest {
     }
 
     @Test
+    void groupAssignmentInitializesSubordinateItems() {
+        String text = String.join("\n",
+                "       IDENTIFICATION DIVISION.",
+                "       PROGRAM-ID. F001G.",
+                "       DATA DIVISION.",
+                "       WORKING-STORAGE SECTION.",
+                "       01  WS-FLAG  PIC X(01) VALUE 'N'.",
+                "       01  WS-SUM   PIC 9(05).",
+                "       01  WS-GRP.",
+                "           05  WS-A   PIC 9(04).",
+                "           05  WS-B   PIC 9(04).",
+                "       PROCEDURE DIVISION.",
+                "       MAIN-PARA.",
+                "           MOVE ZERO TO WS-GRP",
+                "           IF WS-FLAG = 'Y'",
+                "               MOVE 5 TO WS-A",
+                "           END-IF",
+                "           COMPUTE WS-SUM = WS-A + 1",
+                "           STOP RUN.",
+                "");
+        assertEquals(List.of(), run("F001G", text),
+                "集団項目への代入は従属項目を初期化するため未初期化としないこと");
+    }
+
+    @Test
     void ignoresItemWithValueClause() {
         String text = String.join("\n",
                 "       IDENTIFICATION DIVISION.",

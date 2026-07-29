@@ -36,7 +36,7 @@ class ScanCodepageOverrideTest {
 
         try (PersistenceDatabase database = PersistenceDatabase.open(databaseFile)) {
             PersistenceDao dao = new PersistenceDao(database.connection());
-            var source = dao.findSourceByPath("cobol/SYKENC1_SJIS.cbl").orElseThrow();
+            var source = dao.findSourceByPath(ScanRunner.rootOf(assets), "cobol/SYKENC1_SJIS.cbl").orElseThrow();
             var info = dao.findEncodingInfo(source.id()).orElseThrow();
             assertTrue(info.manualOverride(), "手動指定が記録されること");
             assertEquals("windows-31j", info.detectedCharset());
@@ -57,7 +57,7 @@ class ScanCodepageOverrideTest {
 
         try (PersistenceDatabase database = PersistenceDatabase.open(databaseFile)) {
             PersistenceDao dao = new PersistenceDao(database.connection());
-            var source = dao.findSourceByPath("cobol/SYKENC1_SJIS.cbl").orElseThrow();
+            var source = dao.findSourceByPath(ScanRunner.rootOf(assets), "cobol/SYKENC1_SJIS.cbl").orElseThrow();
             var info = dao.findEncodingInfo(source.id()).orElseThrow();
             assertFalse(info.manualOverride());
             assertEquals("windows-31j", info.detectedCharset());

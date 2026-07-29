@@ -18,7 +18,8 @@ import java.util.Optional;
 
 /**
  * 汚染追跡由来の finding へ載せる経路(SARIF の codeFlows)を組む共有ユーティリティ。経路の
- * 途中の歩はパーサーが与えた文の原位置を指し、sink の歩は finding の物理位置と同じ位置を指す。
+ * 途中のステップはパーサーが与えた文の原位置を指し、sink のステップは finding の物理位置と
+ * 同じ位置を指す。
  */
 final class TaintCodeFlows {
 
@@ -26,9 +27,9 @@ final class TaintCodeFlows {
     }
 
     /**
-     * 汚染下の変数ごとに、汚染源から sink までの経路を1本ずつ組む。sinkAction は sink の歩の
-     * 説明で「(変数) を」に続けて用いる語句。機密(SENSITIVE)の汚染源は文を持たない宣言のため、
-     * 経路の先頭へデータ部の宣言位置を1歩足す。
+     * 汚染下の変数ごとに、汚染源から sink までの経路を1本ずつ組む。sinkAction は sink の
+     * ステップの説明で「(変数) を」に続けて用いる語句。機密(SENSITIVE)の汚染源は文を持たない
+     * 宣言のため、経路の先頭へデータ部の宣言位置を1ステップ足す。
      */
     static List<CodeFlow> of(CobolSemanticModel model, ProgramDataFlow df, CfgNode sinkNode,
             TaintKind kind, Collection<String> variables, SourcePosition sinkPosition,

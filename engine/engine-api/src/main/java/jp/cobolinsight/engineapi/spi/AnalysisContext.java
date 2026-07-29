@@ -30,6 +30,7 @@ public interface AnalysisContext {
     /** 型をキーとする付帯成果物の取得。未登録の型に対しては empty を返す。 */
     <T> Optional<T> artifact(Class<T> type);
 
+    /** artifacts のキーは値の型と一致していなければならない。 */
     static AnalysisContext of(List<CobolSemanticModel> cobolPrograms, List<JclJobModel> jclJobs,
             List<SqlStatementModel> sqlStatements, List<BmsMapset> bmsMapsets,
             Optional<CallGraph> callGraph, Map<Class<?>, Object> artifacts) {

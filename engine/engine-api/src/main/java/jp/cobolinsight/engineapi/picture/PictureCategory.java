@@ -7,5 +7,6 @@ public enum PictureCategory {
     ALPHANUMERIC,
     ALPHANUMERIC_EDITED,
     ALPHABETIC,
+    /** 種別を判別できる記号が PICTURE 句に現れなかった場合。 */
     UNKNOWN
 }

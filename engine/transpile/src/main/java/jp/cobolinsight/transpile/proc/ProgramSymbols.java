@@ -127,6 +127,10 @@ public final class ProgramSymbols {
             return new DataSymbol(item.name(), field, isString, occursCounts, item.value());
         }
 
+        /**
+         * COBOL は同じ名前の項目を別の集団の下に置けるため、正規化後の名前が衝突しうる。宣言順に
+         * {@code _2}, {@code _3}, … を付けて一意にする。
+         */
         private String uniqueField(String cobolName) {
             String base = Identifiers.sanitize(cobolName);
             String candidate = base;

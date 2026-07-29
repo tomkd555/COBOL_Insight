@@ -23,6 +23,7 @@ public record SourcePosition(String file, int line, int column, int byteOffset) 
         }
     }
 
+    /** ファイル先頭(行1・桁1)を指す位置。行・桁を特定できない場合に用いる。 */
     public static SourcePosition fileStart(String file) {
         return new SourcePosition(file, 1, 1, UNKNOWN_BYTE_OFFSET);
     }

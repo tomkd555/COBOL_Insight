@@ -18,6 +18,7 @@ class PictureTypeTest {
         assertEquals(11, t.totalDigits());
         assertTrue(t.isNumeric());
         assertEquals(PictureCategory.NUMERIC, t.category());
+        // COMP-3 は1バイトに2桁を詰め最下位に符号を置くため、総桁数11に符号1桁を足した12桁で6バイトになる
         assertEquals(6, t.byteLength());
     }
 
@@ -57,6 +58,7 @@ class PictureTypeTest {
 
     @Test
     void binaryByDigitBands() {
+        // COMP のバイト長は桁数帯で決まる。1〜4桁は2バイト、5〜9桁は4バイト、10〜18桁は8バイトとする
         assertEquals(2, PictureType.parse("9(4)", "COMP").byteLength());
         assertEquals(4, PictureType.parse("9(9)", "COMP").byteLength());
         assertEquals(8, PictureType.parse("9(18)", "COMP").byteLength());

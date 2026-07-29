@@ -91,6 +91,7 @@ public final class LineTrackingEmitter {
         return sb.toString();
     }
 
+    /** 両範囲の行数から対応種別を決める。双方が複数行のときは、行数の多い側で 1:N・N:1 を決める。 */
     static MappingKind kindOf(LineRange cobolLines, LineRange generatedLines) {
         int cobolCount = cobolLines.endLine() - cobolLines.startLine() + 1;
         int genCount = generatedLines.endLine() - generatedLines.startLine() + 1;

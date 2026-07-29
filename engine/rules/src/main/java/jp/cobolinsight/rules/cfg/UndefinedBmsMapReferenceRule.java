@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
 /**
  * R031 未定義BMSマップ参照。EXEC CICS SEND/RECEIVE MAP が参照する MAP・MAPSET を BMS マップ
  * モデルと突合し、マップセットが存在しない、または該当マップがマップセットに定義されていない
- * 参照を検出する。
+ * 参照を検出する。定義の無いマップを参照すると、画面の送受信が実行時に失敗する。
  */
 public final class UndefinedBmsMapReferenceRule implements Rule {
 

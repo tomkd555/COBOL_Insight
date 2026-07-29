@@ -58,7 +58,7 @@ class ScanLowercaseProgramIdTest {
         try (PersistenceDatabase database = PersistenceDatabase.open(databaseFile)) {
             PersistenceDao dao = new PersistenceDao(database.connection());
             // グラフ層に永続化されるソース非対応ノードはステップ1件のみで、プログラムノードは
-            // NODE.id=SOURCE.id 規約の既存行へ写像されること
+            // NODE.id=SOURCE.id 規約の既存行へ対応づけられること
             assertEquals("STEP",
                     dao.findNode(ScanRunner.GRAPH_ID_BASE).orElseThrow().type());
             assertTrue(dao.findNode(ScanRunner.GRAPH_ID_BASE + 1).isEmpty(),

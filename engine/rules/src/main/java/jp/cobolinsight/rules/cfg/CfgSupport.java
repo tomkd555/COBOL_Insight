@@ -18,7 +18,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-/** CFG段ルールが共有する走査・探索の補助。状態を持たない。 */
+/** 制御フロー解析のルールが共有する走査・探索の補助。状態を持たない。 */
 final class CfgSupport {
 
     private CfgSupport() {

@@ -17,7 +17,8 @@ import java.util.regex.Pattern;
 /**
  * R024 COPY REPLACINGによる置換漏れ。COPY文のREPLACING句で指定した置換対象の文字列が、
  * 置換の適用対象であるコピー句の内容(コメント行を除く)に一件も出現せず、置換が一度も
- * 行われない場合を検出する。COPY文と対象コピー句のテキストは SourceTextIndex から得る。
+ * 行われない場合を検出する。置換が行われないと、取り込んだ項目の名前が意図した名前にならない。
+ * COPY文と対象コピー句のテキストは SourceTextIndex から得る。
  */
 public final class CopyReplacingRule implements Rule {
 
@@ -25,12 +26,21 @@ public final class CopyReplacingRule implements Rule {
             "(?i)(?<![\\p{L}\\p{N}-])COPY(?![\\p{L}\\p{N}-])");
     private static final Pattern COPY_STATEMENT = Pattern.compile(
             "(?i)^COPY\\s+([\\p{L}\\p{N}][\\p{L}\\p{N}-]*)(.*)$", Pattern.DOTALL);
+    /**
+     * 疑似テキストの中身は区切りの == を含まない。含み得るとすると、対を複数書いたREPLACING句で
+     * 1対目の置換後テキストから2対目の置換対象までを1つの中身として取り込んでしまう。
+     */
     private static final Pattern REPLACING_TARGET = Pattern.compile(
             "(?i)(?:(LEADING|TRAILING)\\s+)?"
-                    + "(?:==(.+?)==|'([^']*)'|\"([^\"]*)\"|([\\p{L}\\p{N}][\\p{L}\\p{N}-]*))"
+                    + "(?:==((?:(?!==).)*)==|'([^']*)'|\"([^\"]*)\""
+                    + "|([\\p{L}\\p{N}][\\p{L}\\p{N}-]*))"
                     + "\\s+BY\\s+");
     private static final String WORD_BOUNDARY_BEFORE = "(?<![\\p{L}\\p{N}-])";
     private static final String WORD_BOUNDARY_AFTER = "(?![\\p{L}\\p{N}-])";
+    /**
+     * COPY文の終止ピリオドを探して読み進める論理行の上限。ピリオドを欠くソースで後続のデータ部
+     * 全体を1文として取り込まないための歯止めであり、REPLACING句の実務的な行数を上回る値を採る。
+     */
     private static final int MAX_STATEMENT_LINES = 20;
 
     @Override

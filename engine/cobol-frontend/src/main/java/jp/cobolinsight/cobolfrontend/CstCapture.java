@@ -1,16 +1,22 @@
 package jp.cobolinsight.cobolfrontend;
 
 import jp.cobolinsight.engineapi.source.CopyExpansionEntry;
+import jp.cobolinsight.engineapi.source.CopyInlineExpansion;
+import jp.cobolinsight.engineapi.source.ExpandedCopyLine;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
+import org.eclipse.lsp.cobol.common.mapping.ExtendedDocument;
 import org.eclipse.lsp.cobol.core.engine.analysis.AnalysisContext;
+import org.eclipse.lsp.cobol.core.semantics.CopybooksRepository;
 import org.eclipse.lsp.cobol.dialects.ibm.ParserStageResult;
 import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -24,11 +30,14 @@ final class CstCapture {
 
     private final Map<String, String> verbsByPosition;
     private final List<CopyExpansionEntry> copyExpansions;
+    private final List<CopyInlineExpansion> copyInlineExpansions;
 
     private CstCapture(Map<String, String> verbsByPosition,
-            List<CopyExpansionEntry> copyExpansions) {
+            List<CopyExpansionEntry> copyExpansions,
+            List<CopyInlineExpansion> copyInlineExpansions) {
         this.verbsByPosition = verbsByPosition;
         this.copyExpansions = copyExpansions;
+        this.copyInlineExpansions = copyInlineExpansions;
     }
 
     static CstCapture build(ParserStageResult parserResult, AnalysisContext context,
@@ -37,7 +46,7 @@ final class CstCapture {
         collectVerbs(parserResult.getTree(), context, verbs);
         List<CopyExpansionEntry> expansions =
                 collectExpansions(parserResult.getTokens().getTokens(), context, mainUri);
-        return new CstCapture(verbs, expansions);
+        return new CstCapture(verbs, expansions, collectInlineExpansions(context, mainUri));
     }
 
     /** 原ソース座標(0起点)の文開始位置に対応する動詞。無ければ null。 */
@@ -47,6 +56,10 @@ final class CstCapture {
 
     List<CopyExpansionEntry> copyExpansions() {
         return copyExpansions;
+    }
+
+    List<CopyInlineExpansion> copyInlineExpansions() {
+        return copyInlineExpansions;
     }
 
     private static void collectVerbs(ParseTree tree, AnalysisContext context,
@@ -68,6 +81,11 @@ final class CstCapture {
         }
     }
 
+    /**
+     * 展開後のトークンを順に見て、同一のコピー句に由来するトークンが続く区間を1件の展開として
+     * まとめる。展開後の行範囲はその区間の先頭行から末尾行まで、コピー句側の開始行は区間の先頭
+     * トークンが元にあった行とする。行番号はいずれも1始まりでそろえる。
+     */
     private static List<CopyExpansionEntry> collectExpansions(List<Token> tokens,
             AnalysisContext context, String mainUri) {
         List<CopyExpansionEntry> entries = new ArrayList<>();
@@ -108,6 +126,102 @@ final class CstCapture {
                 .map(e -> new CopyExpansionEntry(e.expandedStartLine(), e.expandedEndLine(),
                         UriPaths.toPathString(e.copybookPath()), e.copybookStartLine()))
                 .toList();
+    }
+
+    /**
+     * COPY 文ごとのインライン展開を組む。展開後ドキュメントの各行がどのコピー句の何行目に由来
+     * するかを順に見て、同じコピー句が続く区間を1件の展開へまとめ、原本の COPY 文の行番号を
+     * Che4z が記録した COPY 文の位置から与える。同じコピー句を複数回取り込む場合は、展開の
+     * 出現順と COPY 文の行番号の昇順を突き合わせる。
+     *
+     * <p>原本に COPY 文が見つからない区間(コピー句の中の COPY による入れ子展開)と、Che4z が
+     * 暗黙に差し込むコード(SQLCA など)は対象外とする。
+     */
+    private static List<CopyInlineExpansion> collectInlineExpansions(AnalysisContext context,
+            String mainUri) {
+        ExtendedDocument document = context.getExtendedDocument();
+        CopybooksRepository copybooks = context.getCopybooksRepository();
+        if (document == null || copybooks == null) {
+            return List.of();
+        }
+        Map<String, Deque<Integer>> statementLines = copyStatementLines(copybooks, mainUri);
+        List<CopyInlineExpansion> expansions = new ArrayList<>();
+        String runUri = null;
+        List<ExpandedCopyLine> runLines = new ArrayList<>();
+        String[] lines = document.toString().split("\n", -1);
+        for (int i = 0; i < lines.length; i++) {
+            Location origin = originOf(document, i, lines[i]);
+            String uri = origin == null ? null : origin.getUri();
+            boolean inCopybook = uri != null && !uri.equals(mainUri) && !UriPaths.isImplicit(uri);
+            if (!inCopybook || !uri.equals(runUri)) {
+                addInlineExpansion(expansions, runUri, runLines, copybooks, statementLines);
+                runUri = inCopybook ? uri : null;
+                runLines = new ArrayList<>();
+            }
+            if (inCopybook) {
+                runLines.add(new ExpandedCopyLine(origin.getRange().getStart().getLine() + 1,
+                        stripTrailing(lines[i])));
+            }
+        }
+        addInlineExpansion(expansions, runUri, runLines, copybooks, statementLines);
+        return List.copyOf(expansions);
+    }
+
+    /** コピー句名→原本に現れる COPY 文の行番号(1始まり・昇順)。 */
+    private static Map<String, Deque<Integer>> copyStatementLines(CopybooksRepository copybooks,
+            String mainUri) {
+        Map<String, Deque<Integer>> byName = new HashMap<>();
+        copybooks.getDefinitionStatements().asMap().forEach((name, localities) -> {
+            List<Integer> lines = localities.stream()
+                    .filter(locality -> mainUri.equals(locality.getUri()))
+                    .map(locality -> locality.getRange().getStart().getLine() + 1)
+                    .sorted()
+                    .toList();
+            if (!lines.isEmpty()) {
+                byName.put(name, new ArrayDeque<>(lines));
+            }
+        });
+        return byName;
+    }
+
+    private static void addInlineExpansion(List<CopyInlineExpansion> out, String uri,
+            List<ExpandedCopyLine> lines, CopybooksRepository copybooks,
+            Map<String, Deque<Integer>> statementLines) {
+        if (uri == null || lines.isEmpty()) {
+            return;
+        }
+        String name = copybooks.getCopybookIdByUri(uri);
+        Deque<Integer> pending = name == null ? null : statementLines.get(name);
+        if (pending == null || pending.isEmpty()) {
+            return;
+        }
+        out.add(new CopyInlineExpansion(pending.removeFirst(), name, UriPaths.toPathString(uri),
+                lines));
+    }
+
+    /**
+     * 展開後の1行の由来位置。本文の先頭桁で引く。空白だけの行では行末を越えた桁になるが、
+     * 行の最後の文字の対応から外挿されるため、注記行のように空白化された行も由来を引ける。
+     */
+    private static Location originOf(ExtendedDocument document, int line, String text) {
+        int column = 0;
+        while (column < text.length() && text.charAt(column) == ' ') {
+            column++;
+        }
+        try {
+            return document.mapLocation(new Range(new Position(line, column),
+                    new Position(line, column + 1)));
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    private static String stripTrailing(String text) {
+        int end = text.length();
+        while (end > 0 && text.charAt(end - 1) == ' ') {
+            end--;
+        }
+        return text.substring(0, end);
     }
 
     private static Location mapToken(Token token, AnalysisContext context) {

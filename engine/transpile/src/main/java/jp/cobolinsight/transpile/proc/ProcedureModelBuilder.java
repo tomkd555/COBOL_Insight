@@ -21,7 +21,8 @@ import java.util.Optional;
  * 意味モデルの手続き部(段落・節と文の木)を、言語非依存の中間表現 {@link ProcedureIr}/{@link ProcStmt} へ写す。
  * SimpleStatement は {@link OperandParser} で再パースし、CompoundStatement(BRANCH→if/EVALUATE、LOOP→while)は
  * 構造を辿って写す。inline PERFORM VARYING の反復変数句は意味モデルに無いため、原ソース({@link SourceSlicer})から復元する。
- * GO TO を含む手続きは WF-3 の対象で、ここでは注記付きで直訳不能として落とす。
+ * GO TO を含む手続きは {@link GotoStructurer} で構造化制御へ還元し、還元できない形だけを注記付きの
+ * 非対訳として落とす。
  */
 public final class ProcedureModelBuilder {
 

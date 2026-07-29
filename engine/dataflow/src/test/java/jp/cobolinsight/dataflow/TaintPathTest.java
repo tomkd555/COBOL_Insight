@@ -15,7 +15,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 
-/** 汚染伝播経路: source から問い合わせノードまでの代入の連なりを検証する。 */
+/** 汚染伝播経路: 汚染源から問い合わせノードまでの代入の連なりを検証する。 */
 class TaintPathTest {
 
     private static final String SRC = InlinePrograms.source(

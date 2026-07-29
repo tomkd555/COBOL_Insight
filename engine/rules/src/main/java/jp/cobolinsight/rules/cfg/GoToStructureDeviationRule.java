@@ -16,7 +16,8 @@ import java.util.Optional;
 
 /**
  * R009 構造化から逸脱する GO TO。節(SECTION)をまたぐ GO TO を検出する。GO TO を含む段落の
- * 所属節と、飛び先段落の所属節が異なる場合に検出する。同一節内の GO TO と、PERFORM THRU 範囲
+ * 所属節と、飛び先段落の所属節が異なる場合に検出する。節をまたぐ分岐は節単位で処理を区切る
+ * 構成を崩し、制御の流れを局所的に追えなくする。同一節内の GO TO と、PERFORM THRU 範囲
  * への割り込み(R007 が扱う)は対象外とする。
  */
 public final class GoToStructureDeviationRule implements Rule {

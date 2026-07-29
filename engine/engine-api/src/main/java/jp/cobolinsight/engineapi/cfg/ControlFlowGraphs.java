@@ -16,6 +16,7 @@ public final class ControlFlowGraphs {
 
     private final Map<String, ControlFlowGraph> byProgramId;
 
+    /** 同じ programId のグラフが複数含まれる場合は、投入順で最初のものだけを採る。 */
     public ControlFlowGraphs(Collection<ControlFlowGraph> graphs) {
         Map<String, ControlFlowGraph> map = new LinkedHashMap<>();
         for (ControlFlowGraph graph : graphs) {

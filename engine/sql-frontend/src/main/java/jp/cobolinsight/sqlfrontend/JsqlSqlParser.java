@@ -14,7 +14,7 @@ import java.util.Optional;
 
 /**
  * engine-api の {@link SqlParser} 実装。{@link SqlStatementAnalyzer} の解析結果
- * (マングリング・文種別・参照テーブル・ホスト変数)を engine-api のSQL文モデルへ写像する。
+ * (マングリング・文種別・参照テーブル・ホスト変数)を engine-api のSQL文モデルへ変換する。
  */
 public final class JsqlSqlParser implements SqlParser {
 
@@ -55,6 +55,7 @@ public final class JsqlSqlParser implements SqlParser {
         return new SourcePosition(position.line(), position.column());
     }
 
+    /** engine-api は SELECT INTO を独立した種別に持たないため、SELECT へまとめる。 */
     private static jp.cobolinsight.engineapi.sql.SqlStatementKind toEngineApiKind(
             SqlStatementKind kind) {
         return switch (kind) {

@@ -67,7 +67,7 @@ class TranspileCommandTest {
             long syk006 = ids.get("cobol/SYK006.cbl");
             List<LineMapRecord> syk006Maps = dao.findLineMapsBySource(syk006);
             assertFalse(syk006Maps.isEmpty(), "SYK006 の行対応が LINE_MAP に載ること");
-            // WF-4 の CONCERN 修正: 直訳不能な PERFORM UNTIL 条件が注記付きで載ること。
+            // 直訳できない PERFORM UNTIL 条件は、注記付きで行対応へ載る。
             assertTrue(syk006Maps.stream().anyMatch(
                     m -> m.note().contains("直訳不能") && m.note().contains("SQLCODE")),
                     "直訳不能条件(SQLCODE)の注記が LINE_MAP に載ること: " + syk006Maps);

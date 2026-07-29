@@ -15,7 +15,7 @@ import java.util.ServiceLoader;
 import java.util.Set;
 
 /**
- * 解析パイプラインのファサード骨格。各契約インターフェースの実装を ServiceLoader で束ねる。
+ * 解析パイプラインのファサード。各契約インターフェースの実装を ServiceLoader で束ねる。
  * engine-api は実装モジュールへコンパイル依存を持たず、cli が実行時クラスパスへ実装一式を
  * 同梱してパイプラインを成立させる。ルールは id 昇順に正規化して保持する。
  */
@@ -83,7 +83,7 @@ public final class AnalysisServices {
         return charsetProviders;
     }
 
-    /** 発見した全ルール(id 昇順)。 */
+    /** ServiceLoader が読み込んだ全ルール(id 昇順)。 */
     public List<Rule> rules() {
         return rules;
     }

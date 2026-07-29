@@ -16,8 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * samples 全体を CONTROL_FLOW 段の13ルールで解析し、期待結果.md・裁定書のオラクルと突き合わせる。
- * R017 のみ包含(85・130 を含み OPEN/CLOSE を検出しない)、他は完全一致で表明する。
+ * samples 全体を CONTROL_FLOW 段の13ルールで解析し、samples/期待結果.md が正解として挙げる
+ * 検出位置と突き合わせる。R017 は包含関係だけを表明し(SYK001:85 と SYK002:130 を含み、
+ * OPEN/CLOSE の行を検出しない)、他のルールは検出集合の完全一致で表明する。
  */
 class CfgSamplesAcceptanceTest {
 
@@ -103,6 +104,8 @@ class CfgSamplesAcceptanceTest {
 
     @Test
     void fixtureOnlyRulesDetectNothingInSamples() {
+        // この6ルールに当たる欠陥は samples へ混入していない。検出の有無は合成fixtureのテストで
+        // 表明し、ここでは samples に偽陽性が出ないことだけを確認する。
         for (String ruleId : List.of("R009", "R010", "R014", "R019", "R029", "R030")) {
             assertEquals(Set.of(), hitsOf(ruleId), ruleId + " は samples で0件であること");
         }

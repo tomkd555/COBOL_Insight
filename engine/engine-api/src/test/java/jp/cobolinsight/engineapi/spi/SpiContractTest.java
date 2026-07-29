@@ -80,7 +80,7 @@ class SpiContractTest {
     @Test
     void analysisContextFactoryExposesModelsAndArtifacts() {
         CobolSemanticModel model = new CobolSemanticModel("PGMA", "A.cbl",
-                List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         CallGraph graph = new CallGraph(List.of(), List.of());
         AnalysisContext context = AnalysisContext.of(List.of(model), List.of(), List.of(),
                 List.of(), Optional.of(graph), Map.of(String.class, "cfg-placeholder"));

@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * 依存範囲は「当該コピー句を取り込むプログラム」と「当該プログラムを呼ぶJCL」の2種に限る。
- * 合成グラフ: COPYBOOK(1) が PROGA(2)・PROGB(3) に取り込まれ、
+ * 検証に用いるグラフ: COPYBOOK(1) が PROGA(2)・PROGB(3) に取り込まれ、
  * JOB1(5) が PROGA(2) を実行する。PROGC(4)・JOB2(6) はどの依存にも属さない。
  */
 class IncrementalAnalysisPlannerTest {
@@ -37,12 +37,12 @@ class IncrementalAnalysisPlannerTest {
         dao = new PersistenceDao(db.connection());
         planner = new IncrementalAnalysisPlanner(dao);
 
-        dao.insertSource(new SourceRecord(COPYBOOK, "CUST.cpy", null, "hash-copybook", 10L));
-        dao.insertSource(new SourceRecord(PROGA, "PROGA.cbl", "IBM930", "hash-proga", 20L));
-        dao.insertSource(new SourceRecord(PROGB, "PROGB.cbl", "IBM930", "hash-progb", 20L));
-        dao.insertSource(new SourceRecord(PROGC, "PROGC.cbl", "IBM930", "hash-progc", 20L));
-        dao.insertSource(new SourceRecord(JOB1, "JOB1.jcl", null, "hash-job1", 5L));
-        dao.insertSource(new SourceRecord(JOB2, "JOB2.jcl", null, "hash-job2", 5L));
+        dao.insertSource(new SourceRecord(COPYBOOK, "/assets", "CUST.cpy", null, "hash-copybook", 10L));
+        dao.insertSource(new SourceRecord(PROGA, "/assets", "PROGA.cbl", "IBM930", "hash-proga", 20L));
+        dao.insertSource(new SourceRecord(PROGB, "/assets", "PROGB.cbl", "IBM930", "hash-progb", 20L));
+        dao.insertSource(new SourceRecord(PROGC, "/assets", "PROGC.cbl", "IBM930", "hash-progc", 20L));
+        dao.insertSource(new SourceRecord(JOB1, "/assets", "JOB1.jcl", null, "hash-job1", 5L));
+        dao.insertSource(new SourceRecord(JOB2, "/assets", "JOB2.jcl", null, "hash-job2", 5L));
 
         for (long id : new long[] {COPYBOOK, PROGA, PROGB, PROGC, JOB1, JOB2}) {
             dao.insertNode(new NodeRecord(id, "SOURCE", "node-" + id));

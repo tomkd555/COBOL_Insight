@@ -64,6 +64,7 @@ public final class ProcedureRenderer {
         boolean anyExecutable = false;
         for (ProcStmt statement : statements) {
             renderOne(statement);
+            // Untranslated は原文コメントだけを出力するため、実行文として数えない。
             anyExecutable |= !(statement instanceof ProcStmt.Untranslated);
         }
         if (!anyExecutable) {
@@ -140,6 +141,7 @@ public final class ProcedureRenderer {
             dialect.emitAssign(out, ExprWriter.expr(loop.varyingVar(), dialect),
                     ExprWriter.expr(loop.varyingInit(), dialect));
         }
+        // COBOL の UNTIL は条件が成立した時点で反復を終える。while の継続条件はその否定になる。
         dialect.openWhile(out, ExprWriter.cond(new PCond.Negate(loop.until()), dialect));
         addMapping(start, out.lastLine(), loop.range(), loop.range().start().line(), loop.note());
         renderBlock(loop.body());

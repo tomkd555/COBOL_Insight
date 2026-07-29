@@ -3,8 +3,8 @@ package jp.cobolinsight.persistence;
 import jp.cobolinsight.engineapi.linemap.MappingKind;
 
 /**
- * 行対応の種別を永続化境界で変換する。engine-api の {@link MappingKind} と、LINE_MAP.kind 列が
- * 保持する "1:1"/"1:N"/"N:1" 文字列を相互変換する。
+ * 行対応の種別を、engine-api の {@link MappingKind} と、LINE_MAP.kind 列が保持する
+ * "1:1"/"1:N"/"N:1" 文字列との間で相互変換する。
  */
 public final class MappingKindCodec {
 

@@ -13,6 +13,7 @@ public final class ByteOffsetTable {
 
     ByteOffsetTable(String text, int[] charStartByteOffsets) {
         this.charStartByteOffsets = charStartByteOffsets;
+        // 末尾の改行は次の行を開かない。改行の後に文字が続く場合だけ行数を増やす。
         int lineCount = 1;
         for (int i = 0; i < text.length(); i++) {
             if (text.charAt(i) == '\n' && i + 1 < text.length()) {

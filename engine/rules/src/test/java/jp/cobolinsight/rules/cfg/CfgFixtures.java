@@ -129,6 +129,10 @@ final class CfgFixtures {
         }
     }
 
+    /**
+     * テキストを DecodedSource へ包む。offsets は文字位置からUTF-8バイト位置への対応表であり、
+     * サロゲートペアの2文字目にもコードポイント先頭のバイト位置を入れる。
+     */
     static DecodedSource decoded(String path, String text) {
         int[] offsets = new int[text.length()];
         int byteOffset = 0;

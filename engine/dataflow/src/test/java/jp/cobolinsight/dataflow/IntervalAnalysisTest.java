@@ -16,8 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * 区間値域解析(intervalAt)の単体検証。リテラル代入の点区間・加算の区間・VARYING の範囲・
- * 単調増加カウンタの widening 収束・UNTIL narrowing・R005 相当(添字が OCCURS を超え得る/超えない)・
- * R028 相当(符号なし受信への負値算出)を、実パーサーで解析した小さな synthetic COBOL で確認する。
+ * 単調増加カウンタの widening 収束・UNTIL narrowing・R005(添字の OCCURS 範囲外アクセス)の
+ * 判定根拠・R028(符号なし項目への負値算出)の判定根拠を、実パーサーで解析した小さなソースで確認する。
  */
 class IntervalAnalysisTest {
 
@@ -68,7 +68,7 @@ class IntervalAnalysisTest {
                 "ADD WS-A(5) TO WS-B(8) GIVING WS-C で WS-C は [13,13]");
     }
 
-    // ---- PERFORM VARYING(段落・full 情報経路)+ narrowing ----
+    // ---- 段落 PERFORM VARYING: FROM/BY/UNTIL が文テキストに残る経路 + narrowing ----
 
     private static final String VARY_PARA = InlinePrograms.source(
             "       IDENTIFICATION DIVISION.",
@@ -95,7 +95,7 @@ class IntervalAnalysisTest {
         assertFalse(idx.mayExceed(10), "OCCURS 10 を超えない(偽陽性を出さない)");
     }
 
-    // ---- インライン PERFORM VARYING: R005 相当(超えない/超え得る) ----
+    // ---- インライン PERFORM VARYING: OCCURS を超えない場合と超え得る場合 ----
 
     private static final String INLINE_SAFE = InlinePrograms.source(
             "       IDENTIFICATION DIVISION.",
@@ -173,7 +173,7 @@ class IntervalAnalysisTest {
         assertTrue(cnt.hiUnbounded(), "終了条件が上限を絞らないため上端は widening で +∞");
     }
 
-    // ---- 単調増加カウンタ添字: R005 相当(OCCURS 超過を取り得る) ----
+    // ---- 単調増加カウンタを添字にする場合: OCCURS 超過を取り得る ----
 
     private static final String COUNTER_SUBSCRIPT = InlinePrograms.source(
             "       IDENTIFICATION DIVISION.",
@@ -201,7 +201,7 @@ class IntervalAnalysisTest {
                 "ADD 1 の単調増加カウンタは上限検査が無く OCCURS 20 を超え得る(R005 相当)");
     }
 
-    // ---- R028 相当: 符号なし受信への負値算出 ----
+    // ---- 符号なし受信項目への負値算出 ----
 
     private static final String NEGATIVE = InlinePrograms.source(
             "       IDENTIFICATION DIVISION.",

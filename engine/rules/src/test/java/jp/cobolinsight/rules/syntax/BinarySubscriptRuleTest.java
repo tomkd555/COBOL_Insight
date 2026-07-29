@@ -51,6 +51,10 @@ class BinarySubscriptRuleTest {
 
     @Test
     void detectsNonBinarySubscriptOnly() {
+        // 添字を使う MOVE は20〜26行の7つあり、検出されるのは添字項目が二進でない3件だけである。
+        // 20行は PIC 9(02)、25行は添字に使う WS-IDX-ITEM が PIC 9(02)、26行は USAGE DISPLAY の
+        // 集団項目配下。21行(COMP)・23行(集団項目の COMP を継承)・24行(COMPUTATIONAL)は二進、
+        // 22行はリテラル添字であり、いずれも対象外となる。
         CobolSemanticModel model = Fixtures.parse(tempDir, "FIX006.cbl", SOURCE);
 
         List<Finding> findings = new BinarySubscriptRule()

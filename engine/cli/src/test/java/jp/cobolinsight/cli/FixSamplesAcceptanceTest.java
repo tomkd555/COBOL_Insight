@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * M7 修正受入。samples を対象に fix(FixRunner=apply の中核)を実行し、次の
+ * 修正案生成の受入回帰テスト。samples を対象に fix(FixRunner=apply の中核)を実行し、次の
  * 5欠陥それぞれについて、期待するハンドラが該当位置へ挿入されること・挿入した物理行が固定形式の
  * 桁規則(一連番号欄1-6・標識欄7・B領域8-72・識別欄73-80)を保つこと・修正後ソースが再パースに
  * 成功することを検証する。原本 samples は読み込むだけで変更しない。
@@ -106,7 +106,7 @@ class FixSamplesAcceptanceTest {
             int at = indexOfBlock(lines, handler);
             assertTrue(at >= 0, defect.no() + " " + defect.rule()
                     + ": 期待ハンドラが無い: " + handler + " in " + defect.relPath());
-            // 挿入位置: 直前の物理行が anchor 条件を満たすこと。
+            // 挿入位置: 直前の物理行が期待する挿入位置の条件を満たすこと。
             assertTrue(at >= 1, defect.no() + ": ハンドラの直前行が存在すること");
             String preceding = lines.get(at - 1).strip();
             assertTrue(defect.precedingLine().test(preceding),

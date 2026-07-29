@@ -1,11 +1,13 @@
 package jp.cobolinsight.cobolfrontend;
 
+import jp.cobolinsight.encoding.EncodingCharsetProvider;
+import jp.cobolinsight.engineapi.spi.CharsetProvider;
 import org.eclipse.lsp.cobol.common.model.Locality;
 import org.eclipse.lsp4j.Range;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
@@ -13,9 +15,12 @@ import java.util.Map;
 
 /**
  * URI ごとの原ソーステキストへのアクセス。主ファイルは DecodedSource のテキストを、
- * コピーブックはファイルから UTF-8 で読み込んでキャッシュする。
+ * コピーブックはファイルから読み込んでキャッシュする。コピーブックの文字コードは本体と同じ
+ * 自動判別で決める。日本語資産は Shift_JIS・EBCDIC も現れるため、UTF-8 に固定しない。
  */
 final class SourceTexts {
+
+    private static final CharsetProvider CHARSET_PROVIDER = new EncodingCharsetProvider();
 
     private final String mainUri;
     private final Map<String, List<String>> linesByUri = new HashMap<>();
@@ -45,7 +50,7 @@ final class SourceTexts {
         }
         StringBuilder sb = new StringBuilder();
         for (int i = startLine; i <= endLine; i++) {
-            String line = lines.get(i);
+            String line = maskFixedFormatAreas(lines.get(i));
             int from = i == startLine ? Math.min(range.getStart().getCharacter(), line.length()) : 0;
             int to = i == endLine ? Math.min(range.getEnd().getCharacter(), line.length())
                     : line.length();
@@ -63,12 +68,35 @@ final class SourceTexts {
                 return null;
             }
             try {
-                return splitLines(Files.readString(Paths.get(new java.net.URI(key)),
-                        StandardCharsets.UTF_8));
+                Path path = Paths.get(new java.net.URI(key));
+                return splitLines(CHARSET_PROVIDER
+                        .decode(path.toString(), Files.readAllBytes(path)).text());
             } catch (IOException | RuntimeException | java.net.URISyntaxException e) {
                 return null;
             }
         });
+    }
+
+    /** 固定形式の領域境界。一連番号領域は1〜6桁、本文は7〜72桁、73桁以降は識別領域である。 */
+    private static final int AREA_A_START = 6;
+    private static final int IDENTIFICATION_START = 72;
+
+    /**
+     * 一連番号領域と識別領域を空白へ置き換える。複数行にまたがる原文の取り出しでは2行目以降の
+     * 全桁が範囲に入るため、これらを残すと一連番号と注釈が本文へ混ざる。桁位置を保つため長さは変えない。
+     */
+    private static String maskFixedFormatAreas(String line) {
+        if (line.length() <= AREA_A_START) {
+            return line;
+        }
+        StringBuilder sb = new StringBuilder(line);
+        for (int i = 0; i < AREA_A_START; i++) {
+            sb.setCharAt(i, ' ');
+        }
+        for (int i = IDENTIFICATION_START; i < sb.length(); i++) {
+            sb.setCharAt(i, ' ');
+        }
+        return sb.toString();
     }
 
     private static List<String> splitLines(String text) {

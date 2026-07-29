@@ -8,6 +8,11 @@ import jp.cobolinsight.engineapi.spi.Rule;
 
 import java.util.List;
 
+/**
+ * ServiceLoader による規則の発見を検査するためのスタブ。テストの
+ * {@code META-INF/services/jp.cobolinsight.engineapi.spi.Rule} へ登録し、
+ * {@link AnalysisPhase#SYNTAX} の規則として振る舞う。検出は行わない。
+ */
 public final class StubSyntaxRule implements Rule {
 
     @Override

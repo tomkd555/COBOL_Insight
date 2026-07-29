@@ -41,7 +41,7 @@ import java.util.stream.Stream;
 
 /**
  * `fix` の中核処理。資産フォルダの COBOL を復号・パースして制御フローグラフとデータフロー事実を組み、
- * 構文・制御フロー・データフロー段のルールを評価して findings を得る。各 finding のルールが
+ * 構文・制御フロー・データフローの各段階のルールを評価して findings を得る。各 finding のルールが
  * {@link Rule#fixProducer()} を持てば {@link FixProducer#produce} で修正案を取得し、原本ファイル別に
  * {@link TextEdit} 群を集約する。集約した編集をバイトスプライスで原本へ適用し、修正後バイト列・
  * 原本テキスト・修正後テキストを {@link FileFix} として返す。挿入行の固定形式整形は FixProducer が

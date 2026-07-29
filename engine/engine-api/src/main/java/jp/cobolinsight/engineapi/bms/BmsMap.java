@@ -19,7 +19,7 @@ public record BmsMap(String name, int sizeRows, int sizeCols, List<BmsField> fie
         fields = List.copyOf(fields);
     }
 
-    /** 名前が一致する最初のフィールドを返す。R031(存在しないフィールド参照)の突合に使う。 */
+    /** 名前が一致する最初のフィールドを返す。同名のフィールドが複数ある場合は先頭のものを返す。 */
     public Optional<BmsField> field(String fieldName) {
         return fields.stream().filter(f -> f.name().equals(fieldName)).findFirst();
     }

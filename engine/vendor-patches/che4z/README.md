@@ -1,6 +1,6 @@
 # Che4z 日本語識別子パッチ
 
-vendor/che4z(Eclipse Che4z COBOL Language Support、tag 2.5.1)に対して、COBOL の利用者定義語(データ名・段落名・コピー句名など)に日本語文字を使えるようにするパッチ集である。COBOL Insight の解析対象には日本語データ名(例: `WS-検証金額`)を含むソースがあり、素の Che4z ではこれらが字句解析を通らず Syntax error になるため、このパッチを適用したビルドを使う。
+vendor/che4z(Eclipse Che4z COBOL Language Support、tag 2.5.1)に対するパッチ集である。COBOL の利用者定義語(データ名・段落名・コピー句名など)に日本語の文字を使えるようにする。COBOL Insight の解析対象には、日本語のデータ名(例: `WS-検証金額`)を含むソースがある。パッチを当てない Che4z ではこのデータ名が字句解析を通らず Syntax error になるため、パッチを適用したビルドを使う。
 
 ## 拡張する文字集合
 
@@ -33,7 +33,7 @@ SQL 系レクサ(Db2SqlLexer.g4・Db2SqlExecLexer.g4)は上流で `\p{Alnum}\p{O
 
 ## 適用手順
 
-clean checkout 状態の vendor/che4z に対して次を実行する。
+変更を加えていない vendor/che4z に対して次を実行する。
 
 ```powershell
 pwsh -File engine\vendor-patches\che4z\apply-patches.ps1
@@ -43,11 +43,11 @@ pwsh -File engine\vendor-patches\che4z\apply-patches.ps1
 
 1. `git apply` によるパッチ適用(適用済みのパッチはスキップする)
 2. `vendor\che4z\server` で `mvn -DskipTests install`(全モジュールのビルドとローカルリポジトリへのインストール)
-3. `mvn -DskipTests "-Dassembly.skipAssembly=true" install -pl engine`(engine は既定で fat jar が主成果物になるため、薄い jar をローカルリポジトリへ入れ直す)
+3. `mvn -DskipTests "-Dassembly.skipAssembly=true" install -pl engine`(engine は既定で fat jar が主成果物になるため、依存を同梱しない jar をローカルリポジトリへ入れ直す)
 
 ビルド後、`org.eclipse.lsp.cobol:engine:1.0.0-SNAPSHOT` としてローカル Maven リポジトリから参照できる。
 
 ## 既知の限界
 
 - 診断の位置(行・カラム)は文字単位(UTF-16 コード単位)で数える。日本語1文字はカラム1つと数えるため、固定形式の桁判定(72桁など)や表示幅・バイト幅とは一致しない。
-- COPY REPLACING の擬似テキスト `==XXXX-==` は IBM 仕様上、単語の部分文字列を置換しないため、この形の置換は成立しない。置換不成立に由来する未定義参照の診断は残る。
+- COPY REPLACING の擬似テキスト `==XXXX-==` は IBM 仕様上、単語の部分文字列を置換しないため、この形の置換は成立しない。置換が成立しないことに由来する未定義参照の診断は残る。

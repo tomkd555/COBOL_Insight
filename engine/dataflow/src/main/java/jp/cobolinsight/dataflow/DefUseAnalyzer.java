@@ -14,13 +14,14 @@ import java.util.regex.Pattern;
 
 /**
  * 文テキスト({@link SimpleStatement#text()} / {@link CompoundStatement#conditionText()})の
- * 正規表現解析で、文が定義(代入)する変数と参照する変数を判定する共有ユーティリティ。M4 が
- * 条件変数抽出に用いたのと同じ text 解析方式を、文種別ごとの def/use の役割判定まで広げる。
+ * 正規表現解析で、文が定義(代入)する変数と参照する変数を判定する共有ユーティリティ。意味モデルは
+ * 文の構成要素を保持せず文テキストだけを持つため、動詞ごとの句(TO・GIVING・INTO など)の位置から
+ * 定義側と参照側を切り分ける。
  *
  * <p>変数名はデータ名トークン(英数字・ハイフン・非ASCII文字の連なりで、少なくとも1文字の
  * 文字を含む)として抽出し、COBOL 予約語・定数図形・数値リテラル・文字列リテラルは除外する。
- * 抽出名は大文字化して正規化する。定性判定は完全ではなく、samples と合成フィクスチャを通す
- * 精度を狙う近似である。
+ * 抽出名は大文字化して正規化する。この判定は近似であり、samples と合成したテストデータを通す
+ * 精度を狙う。
  */
 final class DefUseAnalyzer {
 
@@ -78,7 +79,10 @@ final class DefUseAnalyzer {
         return DefUse.EMPTY;
     }
 
-    /** ACCEPT・CICS RECEIVE の受信先。EXTERNAL_INPUT 汚染源として汚染追跡が使う。 */
+    /**
+     * ACCEPT・CICS RECEIVE の受信先。EXTERNAL_INPUT 汚染源として汚染追跡が使う。受信先は
+     * 1変数に限り、複数受信先を持つ構文は先頭のデータ名だけを汚染源とする。
+     */
     static Set<String> externalInputTargets(Statement statement) {
         if (!(statement instanceof SimpleStatement simple)) {
             return Set.of();
@@ -467,6 +471,7 @@ final class DefUseAnalyzer {
         return " " + stripped + " ";
     }
 
+    /** リテラルを同じ文字数の空白へ置き換える。長さが変わらないため桁位置の計算に影響しない。 */
     private static String stripLiterals(String text) {
         StringBuilder sb = new StringBuilder(text.length());
         char quote = 0;

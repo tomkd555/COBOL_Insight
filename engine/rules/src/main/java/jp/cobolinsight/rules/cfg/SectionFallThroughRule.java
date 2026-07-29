@@ -90,6 +90,10 @@ public final class SectionFallThroughRule implements Rule {
         return null;
     }
 
+    /**
+     * 制御がこの文で節の外へ出るか。GO TO は、飛び先が1つで DEPENDING ON を持たないものだけを
+     * 無条件分岐とみなす。GO TO ... DEPENDING ON は添字の値によって分岐せず流下し得るため除く。
+     */
     private static boolean isTerminating(Statement statement) {
         if (statement instanceof SimpleStatement simple) {
             String verb = CfgSupport.upper(simple.verb());

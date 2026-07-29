@@ -12,9 +12,10 @@ import java.util.stream.Collectors;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * samples に対するデータフロー段ルールの受入。混入欠陥オラクル(samples/期待結果.md)のうち、
- * データフロー段が担う R001(No.1/9)・R003(No.2/5)・R005(No.3/13)・R004(No.14)を「該当ファイルの
- * 該当行のみ」で検出し、それ以外の不用意な検出(偽陽性)が samples に出ないことを確認する。
+ * samples に対するデータフロー段ルールの受入。samples/期待結果.md が正解として挙げる欠陥18件の
+ * うち、データフロー段が担うのは R001(欠陥番号 1・9)・R003(同 2・5)・R005(同 3・13)・
+ * R004(同 14)である。これらを「該当ファイルの該当行のみ」で検出し、それ以外の検出(偽陽性)が
+ * samples に出ないことを確認する。
  */
 class DataFlowSamplesAcceptanceTest {
 
@@ -65,6 +66,8 @@ class DataFlowSamplesAcceptanceTest {
 
     @Test
     void syntheticRulesAreSilentOnSamples() {
+        // この7ルールに当たる欠陥は samples へ混入していない。検出の有無は合成fixtureのテストで
+        // 表明し、ここでは samples に偽陽性が出ないことだけを確認する。
         AnalysisContext context = DataFlowFixtures.samples();
         for (Rule rule : List.of(new PerformUntilNotUpdatedRule(), new DynamicSqlTaintRule(),
                 new SensitiveDataOutputRule(), new UnsignedNegativeResultRule(),

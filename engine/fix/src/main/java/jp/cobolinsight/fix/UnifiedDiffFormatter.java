@@ -8,8 +8,8 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * 原本テキストと修正後テキストの unified diff を算出する。差分計算は java-diff-utils を単一の正本と
- * する。行分割は改行(LF)で行い、原本・修正後を同一手順で分割するため、無変更行は差分に現れない。
+ * 原本テキストと修正後テキストの unified diff を算出する。差分計算は java-diff-utils へ一元化する。
+ * 行分割は改行(LF)で行い、原本・修正後を同一手順で分割するため、無変更行は差分に現れない。
  *
  * <p>返す各行は着色を含まない素の unified diff である。ヘッダ({@code --- a/<label>} /
  * {@code +++ b/<label>})・ハンクヘッダ({@code @@ ... @@})・追加行({@code +})・削除行

@@ -12,7 +12,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** SYKCPY1 の内容(REDEFINES・OCCURS・COMP-3・88レベル)が DataItem へ写像されることの検証。 */
+/** SYKCPY1 の内容(REDEFINES・OCCURS・COMP-3・88レベル)が DataItem へ変換されることの検証。 */
 class DataItemMappingTest {
 
     /** SYK003 は SYKCPY1 を置換なしで LINKAGE SECTION に展開する。 */

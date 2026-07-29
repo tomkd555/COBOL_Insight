@@ -71,6 +71,7 @@ final class InlinePrograms {
         return "";
     }
 
+    /** 文字位置ごとのバイトオフセット表を作って DecodedSource を組む。UTF-8 固定である。 */
     private static DecodedSource decode(String text) {
         byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
         int[] offsets = new int[text.length()];

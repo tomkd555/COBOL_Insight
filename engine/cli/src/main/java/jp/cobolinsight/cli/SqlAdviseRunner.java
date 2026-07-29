@@ -37,8 +37,8 @@ import java.util.stream.Stream;
 
 /**
  * `sql-advise` の中核処理。資産フォルダのCOBOLを復号・パースし、埋め込みSQLを SqlParser SPI で
- * SQL文モデルへ写像して {@link AnalysisContext#sqlStatements()} に供給したうえで、SQL助言
- * (id が "S" で始まる構文段階のルール)のみを実行して findings を返す(裁定A5・A6)。復号失敗・
+ * SQL文モデルへ変換して {@link AnalysisContext#sqlStatements()} に供給したうえで、SQL助言
+ * (id が "S" で始まる構文段階のルール)のみを実行して findings を返す。復号失敗・
  * COBOLパース失敗も errorレベルの finding として合流させる。出力は決定論とする: findings は
  * (ファイル・行・桁・ルールID・メッセージ)の昇順に正規化し、位置のファイルは入力フォルダからの
  * 相対パスへ揃える。
@@ -143,7 +143,7 @@ public final class SqlAdviseRunner {
 
         AnalysisContext context = AnalysisContext.of(models, List.of(), sqlStatements, List.of(),
                 Optional.empty(), Map.of());
-        // sql-advise は SQL助言(id が "S")のみを実行し、バグ検出(id が "R")は lint へ分離する(裁定A5)。
+        // sql-advise は SQL助言(id が "S")のみを実行し、バグ検出(id が "R")は lint が担う。
         List<Rule> activeRules = services.rules(AnalysisPhase.SYNTAX).stream()
                 .filter(rule -> rule.id().startsWith("S"))
                 .filter(rule -> !options.disabledRuleIds().contains(rule.id()))
@@ -162,8 +162,8 @@ public final class SqlAdviseRunner {
     }
 
     /**
-     * 埋め込みSQLブロックを SqlParser SPI で SQL文モデルへ写像して集める
-     * ({@code ScanRunner.persistSqlStatements} と同型)。解析できないブロックは助言対象から外す。
+     * 埋め込みSQLブロックを SqlParser SPI で SQL文モデルへ変換して集める。解析できないブロックは
+     * 助言対象から外す。
      */
     private static void collectSqlStatements(CobolSemanticModel model, SqlParser sqlParser,
             List<SqlStatementModel> sqlStatements) {

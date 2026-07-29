@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 統合レポート(FR-07)の HTML・テキスト整形を担う。scan/lint/sql-advise/callgraph の統合結果を
+ * 統合レポートの HTML・テキスト整形を担う。scan/lint/sql-advise/callgraph の統合結果を
  * 「資産インベントリ」「検出結果一覧(scan+lint)」「呼出関係の要約」「SQL 助言」の4節へ組む。
  */
 final class ReportRenderer {

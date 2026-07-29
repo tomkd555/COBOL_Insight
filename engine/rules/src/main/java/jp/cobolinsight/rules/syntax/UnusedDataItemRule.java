@@ -28,8 +28,8 @@ import java.util.regex.Pattern;
  * 集団項目の名前が参照される場合はその子孫を、子孫の名前が参照される場合はその祖先を、
  * いずれも使用済みとみなす。誤検出の抑止として次の2点を対象外とする:
  * (1) ENVIRONMENT DIVISION内(SELECT文のFILE STATUS句など)で名前が参照される項目、
- * (2) 88レベル条件名を宣言する項目(条件名を対で定義する慣用があり、samples/期待結果.md 8.2は
- * これを欠陥としない)。
+ * (2) 88レベル条件名を宣言する項目(項目と条件名を対で宣言し、手続き部では条件名だけを参照する
+ * 慣用があるため、項目名が現れないことは欠陥ではない)。
  */
 public final class UnusedDataItemRule implements Rule {
 

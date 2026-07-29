@@ -20,7 +20,7 @@ import java.util.Set;
 /**
  * {@link ProgramDataFlow} の実装。不動点解析で確定した各ノードの事実集合を保持し、CfgNode の
  * 同一性で引く。区間値域(intervalAt)はノード入口の変数区間を保持し、追跡外は empty を返す。
- * 汚染は伝播元を持つ {@link TaintFact} で保持し、taintedAt は変数名への射影を返す。
+ * 汚染は伝播元を持つ {@link TaintFact} で保持し、taintedAt は変数名だけを取り出して返す。
  */
 final class ProgramDataFlowFacts implements ProgramDataFlow {
 
@@ -162,7 +162,7 @@ final class ProgramDataFlowFacts implements ProgramDataFlow {
         return parents == null ? List.of() : parents;
     }
 
-    /** 汚染源から起点の事実までを、文を持たない宣言由来の歩を除いて並べる。 */
+    /** 汚染源から起点の事実までを並べる。CFG ノードを持たない宣言由来の事実は経路に含めない。 */
     private List<TaintStep> pathFrom(TaintFact source, Map<TaintFact, TaintFact> childOf) {
         List<TaintStep> steps = new ArrayList<>();
         for (TaintFact fact = source; fact != null; fact = childOf.get(fact)) {

@@ -31,12 +31,12 @@ class SourceReplaceAtomicityTest {
 
     @Test
     void rollsBackFullReplaceWhenLaterStepFails() {
-        dao.insertSource(new SourceRecord(1L, "PROGA.cbl", "IBM930", "hash-v1", 100L));
+        dao.insertSource(new SourceRecord(1L, "/assets", "PROGA.cbl", "IBM930", "hash-v1", 100L));
         dao.insertProgram(new ProgramRecord(1L, 1L, "PROGA"));
 
         assertThrows(PersistenceException.class, () -> dao.inTransaction(() -> {
             dao.deleteSourceCascade(1L);
-            dao.insertSource(new SourceRecord(1L, "PROGA.cbl", "IBM930", "hash-v2", 120L));
+            dao.insertSource(new SourceRecord(1L, "/assets", "PROGA.cbl", "IBM930", "hash-v2", 120L));
             // source_id=99 は存在しないため外部キー制約違反で失敗する
             dao.insertProgram(new ProgramRecord(2L, 99L, "PROGA"));
         }));
@@ -48,12 +48,12 @@ class SourceReplaceAtomicityTest {
 
     @Test
     void commitsFullReplaceWhenAllStepsSucceed() {
-        dao.insertSource(new SourceRecord(1L, "PROGA.cbl", "IBM930", "hash-v1", 100L));
+        dao.insertSource(new SourceRecord(1L, "/assets", "PROGA.cbl", "IBM930", "hash-v1", 100L));
         dao.insertProgram(new ProgramRecord(1L, 1L, "PROGA"));
 
         dao.inTransaction(() -> {
             dao.deleteSourceCascade(1L);
-            dao.insertSource(new SourceRecord(1L, "PROGA.cbl", "IBM930", "hash-v2", 120L));
+            dao.insertSource(new SourceRecord(1L, "/assets", "PROGA.cbl", "IBM930", "hash-v2", 120L));
             dao.insertProgram(new ProgramRecord(2L, 1L, "PROGA"));
         });
 

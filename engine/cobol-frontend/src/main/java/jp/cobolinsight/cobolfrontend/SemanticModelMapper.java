@@ -67,9 +67,16 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Che4z の AST(+CST 補完)を engine-api の正規化意味モデルへ写像する。 */
+/**
+ * Che4z の AST(+CST 補完)を engine-api の正規化意味モデルへ変換する。
+ *
+ * <p>Che4z が個別のノードを作らない構文は原文テキストで補う。IF の条件と EVALUATE の判定対象は
+ * 子ノードの範囲を合わせた原文で持ち、動詞は CST の索引で引く。Che4z が暗黙に差し込む定義
+ * (SQLCA など)は実ファイルを持たない URI で現れるため、意味モデルからは除く。
+ */
 final class SemanticModelMapper {
 
+    /** EXEC CICS のオペランド {@code NAME(値)} を取り出す。入れ子の括弧は扱わない。 */
     private static final Pattern OPERAND_PATTERN =
             Pattern.compile("([A-Za-z][A-Za-z0-9]*)\\s*\\(\\s*([^()]*?)\\s*\\)");
 
@@ -94,7 +101,8 @@ final class SemanticModelMapper {
         List<Procedure> procedures = mapProcedureDivision(program);
         return new CobolSemanticModel(programId, sourceFilePath, dataItems, procedures, calls,
                 performs, embeddedBlocks,
-                cstCapture == null ? List.of() : cstCapture.copyExpansions());
+                cstCapture == null ? List.of() : cstCapture.copyExpansions(),
+                cstCapture == null ? List.of() : cstCapture.copyInlineExpansions());
     }
 
     // ---- データ部 ----
@@ -159,6 +167,10 @@ final class SemanticModelMapper {
                 redefines, occurs, conditionNames, children, positionOf(variable.getLocality()));
     }
 
+    /**
+     * データ項目として持つレベル番号。01-49 の階層項目、66(RENAMES)、77(独立項目)を対象とする。
+     * 88 の条件名は記憶領域を持たず、データ項目ではなく親項目の conditionNames として保持する。
+     */
     private static boolean isMappableLevel(int level) {
         return (level >= 1 && level <= 49) || level == 66 || level == 77;
     }
@@ -483,6 +495,11 @@ final class SemanticModelMapper {
         return new SimpleStatement(verb, text, rangeOf(node.getLocality()));
     }
 
+    /**
+     * 文の動詞を決める。Che4z の AST は多くの文を種別を持たないノードで表すため、まず CST から
+     * 文開始位置のトークンを引き、CST が無い場合は原文の先頭語を動詞とみなす。いずれも得られな
+     * ければ UNKNOWN を返す。
+     */
     private String resolveVerb(Node node) {
         Locality locality = node.getLocality();
         if (locality != null && locality.getRange() != null && cstCapture != null) {
@@ -500,7 +517,7 @@ final class SemanticModelMapper {
         return "UNKNOWN";
     }
 
-    /** 文の入れ物(段落・IF 分岐など)の子のうち、文として写像する対象かを判定する。 */
+    /** 文の入れ物(段落・IF 分岐など)の子のうち、文として変換する対象かを判定する。 */
     private static boolean isStatementNode(Node node) {
         return !(node instanceof QualifiedReferenceNode
                 || node instanceof VariableUsageNode
@@ -514,6 +531,11 @@ final class SemanticModelMapper {
                 || node instanceof SubroutineNameNode);
     }
 
+    /**
+     * 与えたノード群を覆う原文を返す。開始・終了を最小・最大の位置へ広げることで、条件式のように
+     * 複数ノードへ分かれた構文を1つのテキストとして取り出す。先頭ノードと異なる URI のノード
+     * (コピー句側)は範囲に含めない。
+     */
     private String spanText(List<Node> nodes) {
         if (nodes.isEmpty()) {
             return "";

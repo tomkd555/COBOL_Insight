@@ -56,6 +56,7 @@ public record MangledSql(String sql, List<HostVariableReference> hostVariables) 
         return out.toString();
     }
 
+    /** 復元対象のトークンは :HVn の形に限るため、ASCIIの英数字だけを名前の文字として扱う。 */
     private static boolean isTokenChar(char c) {
         return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
     }

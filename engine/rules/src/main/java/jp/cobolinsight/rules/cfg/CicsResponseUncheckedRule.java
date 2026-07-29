@@ -156,6 +156,8 @@ public final class CicsResponseUncheckedRule implements Rule {
             String[] lines = source.split("\n", -1);
             int first = 0;
             int lastLine = lines.length;
+            // first は節見出しの次の物理行(1始まり)。0 は見出し未検出を表す。lastLine は次の節
+            // 見出しの直前行(1始まり)であり、0始まりの添字 i がそのまま該当する。
             for (int i = 0; i < lines.length; i++) {
                 if (first == 0) {
                     if (WORKING_STORAGE.matcher(lines[i]).find()) {
@@ -189,7 +191,11 @@ public final class CicsResponseUncheckedRule implements Rule {
             return Optional.empty();
         }
 
-        /** 名前に RESP を含み(RESP2 を除く)、PIC S9(08) COMP 相当の基本項目か。 */
+        /**
+         * 名前に RESP を含み(RESP2 を除く)、PIC S9(08) COMP 相当の基本項目か。RESP オプションの
+         * 受け取り先は符号付き4バイト二進項目でなければならず、CICS が定める記述が
+         * PIC S9(8) COMP であるため、この桁・符号・USAGE の組で絞る。
+         */
         private static boolean isRespReceiver(DataItem item) {
             String name = item.name().toUpperCase(Locale.ROOT);
             if (!name.contains("RESP") || name.contains("RESP2")) {

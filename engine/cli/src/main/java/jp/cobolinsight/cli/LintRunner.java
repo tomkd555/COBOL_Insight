@@ -50,7 +50,7 @@ import java.util.stream.Stream;
 
 /**
  * `lint` の中核処理。資産フォルダのCOBOL・コピー句・BMSを復号し、COBOLをパースして
- * 制御フローグラフを構築し、BMSをマップモデルへ写像したうえで、構文段階(AnalysisPhase.SYNTAX)と
+ * 制御フローグラフを構築し、BMSをマップモデルへ変換したうえで、構文段階(AnalysisPhase.SYNTAX)と
  * 制御フロー段階(AnalysisPhase.CONTROL_FLOW)のルールを実行して findings を返す。復号失敗・
  * パース失敗も errorレベルの finding として合流させる。FixProducer を持つルールの検出には
  * 修正案(SARIF の fixes)を付す。出力は決定論とする: findings は
@@ -96,7 +96,7 @@ public final class LintRunner {
         }
     }
 
-    /** lint対象の種別。COBOLはパース、COPYBOOKはテキスト索引のみ、BMSはマップモデルへ写像する。 */
+    /** lint対象の種別。COBOLはパース、COPYBOOKはテキスト索引のみ、BMSはマップモデルへ変換する。 */
     private enum LintKind {
         COBOL(".cbl"), COPYBOOK(".cpy"), BMS(".bms");
 
@@ -172,6 +172,7 @@ public final class LintRunner {
             }
             BmsParseResult parseResult = bmsParser.parse(decoded.text());
             for (BmsParseError error : parseResult.errors()) {
+                // BmsParseError の桁は0起点、SourcePosition の桁は1起点のため1加える。
                 findings.add(Finding.parseFailure(
                         new SourcePosition(file.relPath(), Math.max(1, error.line()),
                                 error.column() + 1, SourcePosition.UNKNOWN_BYTE_OFFSET),
@@ -189,8 +190,8 @@ public final class LintRunner {
                 Map.of(SourceTextIndex.class, new SourceTextIndex(textByPath),
                         ControlFlowGraphs.class, cfgs,
                         DataFlowFacts.class, dataFlowFacts));
-        // lint は構文・制御フロー・データフローの3段のバグ検出ルール(id が "R")のみを実行し、
-        // SQL 助言(id が "S")は sql-advise サブコマンドへ分離する(裁定A5)。
+        // lint は構文・制御フロー・データフローの3段階のバグ検出ルール(id が "R")のみを実行し、
+        // SQL 助言(id が "S")は sql-advise サブコマンドが担う。
         List<Rule> activeRules = Stream.of(
                         services.rules(AnalysisPhase.SYNTAX),
                         services.rules(AnalysisPhase.CONTROL_FLOW),

@@ -20,6 +20,8 @@ final class CopybookImporters {
      * REPLACING を伴う COPY も対象とする。
      */
     static List<String> of(String copybookBaseName, Map<String, String> programSourcesByRel) {
+        // 直後が COBOL の語構成文字(英数字・ハイフン・下線・$・#)なら、より長い別名の前方一致
+        // でしかないため対象から外す。
         Pattern copy = Pattern.compile(
                 "(?i)\\bCOPY\\s+" + Pattern.quote(copybookBaseName) + "(?![\\p{L}\\p{N}$#_-])");
         return programSourcesByRel.entrySet().stream()

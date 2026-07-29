@@ -12,7 +12,10 @@ import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** scan の増分更新が用いるノード・エッジの保守操作の検証。 */
+/**
+ * scan の増分更新が用いるノード・エッジの保守操作の検証。1,000,000,000,000 は scan が呼出関係グラフの
+ * 構築結果へ与えるIDの下限で、これ未満のIDはソース単位の解析結果が占める。
+ */
 class PersistenceDaoMaintenanceTest {
 
     @TempDir
@@ -116,7 +119,7 @@ class PersistenceDaoMaintenanceTest {
     @Test
     void deleteFindingsIdAtLeastRemovesOnlyGraphLayerFindings() {
         dao.insertSource(new jp.cobolinsight.persistence.model.SourceRecord(
-                1, "cobol/SYK002.cbl", "UTF-8", "h1", 10));
+                1, "/assets", "cobol/SYK002.cbl", "UTF-8", "h1", 10));
         dao.insertFinding(new jp.cobolinsight.persistence.model.FindingRecord(
                 1_000_001, "parse-failure", "ERROR", 1, 1, 1, -1, "m", "{}"));
         dao.insertFinding(new jp.cobolinsight.persistence.model.FindingRecord(
@@ -134,9 +137,9 @@ class PersistenceDaoMaintenanceTest {
     @Test
     void findAllSourcesReturnsRowsOrderedById() {
         dao.insertSource(new jp.cobolinsight.persistence.model.SourceRecord(
-                2, "cobol/SYK001.cbl", "UTF-8", "h2", 10));
+                2, "/assets", "cobol/SYK001.cbl", "UTF-8", "h2", 10));
         dao.insertSource(new jp.cobolinsight.persistence.model.SourceRecord(
-                1, "bms/SYKMAP1.bms", "UTF-8", "h1", 20));
+                1, "/assets", "bms/SYKMAP1.bms", "UTF-8", "h1", 20));
 
         var sources = dao.findAllSources();
 

@@ -4,8 +4,8 @@ import java.util.Arrays;
 import java.util.Objects;
 
 /**
- * 復号済みソース。text の各文字位置から原バイト列上のオフセットへの対応表(charByteOffsets)を
- * 保持し、原バイト列を温存する。配列は取込・返却の双方で防御的にコピーする。
+ * 復号済みソース。原バイト列をそのまま保持し、text の各文字位置から原バイト列上のオフセットへの
+ * 対応表(charByteOffsets)を持つ。配列は取込・返却の双方で防御的にコピーする。
  */
 public record DecodedSource(String path, String text, byte[] originalBytes, int[] charByteOffsets,
         EncodingInfo encoding) {
@@ -36,10 +36,12 @@ public record DecodedSource(String path, String text, byte[] originalBytes, int[
         return charByteOffsets.clone();
     }
 
+    /** text の指定位置の文字が始まる原バイト列上のオフセット。charIndex は 0 以上 text の長さ未満。 */
     public int byteOffsetAt(int charIndex) {
         return charByteOffsets[charIndex];
     }
 
+    // record の既定実装は配列フィールドを参照で比較するため、equals と hashCode を内容による比較にする。
     @Override
     public boolean equals(Object obj) {
         return obj instanceof DecodedSource other
@@ -56,6 +58,7 @@ public record DecodedSource(String path, String text, byte[] originalBytes, int[
                 Arrays.hashCode(charByteOffsets), encoding);
     }
 
+    // ログへ原バイト列とソース全文が出ることを避け、要約だけを示す。
     @Override
     public String toString() {
         return "DecodedSource[path=" + path + ", byteSize=" + originalBytes.length

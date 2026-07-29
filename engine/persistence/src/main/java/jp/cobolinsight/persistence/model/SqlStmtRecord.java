@@ -1,6 +1,9 @@
 package jp.cobolinsight.persistence.model;
 
-/** SQL_STMT表の1行(埋め込みSQL)。mangledTextはホスト変数マングリング後の文。 */
+/**
+ * SQL_STMT表の1行(埋め込みSQL)。mangledTextはホスト変数を連番トークンへ置き換えて構文解析器へ
+ * 渡せる形にした文、originalTextは置換前の原文である。
+ */
 public record SqlStmtRecord(long id, long sourceId, String stmtType, String mangledText,
         String originalText) {
 

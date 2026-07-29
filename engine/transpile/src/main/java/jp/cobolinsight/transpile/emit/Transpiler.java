@@ -28,8 +28,8 @@ import java.util.Map;
  * 独立レベル(01・77)の各レコードにつき1クラスファイル、手続き部を持つプログラムでは段落=メソッドの
  * プログラムファイル1つを生成し、宣言行・文行→生成行の対応表を安定順で組む。
  * 決定論: 生成順は意味モデルの並び順、行対応は安定キー整列、改行は LF・BOMなし。
- * 手続き対訳は GO TO を含まない構造化 COBOL を対象とし、原ソース {@code sourceText} を渡すと
- * inline PERFORM VARYING の反復変数句を復元する(渡さない場合は該当句を省略する)。
+ * 手続き対訳では GO TO を構造化制御へ還元し、還元できない形は注記付きの非対訳とする。原ソース
+ * {@code sourceText} を渡すと inline PERFORM VARYING の反復変数句を復元する(渡さない場合は該当句を省略する)。
  */
 public final class Transpiler {
 

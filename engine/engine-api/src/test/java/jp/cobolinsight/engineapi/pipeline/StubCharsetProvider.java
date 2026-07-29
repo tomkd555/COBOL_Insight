@@ -6,6 +6,11 @@ import jp.cobolinsight.engineapi.spi.CharsetProvider;
 
 import java.nio.charset.StandardCharsets;
 
+/**
+ * 文字コードプロバイダの発見を検査するためのスタブ。テストの
+ * {@code META-INF/services/jp.cobolinsight.engineapi.spi.CharsetProvider} へ登録する。
+ * 常に US-ASCII で復号し、文字位置とバイト位置を1対1に対応づける。
+ */
 public final class StubCharsetProvider implements CharsetProvider {
 
     @Override
@@ -18,6 +23,7 @@ public final class StubCharsetProvider implements CharsetProvider {
         return decodeAscii(path, bytes, true);
     }
 
+    /** manualOverride には、文字コードを明示する多重定義で呼ばれたかどうかを渡す。 */
     private static DecodedSource decodeAscii(String path, byte[] bytes, boolean manualOverride) {
         String text = new String(bytes, StandardCharsets.US_ASCII);
         int[] offsets = new int[text.length()];

@@ -31,14 +31,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * GO TO を含む手続きの構造化制御対訳を検証する。SYK002 の無条件前方 GO TO(9000→4010)は順次実行へ、
- * 合成の後方 GO TO はループへ、条件付き GO TO は if へ還元されること、生成 Java がコンパイルできること、
- * 決定論、GO TO 起源の複製が N:1 で行対応へ載ることを確認する。
+ * 合成した検証用ソースの後方 GO TO はループへ、条件付き GO TO は if へ還元されること、生成 Java が
+ * コンパイルできること、再生成が決定論であること、GO TO 起源の複製が N:1 で行対応へ載ることを確認する。
  */
 class GotoStructuringTest {
 
     private static final Path GOTO_DIR =
             repoRoot().resolve("engine/transpile/src/test/resources/goto");
 
+    /** 作業ディレクトリがモジュール配下でも解決できるよう、samples を持つ親をリポジトリルートとして遡る。 */
     private static Path repoRoot() {
         Path dir = Paths.get("").toAbsolutePath();
         while (dir != null && !Files.isDirectory(dir.resolve("samples"))) {

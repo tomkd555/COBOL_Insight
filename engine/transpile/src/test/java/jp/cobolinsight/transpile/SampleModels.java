@@ -68,6 +68,9 @@ final class SampleModels {
         try {
             byte[] bytes = Files.readAllBytes(file);
             String text = new String(bytes, StandardCharsets.UTF_8);
+            // DecodedSource が要求する char 位置から原バイト列上のオフセットへの対応表を組む。
+            // 日本語は1文字が複数バイトになるため char 位置とバイト位置は一致しない。
+            // サロゲートペアを構成する2つの char は、同じバイト位置を指す。
             int[] offsets = new int[text.length()];
             int byteOffset = 0;
             for (int i = 0; i < text.length(); ) {
@@ -86,6 +89,7 @@ final class SampleModels {
         }
     }
 
+    /** 作業ディレクトリがモジュール配下でも解決できるよう、samples を持つ親をリポジトリルートとして遡る。 */
     private static Path findRepoRoot() {
         Path dir = Paths.get("").toAbsolutePath();
         while (dir != null && !Files.isDirectory(dir.resolve("samples"))) {

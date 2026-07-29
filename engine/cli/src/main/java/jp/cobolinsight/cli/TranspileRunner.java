@@ -250,20 +250,20 @@ public final class TranspileRunner {
         try (PersistenceDatabase database = PersistenceDatabase.open(options.databaseFile())) {
             PersistenceDao dao = new PersistenceDao(database.connection());
             int[] count = {0};
-            dao.inTransaction(() -> count[0] = writeLineMaps(dao, files, bytesByRel, decodedByRel,
-                    entries));
+            dao.inTransaction(() -> count[0] = writeLineMaps(dao, ScanRunner.rootOf(
+                    options.inputDir()), files, bytesByRel, decodedByRel, entries));
             return count[0];
         }
     }
 
-    private static int writeLineMaps(PersistenceDao dao, List<TranspileFile> files,
+    private static int writeLineMaps(PersistenceDao dao, String root, List<TranspileFile> files,
             Map<String, byte[]> bytesByRel, Map<String, DecodedSource> decodedByRel,
             List<LineMappingEntry> entries) {
         Map<String, SourceRecord> existingByPath = new LinkedHashMap<>();
-        for (SourceRecord source : dao.findAllSources()) {
+        for (SourceRecord source : dao.findSourcesByRoot(root)) {
             existingByPath.put(source.path(), source);
         }
-        long maxId = existingByPath.values().stream().mapToLong(SourceRecord::id).max().orElse(0);
+        long maxId = dao.maxSourceId();
 
         Map<String, Long> idByFileName = new TreeMap<>();
         for (TranspileFile file : files) {
@@ -276,7 +276,7 @@ public final class TranspileRunner {
                 DecodedSource decoded = decodedByRel.get(file.relPath());
                 byte[] bytes = bytesByRel.get(file.relPath());
                 String codepage = decoded == null ? null : decoded.encoding().detectedCharset();
-                dao.insertSource(new SourceRecord(id, file.relPath(), codepage, sha256(bytes),
+                dao.insertSource(new SourceRecord(id, root, file.relPath(), codepage, sha256(bytes),
                         bytes.length));
             }
             idByFileName.putIfAbsent(file.fileName(), id);

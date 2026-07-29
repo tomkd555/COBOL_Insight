@@ -48,7 +48,7 @@ class MainCommandTest {
 
         try (var database = jp.cobolinsight.persistence.PersistenceDatabase.open(databaseFile)) {
             var dao = new jp.cobolinsight.persistence.PersistenceDao(database.connection());
-            var source = dao.findSourceByPath("cobol/SYKENC1_SJIS.cbl").orElseThrow();
+            var source = dao.findSourceByPath(ScanRunner.rootOf(assets), "cobol/SYKENC1_SJIS.cbl").orElseThrow();
             var info = dao.findEncodingInfo(source.id()).orElseThrow();
             assertTrue(info.manualOverride(), "CLIフラグの手動指定が自動判別を上書きすること");
             assertEquals("windows-31j", info.detectedCharset());

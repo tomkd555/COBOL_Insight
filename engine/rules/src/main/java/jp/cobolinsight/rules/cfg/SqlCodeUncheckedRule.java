@@ -33,8 +33,9 @@ import java.util.Set;
 
 /**
  * R018 SQLCODE未検査。データ変更DML(INSERT/UPDATE/DELETE)の EXEC SQL 実行後、次の EXEC SQL に
- * 達するまでの前方経路で SQLCODE・SQLSTATE を条件参照しない箇所を検出する。SQLCODE は次の SQL で
- * 上書きされるため、境界は次の EXEC SQL 文とする。SELECT INTO・FETCH は対象外。
+ * 達するまでの前方経路で SQLCODE・SQLSTATE を条件参照しない箇所を検出する。検査を欠くと、更新の
+ * 失敗を検知せずに後続処理が続く。SQLCODE は次の SQL で上書きされるため、境界は次の EXEC SQL 文
+ * とする。SELECT INTO・FETCH は対象外。
  */
 public final class SqlCodeUncheckedRule implements Rule {
 

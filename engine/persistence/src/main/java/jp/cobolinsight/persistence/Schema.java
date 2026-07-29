@@ -3,19 +3,21 @@ package jp.cobolinsight.persistence;
 /** 解析結果を保持する12表のDDL。 */
 final class Schema {
 
-    static final int VERSION = 1;
+    /** データベースファイルの user_version へ記録するスキーマの版数。 */
+    static final int VERSION = 2;
 
     static final String[] CREATE_STATEMENTS = {
             """
             CREATE TABLE SOURCE (
                 id INTEGER PRIMARY KEY,
+                root TEXT NOT NULL,
                 path TEXT NOT NULL,
                 codepage TEXT,
                 content_hash TEXT NOT NULL,
                 byte_size INTEGER NOT NULL
             )
             """,
-            "CREATE INDEX idx_source_path ON SOURCE(path)",
+            "CREATE INDEX idx_source_root_path ON SOURCE(root, path)",
             """
             CREATE TABLE ENCODING_INFO (
                 source_id INTEGER PRIMARY KEY REFERENCES SOURCE(id) ON DELETE CASCADE,
@@ -131,6 +133,25 @@ final class Schema {
             )
             """,
             "CREATE INDEX idx_line_map_source ON LINE_MAP(cobol_source_id)"
+    };
+
+    /**
+     * 版数の古いファイルを作り直すための削除文。外部キーの参照先を後に消すため、子表から並べる。
+     * 索引は表と一緒に消えるため個別に並べない。
+     */
+    static final String[] DROP_STATEMENTS = {
+            "DROP TABLE IF EXISTS LINE_MAP",
+            "DROP TABLE IF EXISTS SQL_STMT",
+            "DROP TABLE IF EXISTS FINDING",
+            "DROP TABLE IF EXISTS CALL_EDGE",
+            "DROP TABLE IF EXISTS NODE",
+            "DROP TABLE IF EXISTS PARAGRAPH",
+            "DROP TABLE IF EXISTS PROGRAM",
+            "DROP TABLE IF EXISTS BMS_FIELD",
+            "DROP TABLE IF EXISTS BMS_MAP",
+            "DROP TABLE IF EXISTS BMS_MAPSET",
+            "DROP TABLE IF EXISTS ENCODING_INFO",
+            "DROP TABLE IF EXISTS SOURCE"
     };
 
     private Schema() {

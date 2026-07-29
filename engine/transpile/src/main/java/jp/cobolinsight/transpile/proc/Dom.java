@@ -83,6 +83,7 @@ final class Dom {
         return false;
     }
 
+    /** 2節点の直近の共通支配節点。postorder 番号の小さい側を即時支配節点へ上げ、番号が一致するまで詰める。 */
     private static CfgNode intersect(CfgNode a, CfgNode b, Map<CfgNode, CfgNode> idom,
             Map<CfgNode, Integer> postNumber) {
         CfgNode f1 = a;

@@ -59,6 +59,9 @@ public final class JclFrontend {
 	}
 
 	/**
+	 * JCL をパースする。前処理の各段は一時ディレクトリへ作業ファイルを書き出し、それらは JVM の
+	 * 終了時に削除される。結果の行番号は前処理後の作業ファイル上の行番号である。
+	 *
 	 * @param jclFile パース対象の JCL ファイル
 	 * @param symbolValues 外部から与えるシンボリック値(例: SYSUID)。null 可
 	 * @param procedureLibraryPaths カタログ化 PROC・INCLUDE メンバの検索パス
@@ -255,7 +258,13 @@ public final class JclFrontend {
 		return tokens;
 	}
 
-	/** MAPA Demo01.rewriteWithoutCol72to80 と同処理。72〜80桁を除去した作業ファイルを作る。 */
+	/**
+	 * MAPA Demo01.rewriteWithoutCol72to80 と同処理。72〜80桁を除去した作業ファイルを作る。
+	 *
+	 * <p>JCL では72桁目の非空白が継続を表す。72桁目を空白へ落とすと、コメントの継続行が独立した
+	 * 文として読まれるため、継続元がコメントだった場合は次行の3桁目へ {@code *} を置いてコメント行に
+	 * 直す(addSplat)。72桁以降に現れたコメント本文は空白へ置き換える。
+	 */
 	private File rewriteWithoutCol72to80(String aFileName, File baseDir, TheCLI cli) throws IOException {
 		ArrayList<Token> tokens = lex(aFileName);
 		File aFile = new File(aFileName);
@@ -299,14 +308,14 @@ public final class JclFrontend {
 				}
 			}
 			if (addSplat) {
-				if (newLine.charAt(2) == ' ') {
+				if (newLine.length() > 2 && newLine.charAt(2) == ' ') {
 					newLine.setCharAt(2, '*');
 				} else {
 					addSplat = false;
 				}
 			}
 			if (onThisLine.size() > 0) {
-				if (cmBefore72 != null && col72 != null) {
+				if (cmBefore72 != null && col72 != null && !operandEndsWithComma(inLine, cmBefore72)) {
 					addSplat = true;
 				} else {
 					addSplat = false;
@@ -327,6 +336,16 @@ public final class JclFrontend {
 		out.close();
 		cli.setPosixAttributes(tmp);
 		return tmp;
+	}
+
+	/**
+	 * 行内コメントの手前にあるオペランド部がカンマで終わるか。カンマで終わる場合、72桁目の非空白は
+	 * オペランドの継続を表すのであって、コメントの継続を表さない。この区別を欠くと、続く継続行を
+	 * コメント行へ書き換えてしまい、ジョブとステップが解析結果から消える。
+	 */
+	private boolean operandEndsWithComma(String line, Token commentBefore72) {
+		int end = Math.min(commentBefore72.getCharPositionInLine(), line.length());
+		return line.substring(0, end).stripTrailing().endsWith(",");
 	}
 
 	/** MAPA Demo01.newTempDir と同処理。 */

@@ -29,8 +29,9 @@ import jp.cobolinsight.rules.dataflow.DataFlowSupport.TableRef;
 
 /**
  * R005 OCCURS 範囲外の添字・指標。OCCURS 表への添字参照ノードで、添字の取り得る値域(区間値域解析)が
- * 表の上限を超え得る、または 0 以下になり得る箇所を検出する。上限は表項目または OCCURS を持つ直近の
- * 上位項目から解決する。LINKAGE 節の表は呼出元が保証する領域のため対象外とする。
+ * 表の上限を超え得る、または 0 以下になり得る箇所を検出する。範囲外の添字は表に隣接する記憶域を
+ * 読み書きする。上限は表項目または OCCURS を持つ直近の上位項目から解決する。LINKAGE 節の表は
+ * 呼出元が保証する領域のため対象外とする。
  */
 public final class OccursSubscriptRangeRule implements Rule {
 
@@ -78,12 +79,16 @@ public final class OccursSubscriptRangeRule implements Rule {
             }
             String text = textOf(statement);
             for (TableRef ref : support.tableRefs(text)) {
-                Integer max = support.occursMax(ref.tableName()).orElse(null);
-                if (max == null || support.sectionOf(ref.tableName()) == Section.LINKAGE) {
+                List<Integer> dims = support.occursDims(ref.tableName());
+                if (dims.isEmpty() || support.sectionOf(ref.tableName()) == Section.LINKAGE) {
                     continue;
                 }
-                for (String sub : ref.subscripts()) {
-                    ValueInterval iv = subscriptInterval(df, node, sub);
+                List<String> subscripts = ref.subscripts();
+                for (int i = 0; i < subscripts.size(); i++) {
+                    // 添字は外側の次元から並ぶため、同じ順の OCCURS 上限と突き合わせる。次元数を
+                    // 超える添字は最も内側の上限で見る。
+                    int max = dims.get(Math.min(i, dims.size() - 1));
+                    ValueInterval iv = subscriptInterval(df, node, subscripts.get(i));
                     if (iv == null || !(iv.mayExceed(max) || iv.mayBeNonPositive())) {
                         continue;
                     }

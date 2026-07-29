@@ -14,9 +14,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * SQL助言6ルール(S001〜S006)の検出。S001〜S003 の陽性は samples に無いため合成SQLで検証し、
- * S004/S006 は samples SYK006 の DECLARE SYKZAIKOCUR で陽性、S005 は構文一律で該当文に発火する。
- * SqlStatementModel は本番と同じ SqlParser SPI で組む({@link SqlAdviceFixtures})。
+ * SQL助言6ルール(S001〜S006)の検出。S001〜S003 が陽性になる文は samples に無いため、合成SQLで
+ * 検証する。S004 と S006 は samples SYK006 のカーソル宣言 DECLARE SYKZAIKOCUR で陽性になり、
+ * S005 は文の種別だけで判定するため該当する全ての文へ発火する。SqlStatementModel は本番と同じ
+ * SqlParser SPI で組む({@link SqlAdviceFixtures})。
  */
 class SqlAdviceRuleTest {
 
@@ -170,7 +171,7 @@ class SqlAdviceRuleTest {
         assertTrue(new OptimizeForMissingRule().evaluate(ctx).isEmpty());
     }
 
-    // ---- samples SYK006 / SYK007 の発火(m5-spec §5.2 予測との突合) ----
+    // ---- samples SYK006 / SYK007 での発火 ----
 
     @Test
     void samplesSyk006MatchesPrediction() {

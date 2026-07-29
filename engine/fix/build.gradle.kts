@@ -17,7 +17,7 @@ dependencies {
     implementation(project(":engine:engine-api"))
     // 原バイト再取得・ByteOffsetTable によるバイト単位桁計算のため、コンパイル依存とする。
     implementation(project(":engine:encoding"))
-    // unified diff 算出の単一正本(fix preview/apply が使う)。
+    // unified diff の算出はこのライブラリへ一元化する(修正案のプレビューと適用が使う)。
     implementation("io.github.java-diff-utils:java-diff-utils:4.15")
 
     // ReparseVerifier は AnalysisServices.load() 経由で CobolParser を ServiceLoader 解決する。

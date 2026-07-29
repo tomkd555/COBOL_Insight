@@ -9,7 +9,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** engine-api の BMSマップモデルへの写像の検証(期待結果.md 9.1)。 */
+/** engine-api の BMSマップモデルへの変換の検証。 */
 class BmsModelMapperTest {
 
     private static final Path SYKMAP1 = Path.of("..", "..", "samples", "bms", "SYKMAP1.bms");

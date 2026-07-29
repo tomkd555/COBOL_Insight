@@ -153,4 +153,19 @@ class SqlStatementAnalyzerTest {
         }
         assertEquals(Set.of("SYKDB.SOKOM", "SYKDB.ZAIKOM"), tables);
     }
+
+    @Test
+    void 行コメントがあっても後続の本文を解析する() {
+        SqlAnalysisResult result = analyzer.analyze(block(
+                "SELECT A INTO :WK-A FROM T -- don't touch\n"
+                + "WHERE UPPER(K) = :WK-K",
+                SqlBlockKind.EXECUTABLE));
+        assertEquals(AnalysisStatus.ANALYZED, result.status());
+        assertEquals(SqlStatementKind.SELECT_INTO, result.statementKind());
+        assertEquals(Set.of("WK-A", "WK-K"), dataNames(result),
+                "コメント内のアポストロフィを文字列リテラルの開始とみなさないこと");
+        assertEquals(List.of("UPPER(K) = :WK-K"),
+                result.structureSignals().functionOnColumnPredicates(),
+                "行コメントより後ろの述語も解析対象に含めること");
+    }
 }

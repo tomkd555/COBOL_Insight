@@ -126,7 +126,8 @@ class FixedFormatNormalizerTest {
 
     @Test
     void multiWordStatementFoldsAtWordBoundaryWithoutHyphen() {
-        // A3 の R017 ハンドラ。81バイトで B領域予算(61バイト)を超え、語境界で折り返す。
+        // R017(ファイル状態未検査)の修正案が挿入する検査文。81バイトで B領域予算(61バイト)を
+        // 超え、語境界で折り返す。
         String handler =
                 "IF WS-ORDIN-STATUS NOT = '00' DISPLAY 'FILE ERROR: ORDIN ' WS-ORDIN-STATUS END-IF";
         assertEquals(81, byteLen(handler, StandardCharsets.UTF_8));
@@ -184,7 +185,7 @@ class FixedFormatNormalizerTest {
         assertEquals(' ', lines.get(0).charAt(6));
         assertEquals('-', lines.get(1).charAt(6));
         assertEquals('-', lines.get(2).charAt(6));
-        // 分割途中の行は72桁ちょうどまで埋める(短いと後続の空白が黙ってリテラルへ混入するため)。
+        // 分割途中の行は72桁ちょうどまで埋める(短いと行末の空白がリテラルへ混入するため)。
         assertEquals(72, byteLen(lines.get(0), StandardCharsets.UTF_8));
         assertEquals(72, byteLen(lines.get(1), StandardCharsets.UTF_8));
         assertTrue(byteLen(lines.get(2), StandardCharsets.UTF_8) <= 72);

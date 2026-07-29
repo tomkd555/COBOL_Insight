@@ -14,7 +14,9 @@ import java.nio.charset.StandardCharsets;
  */
 public final class CodePageDetector {
 
+    /** バイト分布による推定は内容判別より根拠が弱いため、確信度を低く固定する。 */
     private static final int EBCDIC_ESTIMATE_CONFIDENCE = 30;
+    /** 候補が得られずUTF-8として復号できるかだけで決めた場合の確信度。 */
     private static final int FALLBACK_CONFIDENCE = 10;
 
     public DetectionResult detect(byte[] bytes) {
@@ -40,6 +42,7 @@ public final class CodePageDetector {
         return fallback(bytes, soSi);
     }
 
+    /** ICU4Jが候補を返さないときの既定。対象は日本語のソースであるため、UTF-8で復号できなければShift_JISとみなす。 */
     private static DetectionResult fallback(byte[] bytes, boolean soSi) {
         try {
             StandardCharsets.UTF_8.newDecoder()
@@ -52,6 +55,7 @@ public final class CodePageDetector {
         }
     }
 
+    /** SO(0x0E)/SI(0x0F)を含むか。EBCDICの混在コードページは全角文字の区間をこの2バイトで挟む。 */
     static boolean containsSoSi(byte[] bytes) {
         for (byte b : bytes) {
             if (b == 0x0E || b == 0x0F) {
@@ -80,9 +84,11 @@ public final class CodePageDetector {
             }
         }
         double spaceRatio = ebcdicSpace / (double) bytes.length;
+        // SO/SIを含む場合はEBCDICの根拠が強いため、0x40の出現率に求める下限を緩める。
         if (soSi && spaceRatio >= 0.05) {
             return true;
         }
+        // SO/SIが無い場合は、EBCDICの改行が0x25であり0x0Aが現れないことを条件に加える。
         return asciiLf == 0 && spaceRatio >= 0.10;
     }
 }

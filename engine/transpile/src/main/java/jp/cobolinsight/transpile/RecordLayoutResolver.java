@@ -34,19 +34,21 @@ public final class RecordLayoutResolver {
                     Optional.of(pt), item.redefines(), item.conditionNames(), List.of());
         }
         List<LayoutField> children = new ArrayList<>();
+        // COBOL のデータ名は大小を区別しない。REDEFINES の対象名と宣言名の表記が揃わない資産が
+        // あるため、大文字化して突き合わせる。
         Map<String, Integer> siblingOffset = new HashMap<>();
         int cursor = startOffset;
         for (DataItem child : item.children()) {
             int childStart;
             if (child.redefines().isPresent()) {
-                Integer target = siblingOffset.get(child.redefines().get());
+                Integer target = siblingOffset.get(upper(child.redefines().get()));
                 childStart = target != null ? target : cursor;
             } else {
                 childStart = cursor;
             }
             LayoutField resolved = resolveItem(child, childStart);
             children.add(resolved);
-            siblingOffset.put(child.name(), childStart);
+            siblingOffset.put(upper(child.name()), childStart);
             if (child.redefines().isEmpty()) {
                 cursor += resolved.totalSpan();
             }
@@ -54,5 +56,9 @@ public final class RecordLayoutResolver {
         int groupLength = cursor - startOffset;
         return new LayoutField(item.name(), item.level(), startOffset, groupLength, occurs,
                 Optional.empty(), item.redefines(), item.conditionNames(), children);
+    }
+
+    private static String upper(String name) {
+        return name.toUpperCase(java.util.Locale.ROOT);
     }
 }

@@ -22,10 +22,11 @@ import java.util.Set;
 /**
  * 意味モデルと制御フローグラフから不動点解析を実行し、{@link ProgramDataFlow} を構築する。
  * 到達定義(前進)・汚染追跡(前進・種別別)・生存(後進)の3解析を {@link WorklistSolver} 上で
- * 回す。区間値域(intervalAt)はこの段では未追跡で常に empty を返し、後半で差し込む。
+ * 回し、区間値域は束が有限でないため {@link IntervalAnalysis} の専用ソルバで求める。
  */
 public final class DataFlowEngine {
 
+    /** 機密情報を持つと見なすデータ名の末尾。個人番号・口座番号・カード番号の命名慣行に合わせる。 */
     private static final List<String> SENSITIVE_SUFFIXES = List.of("-SSN", "-ACCT-NO", "-CARD-NO");
 
     private DataFlowEngine() {
@@ -51,7 +52,9 @@ public final class DataFlowEngine {
         Set<String> sensitiveVars = sensitiveVariables(model);
 
         Map<CfgNode, Set<Definition>> reachingIn =
-                reachingDefinitions(cfg, defUseByNode, uninitVars);
+                reachingDefinitions(cfg, defUseByNode, uninitVars, subordinatesByGroup(model));
+        // 汚染は種別ごとに独立した解析として回す。外部入力は受信文を汚染源とし、機密は宣言そのものを
+        // 汚染源とするため、同じ転送関数を汚染源の与え方だけ変えて2度適用する。
         Map<CfgNode, Set<TaintFact>> externalTaintIn =
                 taint(cfg, defUseByNode, externalSourceByNode, Set.of());
         Map<CfgNode, Set<TaintFact>> sensitiveTaintIn =
@@ -76,13 +79,15 @@ public final class DataFlowEngine {
     // ---- 到達定義(前進・may) ----
 
     private static Map<CfgNode, Set<Definition>> reachingDefinitions(ControlFlowGraph cfg,
-            Map<CfgNode, DefUse> defUseByNode, Set<String> uninitVars) {
+            Map<CfgNode, DefUse> defUseByNode, Set<String> uninitVars,
+            Map<String, Set<String>> subordinatesByGroup) {
         Set<Definition> boundary = new LinkedHashSet<>();
         for (String var : uninitVars) {
             boundary.add(new Definition(var, cfg.entry().id(), true));
         }
         return WorklistSolver.solve(cfg, WorklistSolver.Direction.FORWARD, boundary, (node, in) -> {
-            Set<String> defVars = defUseByNode.get(node).defs();
+            Set<String> defVars =
+                    withSubordinates(defUseByNode.get(node).defs(), subordinatesByGroup);
             Set<Definition> out = new LinkedHashSet<>();
             for (Definition d : in) {
                 if (!defVars.contains(d.variable())) {
@@ -94,6 +99,41 @@ public final class DataFlowEngine {
             }
             return out;
         });
+    }
+
+    /**
+     * 集団項目名 → 従属する全項目名。集団項目への代入は記憶領域全体を書き換えるため、従属項目の
+     * 定義も同時に置き換える。この対応を持たないと、集団項目で初期化した従属項目へ入口の
+     * 未初期化定義が届き続ける。
+     */
+    private static Map<String, Set<String>> subordinatesByGroup(CobolSemanticModel model) {
+        Map<String, Set<String>> result = new java.util.LinkedHashMap<>();
+        for (DataItem item : model.dataItems()) {
+            collectSubordinates(item, result);
+        }
+        return result;
+    }
+
+    private static Set<String> collectSubordinates(DataItem item, Map<String, Set<String>> result) {
+        Set<String> all = new LinkedHashSet<>();
+        for (DataItem child : item.children()) {
+            all.add(child.name().toUpperCase(Locale.ROOT));
+            all.addAll(collectSubordinates(child, result));
+        }
+        if (!all.isEmpty()) {
+            result.computeIfAbsent(item.name().toUpperCase(Locale.ROOT), k -> new LinkedHashSet<>())
+                    .addAll(all);
+        }
+        return all;
+    }
+
+    private static Set<String> withSubordinates(Set<String> defs,
+            Map<String, Set<String>> subordinatesByGroup) {
+        Set<String> expanded = new LinkedHashSet<>(defs);
+        for (String def : defs) {
+            expanded.addAll(subordinatesByGroup.getOrDefault(def, Set.of()));
+        }
+        return expanded;
     }
 
     // ---- 汚染追跡(前進・may) ----
@@ -152,6 +192,7 @@ public final class DataFlowEngine {
 
     // ---- 変数集合の抽出 ----
 
+    /** VALUE 句を持たない項目を未初期化の候補とする。入口で合成定義を立てる対象になる。 */
     private static Set<String> uninitializedVariables(CobolSemanticModel model) {
         Set<String> result = new LinkedHashSet<>();
         for (DataItem item : model.dataItems()) {

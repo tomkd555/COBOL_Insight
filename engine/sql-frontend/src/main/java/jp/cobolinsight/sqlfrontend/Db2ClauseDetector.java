@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 
 /**
  * OPTIMIZE FOR n ROWS・WITH UR の2句を、抽出SQLテキストへの正規表現検査で検出する。
- * 文字列リテラル内は対象外とする。SQL助言 S005/S006 の土台。
+ * 文字列リテラル内は対象外とする。SQL助言 S005・S006 の判定に用いる。
  */
 public final class Db2ClauseDetector {
 

@@ -106,7 +106,8 @@ public final class MoveTruncationRule implements Rule {
         if (sender == null) {
             return null; // 送信が集団項目・未解決
         }
-        Matcher m = NAME_TOKEN.matcher(masked.substring(to + "TO".length()));
+        Matcher m = NAME_TOKEN.matcher(
+                maskParenthesized(masked.substring(to + "TO".length())));
         while (m.find()) {
             String receiver = m.group();
             PictureType recv = support.pictureType(receiver).orElse(null);
@@ -117,6 +118,12 @@ public final class MoveTruncationRule implements Rule {
         return null;
     }
 
+    /**
+     * 送信から受信への移送で桁が失われるか。数字項目どうしは整数部と小数部を別に比べる。COBOL は
+     * 小数点位置をそろえて移送するため、整数部が足りなければ上位桁が、小数部が足りなければ下位桁が
+     * 落ちる。英数字項目どうしは PICTURE の文字数(totalDigits)を長さとして比べ、左詰めで移送した
+     * ときに右端があふれる場合を桁落ちとみなす。種別が異なる組は判定しない。
+     */
     private static boolean truncates(PictureType sender, PictureType recv) {
         if (sender.isNumeric() && recv.isNumeric()) {
             return recv.integerDigits() < sender.integerDigits()
@@ -138,6 +145,27 @@ public final class MoveTruncationRule implements Rule {
         Matcher m = Pattern.compile("(?<![\\p{L}\\p{N}$#_-])" + word + "(?![\\p{L}\\p{N}$#_-])")
                 .matcher(upper);
         return m.find() ? m.start() : -1;
+    }
+
+    /**
+     * 括弧で囲む添字・参照修飾を空白へ置き換える。添字に使う変数は受信項目ではないため、
+     * 桁比較の対象から外す必要がある。
+     */
+    private static String maskParenthesized(String region) {
+        StringBuilder sb = new StringBuilder(region);
+        int depth = 0;
+        for (int i = 0; i < sb.length(); i++) {
+            char c = sb.charAt(i);
+            if (c == '(') {
+                depth++;
+            } else if (c == ')') {
+                depth = Math.max(0, depth - 1);
+            } else if (depth == 0) {
+                continue;
+            }
+            sb.setCharAt(i, ' ');
+        }
+        return sb.toString();
     }
 
     private static String maskLiterals(String text) {

@@ -11,7 +11,10 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** 期待結果.md 6章(コピー句の使用状況)どおりの COPY REPLACING 展開の検証。 */
+/**
+ * コピー句展開の検証。COPY REPLACING の接頭辞置換が項目名へ反映されること、展開の対応表が
+ * コピー句のファイルと開始行を指すこと、暗黙コードが対象外になることを確認する。
+ */
 class CopyExpansionMappingTest {
 
     private static List<String> allItemNames(CobolSemanticModel model) {

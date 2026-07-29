@@ -5,7 +5,6 @@ import jp.cobolinsight.engineapi.transpile.TargetLanguage;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 
 /** Java 生成のレンダリング。byte[] を裏に持つクラスと、ランタイムヘルパ CobolRuntime.java を出力する。 */
@@ -277,12 +276,20 @@ public final class JavaEmitter implements LanguageEmitter {
         };
     }
 
+    /**
+     * 88レベル VALUE の1件を親項目との比較式へ写す。VALUE が引用符付きなら親が数値項目でも文字列として
+     * 比較し、原文の表記に従う。{@code low THRU high} は下限・上限の範囲比較へ展開する。表意定数は
+     * 値へ写し、文字コード系に依存して写せないものは常に偽の式と注記へ落とす。
+     */
     private static String condition(String call, FieldKind parentKind, String value) {
+        if (Literals.isCodePageDependentFigurative(value)) {
+            return "false /* " + value.trim() + " は文字コード系に依存するため対訳しない */";
+        }
         boolean asString = parentKind == FieldKind.ALPHANUMERIC || Literals.isQuoted(value);
-        int thru = value.toUpperCase(Locale.ROOT).indexOf(THRU);
+        int thru = Literals.indexOfThru(value);
         if (thru >= 0) {
             String lo = value.substring(0, thru).trim();
-            String hi = value.substring(thru + THRU.length()).trim();
+            String hi = value.substring(thru + Literals.thruLength()).trim();
             if (asString) {
                 return "(" + call + ".compareTo(" + strLiteral(lo) + ") >= 0 && " + call
                         + ".compareTo(" + strLiteral(hi) + ") <= 0)";
@@ -296,14 +303,12 @@ public final class JavaEmitter implements LanguageEmitter {
     }
 
     private static String strLiteral(String value) {
-        return "\"" + Literals.unquote(value) + "\"";
+        return "\"" + Literals.resolve(value) + "\"";
     }
 
     private static String num(String value) {
-        return Literals.unquote(value);
+        return Literals.resolve(value);
     }
-
-    private static final String THRU = " THRU ";
 
     private static String javaType(FieldKind kind) {
         return kind == FieldKind.ALPHANUMERIC ? "String" : "long";

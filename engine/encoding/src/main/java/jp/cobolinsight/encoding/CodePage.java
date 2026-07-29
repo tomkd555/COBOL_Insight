@@ -6,8 +6,11 @@ import java.util.Locale;
 /** 本ツールが扱うコードページ。 */
 public enum CodePage {
     UTF_8("UTF-8", false),
+    /** Shift_JIS。NEC・IBMの拡張文字を含むソースも復号できるよう windows-31j(CP932)で扱う。 */
     SHIFT_JIS("windows-31j", false),
+    /** 日本語EBCDIC。SBCS面はカタカナを収め、英小文字を持たない。 */
     IBM930("x-IBM930", true),
+    /** 日本語EBCDIC。SBCS面は英小文字を収め、カタカナを持たない。 */
     IBM939("x-IBM939", true);
 
     private final String charsetName;

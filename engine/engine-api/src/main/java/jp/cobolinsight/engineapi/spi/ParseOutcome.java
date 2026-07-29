@@ -7,7 +7,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * ファイル単位の部分失敗方針を型で表すパース結果。1ファイルの失敗は解析全体を止めず、
+ * パース結果。成功と失敗を型で区別する。1ファイルの失敗は解析全体を止めず、
  * error レベルの finding として記録して残りの解析を継続する。
  */
 public sealed interface ParseOutcome<T> permits ParseOutcome.Success, ParseOutcome.Failure {

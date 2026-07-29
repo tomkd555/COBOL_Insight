@@ -40,15 +40,15 @@ class PersistenceDaoRoundTripTest {
 
     @Test
     void sourceRoundTrip() {
-        SourceRecord source = new SourceRecord(1L, "COPYBOOKS/CUST.cpy", "IBM930", "hash-abc", 512L);
+        SourceRecord source = new SourceRecord(1L, "/assets", "COPYBOOKS/CUST.cpy", "IBM930", "hash-abc", 512L);
         dao.insertSource(source);
         assertEquals(source, dao.findSource(1L).orElseThrow());
-        assertEquals(source, dao.findSourceByPath("COPYBOOKS/CUST.cpy").orElseThrow());
+        assertEquals(source, dao.findSourceByPath("/assets", "COPYBOOKS/CUST.cpy").orElseThrow());
     }
 
     @Test
     void encodingInfoRoundTrip() {
-        dao.insertSource(new SourceRecord(1L, "A.cbl", "IBM930", "hash-1", 10L));
+        dao.insertSource(new SourceRecord(1L, "/assets", "A.cbl", "IBM930", "hash-1", 10L));
         EncodingInfoRecord info = new EncodingInfoRecord(1L, "IBM930", 0.95, false, true);
         dao.insertEncodingInfo(info);
         assertEquals(info, dao.findEncodingInfo(1L).orElseThrow());
@@ -56,7 +56,7 @@ class PersistenceDaoRoundTripTest {
 
     @Test
     void bmsHierarchyRoundTrip() {
-        dao.insertSource(new SourceRecord(1L, "SCREEN.bms", null, "hash-1", 10L));
+        dao.insertSource(new SourceRecord(1L, "/assets", "SCREEN.bms", null, "hash-1", 10L));
         BmsMapsetRecord mapset = new BmsMapsetRecord(1L, 1L, "MAPSET1");
         dao.insertBmsMapset(mapset);
         assertEquals(mapset, dao.findBmsMapset(1L).orElseThrow());
@@ -72,7 +72,7 @@ class PersistenceDaoRoundTripTest {
 
     @Test
     void programAndParagraphRoundTrip() {
-        dao.insertSource(new SourceRecord(1L, "A.cbl", "IBM930", "hash-1", 10L));
+        dao.insertSource(new SourceRecord(1L, "/assets", "A.cbl", "IBM930", "hash-1", 10L));
         ProgramRecord program = new ProgramRecord(1L, 1L, "PROGA");
         dao.insertProgram(program);
         assertEquals(program, dao.findProgram(1L).orElseThrow());
@@ -96,7 +96,7 @@ class PersistenceDaoRoundTripTest {
 
     @Test
     void findingRoundTrip() {
-        dao.insertSource(new SourceRecord(1L, "A.cbl", "IBM930", "hash-1", 10L));
+        dao.insertSource(new SourceRecord(1L, "/assets", "A.cbl", "IBM930", "hash-1", 10L));
         FindingRecord finding = new FindingRecord(1L, "R001", "warning", 1L, 5, 8, 120L,
                 "未初期化の項目を参照している", "{\"ruleId\":\"R001\"}");
         dao.insertFinding(finding);
@@ -106,7 +106,7 @@ class PersistenceDaoRoundTripTest {
 
     @Test
     void sqlStmtRoundTrip() {
-        dao.insertSource(new SourceRecord(1L, "A.cbl", "IBM930", "hash-1", 10L));
+        dao.insertSource(new SourceRecord(1L, "/assets", "A.cbl", "IBM930", "hash-1", 10L));
         SqlStmtRecord stmt = new SqlStmtRecord(1L, 1L, "SELECT", "SELECT * FROM T WHERE K = :H1",
                 "SELECT * FROM T WHERE K = :CUST-ID");
         dao.insertSqlStmt(stmt);
@@ -116,7 +116,7 @@ class PersistenceDaoRoundTripTest {
 
     @Test
     void lineMapRoundTrip() {
-        dao.insertSource(new SourceRecord(1L, "A.cbl", "IBM930", "hash-1", 10L));
+        dao.insertSource(new SourceRecord(1L, "/assets", "A.cbl", "IBM930", "hash-1", 10L));
         LineMapRecord lineMap = new LineMapRecord(1L, 1L, 10, 12, "A.py", 20, 21, "1:N",
                 "GO TO は構造化のため N:1 対応で表現する", "anchor-1");
         dao.insertLineMap(lineMap);
@@ -126,7 +126,7 @@ class PersistenceDaoRoundTripTest {
 
     @Test
     void lineMapRoundTripWithEmptyNote() {
-        dao.insertSource(new SourceRecord(1L, "A.cbl", "IBM930", "hash-1", 10L));
+        dao.insertSource(new SourceRecord(1L, "/assets", "A.cbl", "IBM930", "hash-1", 10L));
         LineMapRecord lineMap = new LineMapRecord(1L, 1L, 1, 1, "A.py", 1, 1, "1:1", "", "anchor-2");
         dao.insertLineMap(lineMap);
         assertEquals("", dao.findLineMap(1L).orElseThrow().note());
@@ -134,8 +134,8 @@ class PersistenceDaoRoundTripTest {
 
     @Test
     void deleteLineMapsBySourceRemovesOnlyThatSourcesRows() {
-        dao.insertSource(new SourceRecord(1L, "A.cbl", "IBM930", "hash-1", 10L));
-        dao.insertSource(new SourceRecord(2L, "B.cbl", "IBM930", "hash-2", 10L));
+        dao.insertSource(new SourceRecord(1L, "/assets", "A.cbl", "IBM930", "hash-1", 10L));
+        dao.insertSource(new SourceRecord(2L, "/assets", "B.cbl", "IBM930", "hash-2", 10L));
         dao.insertLineMap(new LineMapRecord(1L, 1L, 1, 1, "A.py", 1, 1, "1:1", "", "a#1"));
         dao.insertLineMap(new LineMapRecord(2L, 1L, 2, 2, "A.py", 2, 2, "1:1", "", "a#2"));
         dao.insertLineMap(new LineMapRecord(3L, 2L, 1, 1, "B.py", 1, 1, "1:1", "", "b#1"));

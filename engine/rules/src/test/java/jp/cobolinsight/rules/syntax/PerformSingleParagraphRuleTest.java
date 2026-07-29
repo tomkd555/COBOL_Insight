@@ -80,6 +80,8 @@ class PerformSingleParagraphRuleTest {
 
     @Test
     void detectsPerformOfSingleParagraphWithoutThru() {
+        // PERFORM は4つあるが、検出は10行の1件だけである。11行は THRU 指定、12行は遷移先が
+        // セクション、13行はインライン PERFORM であり、いずれも単独段落名の直接指定に当たらない。
         CobolSemanticModel model = Fixtures.parse(tempDir, "FIX008.cbl", SOURCE);
 
         List<Finding> findings = new PerformSingleParagraphRule()

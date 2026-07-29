@@ -44,15 +44,16 @@ class CopyReplacingRuleTest {
             /*  4 */ "       DATA DIVISION.",
             /*  5 */ "       WORKING-STORAGE SECTION.",
             /*  6 */ "           COPY GOODCPY REPLACING LEADING ==CP== BY ==WS==.",
-            /*  7 */ "           COPY FLDCPY REPLACING ==FIELD== BY ==XYZ==.",
-            /*  8 */ "           COPY TRLCPY REPLACING TRAILING ==REC== BY ==RC2==.",
-            /*  9 */ "       LINKAGE SECTION.",
-            /* 10 */ "           COPY GOODCPY REPLACING LEADING",
-            /* 11 */ "               ==ZZ== BY ==YY==.",
-            /* 12 */ "       PROCEDURE DIVISION.",
-            /* 13 */ "       0000-MAIN.",
-            /* 14 */ "           MOVE SPACES TO WS-FIELD",
-            /* 15 */ "           GOBACK.",
+            /*  7 */ "           COPY FLDCPY REPLACING ==FLD-REC== BY ==WS-REC==",
+            /*  8 */ "               ==FIELD== BY ==XYZ==.",
+            /*  9 */ "           COPY TRLCPY REPLACING TRAILING ==REC== BY ==RC2==.",
+            /* 10 */ "       LINKAGE SECTION.",
+            /* 11 */ "           COPY GOODCPY REPLACING LEADING",
+            /* 12 */ "               ==ZZ== BY ==YY==.",
+            /* 13 */ "       PROCEDURE DIVISION.",
+            /* 14 */ "       0000-MAIN.",
+            /* 15 */ "           MOVE SPACES TO WS-FIELD",
+            /* 16 */ "           GOBACK.",
             "");
 
     @Test
@@ -70,7 +71,7 @@ class CopyReplacingRuleTest {
                         copybookDir.resolve("FLDCPY.cpy").toString(), FLD_COPYBOOK,
                         copybookDir.resolve("TRLCPY.cpy").toString(), TRL_COPYBOOK)));
 
-        assertEquals(List.of(7, 10),
+        assertEquals(List.of(7, 11),
                 findings.stream().map(f -> f.location().line()).sorted().toList(),
                 () -> "検出: " + findings);
         for (Finding finding : findings) {
@@ -81,8 +82,10 @@ class CopyReplacingRuleTest {
                 .filter(f -> f.location().line() == 7).findFirst().orElseThrow();
         assertTrue(fieldFinding.message().contains("置換対象 FIELD "),
                 "FLD-FIELDの語中一致を出現とみなさず検出すること: " + fieldFinding.message());
+        assertTrue(findings.stream().noneMatch(f -> f.message().contains("置換対象 FLD-REC ")),
+                "対を複数書いたREPLACING句でも、コピー句に出現する1対目は検出しないこと");
         Finding multiLine = findings.stream()
-                .filter(f -> f.location().line() == 10).findFirst().orElseThrow();
+                .filter(f -> f.location().line() == 11).findFirst().orElseThrow();
         assertTrue(multiLine.message().contains("置換対象 ZZ "),
                 "複数行にわたるCOPY文はその先頭行で報告すること: " + multiLine.message());
         assertTrue(findings.stream().noneMatch(f -> f.message().contains("置換対象 CP ")),

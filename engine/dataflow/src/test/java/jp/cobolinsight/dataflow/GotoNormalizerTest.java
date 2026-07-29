@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** GO TO正規化の可約性判定と、不可約領域のnode splittingの検証。 */
+/** GO TO正規化の可約性判定と、不可約領域を複製して単一入口化する処理の検証。 */
 class GotoNormalizerTest {
 
     static List<String> sampleFiles() {

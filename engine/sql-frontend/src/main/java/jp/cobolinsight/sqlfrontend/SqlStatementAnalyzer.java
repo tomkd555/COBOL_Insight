@@ -16,7 +16,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 第3段。マングリング済みSQLを JSqlParser で解析し、文種別・参照テーブル・
+ * ホスト変数をマングリングしたSQLを JSqlParser で解析し、文種別・参照テーブル・
  * ホスト変数(原データ名へ復元済み)を取り出す。
  * OPEN/FETCH/CLOSE と DECLARE CURSOR の外形は JSqlParser の対象外のため正規表現で扱い、
  * DECLARE CURSOR は内側の SELECT を JSqlParser で解析する。
@@ -55,7 +55,7 @@ public final class SqlStatementAnalyzer {
     private final HostVariableMangler mangler = new HostVariableMangler();
 
     public SqlAnalysisResult analyze(SqlBlock block) {
-        MangleResult mangleResult = mangler.mangle(block.sqlText());
+        MangleResult mangleResult = mangler.mangle(SqlTextScanner.maskComments(block.sqlText()));
         if (mangleResult instanceof MangleResult.NotAnalyzable notAnalyzable) {
             return notAnalyzable(notAnalyzable.reason(), null);
         }
@@ -102,6 +102,7 @@ public final class SqlStatementAnalyzer {
                 Matcher into = SELECT_INTO_CLAUSE.matcher(sql);
                 if (into.find()) {
                     List<String> intoTargets = restoreTokens(mangled, into.group(1));
+                    // INTO 句は埋め込みSQL固有でホスト変数の並びを取るため、取り出したうえで本文から外す。
                     String withoutInto = into.replaceFirst(" ");
                     String stripped = stripDb2Clauses(withoutInto);
                     SqlStructureSignals signals =
@@ -130,7 +131,10 @@ public final class SqlStatementAnalyzer {
         }
     }
 
-    /** SELECT本体を構文木で走査し、Db2固有句を正規表現で検出して構造シグナルを組み立てる。 */
+    /**
+     * SELECT本体を構文木で走査し、Db2固有句を正規表現で検出して構造シグナルを組み立てる。
+     * selectSql はDb2固有句を除いた構文木用のテキスト、db2Source は句の検出用に除去前のテキストを受ける。
+     */
     private static SqlStructureSignals selectStructure(String selectSql, MangledSql mangled,
             Optional<CursorSignals> cursor, String db2Source) throws JSQLParserException {
         Statement statement = CCJSqlParserUtil.parse(selectSql);

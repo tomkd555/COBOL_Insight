@@ -111,6 +111,19 @@ class MoveTruncationRuleTest {
     }
 
     @Test
+    void ignoresSubscriptVariableOfReceiver() {
+        String text = program("F003H",
+                "       01  WS-SRC  PIC 9(05).\n"
+                        + "       01  WS-IDX  PIC 9(02) COMP.\n"
+                        + "       01  WS-TBL.\n"
+                        + "           05  WS-ENT  PIC 9(05) OCCURS 10 TIMES.",
+                "           MOVE 1 TO WS-IDX",
+                "           MOVE WS-SRC TO WS-ENT(WS-IDX)",
+                "           STOP RUN.");
+        assertEquals(List.of(), run("F003H", text), "受信側の添字に使う変数は受信項目ではない");
+    }
+
+    @Test
     void ignoresGroupItemSender() {
         String text = program("F003G",
                 "       01  WS-GRP.\n"

@@ -21,9 +21,10 @@ dependencies {
     testImplementation(project(":engine:encoding"))
     // CFGルールのテストで CfgBuilder.build を呼び ControlFlowGraphs を組む(本体はengine-apiのみ依存)。
     testImplementation(project(":engine:dataflow"))
-    // R031のテストでBMSソースをengine-apiのBmsMapsetへ写像する。
+    // R031のテストでBMSソースをengine-apiのBmsMapsetへ変換する。
     testImplementation(project(":engine:bms-frontend"))
-    // SルールのテストでEmbeddedBlockのSQLをSqlParser SPI(JsqlSqlParser)でSqlStatementModel化する。
+    // SQL助言ルール(S001〜)のテストでEmbeddedBlockのSQLを
+    // SqlParser SPI(JsqlSqlParser)でSqlStatementModel化する。
     testImplementation(project(":engine:sql-frontend"))
     // SARIF出力のスキーマ検証(src/test/resources/sarif/sarif-schema-2.1.0.json)に使う。
     testImplementation("com.networknt:json-schema-validator:3.0.6")
