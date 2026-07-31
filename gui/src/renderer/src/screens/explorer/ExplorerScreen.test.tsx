@@ -47,6 +47,15 @@ let runSqlAdvise: ReturnType<typeof vi.fn>;
 let readSarif: ReturnType<typeof vi.fn>;
 let selectInputFolder: ReturnType<typeof vi.fn>;
 let readSourceText: ReturnType<typeof vi.fn>;
+let getOutputPaths: ReturnType<typeof vi.fn>;
+
+/** main が userData を基準に決める成果物の位置。 */
+const OUTPUT_PATHS = {
+  db: "C:\\data\\cobol-insight.db",
+  lintSarif: "C:\\data\\cobol-insight.sarif",
+  sqlAdviseSarif: "C:\\data\\cobol-insight-sql.sarif",
+  copyExpansion: "C:\\data\\cobol-insight-copy-expansion.json",
+};
 
 beforeEach(() => {
   runScan = vi.fn().mockResolvedValue(scanResult);
@@ -57,6 +66,7 @@ beforeEach(() => {
     Promise.resolve(path === "sql.sarif" ? [...SAMPLE_SQL_FINDINGS] : [...SAMPLE_FINDINGS]),
   );
   selectInputFolder = vi.fn().mockResolvedValue(SELECTED_DIR);
+  getOutputPaths = vi.fn().mockResolvedValue(OUTPUT_PATHS);
   readSourceText = vi.fn().mockResolvedValue({
     text: "001000 IDENTIFICATION DIVISION.\n001100 PROGRAM-ID. SYK001.",
     codepage: "Shift_JIS",
@@ -71,6 +81,7 @@ beforeEach(() => {
     readSarif,
     selectInputFolder,
     readSourceText,
+    getOutputPaths,
   } as unknown as CobolInsightApi;
 });
 
@@ -120,16 +131,15 @@ function renderApp(): void {
   );
 }
 
-/** インポート(フォルダ選択ダイアログ)を実行し、解析実行が有効になるまで待つ。 */
+/** インポート(フォルダ選択ダイアログ)を実行し、取込を起点に始まる解析の起動まで待つ。 */
 async function importFolder(): Promise<void> {
   fireEvent.click(screen.getByRole("button", { name: "インポート" }));
-  await waitFor(() => expect(screen.getByRole("button", { name: "解析実行" })).toBeEnabled());
+  await waitFor(() => expect(runScan).toHaveBeenCalled());
 }
 
-/** インポート→解析実行 の順に操作し、一覧が出るまで待つ。 */
+/** インポートから自動で走る解析の完了(資産一覧の表示)まで待つ。 */
 async function importAndRun(): Promise<void> {
-  await importFolder();
-  fireEvent.click(screen.getByRole("button", { name: "解析実行" }));
+  fireEvent.click(screen.getByRole("button", { name: "インポート" }));
   await screen.findByRole("button", { name: /SYK001\.cbl/ });
 }
 
@@ -158,17 +168,27 @@ describe("ExplorerScreen(資産エクスプローラー container)", () => {
 
   it("インポートで選んだフォルダをプロジェクトの入力フォルダにする", async () => {
     renderExplorer();
-    await importFolder();
+    await importAndRun();
     expect(selectInputFolder).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("button", { name: "解析実行" })).toBeEnabled();
   });
 
-  it("インポートをキャンセルしたら入力フォルダを変えない", async () => {
+  it("フォルダを取り込んだらそのまま解析を始め、一覧を出す", async () => {
+    // 取込だけで止めると画面が空状態のまま変わらず、取り込めたのかが利用者へ伝わらない。
+    renderExplorer();
+    fireEvent.click(screen.getByRole("button", { name: "インポート" }));
+    await screen.findByRole("button", { name: /SYK001\.cbl/ });
+    expect(runScan).toHaveBeenCalledTimes(1);
+    expect(runScan.mock.calls[0][0].inputDir).toBe(SELECTED_DIR);
+  });
+
+  it("インポートをキャンセルしたら入力フォルダを変えず、解析も始めない", async () => {
     selectInputFolder.mockResolvedValue(null);
     renderExplorer();
     fireEvent.click(screen.getByRole("button", { name: "インポート" }));
     await waitFor(() => expect(selectInputFolder).toHaveBeenCalledTimes(1));
     expect(screen.getByRole("button", { name: "解析実行" })).toBeDisabled();
+    expect(runScan).not.toHaveBeenCalled();
   });
 
   it("解析実行で scan・lint・sql-advise を順に起動し資産一覧を表示する(ゲート経路)", async () => {
@@ -200,20 +220,25 @@ describe("ExplorerScreen(資産エクスプローラー container)", () => {
 
     renderExplorer();
     await importFolder();
-    fireEvent.click(screen.getByRole("button", { name: "解析実行" }));
 
     const stageOf = (label: string): HTMLElement => screen.getByText(label);
+    // 各段は成果物の位置を main から受け取ってから起動するため、起動を待ってから完了させる。
+    const releaseStage = async (): Promise<void> => {
+      await waitFor(() => expect(pending).toHaveLength(1));
+      pending.shift()?.();
+    };
+
     expect(stageOf("第1段 資産の走査と構文解析")).toHaveAttribute("aria-current", "step");
     expect(stageOf("第2段 バグ検出")).not.toHaveAttribute("aria-current");
 
-    pending.shift()?.();
+    await releaseStage();
     await waitFor(() => expect(stageOf("第2段 バグ検出")).toHaveAttribute("aria-current", "step"));
     expect(stageOf("第1段 資産の走査と構文解析")).not.toHaveAttribute("aria-current");
 
-    pending.shift()?.();
+    await releaseStage();
     await waitFor(() => expect(stageOf("第3段 SQL助言")).toHaveAttribute("aria-current", "step"));
 
-    pending.shift()?.();
+    await releaseStage();
     await screen.findByRole("button", { name: /SYK001\.cbl/ });
   });
 
@@ -373,8 +398,61 @@ describe("ExplorerScreen(資産エクスプローラー container)", () => {
     runScan.mockRejectedValue(new Error("入力フォルダが見つかりません"));
     renderExplorer();
     await importFolder();
-    fireEvent.click(screen.getByRole("button", { name: "解析実行" }));
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("入力フォルダが見つかりません"));
+  });
+
+  it("保存先を受け取れなかったら 0 件ではなく失敗として示す", async () => {
+    runScan.mockResolvedValue({ ...scanResult, outputs: {} });
+    renderExplorer();
+    await importFolder();
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent("解析結果の保存先を engine から受け取れなかった"),
+    );
+    expect(readAssetInventory).not.toHaveBeenCalled();
+  });
+
+  it("対象が 1 件も無ければ認識する拡張子を警告で案内する", async () => {
+    readAssetInventory.mockResolvedValue([]);
+    renderExplorer();
+    await importFolder();
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("対象のファイルが 1 件も見つからなかった"),
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(".cbl");
+  });
+
+  it("規約の外に残った対象ファイルは件数と例を警告で示す", async () => {
+    runScan.mockResolvedValue({
+      ...scanResult,
+      summary: {
+        discoveryMode: "convention",
+        outsideConventionCount: 2,
+        outsideConventionSamples: ["encoding/SYKENC1_SJIS.cbl", "encoding/SYKENC1_UTF8.cbl"],
+      },
+    });
+    renderExplorer();
+    await importAndRun();
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("2 件"));
+    expect(screen.getByRole("status")).toHaveTextContent("encoding/SYKENC1_SJIS.cbl");
+    expect(screen.getByRole("button", { name: /SYK001\.cbl/ })).toBeInTheDocument();
+  });
+
+  it("成果物の位置を main から受け取り、各段へ絶対パスで指定する", async () => {
+    renderExplorer();
+    await importAndRun();
+    await waitFor(() => expect(runSqlAdvise).toHaveBeenCalledTimes(1));
+    expect(runScan.mock.calls[0][0].db).toBe(OUTPUT_PATHS.db);
+    expect(runScan.mock.calls[0][0].copyExpansion).toBe(OUTPUT_PATHS.copyExpansion);
+    expect(runLint.mock.calls[0][0].sarifFile).toBe(OUTPUT_PATHS.lintSarif);
+    // lint と別名にする。同名だと後段が前段の SARIF を上書きする。
+    expect(runSqlAdvise.mock.calls[0][0].sarifFile).toBe(OUTPUT_PATHS.sqlAdviseSarif);
+  });
+
+  it("取りこぼしが無ければ警告を出さない", async () => {
+    renderExplorer();
+    await importAndRun();
+    await waitFor(() => expect(screen.getByRole("button", { name: /SYK001\.cbl/ })).toBeInTheDocument());
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
   it("設定で無効化したルールを lint と sql-advise の両方へ渡す", async () => {

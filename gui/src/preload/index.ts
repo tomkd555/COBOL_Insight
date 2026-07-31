@@ -43,6 +43,7 @@ const api: CobolInsightApi = {
   selectInputFolder: () => ipcRenderer.invoke(ENGINE_CHANNELS.selectInputFolder),
   checkDirectoryExists: (path: string) =>
     ipcRenderer.invoke(ENGINE_CHANNELS.checkDirectoryExists, path),
+  getOutputPaths: () => ipcRenderer.invoke(ENGINE_CHANNELS.getOutputPaths),
   readSarif: (path: string) => ipcRenderer.invoke(ENGINE_CHANNELS.readSarif, path),
   readCallgraphJson: (path: string) =>
     ipcRenderer.invoke(ENGINE_CHANNELS.readCallgraphJson, path),

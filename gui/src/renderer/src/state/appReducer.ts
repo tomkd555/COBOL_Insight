@@ -20,6 +20,7 @@ import type {
   ProjectPatch,
   ReportFormat,
   RunStage,
+  ScanDiscovery,
   ScreenMode,
   SourceLang,
   SplitPaneId,
@@ -38,7 +39,12 @@ export type Action =
   | { type: "FINISH_RUN"; toast?: string; failed?: boolean }
   | { type: "CANCEL_RUN"; toast?: string }
   | { type: "SET_PROJECT"; project: ProjectPatch }
-  | { type: "SET_INVENTORY"; result: ArtifactState<AssetInventoryItem>; dbPath?: string }
+  | {
+      type: "SET_INVENTORY";
+      result: ArtifactState<AssetInventoryItem>;
+      dbPath?: string;
+      discovery?: ScanDiscovery;
+    }
   | { type: "SET_FINDINGS"; result: ArtifactState<SarifFinding> }
   | { type: "SET_SQL_ADVICE"; result: ArtifactState<SarifFinding> }
   | { type: "SET_GRAPH"; result: GraphArtifactState }
@@ -100,6 +106,7 @@ export function appReducer(state: AppState, action: Action): AppState {
         runStage: 1,
         toastMsg: null,
         inventory: { status: "none" },
+        scanDiscovery: null,
         findings: { status: "none" },
         sqlAdvice: { status: "none" },
         // 破棄した成果物の指摘を詳細ペイン・選択が指し続けないよう、両画面の選択を外す。
@@ -136,6 +143,7 @@ export function appReducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         inventory: action.result,
+        scanDiscovery: action.discovery ?? state.scanDiscovery,
         project: { ...state.project, dbPath: action.dbPath ?? state.project.dbPath },
       };
 

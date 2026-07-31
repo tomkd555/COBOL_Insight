@@ -7,8 +7,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * `scan`・`callgraph` 両サブコマンドが共有する入力・保存先・解析設定のオプション群
@@ -37,17 +39,32 @@ final class CommonScanOptions {
                 resolveCopybookPaths(inputDir, copybookPaths), codepageOverrides);
     }
 
-    /** 指定が無い場合、INPUT_DIR配下のcopybook・copyをコピー句探索パスとする。 */
+    /**
+     * 指定が無い場合、INPUT_DIR配下のcopybook・copyをコピー句探索パスとする。どちらも無ければ、
+     * 走査で見つかったコピー句の置き場所を探索パスとする(規約のフォルダを持たない資産のため)。
+     */
     static List<Path> resolveCopybookPaths(Path inputDir, List<Path> specified) {
         List<Path> searchPaths = new ArrayList<>(specified);
-        if (searchPaths.isEmpty()) {
-            for (String name : List.of("copybook", "copy")) {
-                Path candidate = inputDir.resolve(name);
-                if (Files.isDirectory(candidate)) {
-                    searchPaths.add(candidate);
-                }
+        if (!searchPaths.isEmpty()) {
+            return searchPaths;
+        }
+        for (String name : List.of("copybook", "copy")) {
+            Path candidate = inputDir.resolve(name);
+            if (Files.isDirectory(candidate)) {
+                searchPaths.add(candidate);
             }
         }
+        if (!searchPaths.isEmpty()) {
+            return searchPaths;
+        }
+        Set<Path> parents = new LinkedHashSet<>();
+        for (SourceDiscovery.DiscoveredFile file : SourceDiscovery.discover(inputDir).files()) {
+            Path parent = file.absPath().getParent();
+            if (file.kind() == SourceDiscovery.Kind.COPYBOOK && parent != null) {
+                parents.add(parent);
+            }
+        }
+        searchPaths.addAll(parents);
         return searchPaths;
     }
 }

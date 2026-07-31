@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { deriveRunBanner, deriveStatus } from "./status";
+import { deriveRunBanner, deriveScanNotice, deriveStatus } from "./status";
 import { initialState, type AppState } from "./appState";
 import { SAMPLE_INVENTORY } from "../screens/explorer/fixtures";
 import { SAMPLE_FINDINGS, SAMPLE_SQL_FINDINGS } from "../screens/findings/fixtures";
@@ -101,5 +101,72 @@ describe("deriveRunBanner(解析実行の失敗バナー)", () => {
   it("全段が成功していて error モードなら構文解析の部分的失敗として示す", () => {
     const banner = deriveRunBanner({ ...analyzed, mode: "error" });
     expect(banner).toContain("一部の資産で構文解析に失敗した");
+  });
+});
+
+describe("deriveScanNotice(走査の警告)", () => {
+  /** 資産 0 件で解析が正常終了した状態。 */
+  const empty = withState({
+    mode: "results",
+    inventory: { status: "ready", items: [] },
+    scanDiscovery: { mode: "convention", truncated: false, outsideCount: 0, outsideSamples: [] },
+  });
+
+  it("資産を取り込めていれば警告を出さない", () => {
+    expect(deriveScanNotice(analyzed)).toBeNull();
+  });
+
+  it("解析前は警告を出さない", () => {
+    expect(deriveScanNotice(initialState)).toBeNull();
+  });
+
+  it("実行中は警告を出さない", () => {
+    expect(deriveScanNotice({ ...empty, mode: "running" })).toBeNull();
+  });
+
+  it("取得に失敗した場合は失敗バナーに任せ、警告を出さない", () => {
+    const failed = withState({
+      mode: "error",
+      inventory: { status: "error", message: "読み取りに失敗しました" },
+    });
+    expect(deriveScanNotice(failed)).toBeNull();
+  });
+
+  it("0 件のときは従来構成が認識する拡張子を案内する", () => {
+    const notice = deriveScanNotice(empty);
+    expect(notice).toContain("対象のファイルが 1 件も見つからなかった");
+    expect(notice).toContain(".cbl");
+    expect(notice).not.toContain(".cobol");
+  });
+
+  it("再帰で走査して 0 件のときは再帰が認識する拡張子を案内する", () => {
+    const notice = deriveScanNotice({
+      ...empty,
+      scanDiscovery: { mode: "recursive", truncated: false, outsideCount: 0, outsideSamples: [] },
+    });
+    expect(notice).toContain(".cobol");
+    expect(notice).toContain(".copy");
+  });
+
+  it("規約の外に対象ファイルが残っていれば件数と例を示す", () => {
+    const notice = deriveScanNotice({
+      ...analyzed,
+      scanDiscovery: {
+        mode: "convention",
+        truncated: false,
+        outsideCount: 2,
+        outsideSamples: ["encoding/A.cbl", "encoding/B.cbl"],
+      },
+    });
+    expect(notice).toContain("2 件");
+    expect(notice).toContain("encoding/A.cbl");
+  });
+
+  it("上限で打ち切ったときはその旨を示す", () => {
+    const notice = deriveScanNotice({
+      ...analyzed,
+      scanDiscovery: { mode: "recursive", truncated: true, outsideCount: 0, outsideSamples: [] },
+    });
+    expect(notice).toContain("上限");
   });
 });

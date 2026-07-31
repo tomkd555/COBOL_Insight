@@ -239,6 +239,12 @@
   border-color: var(--ci-error-border);
   color: var(--ci-error-text);
 }
+/* 失敗ではないが取り込めていないものがある場合(走査の警告)。 */
+.ci-banner--warn {
+  background: var(--ci-sev-warning-tint);
+  border-color: var(--ci-sev-warning);
+  color: var(--ci-sev-warning);
+}
 
 /* --- 基本ボタン --- */
 .ci-btn {

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactElement } from "react";
 import { SPLIT_PANES, type AssetTypeFilter } from "../../state/appState";
 import { useAppState, useAppDispatch } from "../../state/AppStateContext";
-import { deriveRunBanner } from "../../state/status";
+import { deriveRunBanner, deriveScanNotice } from "../../state/status";
+import { readScanDiscovery } from "./scanSummary";
 import { EmptyState } from "../../components/EmptyState";
 import { RunningIndicator } from "../../components/RunningIndicator";
 import { SplitHandle } from "../../components/SplitHandle";
@@ -104,35 +105,52 @@ export function ExplorerScreen(): ReactElement {
     };
   }, [inputDir, selectedPath, selectedCodepage]);
 
-  /** 資産フォルダを選び、プロジェクトの入力フォルダとして共有する。キャンセル時は何も変えない。 */
+  /**
+   * 資産フォルダを選び、そのまま解析へ進む。キャンセル時は何も変えない。
+   *
+   * 取込だけでは画面が空状態のまま変わらないため、取り込めたのかどうかが利用者へ伝わらない。
+   * 取込を解析の起点とし、選んだ直後から実行中インジケータで進行を示す。
+   */
   async function onImport(): Promise<void> {
+    let selected: string | null;
     try {
-      const selected = await window.cobolInsight.selectInputFolder();
-      if (selected === null) return;
-      dispatch({ type: "SET_PROJECT", project: { inputDir: selected } });
-      dispatch({
-        type: "SHOW_TOAST",
-        message: `資産フォルダを取り込みました（${selected}）。「▶ 解析実行」で解析を開始します。`,
-      });
+      selected = await window.cobolInsight.selectInputFolder();
     } catch (error) {
       dispatch({
         type: "SHOW_TOAST",
         message: `資産フォルダを取り込めなかった（${messageOf(error)}）。`,
       });
+      return;
     }
+    if (selected === null) return;
+    dispatch({ type: "SET_PROJECT", project: { inputDir: selected } });
+    await onRun(selected);
   }
 
   /** scan を起動し、SQLite から資産一覧を読む。失敗を呼び出し側へ真偽で返す。 */
   async function runScanStage(inputDir: string): Promise<boolean> {
     try {
+      const paths = await window.cobolInsight.getOutputPaths();
       const result = await window.cobolInsight.runScan({
         inputDir,
+        db: paths.db,
+        copyExpansion: paths.copyExpansion,
         copybookPaths: state.project.copybookPaths,
         codepageOverrides: toCodepageOverrides(state.encodingSel),
       });
       const db = result.outputs.db;
-      const inventory = db === undefined ? [] : await window.cobolInsight.readAssetInventory(db);
-      dispatch({ type: "SET_INVENTORY", result: { status: "ready", items: inventory }, dbPath: db });
+      if (db === undefined) {
+        // 保存先が分からなければ資産一覧を読めない。0 件として黙って通すと、解析できたのか
+        // 対象が無いのかを利用者が区別できなくなる。
+        throw new Error("解析結果の保存先を engine から受け取れなかった。");
+      }
+      const inventory = await window.cobolInsight.readAssetInventory(db);
+      dispatch({
+        type: "SET_INVENTORY",
+        result: { status: "ready", items: inventory },
+        dbPath: db,
+        discovery: readScanDiscovery(result.summary),
+      });
       // 非ゼロ終了は構文解析の失敗を含む部分的成功であり、一覧は利用できる。
       return result.exitCode !== 0;
     } catch (error) {
@@ -144,8 +162,10 @@ export function ExplorerScreen(): ReactElement {
   /** lint を起動し、SARIF から指摘を読む。 */
   async function runLintStage(inputDir: string): Promise<boolean> {
     try {
+      const paths = await window.cobolInsight.getOutputPaths();
       const result = await window.cobolInsight.runLint({
         inputDir,
+        sarifFile: paths.lintSarif,
         copybookPaths: state.project.copybookPaths,
         disabledRules: disabledRules(state.rulesDisabled),
       });
@@ -165,8 +185,10 @@ export function ExplorerScreen(): ReactElement {
   /** sql-advise を起動し、SARIF から SQL 助言を読む。 */
   async function runSqlAdviseStage(inputDir: string): Promise<boolean> {
     try {
+      const paths = await window.cobolInsight.getOutputPaths();
       const result = await window.cobolInsight.runSqlAdvise({
         inputDir,
+        sarifFile: paths.sqlAdviseSarif,
         copybookPaths: state.project.copybookPaths,
         // S001〜S006 も設定で無効化できるため、sql-advise へも --disable-rule を渡す。
         disabledRules: disabledRules(state.rulesDisabled),
@@ -188,14 +210,13 @@ export function ExplorerScreen(): ReactElement {
    * 解析の単一の起点。scan → lint → sql-advise の順に起動し、段の進行を SET_RUN_STAGE で
    * 実行中インジケータへ伝える(START_RUN が第1段から始める)。
    */
-  async function onRun(): Promise<void> {
-    if (inputDir === null) return;
+  async function onRun(dir: string): Promise<void> {
     dispatch({ type: "START_RUN" });
-    const scanFailed = await runScanStage(inputDir);
+    const scanFailed = await runScanStage(dir);
     dispatch({ type: "SET_RUN_STAGE", stage: 2 });
-    const lintFailed = await runLintStage(inputDir);
+    const lintFailed = await runLintStage(dir);
     dispatch({ type: "SET_RUN_STAGE", stage: 3 });
-    const sqlFailed = await runSqlAdviseStage(inputDir);
+    const sqlFailed = await runSqlAdviseStage(dir);
     const failed = scanFailed || lintFailed || sqlFailed;
     dispatch({
       type: "FINISH_RUN",
@@ -224,6 +245,7 @@ export function ExplorerScreen(): ReactElement {
       ? ""
       : encodingSelectValue(selectedItem, state.encodingSel, state.defaultEncoding);
   const banner = deriveRunBanner(state);
+  const scanNotice = deriveScanNotice(state);
   const detailWidth = state.paneWidths.explorerDetail;
   // 詳細ペインの幅は CSS カスタムプロパティで渡す(寸法の指定は CSS 側に置く)。
   const paneStyle = { "--ci-explorer-detail-w": `${detailWidth}px` } as CSSProperties;
@@ -237,12 +259,19 @@ export function ExplorerScreen(): ReactElement {
           typeFilter={state.assetType}
           onTypeChange={(value: AssetTypeFilter) => dispatch({ type: "SET_ASSET_TYPE", value })}
           onImport={() => void onImport()}
-          onRun={() => void onRun()}
+          onRun={() => {
+            if (inputDir !== null) void onRun(inputDir);
+          }}
           runDisabled={state.mode === "running" || inputDir === null}
         />
         {banner === null ? null : (
           <div className="ci-banner ci-banner--error" role="alert">
             {banner}
+          </div>
+        )}
+        {scanNotice === null ? null : (
+          <div className="ci-banner ci-banner--warn" role="status">
+            {scanNotice}
           </div>
         )}
         <div className="ci-explorer__content">

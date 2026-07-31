@@ -6,7 +6,7 @@
  */
 
 import { enabledRuleCount } from "../screens/settings/settingsModel";
-import type { AppState, ArtifactState } from "./appState";
+import type { AppState, ArtifactState, ScanDiscovery } from "./appState";
 
 export interface StatusText {
   readonly left: string;
@@ -73,4 +73,44 @@ export function deriveRunBanner(state: AppState): string | null {
     return parts.join(" ");
   }
   return "一部の資産で構文解析に失敗した。失敗した資産は一覧に表示され、他の資産の結果は利用できる（部分的な結果）。";
+}
+
+/** 走査の仕方ごとに、engine が資産として認識する拡張子。 */
+const RECOGNIZED_EXTENSIONS: Record<ScanDiscovery["mode"], string> = {
+  convention: ".cbl / .cpy / .jcl / .bms",
+  recursive: ".cbl / .cob / .cobol / .cpy / .copy / .jcl / .bms",
+};
+
+/**
+ * 資産エクスプローラーに出す走査の警告文。解析は成功したが取り込めていないものがある場合を
+ * 扱う。失敗は {@link deriveRunBanner} の担当で、こちらは失敗扱いにしない（0 件は異常終了では
+ * ないため、終了コードもモードも成功のまま警告だけを出す）。警告が要らなければ null を返す。
+ */
+export function deriveScanNotice(state: AppState): string | null {
+  if (state.mode !== "results" || state.inventory.status !== "ready") {
+    return null;
+  }
+  const discovery = state.scanDiscovery;
+  if (discovery === null) {
+    return null;
+  }
+  const parts: string[] = [];
+  if (state.inventory.items.length === 0) {
+    parts.push(
+      "対象のファイルが 1 件も見つからなかった。" +
+        `選んだフォルダに ${RECOGNIZED_EXTENSIONS[discovery.mode]} のファイルがあるか確認する。`,
+    );
+  }
+  if (discovery.outsideCount > 0) {
+    const samples = discovery.outsideSamples.join("、");
+    parts.push(
+      `資産フォルダの規約（bms・cobol・copy|copybook・jcl の直下）の外にある ` +
+        `${discovery.outsideCount} 件は対象外とした（${samples}）。` +
+        "取り込むには規約のフォルダへ移すか、そのフォルダを直接選ぶ。",
+    );
+  }
+  if (discovery.truncated) {
+    parts.push("走査の上限に達したため、一部のファイルを取り込んでいない。");
+  }
+  return parts.length === 0 ? null : parts.join(" ");
 }
