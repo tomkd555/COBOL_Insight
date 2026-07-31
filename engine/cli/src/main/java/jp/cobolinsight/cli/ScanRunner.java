@@ -100,12 +100,23 @@ public final class ScanRunner {
     }
 
     public record Summary(List<String> analyzed, List<String> skipped, List<String> removed,
-            int findingCount, int exitCode) {
+            int findingCount, int exitCode, String discoveryMode, boolean truncated,
+            int outsideConventionCount, List<String> outsideConventionSamples,
+            List<String> unreadable) {
+
+        /** 走査の付帯情報を持たない生成。従来規約で走査し取りこぼしが無かった場合と同じ値になる。 */
+        public Summary(List<String> analyzed, List<String> skipped, List<String> removed,
+                int findingCount, int exitCode) {
+            this(analyzed, skipped, removed, findingCount, exitCode,
+                    SourceDiscovery.Mode.CONVENTION.name().toLowerCase(Locale.ROOT), false, 0,
+                    List.of(), List.of());
+        }
 
         /**
          * 保存先のSQLiteプロジェクトファイルを添えたサマリJSON。GUIはこの値から資産一覧を読む。
          * copyExpansionFile はコピー句展開の成果物の書き出し先で、書き出していない場合は null を
-         * 渡す(キー自体を出さない)。
+         * 渡す(キー自体を出さない)。discoveryMode 以降は走査の付帯情報で、GUI が「対象が0件」
+         * 「上限で打ち切った」「規約外に取りこぼしがある」を利用者へ伝えるために使う。
          */
         public String toJson(String databaseFile, String copyExpansionFile) {
             JsonWriter writer = new JsonWriter();
@@ -118,6 +129,13 @@ public final class ScanRunner {
             if (copyExpansionFile != null) {
                 writer.name("copyExpansionFile").value(copyExpansionFile);
             }
+            writer.name("discoveryMode").value(discoveryMode);
+            if (truncated) {
+                writer.name("truncated").value(true);
+            }
+            writer.name("outsideConventionCount").value(outsideConventionCount);
+            writeArray(writer, "outsideConventionSamples", outsideConventionSamples);
+            writeArray(writer, "unreadable", unreadable);
             writer.name("exitCode").value(exitCode);
             writer.endObject();
             return writer.toString();
@@ -254,11 +272,23 @@ public final class ScanRunner {
     }
 
     private Result execute() {
-        List<ScanFile> files = discover(options.inputDir());
+        SourceDiscovery.Result discovery = SourceDiscovery.discover(options.inputDir());
+        List<ScanFile> files = new ArrayList<>();
+        List<String> unreadable = new ArrayList<>();
         Map<String, byte[]> bytesByRel = new LinkedHashMap<>();
         Map<String, String> hashByRel = new LinkedHashMap<>();
-        for (ScanFile file : files) {
-            byte[] bytes = readBytes(file.absPath());
+        for (ScanFile file : toScanFiles(discovery)) {
+            byte[] bytes;
+            try {
+                bytes = Files.readAllBytes(file.absPath());
+            } catch (IOException e) {
+                // 読み取れない1ファイルで解析全体を止めない。対象から外し、件数を利用者へ伝える。
+                System.err.println("警告: 読み取れないため対象から外す: " + file.absPath()
+                        + " (" + e + ")");
+                unreadable.add(file.relPath());
+                continue;
+            }
+            files.add(file);
             bytesByRel.put(file.relPath(), bytes);
             // 適用するコードページをハッシュへ含める。--codepage の変更は原本のバイト列を
             // 変えないため、バイト列だけのハッシュでは復号のやり直しを促せない。
@@ -348,7 +378,9 @@ public final class ScanRunner {
             Summary summary = new Summary(
                     targets.stream().map(ScanFile::relPath).toList(),
                     skipped, removed,
-                    runFindings.size() + persistedFindings, exitCode);
+                    runFindings.size() + persistedFindings, exitCode,
+                    discovery.mode().name().toLowerCase(Locale.ROOT), discovery.truncated(),
+                    discovery.outsideConventionCount(), discovery.outsideConvention(), unreadable);
             return new Result(summary, linkResult.graph(), linkResult.findings(),
                     collectCopyExpansions());
         }
@@ -356,44 +388,31 @@ public final class ScanRunner {
 
     // ---- 走査 ----
 
-    private static List<ScanFile> discover(Path inputDir) {
-        Map<String, SourceKind> kindByDir = new LinkedHashMap<>();
-        kindByDir.put("bms", SourceKind.BMS);
-        kindByDir.put("cobol", SourceKind.COBOL);
-        kindByDir.put("copy", SourceKind.COPYBOOK);
-        kindByDir.put("copybook", SourceKind.COPYBOOK);
-        kindByDir.put("jcl", SourceKind.JCL);
-        Map<SourceKind, String> extensionByKind = Map.of(
-                SourceKind.BMS, ".bms", SourceKind.COBOL, ".cbl",
-                SourceKind.COPYBOOK, ".cpy", SourceKind.JCL, ".jcl");
-
+    /** 走査結果を scan の内部表現へ写す。種別の対応は {@link SourceKind} が持つ NODE.type を伴う。 */
+    private static List<ScanFile> toScanFiles(SourceDiscovery.Result discovery) {
         List<ScanFile> files = new ArrayList<>();
-        for (Map.Entry<String, SourceKind> entry : kindByDir.entrySet()) {
-            Path dir = inputDir.resolve(entry.getKey());
-            if (!Files.isDirectory(dir)) {
-                continue;
-            }
-            String extension = extensionByKind.get(entry.getValue());
-            try (Stream<Path> children = Files.list(dir)) {
-                children.filter(Files::isRegularFile)
-                        .filter(p -> p.getFileName().toString().toLowerCase(Locale.ROOT)
-                                .endsWith(extension))
-                        .forEach(p -> files.add(new ScanFile(
-                                entry.getKey() + "/" + p.getFileName(), p, entry.getValue())));
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
+        for (SourceDiscovery.DiscoveredFile file : discovery.files()) {
+            files.add(new ScanFile(file.relPath(), file.absPath(), toSourceKind(file.kind())));
         }
-        files.sort(java.util.Comparator.comparing(ScanFile::relPath));
         return files;
     }
 
-    private static byte[] readBytes(Path file) {
-        try {
-            return Files.readAllBytes(file);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+    private static SourceKind toSourceKind(SourceDiscovery.Kind kind) {
+        return switch (kind) {
+            case BMS -> SourceKind.BMS;
+            case COBOL -> SourceKind.COBOL;
+            case COPYBOOK -> SourceKind.COPYBOOK;
+            case JCL -> SourceKind.JCL;
+        };
+    }
+
+    /**
+     * JCL の INCLUDE メンバを探す位置。従来構成では INPUT_DIR/jcl と一致するが、再帰探索で
+     * 拾った JCL はその位置に無いため、当該ファイルの親ディレクトリを使う。
+     */
+    private static List<Path> jclSearchPaths(ScanFile file) {
+        Path parent = file.absPath().getParent();
+        return parent == null ? List.of() : List.of(parent);
     }
 
     /** 資産フォルダの識別子。同じフォルダを別表記で指しても同じ値になるよう絶対化・正規化する。 */
@@ -564,7 +583,7 @@ public final class ScanRunner {
                 continue;
             }
             ParseOutcome<JclJobModel> outcome = jclParser.parse(decodedById.get(id),
-                    List.of(options.inputDir().resolve("jcl")));
+                    jclSearchPaths(file));
             if (outcome instanceof ParseOutcome.Failure<JclJobModel> failure) {
                 recordFinding(id, file.relPath(), failure.finding());
                 upsertNode(new NodeRecord(id, SourceKind.JCL.nodeType, file.fileName()));
@@ -723,7 +742,7 @@ public final class ScanRunner {
                 }
                 case JCL -> {
                     ParseOutcome<JclJobModel> outcome = jclParser.parse(decoded,
-                            List.of(options.inputDir().resolve("jcl")));
+                            jclSearchPaths(file));
                     if (outcome instanceof ParseOutcome.Failure<JclJobModel> failure) {
                         unanalyzableReasonByRel.put(file.relPath(), failure.finding().message());
                     } else {

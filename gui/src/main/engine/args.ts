@@ -14,14 +14,14 @@ export function buildEngineArgs(invocation: EngineInvocation): string[] {
   switch (invocation.subcommand) {
     case "scan": {
       const r = invocation.request;
-      // COPY 展開の対応表は常に書かせる。ソースビューアのインライン展開がこれを唯一の供給源とし、
-      // 出力先は engine が既定の SQLite を置く場所(作業ディレクトリ)へそろえる。
+      // COPY 展開の対応表は常に書かせる。ソースビューアのインライン展開がこれを唯一の供給源とする。
+      // 出力先の指定が無い場合だけ、engine が既定の SQLite を置く場所(作業ディレクトリ)へ委ねる。
       return [
         "scan",
         ...common(r),
         ...opt("--db", r.db),
         "--copy-expansion",
-        COPY_EXPANSION_FILE_NAME,
+        r.copyExpansion ?? COPY_EXPANSION_FILE_NAME,
       ];
     }
     case "callgraph": {
@@ -86,7 +86,13 @@ export function buildEngineArgs(invocation: EngineInvocation): string[] {
 export function collectRequestedOutputs(invocation: EngineInvocation): EngineOutputs {
   const r = invocation.request;
   const outputs: EngineOutputs = {};
-  if (invocation.subcommand === "scan") outputs.copyExpansion = COPY_EXPANSION_FILE_NAME;
+  if (invocation.subcommand === "scan") {
+    // 引数へ渡した位置と同じ値を返す。片方だけ絶対パス化すると、書かれた位置と読む位置がずれる。
+    outputs.copyExpansion =
+      ("copyExpansion" in r && r.copyExpansion !== undefined
+        ? r.copyExpansion
+        : COPY_EXPANSION_FILE_NAME);
+  }
   if ("db" in r && r.db !== undefined) outputs.db = r.db;
   if ("jsonFile" in r && r.jsonFile !== undefined) outputs.json = r.jsonFile;
   if ("dotFile" in r && r.dotFile !== undefined) outputs.dot = r.dotFile;

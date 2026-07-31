@@ -75,6 +75,21 @@ export type ArtifactState<T> =
   | { readonly status: "error"; readonly message: string };
 
 /**
+ * scan がどう資産を走査したか。engine は資産フォルダの規約(bms/cobol/copy|copybook/jcl)で
+ * 1 件も拾えないときだけ配下を再帰的に走査するため、認識する拡張子が走査の仕方で変わる。
+ * 取りこぼし(規約外に残ったファイル・上限による打ち切り)も併せて受け取り、画面へ出す。
+ */
+export interface ScanDiscovery {
+  readonly mode: "convention" | "recursive";
+  /** 走査の上限に達して打ち切ったか。 */
+  readonly truncated: boolean;
+  /** 規約の外にあり対象外となったファイルの件数。 */
+  readonly outsideCount: number;
+  /** 同上の相対パス(engine が返す先頭のいくつか)。 */
+  readonly outsideSamples: readonly string[];
+}
+
+/**
  * 呼出関係図の取得状態。callgraph は資産エクスプローラーの「▶ 解析実行」では起動せず、
  * 呼出関係図の画面が必要になった時点で起動するため、起動中(loading)を状態として持つ。
  * exitCode は callgraph の終了コード(0=成功 / 1=警告あり / 2=エラーあり)で、非ゼロでも
@@ -155,6 +170,8 @@ export interface AppState {
   readonly project: ProjectState;
   /** scan → readAssetInventory で得た資産一覧。 */
   readonly inventory: ArtifactState<AssetInventoryItem>;
+  /** scan の走査の付帯情報。取りこぼしを利用者へ伝えるために持つ。未実行なら null。 */
+  readonly scanDiscovery: ScanDiscovery | null;
   /** lint → readSarif で得た指摘(R001〜R031)。 */
   readonly findings: ArtifactState<SarifFinding>;
   /** sql-advise → readSarif で得た SQL 最適化助言(S001〜S006)。 */
@@ -300,6 +317,7 @@ export const initialState: AppState = {
 
   project: { inputDir: null, dbPath: null, copybookPaths: [] },
   inventory: { status: "none" },
+  scanDiscovery: null,
   findings: { status: "none" },
   sqlAdvice: { status: "none" },
 

@@ -55,7 +55,6 @@ import java.util.stream.Stream;
 public final class FixRunner {
 
     private static final String DECODE_FAILURE_RULE_ID = "decode-failure";
-    private static final String COBOL_EXTENSION = ".cbl";
     private static final String COPYBOOK_EXTENSION = ".cpy";
 
     public record Options(Path inputDir, List<Path> copybookSearchPaths,
@@ -244,11 +243,19 @@ public final class FixRunner {
         return new Result(fileFixes, analysisFindings, fixCount);
     }
 
-    /** cobol ディレクトリの COBOL 本体と、コピー句探索パス配下のコピー句を発見する(相対パスの辞書順)。 */
+    /**
+     * scan と同じ走査で COBOL 本体を、コピー句探索パス配下からコピー句を発見する(相対パスの
+     * 辞書順)。コピー句は入力フォルダの外を指せるため、走査ではなく探索パスを起点とする。
+     */
     private static List<FixFile> discover(Options options) {
         Map<String, FixFile> byRel = new LinkedHashMap<>();
-        collect(options.inputDir().resolve("cobol"), COBOL_EXTENSION, FixKind.COBOL,
-                options.inputDir(), byRel);
+        for (SourceDiscovery.DiscoveredFile file
+                : SourceDiscovery.discover(options.inputDir()).files()) {
+            if (file.kind() == SourceDiscovery.Kind.COBOL) {
+                byRel.putIfAbsent(file.relPath(),
+                        new FixFile(file.relPath(), file.absPath(), FixKind.COBOL));
+            }
+        }
         for (Path dir : options.copybookSearchPaths()) {
             collect(dir, COPYBOOK_EXTENSION, FixKind.COPYBOOK, options.inputDir(), byRel);
         }

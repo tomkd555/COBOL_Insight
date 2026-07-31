@@ -31,7 +31,7 @@ export const SCREEN_META: Record<ScreenId, ScreenMeta> = {
     label: "資産エクスプローラー",
     emptyIcon: "＋",
     emptyTitle: "資産がまだインポートされていません",
-    emptyDesc: "資産フォルダを取り込み、文字コードを確認してから解析を実行する。",
+    emptyDesc: "資産フォルダを取り込むと、走査と解析をそのまま実行する。",
     emptyAction: "フォルダをインポート",
     emptyNote: "文字コードは自動判定（Shift_JIS / UTF-8）または推定（EBCDIC CP930/939）。",
     runningTitle: "資産を解析しています…",

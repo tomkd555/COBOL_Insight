@@ -21,7 +21,6 @@ import jp.cobolinsight.engineapi.sql.SqlStatementModel;
 import jp.cobolinsight.rules.sarif.SarifWriter;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -29,11 +28,9 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Stream;
 
 /**
  * `sql-advise` の中核処理。資産フォルダのCOBOLを復号・パースし、埋め込みSQLを SqlParser SPI で
@@ -46,7 +43,6 @@ import java.util.stream.Stream;
 public final class SqlAdviseRunner {
 
     private static final String DECODE_FAILURE_RULE_ID = "decode-failure";
-    private static final String COBOL_EXTENSION = ".cbl";
 
     public record Options(Path inputDir, List<Path> copybookSearchPaths,
             Map<String, String> codepageOverrides, Set<String> disabledRuleIds) {
@@ -102,8 +98,16 @@ public final class SqlAdviseRunner {
         Map<String, DecodedSource> decodedByRel = new LinkedHashMap<>();
 
         for (CobolFile file : files) {
+            byte[] bytes;
+            try {
+                bytes = Files.readAllBytes(file.absPath());
+            } catch (IOException e) {
+                // 読み取れない1ファイルで解析全体を止めない。対象から外し、標準エラーで伝える。
+                System.err.println("警告: 読み取れないため対象から外す: " + file.absPath()
+                        + " (" + e + ")");
+                continue;
+            }
             relByAbs.put(file.absPath().toAbsolutePath().normalize(), file.relPath());
-            byte[] bytes = readBytes(file.absPath());
             try {
                 String override = options.codepageOverrides().get(file.relPath());
                 if (override == null) {
@@ -184,29 +188,14 @@ public final class SqlAdviseRunner {
 
     /** scan と同じフォルダ規約で、cobol ディレクトリ配下のCOBOL本体を発見する(相対パスの辞書順)。 */
     private static List<CobolFile> discover(Path inputDir) {
-        Path dir = inputDir.resolve("cobol");
         List<CobolFile> files = new ArrayList<>();
-        if (Files.isDirectory(dir)) {
-            try (Stream<Path> children = Files.list(dir)) {
-                children.filter(Files::isRegularFile)
-                        .filter(p -> p.getFileName().toString().toLowerCase(Locale.ROOT)
-                                .endsWith(COBOL_EXTENSION))
-                        .forEach(p -> files.add(
-                                new CobolFile("cobol/" + p.getFileName(), p)));
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
+        for (SourceDiscovery.DiscoveredFile file : SourceDiscovery.discover(inputDir).files()) {
+            if (file.kind() == SourceDiscovery.Kind.COBOL) {
+                files.add(new CobolFile(file.relPath(), file.absPath()));
             }
         }
         files.sort(Comparator.comparing(CobolFile::relPath));
         return files;
-    }
-
-    private static byte[] readBytes(Path file) {
-        try {
-            return Files.readAllBytes(file);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
     }
 
     /**

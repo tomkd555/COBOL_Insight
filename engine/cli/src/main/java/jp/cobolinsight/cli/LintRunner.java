@@ -98,13 +98,7 @@ public final class LintRunner {
 
     /** lint対象の種別。COBOLはパース、COPYBOOKはテキスト索引のみ、BMSはマップモデルへ変換する。 */
     private enum LintKind {
-        COBOL(".cbl"), COPYBOOK(".cpy"), BMS(".bms");
-
-        final String extension;
-
-        LintKind(String extension) {
-            this.extension = extension;
-        }
+        COBOL, COPYBOOK, BMS
     }
 
     private record LintFile(String relPath, Path absPath, LintKind kind) {
@@ -126,8 +120,16 @@ public final class LintRunner {
         Map<String, DecodedSource> decodedByRel = new LinkedHashMap<>();
 
         for (LintFile file : files) {
+            byte[] bytes;
+            try {
+                bytes = Files.readAllBytes(file.absPath());
+            } catch (IOException e) {
+                // 読み取れない1ファイルで解析全体を止めない。対象から外し、標準エラーで伝える。
+                System.err.println("警告: 読み取れないため対象から外す: " + file.absPath()
+                        + " (" + e + ")");
+                continue;
+            }
             relByAbs.put(file.absPath().toAbsolutePath().normalize(), file.relPath());
-            byte[] bytes = readBytes(file.absPath());
             try {
                 String override = options.codepageOverrides().get(file.relPath());
                 if (override == null) {
@@ -223,41 +225,29 @@ public final class LintRunner {
         return implementations.get(0);
     }
 
-    /** scan と同じフォルダ規約で、lint対象のCOBOL本体・コピー句・BMSを発見する(相対パスの辞書順)。 */
+    /** scan と同じ走査で、lint対象のCOBOL本体・コピー句・BMSを発見する(相対パスの辞書順)。JCLは対象外。 */
     private static List<LintFile> discover(Path inputDir) {
-        Map<String, LintKind> kindByDir = new LinkedHashMap<>();
-        kindByDir.put("bms", LintKind.BMS);
-        kindByDir.put("cobol", LintKind.COBOL);
-        kindByDir.put("copy", LintKind.COPYBOOK);
-        kindByDir.put("copybook", LintKind.COPYBOOK);
         List<LintFile> files = new ArrayList<>();
-        for (Map.Entry<String, LintKind> entry : kindByDir.entrySet()) {
-            Path dir = inputDir.resolve(entry.getKey());
-            if (!Files.isDirectory(dir)) {
-                continue;
-            }
-            String extension = entry.getValue().extension;
-            try (Stream<Path> children = Files.list(dir)) {
-                children.filter(Files::isRegularFile)
-                        .filter(p -> p.getFileName().toString().toLowerCase(Locale.ROOT)
-                                .endsWith(extension))
-                        .forEach(p -> files.add(new LintFile(
-                                entry.getKey() + "/" + p.getFileName(), p, entry.getValue())));
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
+        for (SourceDiscovery.DiscoveredFile file : SourceDiscovery.discover(inputDir).files()) {
+            LintKind kind = toLintKind(file.kind());
+            if (kind != null) {
+                files.add(new LintFile(file.relPath(), file.absPath(), kind));
             }
         }
         files.sort(Comparator.comparing(LintFile::relPath));
         return files;
     }
 
-    private static byte[] readBytes(Path file) {
-        try {
-            return Files.readAllBytes(file);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+    /** lint が扱わない種別(JCL)には null を返す。 */
+    private static LintKind toLintKind(SourceDiscovery.Kind kind) {
+        return switch (kind) {
+            case BMS -> LintKind.BMS;
+            case COBOL -> LintKind.COBOL;
+            case COPYBOOK -> LintKind.COPYBOOK;
+            case JCL -> null;
+        };
     }
+
 
     /**
      * ルールの FixProducer が修正案を返した finding へ fixes を付す。修正案を返さない finding は

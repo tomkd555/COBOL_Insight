@@ -110,10 +110,10 @@ async function checkTabs(win) {
   record("9タブが列挙される", labels.length === 9, labels.join(" / "));
 }
 
-/** 解析実行(scan→lint→sql-advise)を進めて results 状態にする。 */
+/** 取込を起点に解析(scan→lint→sql-advise)が進み results 状態になることを見る。 */
 async function runAnalysis(win) {
   await waitUntil(win, clickButton("＋ インポート"), "インポートボタンの押下");
-  await waitUntil(win, clickButton("▶ 解析実行"), "解析実行ボタンの押下");
+  // 取込だけで解析まで進む。解析実行ボタンは押さない(押さずに一覧が出ることがこの検査の主眼)。
   const rows = await waitUntil(
     win,
     `(() => {
@@ -122,7 +122,7 @@ async function runAnalysis(win) {
     })()`,
     "資産一覧の表示",
   );
-  record("解析実行が資産一覧を表示する", rows > 0, `資産 ${rows} 件`);
+  record("取込がそのまま解析を走らせ資産一覧を表示する", rows > 0, `資産 ${rows} 件`);
 }
 
 /** Cytoscape の実描画(検査2)。 */

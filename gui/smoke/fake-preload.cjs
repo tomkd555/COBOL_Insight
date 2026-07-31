@@ -186,6 +186,13 @@ const api = {
       ),
     ),
   selectInputFolder: () => Promise.resolve("C:\\smoke\\assets"),
+  getOutputPaths: () =>
+    Promise.resolve({
+      db: DB_PATH,
+      lintSarif: LINT_SARIF,
+      sqlAdviseSarif: SQL_SARIF,
+      copyExpansion: "C:\\smoke\\data\\cobol-insight-copy-expansion.json",
+    }),
   readSarif: (path) => Promise.resolve(path === SQL_SARIF ? SQL_ADVICE : FINDINGS),
   readCallgraphJson: () => Promise.resolve(CALLGRAPH),
   readFixResult: (request) =>

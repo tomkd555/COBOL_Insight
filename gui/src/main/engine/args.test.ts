@@ -18,6 +18,29 @@ describe("buildEngineArgs", () => {
     ]);
   });
 
+  it("COPY 展開の出力先を指定したらその絶対パスを渡す", () => {
+    const inv: EngineInvocation = {
+      subcommand: "scan",
+      request: {
+        inputDir: "C:/assets",
+        db: "C:/data/cobol-insight.db",
+        copyExpansion: "C:/data/cobol-insight-copy-expansion.json",
+      },
+    };
+    expect(buildEngineArgs(inv)).toEqual([
+      "scan",
+      "C:/assets",
+      "--db",
+      "C:/data/cobol-insight.db",
+      "--copy-expansion",
+      "C:/data/cobol-insight-copy-expansion.json",
+    ]);
+    // 引数へ渡した位置と、renderer が読みにいく位置を一致させる。
+    expect(collectRequestedOutputs(inv).copyExpansion).toBe(
+      "C:/data/cobol-insight-copy-expansion.json",
+    );
+  });
+
   it("copybookPaths と codepageOverrides を繰り返しオプションへ展開する", () => {
     const inv: EngineInvocation = {
       subcommand: "scan",

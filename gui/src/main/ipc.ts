@@ -2,11 +2,14 @@ import { app, dialog, ipcMain } from "electron";
 import { spawn } from "node:child_process";
 import { access, mkdir, readdir, readFile, realpath, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
+import { join } from "node:path";
 import initSqlJs, { type Database, type SqlJsStatic } from "sql.js";
 import {
+  COPY_EXPANSION_FILE_NAME,
   ENGINE_CHANNELS,
   type CallgraphRequest,
   type EngineInvocation,
+  type EngineOutputPaths,
   type EngineResult,
   type FixApplyRequest,
   type FixPreviewRequest,
@@ -46,6 +49,21 @@ const engineSpawn: EngineSpawn = (command, args, options) =>
     cwd: options.cwd,
   }) as unknown as EngineProcess;
 
+/**
+ * engine の成果物を書く位置。userData は起動時に展開先直下の data/ へ向けてあり(書込不可なら
+ * Electron 既定へ委ねる)、配布・開発のどちらでも書込可能な1つのディレクトリに定まる。
+ */
+function outputPaths(): EngineOutputPaths {
+  const dir = app.getPath("userData");
+  return {
+    db: join(dir, "cobol-insight.db"),
+    lintSarif: join(dir, "cobol-insight.sarif"),
+    // lint と別名にする。同名にすると後段の sql-advise が lint の結果を上書きする。
+    sqlAdviseSarif: join(dir, "cobol-insight-sql.sarif"),
+    copyExpansion: join(dir, COPY_EXPANSION_FILE_NAME),
+  };
+}
+
 /** engine 起動対象を現在の実行環境から解決する。 */
 function currentLaunch(): EngineLaunch {
   return resolveEngineLaunch({
@@ -68,6 +86,9 @@ function invoke(invocation: EngineInvocation): Promise<EngineResult> {
   const deps = {
     spawn: engineSpawn,
     env: process.env,
+    // 出力先は引数で絶対指定するが、engine 側に既定値の経路が残った場合に備え、作業ディレクトリも
+    // 書込可能な保存先へ向けておく。
+    cwd: app.getPath("userData"),
     onStart: (child: EngineProcess): void => {
       started = child;
       runningEngine = child;
@@ -187,6 +208,8 @@ export function registerEngineIpc(): void {
   ipcMain.handle(ENGINE_CHANNELS.checkDirectoryExists, (_event, path: string) =>
     checkDirectoryExists(directoryStat, path),
   );
+
+  ipcMain.handle(ENGINE_CHANNELS.getOutputPaths, () => outputPaths());
 
   ipcMain.handle(ENGINE_CHANNELS.readSarif, async (_event, path: string) =>
     parseSarif(await readFile(path, "utf-8")),

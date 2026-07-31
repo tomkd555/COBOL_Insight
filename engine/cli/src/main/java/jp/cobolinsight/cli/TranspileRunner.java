@@ -55,7 +55,6 @@ public final class TranspileRunner {
     /** LINE_MAP の行 id 導出の刻み幅(ソース id×STRIDE+連番)。 */
     private static final long LINE_MAP_ID_STRIDE = 1_000_000L;
     private static final String DECODE_FAILURE_RULE_ID = "decode-failure";
-    private static final String COBOL_EXTENSION = ".cbl";
     private static final String COPYBOOK_EXTENSION = ".cpy";
 
     public record Options(Path inputDir, Path databaseFile, List<Path> copybookSearchPaths,
@@ -172,11 +171,19 @@ public final class TranspileRunner {
 
     // ---- 走査 ----
 
-    /** cobol ディレクトリの COBOL 本体と、コピー句探索パス配下のコピー句を発見する(相対パスの辞書順)。 */
+    /**
+     * scan と同じ走査で COBOL 本体を、コピー句探索パス配下からコピー句を発見する(相対パスの
+     * 辞書順)。コピー句は入力フォルダの外を指せるため、走査ではなく探索パスを起点とする。
+     */
     private static List<TranspileFile> discover(Options options) {
         Map<String, TranspileFile> byRel = new TreeMap<>();
-        Path cobolDir = options.inputDir().resolve("cobol");
-        collect(cobolDir, COBOL_EXTENSION, SourceKind.COBOL, options.inputDir(), byRel);
+        for (SourceDiscovery.DiscoveredFile file
+                : SourceDiscovery.discover(options.inputDir()).files()) {
+            if (file.kind() == SourceDiscovery.Kind.COBOL) {
+                byRel.putIfAbsent(file.relPath(), new TranspileFile(file.relPath(),
+                        file.fileName(), file.absPath(), SourceKind.COBOL));
+            }
+        }
         for (Path dir : options.copybookSearchPaths()) {
             collect(dir, COPYBOOK_EXTENSION, SourceKind.COPYBOOK, options.inputDir(), byRel);
         }

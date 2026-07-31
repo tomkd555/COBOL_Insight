@@ -32,6 +32,8 @@ export interface EngineCommonOptions {
 export interface ScanRequest extends EngineCommonOptions {
   /** SQLite プロジェクトファイル(--db)。 */
   db?: string;
+  /** COPY 展開の対応表の書き出し先(--copy-expansion)。省略時は engine の作業ディレクトリへ書く。 */
+  copyExpansion?: string;
 }
 
 export interface CallgraphRequest extends EngineCommonOptions {
@@ -333,6 +335,18 @@ export interface ImportSourceResult {
   lineCount: number;
 }
 
+/**
+ * engine が成果物を書く位置。main が userData(配布時は展開先直下の data/)を基準に決め、
+ * renderer はこれを engine の引数へそのまま渡す。engine の既定値と作業ディレクトリの一致に
+ * 頼ると、書かれた位置と読みにいく位置が食い違いうるため、常に絶対パスで指定する。
+ */
+export interface EngineOutputPaths {
+  readonly db: string;
+  readonly lintSarif: string;
+  readonly sqlAdviseSarif: string;
+  readonly copyExpansion: string;
+}
+
 /** renderer へ contextBridge で公開する API の型。window.cobolInsight として参照する。 */
 export interface CobolInsightApi {
   runScan(request: ScanRequest): Promise<EngineResult>;
@@ -349,6 +363,8 @@ export interface CobolInsightApi {
   selectInputFolder(): Promise<string | null>;
   /** 指定パスがディレクトリとして実在するか(コピー句探索パスの検査に用いる)。 */
   checkDirectoryExists(path: string): Promise<boolean>;
+  /** engine の成果物を書く位置(絶対パス)。解析実行のたびに引数へ指定する。 */
+  getOutputPaths(): Promise<EngineOutputPaths>;
   readSarif(path: string): Promise<SarifFinding[]>;
   readCallgraphJson(path: string): Promise<CallGraphData>;
   readFixResult(request: FixResultRequest): Promise<FixDiff>;
@@ -377,6 +393,7 @@ export const ENGINE_CHANNELS = {
   cancelRun: "engine:cancel-run",
   selectInputFolder: "dialog:select-input-folder",
   checkDirectoryExists: "fs:check-directory-exists",
+  getOutputPaths: "fs:get-output-paths",
   readSarif: "artifact:read-sarif",
   readCallgraphJson: "artifact:read-callgraph-json",
   readFixResult: "artifact:read-fix-result",
