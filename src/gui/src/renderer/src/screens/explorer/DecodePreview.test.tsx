@@ -3,11 +3,11 @@ import { describe, it, expect } from "vitest";
 import { DecodePreview } from "./DecodePreview";
 
 describe("DecodePreview(デコードプレビュー)", () => {
-  it("先頭 maxLines 行までを表示する", () => {
+  it("行数の上限を設けず全行を表示する", () => {
     const lines = ["行1", "行2", "行3", "行4", "行5", "行6"];
     render(<DecodePreview preview={{ status: "ready", lines, codepage: "UTF-8" }} />);
     expect(screen.getByText("行5")).toBeInTheDocument();
-    expect(screen.queryByText("行6")).toBeNull();
+    expect(screen.getByText("行6")).toBeInTheDocument();
   });
 
   it("復号できた本文では警告を出さず、コードページを添える", () => {

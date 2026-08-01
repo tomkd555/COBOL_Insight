@@ -79,19 +79,31 @@ export type ArtifactState<T> =
   | { readonly status: "ready"; readonly items: readonly T[] }
   | { readonly status: "error"; readonly message: string };
 
+/** engine が資産の種別判定に用いる種別名(拡張子ではなく判定結果)。 */
+export type DiscoveredAssetKind = "COBOL" | "COPYBOOK" | "JCL" | "BMS";
+
+/** 拡張子と内容の判定が食い違い、内容を優先して取り込んだ1件。 */
+export interface KindMismatch {
+  readonly path: string;
+  readonly byExtension: DiscoveredAssetKind;
+  readonly byContent: DiscoveredAssetKind;
+}
+
 /**
- * scan がどう資産を走査したか。engine は資産フォルダの規約(bms/cobol/copy|copybook/jcl)で
- * 1 件も拾えないときだけ配下を再帰的に走査するため、認識する拡張子が走査の仕方で変わる。
- * 取りこぼし(規約外に残ったファイル・上限による打ち切り)も併せて受け取り、画面へ出す。
+ * scan がどう資産を走査したか。engine はソースの内容から種別を逆算する単一の走査を行い、
+ * 種別を判定できなかったもの(undecided)・読み取れなかったもの(unreadable)・拡張子と内容が
+ * 食い違い内容を優先して取り込んだもの(mismatches)を全件、上限による打ち切り(truncated)を
+ * 併せて受け取り、画面へ出す。
  */
 export interface ScanDiscovery {
-  readonly mode: "convention" | "recursive";
+  /** 種別を判定できず対象外とした相対パス(全件)。 */
+  readonly undecided: readonly string[];
+  /** 拡張子と内容が食い違い、内容を優先して取り込んだもの(全件)。 */
+  readonly mismatches: readonly KindMismatch[];
   /** 走査の上限に達して打ち切ったか。 */
   readonly truncated: boolean;
-  /** 規約の外にあり対象外となったファイルの件数。 */
-  readonly outsideCount: number;
-  /** 同上の相対パス(engine が返す先頭のいくつか)。 */
-  readonly outsideSamples: readonly string[];
+  /** 読み取れず対象外とした相対パス(全件)。 */
+  readonly unreadable: readonly string[];
 }
 
 /**

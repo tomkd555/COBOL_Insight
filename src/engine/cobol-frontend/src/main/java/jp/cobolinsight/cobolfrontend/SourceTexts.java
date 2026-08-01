@@ -1,6 +1,7 @@
 package jp.cobolinsight.cobolfrontend;
 
 import jp.cobolinsight.encoding.EncodingCharsetProvider;
+import jp.cobolinsight.engineapi.source.FixedFormatColumns;
 import jp.cobolinsight.engineapi.spi.CharsetProvider;
 import org.eclipse.lsp.cobol.common.model.Locality;
 import org.eclipse.lsp4j.Range;
@@ -77,9 +78,13 @@ final class SourceTexts {
         });
     }
 
-    /** 固定形式の領域境界。一連番号領域は1〜6桁、本文は7〜72桁、73桁以降は識別領域である。 */
-    private static final int AREA_A_START = 6;
-    private static final int IDENTIFICATION_START = 72;
+    /**
+     * 固定形式の領域境界を0起点の添字へ直した値。桁番号の正典は
+     * {@link jp.cobolinsight.engineapi.source.FixedFormatColumns} にあり、ここは起点の変換
+     * だけを担う。同じ物理量を複数の起点で持たないための書き方である。
+     */
+    private static final int AREA_A_START = FixedFormatColumns.INDICATOR_COLUMN - 1;
+    private static final int IDENTIFICATION_START = FixedFormatColumns.IDENTIFICATION_START - 1;
 
     /**
      * 一連番号領域と識別領域を空白へ置き換える。複数行にまたがる原文の取り出しでは2行目以降の

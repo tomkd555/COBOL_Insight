@@ -34,7 +34,7 @@ public final class LintCommand implements Callable<Integer> {
     Path sarifFile;
 
     @Option(names = "--copybook-path", paramLabel = "DIR",
-            description = "コピー句探索パス(既定: INPUT_DIR配下のcopybook・copy)")
+            description = "コピー句探索パス(既定: 走査で見つかったコピー句の置き場所)")
     List<Path> copybookPaths = new ArrayList<>();
 
     @Option(names = "--codepage", paramLabel = "FILE=CHARSET",

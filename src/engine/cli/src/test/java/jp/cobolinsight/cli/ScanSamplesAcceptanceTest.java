@@ -62,12 +62,13 @@ class ScanSamplesAcceptanceTest {
     }
 
     @Test
-    void allSixteenSourcesAreScannedWithoutError() {
+    void allEighteenSourcesAreScannedWithoutError() {
         assertEquals(0, summary.exitCode(), "終了コードは成功(0)であること");
         assertEquals(0, summary.findingCount(), "パース失敗のfindingが無いこと");
-        assertEquals(16, summary.analyzed().size(),
-                "JCL3本・COBOL9本・コピー句3本・BMSマップ1本の計16本を解析すること");
-        assertEquals(16, dao.findAllSources().size());
+        assertEquals(18, summary.analyzed().size(),
+                "JCL3本・COBOL11本(encoding/の2本を含む)・コピー句3本・BMSマップ1本の計18本を"
+                        + "解析すること");
+        assertEquals(18, dao.findAllSources().size());
     }
 
     @Test
@@ -79,7 +80,7 @@ class ScanSamplesAcceptanceTest {
         List<String> sortedPaths = pathsById.stream().sorted().toList();
         assertEquals(sortedPaths, pathsById, "SOURCE.id はパスの辞書順で振られること");
         assertEquals(1, sources.stream().mapToLong(SourceRecord::id).min().orElseThrow());
-        assertEquals(16, sources.stream().mapToLong(SourceRecord::id).max().orElseThrow());
+        assertEquals(18, sources.stream().mapToLong(SourceRecord::id).max().orElseThrow());
     }
 
     @Test
@@ -105,10 +106,13 @@ class ScanSamplesAcceptanceTest {
     @Test
     void encodingInfoIsPersistedForAllSources() {
         for (SourceRecord source : dao.findAllSources()) {
+            // encoding/SYKENC1_SJIS.cbl だけが Shift_JIS(windows-31j)で、他は UTF-8 である。
+            String expected = "encoding/SYKENC1_SJIS.cbl".equals(source.path())
+                    ? "windows-31j" : "UTF-8";
             var info = dao.findEncodingInfo(source.id()).orElseThrow();
-            assertEquals("UTF-8", info.detectedCharset(), source.path());
+            assertEquals(expected, info.detectedCharset(), source.path());
             assertFalse(info.manualOverride());
-            assertEquals("UTF-8", source.codepage());
+            assertEquals(expected, source.codepage());
         }
     }
 
@@ -215,7 +219,7 @@ class ScanSamplesAcceptanceTest {
         ScanRunner.Summary second = ScanRunner.run(new ScanRunner.Options(SAMPLES,
                 tempDir.resolve("m1.db"), List.of(SAMPLES.resolve("copybook")), Map.of()));
         assertEquals(List.of(), second.analyzed(), "変更が無ければ再解析しないこと");
-        assertEquals(16, second.skipped().size());
+        assertEquals(18, second.skipped().size());
         assertEquals(0, second.exitCode());
     }
 

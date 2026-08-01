@@ -59,8 +59,9 @@ class LintSamplesAcceptanceTest {
     }
 
     @Test
-    void allNineCobolSourcesAreParsedWithoutFailure() {
-        assertEquals(9, result.analyzed().size(), "COBOL 9本を解析すること");
+    void allElevenCobolSourcesAreParsedWithoutFailure() {
+        assertEquals(11, result.analyzed().size(),
+                "COBOL 11本(encoding/の2本を含む)を解析すること");
         assertEquals(List.of(), byRule(Finding.PARSE_FAILURE_RULE_ID), "パース失敗が無いこと");
         assertEquals(List.of(), byRule("decode-failure"), "復号失敗が無いこと");
     }

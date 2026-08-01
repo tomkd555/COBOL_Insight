@@ -1,9 +1,10 @@
 package jp.cobolinsight.cli;
 
+import jp.cobolinsight.engineapi.source.AssetKind;
+
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -26,7 +27,7 @@ final class CommonScanOptions {
     Path databaseFile;
 
     @Option(names = "--copybook-path", paramLabel = "DIR",
-            description = "コピー句探索パス(既定: INPUT_DIR配下のcopybook・copy)")
+            description = "コピー句探索パス(既定: 走査で見つかったコピー句の置き場所)")
     List<Path> copybookPaths = new ArrayList<>();
 
     @Option(names = "--codepage", paramLabel = "FILE=CHARSET",
@@ -40,27 +41,20 @@ final class CommonScanOptions {
     }
 
     /**
-     * 指定が無い場合、INPUT_DIR配下のcopybook・copyをコピー句探索パスとする。どちらも無ければ、
-     * 走査で見つかったコピー句の置き場所を探索パスとする(規約のフォルダを持たない資産のため)。
+     * 指定が無い場合、走査で見つかったコピー句の置き場所をコピー句探索パスとする。
+     * フォルダ名で決めないのは、コピー句がどこに置かれていても COPY 文が解決できるようにする
+     * ためである。
      */
     static List<Path> resolveCopybookPaths(Path inputDir, List<Path> specified) {
         List<Path> searchPaths = new ArrayList<>(specified);
         if (!searchPaths.isEmpty()) {
             return searchPaths;
         }
-        for (String name : List.of("copybook", "copy")) {
-            Path candidate = inputDir.resolve(name);
-            if (Files.isDirectory(candidate)) {
-                searchPaths.add(candidate);
-            }
-        }
-        if (!searchPaths.isEmpty()) {
-            return searchPaths;
-        }
         Set<Path> parents = new LinkedHashSet<>();
-        for (SourceDiscovery.DiscoveredFile file : SourceDiscovery.discover(inputDir).files()) {
+        for (SourceDiscovery.DiscoveredFile file
+                : SourceDiscovery.discover(inputDir).filesOf(Set.of(AssetKind.COPYBOOK))) {
             Path parent = file.absPath().getParent();
-            if (file.kind() == SourceDiscovery.Kind.COPYBOOK && parent != null) {
+            if (parent != null) {
                 parents.add(parent);
             }
         }

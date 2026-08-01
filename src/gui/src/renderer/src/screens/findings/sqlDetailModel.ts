@@ -9,14 +9,11 @@ import type { SarifFinding } from "../../../../shared/engine-api";
 import type { Severity } from "../../components/severity";
 import { ruleOf } from "../../data/ruleCatalog";
 
-/** 本文として切り出す最大行数。EXEC SQL … END-EXEC が長い場合はここで打ち切る。 */
-export const SQL_BODY_MAX_LINES = 30;
-
 /** 詳細ペインへ出す SQL 本文の取得状態。読取失敗・復号非対応を本文が空の状態と区別する。 */
 export type SqlBodyState =
   | { readonly status: "idle" }
   | { readonly status: "loading" }
-  | { readonly status: "ready"; readonly lines: readonly string[]; readonly truncated: boolean }
+  | { readonly status: "ready"; readonly lines: readonly string[]; readonly unterminated: boolean }
   | { readonly status: "unsupported"; readonly codepage: string }
   | { readonly status: "error"; readonly message: string };
 
@@ -27,33 +24,41 @@ export interface SqlAdviceEntry {
   readonly severity: Severity;
 }
 
-/** 切り出した SQL 本文。truncated は上限行までに END-EXEC が現れなかったことを表す。 */
+/**
+ * 切り出した SQL 本文。unterminated は END-EXEC が見つからず、文の終端を特定できなかったことを
+ * 表す。この場合は次の文の開始行(見つからなければファイル末尾)までを返す。
+ */
 export interface SqlStatementText {
   readonly lines: string[];
-  readonly truncated: boolean;
+  readonly unterminated: boolean;
 }
 
 /**
- * 指摘の開始行から EXEC SQL 文の本文を切り出す。開始行から END-EXEC を含む行までを返し、
- * 上限行までに END-EXEC が現れない場合は上限で打ち切る。開始行がファイルの範囲外なら空を返す。
+ * 指摘の開始行から EXEC SQL 文の本文を切り出す。開始行から END-EXEC を含む行までを返す。
+ * END-EXEC が見つからない場合は、行数の上限で打ち切るのではなく、次の EXEC SQL(次の文の開始)の
+ * 手前まで、次の文も無ければファイル末尾までを返し、終端を特定できなかった事実を unterminated で
+ * 添える。開始行がファイルの範囲外なら空を返す。
  */
-export function extractSqlStatement(
-  text: string,
-  startLine: number,
-  maxLines: number = SQL_BODY_MAX_LINES,
-): SqlStatementText {
+export function extractSqlStatement(text: string, startLine: number): SqlStatementText {
   const lines = text.split(/\r\n|\n|\r/);
   const first = startLine - 1;
   if (first < 0 || first >= lines.length) {
-    return { lines: [], truncated: false };
+    return { lines: [], unterminated: false };
   }
-  const limit = Math.min(lines.length, first + maxLines);
-  for (let index = first; index < limit; index += 1) {
-    if (/END-EXEC/i.test(lines[index])) {
-      return { lines: lines.slice(first, index + 1), truncated: false };
+  // 次の文の開始(EXEC SQL)より手前を探索範囲とする。次の文の END-EXEC まで拾ってしまわないためである。
+  let boundary = lines.length;
+  for (let index = first + 1; index < lines.length; index += 1) {
+    if (/EXEC\s+SQL/i.test(lines[index])) {
+      boundary = index;
+      break;
     }
   }
-  return { lines: lines.slice(first, limit), truncated: limit < lines.length };
+  for (let index = first; index < boundary; index += 1) {
+    if (/END-EXEC/i.test(lines[index])) {
+      return { lines: lines.slice(first, index + 1), unterminated: false };
+    }
+  }
+  return { lines: lines.slice(first, boundary), unterminated: true };
 }
 
 /**

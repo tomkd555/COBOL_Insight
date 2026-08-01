@@ -19,6 +19,7 @@ import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
 import jp.cobolinsight.engineapi.semantic.EmbeddedBlock;
 import jp.cobolinsight.engineapi.semantic.EmbeddedBlockKind;
 import jp.cobolinsight.engineapi.semantic.Procedure;
+import jp.cobolinsight.engineapi.source.AssetKind;
 import jp.cobolinsight.engineapi.source.CopyExpansionEntry;
 import jp.cobolinsight.engineapi.source.CopyInlineExpansion;
 import jp.cobolinsight.engineapi.source.DecodedSource;
@@ -53,7 +54,6 @@ import jp.cobolinsight.persistence.model.SourceRecord;
 import jp.cobolinsight.persistence.model.SqlStmtRecord;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
@@ -69,7 +69,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.stream.Stream;
 
 /**
  * `scan` の中核処理。資産フォルダを走査し、復号→種別ごとのパース(ServiceLoader経由のSPI)→
@@ -99,24 +98,29 @@ public final class ScanRunner {
             Map<String, String> codepageOverrides) {
     }
 
-    public record Summary(List<String> analyzed, List<String> skipped, List<String> removed,
-            int findingCount, int exitCode, String discoveryMode, boolean truncated,
-            int outsideConventionCount, List<String> outsideConventionSamples,
-            List<String> unreadable) {
+    /** 拡張子と内容が食い違った1件。種別名は {@link AssetKind} の名前をそのまま出す。 */
+    public record KindMismatch(String path, String byExtension, String byContent) {
+    }
 
-        /** 走査の付帯情報を持たない生成。従来規約で走査し取りこぼしが無かった場合と同じ値になる。 */
+    public record Summary(List<String> analyzed, List<String> skipped, List<String> removed,
+            int findingCount, int exitCode, boolean truncated,
+            List<String> undecided, List<KindMismatch> mismatches, List<String> unreadable) {
+
+        /** 走査の付帯情報を持たない生成。取りこぼしも食い違いも無かった場合と同じ値になる。 */
         public Summary(List<String> analyzed, List<String> skipped, List<String> removed,
                 int findingCount, int exitCode) {
-            this(analyzed, skipped, removed, findingCount, exitCode,
-                    SourceDiscovery.Mode.CONVENTION.name().toLowerCase(Locale.ROOT), false, 0,
-                    List.of(), List.of());
+            this(analyzed, skipped, removed, findingCount, exitCode, false,
+                    List.of(), List.of(), List.of());
         }
 
         /**
          * 保存先のSQLiteプロジェクトファイルを添えたサマリJSON。GUIはこの値から資産一覧を読む。
          * copyExpansionFile はコピー句展開の成果物の書き出し先で、書き出していない場合は null を
-         * 渡す(キー自体を出さない)。discoveryMode 以降は走査の付帯情報で、GUI が「対象が0件」
-         * 「上限で打ち切った」「規約外に取りこぼしがある」を利用者へ伝えるために使う。
+         * 渡す(キー自体を出さない)。undecided 以降は走査の付帯情報で、GUI が「黙って落としたもの」
+         * 「黙って解釈を変えたもの」「打ち切り」を利用者へ伝えるために使う。
+         *
+         * <p>undecided・mismatches・unreadable はいずれも<b>全件</b>を出し、件数を別に持たない
+         * (配列の長さが件数である)。件数と例示を別々に持つと、engine 側で例示を打ち切る誘惑が残る。
          */
         public String toJson(String databaseFile, String copyExpansionFile) {
             JsonWriter writer = new JsonWriter();
@@ -129,12 +133,19 @@ public final class ScanRunner {
             if (copyExpansionFile != null) {
                 writer.name("copyExpansionFile").value(copyExpansionFile);
             }
-            writer.name("discoveryMode").value(discoveryMode);
             if (truncated) {
                 writer.name("truncated").value(true);
             }
-            writer.name("outsideConventionCount").value(outsideConventionCount);
-            writeArray(writer, "outsideConventionSamples", outsideConventionSamples);
+            writeArray(writer, "undecided", undecided);
+            writer.name("mismatches").beginArray();
+            for (KindMismatch mismatch : mismatches) {
+                writer.beginObject()
+                        .name("path").value(mismatch.path())
+                        .name("byExtension").value(mismatch.byExtension())
+                        .name("byContent").value(mismatch.byContent())
+                        .endObject();
+            }
+            writer.endArray();
             writeArray(writer, "unreadable", unreadable);
             writer.name("exitCode").value(exitCode);
             writer.endObject();
@@ -274,7 +285,7 @@ public final class ScanRunner {
     private Result execute() {
         SourceDiscovery.Result discovery = SourceDiscovery.discover(options.inputDir());
         List<ScanFile> files = new ArrayList<>();
-        List<String> unreadable = new ArrayList<>();
+        List<String> unreadable = new ArrayList<>(discovery.unreadable());
         Map<String, byte[]> bytesByRel = new LinkedHashMap<>();
         Map<String, String> hashByRel = new LinkedHashMap<>();
         for (ScanFile file : toScanFiles(discovery)) {
@@ -349,11 +360,11 @@ public final class ScanRunner {
                 }
                 replaceSources(root, targets, existingByPath, bytesByRel, hashByRel);
                 registerCopybookNodes(targets);
-                analyzeCobol(targets);
+                analyzeCobol(targets, files);
                 analyzeJcl(targets, files);
                 analyzeBms(targets);
                 ensureAllModels(files, bytesByRel);
-                linkResult = linkAndPersistCallGraph();
+                linkResult = linkAndPersistCallGraph(discovery.transactionTables());
             });
 
             // findingCount は復号・パース由来のfindingの件数。linker由来findingは
@@ -379,8 +390,12 @@ public final class ScanRunner {
                     targets.stream().map(ScanFile::relPath).toList(),
                     skipped, removed,
                     runFindings.size() + persistedFindings, exitCode,
-                    discovery.mode().name().toLowerCase(Locale.ROOT), discovery.truncated(),
-                    discovery.outsideConventionCount(), discovery.outsideConvention(), unreadable);
+                    discovery.truncated(), discovery.undecided(),
+                    discovery.mismatches().stream()
+                            .map(m -> new KindMismatch(m.relPath(), m.byExtension().name(),
+                                    m.byContent().name()))
+                            .toList(),
+                    unreadable);
             return new Result(summary, linkResult.graph(), linkResult.findings(),
                     collectCopyExpansions());
         }
@@ -397,7 +412,7 @@ public final class ScanRunner {
         return files;
     }
 
-    private static SourceKind toSourceKind(SourceDiscovery.Kind kind) {
+    private static SourceKind toSourceKind(AssetKind kind) {
         return switch (kind) {
             case BMS -> SourceKind.BMS;
             case COBOL -> SourceKind.COBOL;
@@ -489,13 +504,14 @@ public final class ScanRunner {
         }
     }
 
-    private void analyzeCobol(List<ScanFile> targets) {
-        // Windowsではコピー句解決が探索名の大小を区別しないため、ファイル名照合も大小無視とする
+    private void analyzeCobol(List<ScanFile> targets, List<ScanFile> allFiles) {
+        // Windowsではコピー句解決が探索名の大小を区別しないため、ファイル名照合も大小無視とする。
+        // 対象は走査が COPYBOOK と決めたソースであり、拡張子で選び直さない(内容で COPYBOOK と
+        // 決まったファイルを落とさないため)。
         Map<String, Long> copybookIdByFileName = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-        for (Map.Entry<String, Long> entry : idByRel.entrySet()) {
-            if (entry.getKey().toLowerCase(Locale.ROOT).endsWith(".cpy")) {
-                String fileName = entry.getKey().substring(entry.getKey().lastIndexOf('/') + 1);
-                copybookIdByFileName.put(fileName, entry.getValue());
+        for (ScanFile file : allFiles) {
+            if (file.kind() == SourceKind.COPYBOOK) {
+                copybookIdByFileName.put(file.fileName(), idByRel.get(file.relPath()));
             }
         }
         for (ScanFile file : targets) {
@@ -763,14 +779,14 @@ public final class ScanRunner {
      * NODE.id=SOURCE.id 規約の既存行を参照し、それ以外のノードはグラフのノードID昇順で
      * 決定論的に採番する。
      */
-    private LinkResult linkAndPersistCallGraph() {
+    private LinkResult linkAndPersistCallGraph(List<Path> transactionTables) {
         List<BmsMapset> mapsets = new ArrayList<>();
         bmsMapsetsById.values().forEach(mapsets::addAll);
         LinkResult linked = CallGraphLinker.link(new LinkerInput(
                 cobolModelsById.entrySet().stream().sorted(Map.Entry.comparingByKey())
                         .map(Map.Entry::getValue).toList(),
                 List.copyOf(jclModelsById.values()), mapsets, sqlModelsByProgramId,
-                readTransactionTable()));
+                readTransactionTable(transactionTables)));
         LinkResult result = new LinkResult(withUnanalyzableNodes(linked.graph()),
                 linked.findings(), linked.dynamicCallVariables());
 
@@ -895,52 +911,34 @@ public final class ScanRunner {
     }
 
     /**
-     * トランザクション定義表のトランザクションID・プログラム名の値の妥当性検証(資産名の形式)。
-     * 上限8桁と使用可能文字はメインフレームのメンバ名の規則に合わせる。
+     * トランザクション定義表(列はトランザクションIDとプログラム名)を読み込む。対象は走査が
+     * 表とみなした CSV であり、置き場所は問わない。1行目は常にヘッダとして読み飛ばし、2行目
+     * 以降のうち資産名の形式({@link SourceDiscovery#MEMBER_NAME_PATTERN})に合わない行は
+     * 読み飛ばす。復号できないCSVはファイル単位で読み飛ばし、残りの処理を継続する。
      */
-    private static final java.util.regex.Pattern MEMBER_NAME_PATTERN =
-            java.util.regex.Pattern.compile("[A-Za-z0-9@#$-]{1,8}");
-
-    /**
-     * トランザクション定義表(INPUT_DIR/cics/*.csv。列はトランザクションIDとプログラム名)を
-     * 読み込む。1行目は常にヘッダとして読み飛ばし、2行目以降のうち資産名の形式に合わない行は
-     * 読み飛ばす。復号できないCSVは警告のうえファイル単位で読み飛ばし、残りの処理を継続する。
-     */
-    private Map<String, String> readTransactionTable() {
-        Path dir = options.inputDir().resolve("cics");
-        if (!Files.isDirectory(dir)) {
-            return Map.of();
-        }
+    private static Map<String, String> readTransactionTable(List<Path> transactionTables) {
         Map<String, String> table = new TreeMap<>();
-        try (Stream<Path> children = Files.list(dir)) {
-            List<Path> csvFiles = children.filter(Files::isRegularFile)
-                    .filter(p -> p.getFileName().toString().toLowerCase(Locale.ROOT)
-                            .endsWith(".csv"))
-                    .sorted().toList();
-            for (Path csv : csvFiles) {
-                List<String> lines;
-                try {
-                    lines = Files.readAllLines(csv, java.nio.charset.StandardCharsets.UTF_8);
-                } catch (IOException e) {
-                    System.err.println("警告: トランザクション定義表を復号できないため読み飛ばす: "
-                            + csv + " (" + e + ")");
+        for (Path csv : transactionTables) {
+            List<String> lines;
+            try {
+                lines = Files.readAllLines(csv, java.nio.charset.StandardCharsets.UTF_8);
+            } catch (IOException e) {
+                System.err.println("警告: トランザクション定義表を復号できないため読み飛ばす: "
+                        + csv + " (" + e + ")");
+                continue;
+            }
+            for (String line : lines.stream().skip(1).toList()) {
+                String[] fields = line.split(",");
+                if (fields.length != 2) {
                     continue;
                 }
-                for (String line : lines.stream().skip(1).toList()) {
-                    String[] fields = line.split(",");
-                    if (fields.length != 2) {
-                        continue;
-                    }
-                    String transId = fields[0].trim();
-                    String program = fields[1].trim();
-                    if (MEMBER_NAME_PATTERN.matcher(transId).matches()
-                            && MEMBER_NAME_PATTERN.matcher(program).matches()) {
-                        table.put(transId, program);
-                    }
+                String transId = fields[0].trim();
+                String program = fields[1].trim();
+                if (SourceDiscovery.MEMBER_NAME_PATTERN.matcher(transId).matches()
+                        && SourceDiscovery.MEMBER_NAME_PATTERN.matcher(program).matches()) {
+                    table.put(transId, program);
                 }
             }
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
         }
         return table;
     }

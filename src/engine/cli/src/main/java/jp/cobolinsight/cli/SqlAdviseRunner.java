@@ -8,6 +8,7 @@ import jp.cobolinsight.engineapi.pipeline.ExitCodes;
 import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
 import jp.cobolinsight.engineapi.semantic.EmbeddedBlock;
 import jp.cobolinsight.engineapi.semantic.EmbeddedBlockKind;
+import jp.cobolinsight.engineapi.source.AssetKind;
 import jp.cobolinsight.engineapi.source.DecodedSource;
 import jp.cobolinsight.engineapi.source.SourcePosition;
 import jp.cobolinsight.engineapi.spi.AnalysisContext;
@@ -186,13 +187,16 @@ public final class SqlAdviseRunner {
         return implementations.get(0);
     }
 
-    /** scan と同じフォルダ規約で、cobol ディレクトリ配下のCOBOL本体を発見する(相対パスの辞書順)。 */
+    /**
+     * scan と同じ走査で COBOL 本体を発見する(相対パスの辞書順)。走査の取りこぼしと解釈の変更は
+     * 標準エラーへ出す。
+     */
     private static List<CobolFile> discover(Path inputDir) {
+        SourceDiscovery.Result discovery = SourceDiscovery.discover(inputDir);
+        LintRunner.reportDiscoveryWarnings(discovery);
         List<CobolFile> files = new ArrayList<>();
-        for (SourceDiscovery.DiscoveredFile file : SourceDiscovery.discover(inputDir).files()) {
-            if (file.kind() == SourceDiscovery.Kind.COBOL) {
-                files.add(new CobolFile(file.relPath(), file.absPath()));
-            }
+        for (SourceDiscovery.DiscoveredFile file : discovery.filesOf(Set.of(AssetKind.COBOL))) {
+            files.add(new CobolFile(file.relPath(), file.absPath()));
         }
         files.sort(Comparator.comparing(CobolFile::relPath));
         return files;

@@ -75,7 +75,7 @@ function DetailBody({
   const analyzed = mode === "results" || mode === "error";
   return (
     <div className="ci-detail__body">
-      <div>
+      <div className="ci-detail__identity">
         <div className="ci-detail__name">{item.name}</div>
         <div className="ci-detail__path">{item.path}</div>
       </div>

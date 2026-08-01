@@ -69,7 +69,7 @@ export function SqlAdviseScreen(): ReactElement {
           return;
         }
         const statement = extractSqlStatement(source.text, selected.startLine);
-        setBody({ status: "ready", lines: statement.lines, truncated: statement.truncated });
+        setBody({ status: "ready", lines: statement.lines, unterminated: statement.unterminated });
       })
       .catch((error: unknown) => {
         if (current) setBody({ status: "error", message: messageOf(error) });

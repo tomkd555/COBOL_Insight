@@ -7,6 +7,7 @@ import jp.cobolinsight.engineapi.linemap.LineMappingEntry;
 import jp.cobolinsight.engineapi.pipeline.AnalysisServices;
 import jp.cobolinsight.engineapi.pipeline.ExitCodes;
 import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
+import jp.cobolinsight.engineapi.source.AssetKind;
 import jp.cobolinsight.engineapi.source.DecodedSource;
 import jp.cobolinsight.engineapi.source.SourcePosition;
 import jp.cobolinsight.engineapi.spi.CharsetProvider;
@@ -34,12 +35,10 @@ import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.stream.Stream;
 
 /**
  * `translate` の中核処理。資産フォルダの COBOL を復号・パースして {@link CobolSemanticModel} を得て、
@@ -55,7 +54,6 @@ public final class TranspileRunner {
     /** LINE_MAP の行 id 導出の刻み幅(ソース id×STRIDE+連番)。 */
     private static final long LINE_MAP_ID_STRIDE = 1_000_000L;
     private static final String DECODE_FAILURE_RULE_ID = "decode-failure";
-    private static final String COPYBOOK_EXTENSION = ".cpy";
 
     public record Options(Path inputDir, Path databaseFile, List<Path> copybookSearchPaths,
             Map<String, String> codepageOverrides, List<TargetLanguage> languages, Path outputDir) {
@@ -173,40 +171,25 @@ public final class TranspileRunner {
 
     /**
      * scan と同じ走査で COBOL 本体を、コピー句探索パス配下からコピー句を発見する(相対パスの
-     * 辞書順)。コピー句は入力フォルダの外を指せるため、走査ではなく探索パスを起点とする。
+     * 辞書順)。コピー句は入力フォルダの外を指せるため、走査ではなく探索パスを起点とする
+     * ({@link CopybookScan})。走査の取りこぼしと解釈の変更は標準エラーへ出す。
      */
     private static List<TranspileFile> discover(Options options) {
+        SourceDiscovery.Result discovery = SourceDiscovery.discover(options.inputDir());
+        LintRunner.reportDiscoveryWarnings(discovery);
         Map<String, TranspileFile> byRel = new TreeMap<>();
-        for (SourceDiscovery.DiscoveredFile file
-                : SourceDiscovery.discover(options.inputDir()).files()) {
-            if (file.kind() == SourceDiscovery.Kind.COBOL) {
-                byRel.putIfAbsent(file.relPath(), new TranspileFile(file.relPath(),
-                        file.fileName(), file.absPath(), SourceKind.COBOL));
-            }
+        for (SourceDiscovery.DiscoveredFile file : discovery.filesOf(Set.of(AssetKind.COBOL))) {
+            byRel.putIfAbsent(file.relPath(), new TranspileFile(file.relPath(),
+                    file.fileName(), file.absPath(), SourceKind.COBOL));
         }
         for (Path dir : options.copybookSearchPaths()) {
-            collect(dir, COPYBOOK_EXTENSION, SourceKind.COPYBOOK, options.inputDir(), byRel);
+            for (Path copybook : CopybookScan.collect(dir)) {
+                String relPath = relativize(options.inputDir(), copybook);
+                byRel.putIfAbsent(relPath, new TranspileFile(relPath,
+                        copybook.getFileName().toString(), copybook, SourceKind.COPYBOOK));
+            }
         }
         return new ArrayList<>(byRel.values());
-    }
-
-    private static void collect(Path dir, String extension, SourceKind kind, Path inputDir,
-            Map<String, TranspileFile> byRel) {
-        if (!Files.isDirectory(dir)) {
-            return;
-        }
-        try (Stream<Path> children = Files.list(dir)) {
-            children.filter(Files::isRegularFile)
-                    .filter(p -> p.getFileName().toString().toLowerCase(Locale.ROOT)
-                            .endsWith(extension))
-                    .forEach(p -> {
-                        String relPath = relativize(inputDir, p);
-                        byRel.putIfAbsent(relPath,
-                                new TranspileFile(relPath, p.getFileName().toString(), p, kind));
-                    });
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
     }
 
     /** 入力フォルダ配下なら相対パス、そうでなければ「親ディレクトリ名/ファイル名」を相対パスとする。 */

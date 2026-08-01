@@ -228,7 +228,9 @@
   display: flex;
   flex-direction: column;
   background: var(--ci-surface-soft);
-  overflow: auto;
+  /* デコードプレビューはペイン内で内側スクロールにするため、外側は伸ばさない。 */
+  overflow: hidden;
+  min-height: 0;
 }
 .ci-detail__title {
   margin: 0;
@@ -250,6 +252,13 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  flex: 1;
+  min-height: 0;
+}
+.ci-detail__identity,
+.ci-detail__meta,
+.ci-encsel {
+  flex: none;
 }
 .ci-detail__name {
   font-family: var(--ci-font-code);
@@ -315,7 +324,17 @@
   outline-offset: 2px;
 }
 
-/* デコードプレビュー */
+/*
+ * デコードプレビュー。行数を固定せず、詳細ペインの残り高さいっぱいに描いて内側でスクロールする
+ * (先頭 N 行で打ち切る仕様は廃止した。理由は上限が無いと利用者から見て理由の分からない取り
+ * こぼしになるため)。
+ */
+.ci-preview {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 .ci-preview__head {
   display: flex;
   align-items: center;
@@ -342,6 +361,8 @@
   line-height: 1.65;
   overflow: auto;
   color: var(--ci-text);
+  flex: 1;
+  min-height: 0;
 }
 .ci-preview__box--invalid {
   border-color: var(--ci-error-border);
@@ -362,4 +383,21 @@
   border-radius: var(--ci-radius-sm);
   padding: 6px 9px;
   line-height: 1.6;
+}
+
+/* 走査の警告(資産エクスプローラー上部のバナー内)。該当ファイルの一覧は<details>で畳む。 */
+.ci-scan-notice + .ci-scan-notice {
+  margin-top: var(--ci-space-2);
+}
+.ci-scan-notice__text {
+  margin: 0;
+}
+.ci-scan-notice__details {
+  margin-top: 4px;
+}
+.ci-scan-notice__list {
+  margin: 4px 0 0;
+  padding-left: 1.4em;
+  max-height: 160px;
+  overflow: auto;
 }
