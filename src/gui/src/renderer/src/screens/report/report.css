@@ -26,10 +26,14 @@
   color: var(--ci-text-heading);
 }
 
-/* --- 左のフォーム(400px) --- */
+/*
+ * --- 左のフォーム(400px) ---
+ * 定型入力であり内容の長さに依存しないため分割ハンドルは置かない。ただし幅が足りないときは
+ * 縮めて、拡大時に横スクロールを出さない。
+ */
 .ci-report-form {
-  width: 400px;
-  flex: none;
+  flex: 0 1 400px;
+  min-width: 280px;
   display: flex;
   flex-direction: column;
   gap: var(--ci-space-4);

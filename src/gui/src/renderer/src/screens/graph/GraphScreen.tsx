@@ -185,9 +185,19 @@ export function GraphScreen(): ReactElement {
   const inventory = state.inventory.status === "ready" ? state.inventory.items : [];
   const sourcePaths = detail === null ? [] : graphSourcePaths(detail.node, inventory);
   const detailWidth = state.paneWidths.graphDetail;
+  const nodesWidth = state.paneWidths.graphNodes;
   const detailCollapsed = state.graphDetailCollapsed;
-  // 詳細ペインの幅は CSS カスタムプロパティで渡す(寸法の指定は CSS 側に置く)。
-  const paneStyle = { "--ci-graph-detail-w": `${detailWidth}px` } as CSSProperties;
+  // 各ペインの幅と、相手側(図)へ必ず残す最小を CSS カスタムプロパティで渡す(寸法の指定は CSS 側に置く)。
+  // 図の領域は自分の --ci-opposite-min を上書きするため、ノード一覧と詳細ペインはそれぞれ自分の
+  // 相手側の最小を見る。
+  const paneStyle = {
+    "--ci-graph-detail-w": `${detailWidth}px`,
+    "--ci-opposite-min": `${SPLIT_PANES.graphDetail.oppositeMin}px`,
+  } as CSSProperties;
+  const figureStyle = {
+    "--ci-graph-nodes-w": `${nodesWidth}px`,
+    "--ci-opposite-min": `${SPLIT_PANES.graphNodes.oppositeMin}px`,
+  } as CSSProperties;
 
   return (
     <div className="ci-graph" style={paneStyle}>
@@ -230,11 +240,20 @@ export function GraphScreen(): ReactElement {
             表示するノードがない。ノード種別フィルタで切った種別を戻すと表示できる。
           </p>
         ) : (
-          <div className="ci-graph__figure">
+          <div className="ci-graph__figure" style={figureStyle}>
             <GraphNodeList
               items={nodeList}
               selectedId={state.selectedNode}
               onSelect={(id) => dispatch({ type: "SELECT_GRAPH_NODE", id })}
+            />
+            <SplitHandle
+              size={nodesWidth}
+              min={SPLIT_PANES.graphNodes.min}
+              oppositeMin={SPLIT_PANES.graphNodes.oppositeMin}
+              side="before"
+              onSizeChange={(width) => dispatch({ type: "SET_PANE_WIDTH", pane: "graphNodes", width })}
+              onCommit={() => dispatch({ type: "COMMIT_PANE_SIZE" })}
+              ariaLabel="ノード一覧の幅"
             />
             <GraphCanvas
               elements={elements}
@@ -248,10 +267,11 @@ export function GraphScreen(): ReactElement {
       {detailCollapsed ? null : (
         <>
           <SplitHandle
-            width={detailWidth}
+            size={detailWidth}
             min={SPLIT_PANES.graphDetail.min}
-            max={SPLIT_PANES.graphDetail.max}
-            onWidthChange={(width) => dispatch({ type: "SET_PANE_WIDTH", pane: "graphDetail", width })}
+            oppositeMin={SPLIT_PANES.graphDetail.oppositeMin}
+            onSizeChange={(width) => dispatch({ type: "SET_PANE_WIDTH", pane: "graphDetail", width })}
+            onCommit={() => dispatch({ type: "COMMIT_PANE_SIZE" })}
             ariaLabel="ノード情報と凡例のペインの幅"
           />
           <GraphDetail

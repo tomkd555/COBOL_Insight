@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactElement } from "react";
+import { useMemo, type CSSProperties, type ReactElement } from "react";
 import { SPLIT_PANES } from "../../state/appState";
 import { useAppState, useAppDispatch } from "../../state/AppStateContext";
+import { CodeFocusButton } from "../../components/CodeFocusButton";
 import { EmptyState } from "../../components/EmptyState";
 import { RunningIndicator } from "../../components/RunningIndicator";
 import { SplitHandle } from "../../components/SplitHandle";
 import { SCREEN_META } from "../screenMeta";
 import { previewCodepage } from "../explorer/assetView";
+import { useSourceDocument } from "../viewer/useSourceDocument";
+import { FindingsCode } from "./FindingsCode";
 import { FindingsView } from "./FindingsView";
 import { SqlDetail } from "./SqlDetail";
 import { nextSortState, type FindingFilters } from "./findingsModel";
@@ -21,24 +24,22 @@ const SQL_RUN_STAGES = ["SQL 構文木の走査（S001〜S006）"];
 const SQL_INTRO =
   "埋め込み Db2 SQL（EXEC SQL … END-EXEC）を抽出し、構文レベルの最適化の指摘（S001〜S006）を提示する。実行計画やカタログには依存しない。";
 
-/** 例外・非 Error 値から表示用の文言を取り出す。 */
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
+/** 指摘を選ぶ前の下段に出す案内。 */
+const CODE_HINT = "一覧から指摘を選ぶと、この下に該当資産の原本を出して該当行へ移る。";
 
 /**
  * SQL指摘(sql-lint)。表示する指摘は「▶ 解析実行」が起動した sql-lint の SARIF を AppState へ
  * 収めたもので、この画面は sql-lint を起動しない。一覧 UI は指摘一覧と共有し(FindingsView)、
  * フィルタ・ソート・選択はいずれも AppState に持つためタブを移動しても失われない。
  *
- * 行を選ぶと右の詳細ペインへ、原本から読んだ SQL 本文とその位置の指摘を出す。ソースビューアへの
- * 遷移は詳細ペインの「該当ソース行へ」で行う。SQL 文の総数は SARIF から厳密に導けないため
- * 提示しない。起動または SARIF 読取の失敗は 0 件と区別する。
+ * 上に一覧、下に「COBOL 原本」と「SQL 本文と指摘の詳細」を並べる。行を選ぶと下段の原本が該当行へ
+ * 移り、右の詳細ペインへ切り出した SQL 本文とその位置の指摘を出す。原本と詳細は同じ本文から作る
+ * (読み取りは1回で済む)。ソースビューアへの遷移は詳細ペインの「該当ソース行へ」で行う。SQL 文の
+ * 総数は SARIF から厳密に導けないため提示しない。起動または SARIF 読取の失敗は 0 件と区別する。
  */
 export function SqlAdviseScreen(): ReactElement {
   const state = useAppState();
   const dispatch = useAppDispatch();
-  const [body, setBody] = useState<SqlBodyState>({ status: "idle" });
 
   const meta = SCREEN_META.sql;
   const result = state.sqlAdvice;
@@ -52,32 +53,30 @@ export function SqlAdviseScreen(): ReactElement {
     return item === undefined ? null : previewCodepage(item, state.encodingSel, state.defaultEncoding);
   }, [selected, state.inventory, state.encodingSel, state.defaultEncoding]);
 
-  // 選択が変わるたびに原本を読み直す。応答が返る前に選択が変わった場合は古い応答を捨てる。
-  useEffect(() => {
-    if (selected === null || inputDir === null) {
-      setBody({ status: "idle" });
-      return;
+  const document = useSourceDocument(
+    inputDir !== null,
+    inputDir,
+    selected === null ? "" : selected.file,
+    codepage,
+  );
+
+  // 詳細ペインが出す SQL 本文。原本と同じ本文から切り出し、読み取りを二重に行わない。
+  const body: SqlBodyState = useMemo(() => {
+    if (selected === null || document.status === "idle") {
+      return { status: "idle" };
     }
-    let current = true;
-    setBody({ status: "loading" });
-    window.cobolInsight
-      .readSourceText({ inputDir, path: selected.file, codepage })
-      .then((source) => {
-        if (!current) return;
-        if (source.unsupported) {
-          setBody({ status: "unsupported", codepage: source.codepage });
-          return;
-        }
-        const statement = extractSqlStatement(source.text, selected.startLine);
-        setBody({ status: "ready", lines: statement.lines, unterminated: statement.unterminated });
-      })
-      .catch((error: unknown) => {
-        if (current) setBody({ status: "error", message: messageOf(error) });
-      });
-    return () => {
-      current = false;
-    };
-  }, [inputDir, selected, codepage]);
+    if (document.status === "loading") {
+      return { status: "loading" };
+    }
+    if (document.status === "unsupported") {
+      return { status: "unsupported", codepage: document.codepage };
+    }
+    if (document.status === "error") {
+      return { status: "error", message: document.message };
+    }
+    const statement = extractSqlStatement(document.text, selected.startLine);
+    return { status: "ready", lines: statement.lines, unterminated: statement.unterminated };
+  }, [selected, document]);
 
   const advice = useMemo(() => {
     if (selected === null || result.status !== "ready") return [];
@@ -133,37 +132,83 @@ export function SqlAdviseScreen(): ReactElement {
     text: state.sqlText,
   };
 
+  const listHeight = state.paneWidths.sqlList;
   const detailWidth = state.paneWidths.sqlDetail;
-  // 詳細ペインの幅は CSS カスタムプロパティで渡す(寸法の指定は CSS 側に置く)。
-  const paneStyle = { "--ci-sql-detail-w": `${detailWidth}px` } as CSSProperties;
+  // 一覧の高さは画面全体の容れ物に、詳細ペインの幅と原本へ残す最小は下段の容れ物に効かせる
+  // (下段の --ci-opposite-min が画面全体の値を上書きし、各ペインが自分の相手側の最小を見る)。
+  const screenStyle = {
+    "--ci-sql-list-h": `${listHeight}px`,
+    "--ci-opposite-min": `${SPLIT_PANES.sqlList.oppositeMin}px`,
+  } as CSSProperties;
+  const bodyStyle = {
+    "--ci-sql-detail-w": `${detailWidth}px`,
+    "--ci-opposite-min": `${SPLIT_PANES.sqlDetail.oppositeMin}px`,
+  } as CSSProperties;
 
   return (
-    <div className="ci-sql" style={paneStyle}>
+    <div className="ci-sql" style={screenStyle}>
       <p className="ci-sql__intro">{SQL_INTRO}</p>
-      <div className="ci-sql__body">
-        <FindingsView
-          findings={result.items}
-          filters={filters}
-          handlers={{
-            onToggleSeverity: (severity) => dispatch({ type: "TOGGLE_SQL_SEVERITY", severity }),
-            onRuleChange: (value) => dispatch({ type: "SET_SQL_RULE", value }),
-            onFileChange: (value) => dispatch({ type: "SET_SQL_FILE", value }),
-            onTextChange: (value) => dispatch({ type: "SET_SQL_TEXT", value }),
-          }}
-          onActivateRow={(row) => dispatch({ type: "SELECT_SQL_ADVICE", finding: row.finding })}
-          rowHint="SQL 本文と指摘の詳細を表示"
-          tableLabel="SQL指摘一覧"
-          selectedFinding={selected}
-          sort={state.sqlSort}
-          onSortChange={(column) => dispatch({ type: "SET_SQL_SORT", sort: nextSortState(state.sqlSort, column) })}
-          onGoReport={() => dispatch({ type: "NAV", screen: "report" })}
-          noHitMessage="現在のフィルタ条件に一致する SQL指摘はない"
-        />
+      {state.codeFocus ? null : (
+        <>
+          <div className="ci-sql__list">
+            <FindingsView
+              findings={result.items}
+              filters={filters}
+              handlers={{
+                onToggleSeverity: (severity) => dispatch({ type: "TOGGLE_SQL_SEVERITY", severity }),
+                onRuleChange: (value) => dispatch({ type: "SET_SQL_RULE", value }),
+                onFileChange: (value) => dispatch({ type: "SET_SQL_FILE", value }),
+                onTextChange: (value) => dispatch({ type: "SET_SQL_TEXT", value }),
+              }}
+              onActivateRow={(row) => dispatch({ type: "SELECT_SQL_ADVICE", finding: row.finding })}
+              rowHint="SQL 本文と指摘の詳細を表示"
+              tableLabel="SQL指摘一覧"
+              selectedFinding={selected}
+              sort={state.sqlSort}
+              onSortChange={(column) =>
+                dispatch({ type: "SET_SQL_SORT", sort: nextSortState(state.sqlSort, column) })
+              }
+              onGoReport={() => dispatch({ type: "NAV", screen: "report" })}
+              noHitMessage="現在のフィルタ条件に一致する SQL指摘はない"
+            />
+          </div>
+          <SplitHandle
+            size={listHeight}
+            min={SPLIT_PANES.sqlList.min}
+            oppositeMin={SPLIT_PANES.sqlList.oppositeMin}
+            orientation="horizontal"
+            side="before"
+            onSizeChange={(height) =>
+              dispatch({ type: "SET_PANE_WIDTH", pane: "sqlList", width: height })
+            }
+            onCommit={() => dispatch({ type: "COMMIT_PANE_SIZE" })}
+            ariaLabel="SQL指摘一覧の高さ"
+          />
+        </>
+      )}
+      <div className="ci-sql__body" style={bodyStyle}>
+        <div className="ci-sql__code">
+          <FindingsCode
+            file={selected === null ? "" : selected.file}
+            line={selected === null ? null : selected.startLine}
+            document={document}
+            findings={result.items}
+            hint={CODE_HINT}
+          >
+            {/* 最大化の操作は畳む一覧の中ではなく、常に見えているコード面の見出しへ置く。 */}
+            <CodeFocusButton
+              active={state.codeFocus}
+              onToggle={() => dispatch({ type: "TOGGLE_CODE_FOCUS" })}
+              target="一覧"
+            />
+          </FindingsCode>
+        </div>
         <SplitHandle
-          width={detailWidth}
+          size={detailWidth}
           min={SPLIT_PANES.sqlDetail.min}
-          max={SPLIT_PANES.sqlDetail.max}
-          onWidthChange={(width) => dispatch({ type: "SET_PANE_WIDTH", pane: "sqlDetail", width })}
+          oppositeMin={SPLIT_PANES.sqlDetail.oppositeMin}
+          onSizeChange={(width) => dispatch({ type: "SET_PANE_WIDTH", pane: "sqlDetail", width })}
+          onCommit={() => dispatch({ type: "COMMIT_PANE_SIZE" })}
           ariaLabel="SQL 文と指摘の詳細ペインの幅"
         />
         <SqlDetail

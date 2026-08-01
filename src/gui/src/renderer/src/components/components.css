@@ -317,6 +317,12 @@
   /* ドラッグ中にハンドル自身の文字選択が始まらないようにする。 */
   user-select: none;
 }
+/* 横向き(上下に並ぶペインの境界)。幅と高さ、つまみの向き、ポインタの形が入れ替わる。 */
+.ci-split--horizontal {
+  width: auto;
+  height: var(--ci-split-w);
+  cursor: row-resize;
+}
 .ci-split:hover,
 .ci-split--dragging {
   background: var(--ci-select-tint);
@@ -331,6 +337,10 @@
   height: var(--ci-split-grip-h);
   border-radius: var(--ci-radius-sm);
   background: var(--ci-border-hover);
+}
+.ci-split--horizontal .ci-split__grip {
+  width: var(--ci-split-grip-h);
+  height: var(--ci-split-grip-w);
 }
 .ci-split:hover .ci-split__grip,
 .ci-split--dragging .ci-split__grip {

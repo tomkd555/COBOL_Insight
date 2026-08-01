@@ -16,9 +16,10 @@ import { GENERATED_LANGUAGE_ID } from "../../vendor/monacoLanguages";
 import { previewCodepage } from "../explorer/assetView";
 import { SCREEN_META } from "../screenMeta";
 import { CodePane } from "./CodePane";
+import { SourceInspector } from "./SourceInspector";
 import { TranslationNotes } from "./TranslationNotes";
 import { ViewerToolbar } from "./ViewerToolbar";
-import { COBOL_LANGUAGE_ID } from "./cobolMonarch";
+import { useSourceDocument } from "./useSourceDocument";
 import { sourceCodepageOf } from "./columns";
 import { detectCopyStatements } from "./copybookLookup";
 import {
@@ -32,12 +33,9 @@ import {
   type TranslationNote,
 } from "./lineMapIndex";
 import {
-  COBOL_RULERS,
-  COLUMN_MARKS,
   LANGUAGE_TABS,
   availableGeneratedLanguages,
   buildExpansionZones,
-  columnLeftPx,
   copyExpansionFile,
   copyExpansionSummary,
   expansionsFor,
@@ -49,11 +47,9 @@ import {
   linkSummary,
   originScreen,
   selectGeneratedFile,
-  toDocument,
   transpileOutDir,
   viewerFileOptions,
   type CopyExpansionState,
-  type DocumentState,
   type EditorMetrics,
   type ExpansionZone,
   type TranspileState,
@@ -71,7 +67,6 @@ const EMPTY_LINE_MAP: readonly LineMapEntry[] = [];
 const EMPTY_INVENTORY: readonly AssetInventoryItem[] = [];
 const EMPTY_ZONES: readonly ExpansionZone[] = [];
 const EMPTY_FINDINGS: readonly SarifFinding[] = [];
-const IDLE_DOCUMENT: DocumentState = { status: "idle" };
 const IDLE_TRANSPILE: TranspileState = { status: "idle" };
 const IDLE_EXPANSION: CopyExpansionState = { status: "idle" };
 
@@ -146,7 +141,7 @@ export function ViewerScreen(): ReactElement {
       : previewCodepage(selectedItem, state.encodingSel, state.defaultEncoding);
   const transpileTarget = isTranspileTarget(selectedItem);
 
-  const [document, setDocument] = useState<DocumentState>(IDLE_DOCUMENT);
+  const document = useSourceDocument(analyzed, inputDir, sourceFile, codepage);
   const [transpile, setTranspile] = useState<TranspileState>(IDLE_TRANSPILE);
   const [generatedName, setGeneratedName] = useState<string | null>(null);
   const [expansion, setExpansion] = useState<CopyExpansionState>(IDLE_EXPANSION);
@@ -154,27 +149,6 @@ export function ViewerScreen(): ReactElement {
   const [metrics, setMetrics] = useState<EditorMetrics | null>(null);
   // 対応表が空の資産に対して translate を繰り返し起動しないよう、起動済みの組を覚える。
   const generatedOnce = useRef<Set<string>>(new Set());
-
-  // 選択ファイルまたは文字コード指定が変わるたびに本文を取り直す。古い応答は捨てる。
-  useEffect(() => {
-    if (!analyzed || inputDir === null || sourceFile === "") {
-      setDocument(IDLE_DOCUMENT);
-      return;
-    }
-    let current = true;
-    setDocument({ status: "loading" });
-    window.cobolInsight
-      .readSourceText({ inputDir, path: sourceFile, codepage })
-      .then((result) => {
-        if (current) setDocument(toDocument(result));
-      })
-      .catch((error: unknown) => {
-        if (current) setDocument({ status: "error", message: messageOf(error) });
-      });
-    return () => {
-      current = false;
-    };
-  }, [analyzed, inputDir, sourceFile, codepage]);
 
   // 対訳の成果物を読む。対応表が無ければ translate を起動して作り、読み直す。
   useEffect(() => {
@@ -397,8 +371,12 @@ export function ViewerScreen(): ReactElement {
   const cobolReveal = origin === "generated" || origin === "note" ? (linkedCobol[0] ?? null) : null;
   const generatedReveal = origin === "cobol" || origin === "note" ? (linkedGenerated[0] ?? null) : null;
   const translationWidth = state.paneWidths.viewerTranslation;
-  // 対訳ペインの幅は CSS カスタムプロパティで渡す(寸法の指定は CSS 側に置く)。
-  const paneStyle = { "--ci-viewer-translation-w": `${translationWidth}px` } as CSSProperties;
+  // 対訳ペインの幅と、原本へ必ず残す最小を CSS カスタムプロパティで渡す(寸法の指定は CSS 側に置く)。
+  // 最小は SPLIT_PANES の oppositeMin をそのまま流し、上限の値を CSS 側の定数として二重に持たない。
+  const paneStyle = {
+    "--ci-viewer-translation-w": `${translationWidth}px`,
+    "--ci-opposite-min": `${SPLIT_PANES.viewerTranslation.oppositeMin}px`,
+  } as CSSProperties;
 
   return (
     <div className="ci-viewer" style={paneStyle}>
@@ -409,6 +387,8 @@ export function ViewerScreen(): ReactElement {
         from={state.sourceFrom}
         onBack={back === null ? null : () => dispatch({ type: "NAV", screen: back })}
         backLabel={back === null ? null : SCREEN_META[back].label}
+        codeFocus={state.codeFocus}
+        onToggleCodeFocus={() => dispatch({ type: "TOGGLE_CODE_FOCUS" })}
       />
       {sourceFile === "" ? (
         <EmptyState
@@ -417,192 +397,146 @@ export function ViewerScreen(): ReactElement {
         />
       ) : (
         <div className="ci-viewer__panes">
-          <section className="ci-viewer__pane" aria-label="COBOL ソース">
-            <header className="ci-viewer__pane-head">
-              <h3 className="ci-viewer__pane-title">{`COBOL ソース（固定形式 80 桁）― ${sourceFile}`}</h3>
-              <span className="ci-viewer__pane-meta">
-                {`この資産の指摘: ${findingCount} 件 ｜ 文字コード: ${
-                  document.status === "ready" || document.status === "unsupported"
-                    ? document.codepage
-                    : "―"
-                }`}
-              </span>
-              {copyStatements.length === 0 ? (
-                <span className="ci-viewer__pane-meta">COPY 文なし</span>
-              ) : (
-                <>
-                  <Button
-                    className="ci-viewer__copy-toggle"
-                    aria-expanded={state.copybookOpen}
-                    onClick={() => dispatch({ type: "TOGGLE_COPYBOOK_OPEN" })}
-                  >
-                    {state.copybookOpen ? "コピー句の展開を閉じる" : "コピー句を展開"}
-                  </Button>
-                  <span className="ci-viewer__pane-meta" role="status">
-                    {copyExpansionSummary(copyStatements, expansion)}
-                  </span>
-                </>
-              )}
-            </header>
-            {/* 見出しの位置は Monaco の実測寸法から求める。測る前(本文の表示前)はラベルを出さない。 */}
-            <div
-              className="ci-viewer__columns"
-              role="img"
-              aria-label="固定形式の欄割り ― 1〜6桁 一連番号欄、7桁目 標識欄、8〜72桁 本体（A/B 領域）、73〜80桁 識別欄"
-            >
-              {metrics === null
-                ? null
-                : COLUMN_MARKS.map((mark) => (
-                    <span
-                      key={mark.name}
-                      className={`ci-viewer__column ci-viewer__column--${mark.name} ci-viewer__column--${mark.anchor}`}
-                      style={{ left: `${columnLeftPx(metrics, mark.column)}px` }}
-                    >
-                      {mark.label}
-                    </span>
-                  ))}
-            </div>
-            <div className="ci-viewer__pane-body">
-              {document.status === "loading" ? (
-                <p className="ci-viewer__loading" role="status">
-                  ソース本文を読み込んでいる…
-                </p>
-              ) : document.status === "unsupported" ? (
-                <EmptyState
-                  icon="！"
-                  title="このコードページは表示できません"
-                  description={`${document.codepage} は表示用の復号に対応していない（EBCDIC CP930/CP939 とコードページ不明）。資産一覧で文字コードを手動指定すると表示できる場合がある。`}
-                />
-              ) : document.status === "error" ? (
-                <EmptyState
-                  icon="！"
-                  title="ソースを読み取れませんでした"
-                  description={document.message}
-                />
-              ) : document.status === "ready" ? (
-                <CodePane
-                  languageId={COBOL_LANGUAGE_ID}
-                  text={document.text}
-                  rulers={COBOL_RULERS}
-                  linkedLines={linkedCobol}
-                  notedLines={notedCobol}
-                  focusLine={state.sourceLine}
-                  revealLine={cobolReveal}
-                  identification={identification}
-                  findings={findingLines}
-                  expansions={expansionZones}
-                  glyphMargin
-                  onMetrics={setMetrics}
-                  onCursorLine={onCobolCursor}
-                  ariaLabel={`COBOL 原本 ${sourceFile}`}
-                />
-              ) : null}
-            </div>
-            <p className="ci-viewer__status" role="status">
-              {linkSummary(linkedCobol, linkedGenerated)}
-            </p>
-          </section>
-
-          <SplitHandle
-            width={translationWidth}
-            min={SPLIT_PANES.viewerTranslation.min}
-            max={SPLIT_PANES.viewerTranslation.max}
-            onWidthChange={(width) =>
-              dispatch({ type: "SET_PANE_WIDTH", pane: "viewerTranslation", width })
-            }
-            ariaLabel="逐語対訳ペインの幅"
-          />
-
-          <section
-            className="ci-viewer__pane ci-viewer__pane--translation"
-            aria-label="逐語対訳"
+          <SourceInspector
+            file={sourceFile}
+            document={document}
+            findingCount={findingCount}
+            metrics={metrics}
+            onMetrics={setMetrics}
+            findings={findingLines}
+            identification={identification}
+            focusLine={state.sourceLine}
+            revealLine={cobolReveal}
+            linkedLines={linkedCobol}
+            notedLines={notedCobol}
+            expansions={expansionZones}
+            onCursorLine={onCobolCursor}
+            status={linkSummary(linkedCobol, linkedGenerated)}
           >
-            <header className="ci-viewer__pane-head">
-              <h3 className="ci-viewer__pane-title">逐語対訳</h3>
-              {LANGUAGE_TABS.map((tab) => (
+            {copyStatements.length === 0 ? (
+              <span className="ci-viewer__pane-meta">COPY 文なし</span>
+            ) : (
+              <>
                 <Button
-                  key={tab.lang}
-                  variant={state.sourceLang === tab.lang ? "primary" : "default"}
-                  aria-pressed={state.sourceLang === tab.lang}
-                  onClick={() => dispatch({ type: "SET_SOURCE_LANG", lang: tab.lang })}
+                  className="ci-viewer__copy-toggle"
+                  aria-expanded={state.copybookOpen}
+                  onClick={() => dispatch({ type: "TOGGLE_COPYBOOK_OPEN" })}
                 >
-                  {tab.label}
+                  {state.copybookOpen ? "コピー句の展開を閉じる" : "コピー句を展開"}
                 </Button>
-              ))}
-              {languageFiles.length > 1 ? (
-                <select
-                  className="ci-viewer__gen-select"
-                  aria-label="表示する生成物"
-                  value={generated?.name ?? ""}
-                  onChange={(event) => setGeneratedName(event.target.value)}
-                >
-                  {languageFiles.map((file) => (
-                    <option key={file.name} value={file.name}>
-                      {file.name}
-                    </option>
+                <span className="ci-viewer__pane-meta" role="status">
+                  {copyExpansionSummary(copyStatements, expansion)}
+                </span>
+              </>
+            )}
+          </SourceInspector>
+
+          {/* 最大化しているあいだは対訳ペインをハンドルごと出さない。幅は畳む前の値を保つ。 */}
+          {state.codeFocus ? null : (
+            <>
+              <SplitHandle
+                size={translationWidth}
+                min={SPLIT_PANES.viewerTranslation.min}
+                oppositeMin={SPLIT_PANES.viewerTranslation.oppositeMin}
+                onSizeChange={(width) =>
+                  dispatch({ type: "SET_PANE_WIDTH", pane: "viewerTranslation", width })
+                }
+                onCommit={() => dispatch({ type: "COMMIT_PANE_SIZE" })}
+                ariaLabel="逐語対訳ペインの幅"
+              />
+
+              <section
+                className="ci-viewer__pane ci-viewer__pane--translation"
+                aria-label="逐語対訳"
+              >
+                <header className="ci-viewer__pane-head">
+                  <h3 className="ci-viewer__pane-title">逐語対訳</h3>
+                  {LANGUAGE_TABS.map((tab) => (
+                    <Button
+                      key={tab.lang}
+                      variant={state.sourceLang === tab.lang ? "primary" : "default"}
+                      aria-pressed={state.sourceLang === tab.lang}
+                      onClick={() => dispatch({ type: "SET_SOURCE_LANG", lang: tab.lang })}
+                    >
+                      {tab.label}
+                    </Button>
                   ))}
-                </select>
-              ) : null}
-              <span className="ci-viewer__pane-meta">
-                行の対応は多対一・一対多 ― カーソル行で相互ハイライト
-              </span>
-            </header>
-            <div className="ci-viewer__pane-body">
-              {!transpileTarget ? (
-                <EmptyState
-                  title="この資産は逐語対訳の対象ではありません"
-                  description="逐語対訳は COBOL 本体に対して生成する。JCL・コピー句・BMS マップは対訳を持たない。"
-                />
-              ) : dbPath === null ? (
-                <EmptyState
-                  title="解析結果のプロジェクトファイルがありません"
-                  description="資産一覧で解析を実行すると、対訳の対応表を持つプロジェクトファイルができる。"
-                />
-              ) : transpile.status === "loading" ? (
-                <p className="ci-viewer__loading" role="status">
-                  逐語対訳を生成・読込している…
-                </p>
-              ) : transpile.status === "error" ? (
-                <EmptyState
-                  icon="！"
-                  title="逐語対訳を取得できませんでした"
-                  description={`逐語対訳の生成または読み取りに失敗した。${transpile.message}`}
-                />
-              ) : generated === null && generatedLanguages.length > 0 ? (
-                <EmptyState
-                  title="この言語の生成物がありません"
-                  description="選んだ言語の生成物が無い。もう一方の言語へ切り替えると表示できる。"
-                />
-              ) : generated === null && lineMap.length > 0 ? (
-                <EmptyState
-                  icon="！"
-                  title="生成物が出力先に見つかりません"
-                  description={`行の対応表はあるが、対応する生成物が出力先 ${transpileOutDir(dbPath)} に無い。別の出力先で生成した対応表がプロジェクトファイルに残っている。`}
-                  actionLabel="逐語対訳を再生成する"
-                  onAction={() => void regenerate()}
-                />
-              ) : generated === null ? (
-                <EmptyState
-                  title="逐語対訳が生成されていません"
-                  description="この資産の逐語対訳は生成されていない。行の対応表に対応が無いため、対訳を表示できない。"
-                  actionLabel="逐語対訳を再生成する"
-                  onAction={() => void regenerate()}
-                />
-              ) : (
-                <CodePane
-                  languageId={GENERATED_LANGUAGE_ID[language]}
-                  text={generated.text}
-                  linkedLines={linkedGenerated}
-                  notedLines={notedGenerated}
-                  focusLine={null}
-                  revealLine={generatedReveal}
-                  onCursorLine={onGeneratedCursor}
-                  ariaLabel={`逐語対訳 ${generated.name}`}
-                />
-              )}
-            </div>
-            <TranslationNotes notes={notes} onSelect={onSelectNote} />
-          </section>
+                  {languageFiles.length > 1 ? (
+                    <select
+                      className="ci-viewer__gen-select"
+                      aria-label="表示する生成物"
+                      value={generated?.name ?? ""}
+                      onChange={(event) => setGeneratedName(event.target.value)}
+                    >
+                      {languageFiles.map((file) => (
+                        <option key={file.name} value={file.name}>
+                          {file.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : null}
+                  <span className="ci-viewer__pane-meta">
+                    行の対応は多対一・一対多 ― カーソル行で相互ハイライト
+                  </span>
+                </header>
+                <div className="ci-viewer__pane-body">
+                  {!transpileTarget ? (
+                    <EmptyState
+                      title="この資産は逐語対訳の対象ではありません"
+                      description="逐語対訳は COBOL 本体に対して生成する。JCL・コピー句・BMS マップは対訳を持たない。"
+                    />
+                  ) : dbPath === null ? (
+                    <EmptyState
+                      title="解析結果のプロジェクトファイルがありません"
+                      description="資産一覧で解析を実行すると、対訳の対応表を持つプロジェクトファイルができる。"
+                    />
+                  ) : transpile.status === "loading" ? (
+                    <p className="ci-viewer__loading" role="status">
+                      逐語対訳を生成・読込している…
+                    </p>
+                  ) : transpile.status === "error" ? (
+                    <EmptyState
+                      icon="！"
+                      title="逐語対訳を取得できませんでした"
+                      description={`逐語対訳の生成または読み取りに失敗した。${transpile.message}`}
+                    />
+                  ) : generated === null && generatedLanguages.length > 0 ? (
+                    <EmptyState
+                      title="この言語の生成物がありません"
+                      description="選んだ言語の生成物が無い。もう一方の言語へ切り替えると表示できる。"
+                    />
+                  ) : generated === null && lineMap.length > 0 ? (
+                    <EmptyState
+                      icon="！"
+                      title="生成物が出力先に見つかりません"
+                      description={`行の対応表はあるが、対応する生成物が出力先 ${transpileOutDir(dbPath)} に無い。別の出力先で生成した対応表がプロジェクトファイルに残っている。`}
+                      actionLabel="逐語対訳を再生成する"
+                      onAction={() => void regenerate()}
+                    />
+                  ) : generated === null ? (
+                    <EmptyState
+                      title="逐語対訳が生成されていません"
+                      description="この資産の逐語対訳は生成されていない。行の対応表に対応が無いため、対訳を表示できない。"
+                      actionLabel="逐語対訳を再生成する"
+                      onAction={() => void regenerate()}
+                    />
+                  ) : (
+                    <CodePane
+                      languageId={GENERATED_LANGUAGE_ID[language]}
+                      text={generated.text}
+                      linkedLines={linkedGenerated}
+                      notedLines={notedGenerated}
+                      focusLine={null}
+                      revealLine={generatedReveal}
+                      onCursorLine={onGeneratedCursor}
+                      ariaLabel={`逐語対訳 ${generated.name}`}
+                    />
+                  )}
+                </div>
+                <TranslationNotes notes={notes} onSelect={onSelectNote} />
+              </section>
+            </>
+          )}
         </div>
       )}
     </div>

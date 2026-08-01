@@ -8,6 +8,7 @@ const SAVED = {
     severityThreshold: "medium",
     defaultEncoding: "手動: Shift_JIS",
     copybookPaths: ["C:\\資産\\copybook"],
+    paneSizes: { explorerDetail: 520, viewerTranslation: 480 },
   },
 };
 
@@ -29,6 +30,33 @@ describe("normalizeAppSettings", () => {
       settings: { disabledRules: "R004", severityThreshold: 3, copybookPaths: {} },
     });
     expect(settings).toEqual(emptyAppSettings());
+  });
+
+  it("分割ペインの寸法が欠けていれば空として扱う(旧い保存ファイルを読める)", () => {
+    const settings = normalizeAppSettings({
+      version: 1,
+      settings: { disabledRules: ["R004"] },
+    });
+    expect(settings.paneSizes).toEqual({});
+  });
+
+  it("分割ペインの寸法のうち、数として扱えない欄を落とす", () => {
+    const settings = normalizeAppSettings({
+      settings: {
+        paneSizes: {
+          explorerDetail: 520,
+          graphDetail: "300",
+          sqlDetail: Number.NaN,
+          diffList: null,
+        },
+      },
+    });
+    expect(settings.paneSizes).toEqual({ explorerDetail: 520 });
+  });
+
+  it("分割ペインの寸法がオブジェクトでなければ空として扱う", () => {
+    expect(normalizeAppSettings({ settings: { paneSizes: [1, 2] } }).paneSizes).toEqual({});
+    expect(normalizeAppSettings({ settings: { paneSizes: "520" } }).paneSizes).toEqual({});
   });
 
   it("配列の中の文字列でない要素を落とす", () => {

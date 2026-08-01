@@ -9,6 +9,7 @@ import { RUN_STAGES } from "./components/RunningIndicator";
 import { AppStateProvider, useAppState, useAppDispatch } from "./state/AppStateContext";
 import type { AppState, RunStage } from "./state/appState";
 import { deriveStatus } from "./state/status";
+import { isCodeFocusShortcut } from "./shell/shortcuts";
 
 /** RUN_STAGES の文言から「第N段 」の接頭辞を外す。 */
 function stageLabel(stage: RunStage): string {
@@ -87,14 +88,28 @@ export function AppShell(): ReactElement {
         }`,
       });
     });
-    // 保存の対象は設定画面の4項目に限る。他の状態の変化で書き直さない。
+    // 保存の対象は設定画面の4項目と分割ペインの寸法に限る。他の状態の変化で書き直さない。
+    // 寸法はドラッグ中の1画素ごとではなく、操作の完了(paneCommitCount の増加)だけを見る。
   }, [
     settingsLoaded,
     state.rulesDisabled,
     state.severityThreshold,
     state.defaultEncoding,
     state.project.copybookPaths,
+    state.paneCommitCount,
   ]);
+
+  // コードの最大化は画面のどこからでも効かせる。判定は shell/shortcuts の純関数が持つ。
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (isCodeFocusShortcut(event)) {
+        event.preventDefault();
+        dispatch({ type: "TOGGLE_CODE_FOCUS" });
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [dispatch]);
 
   return (
     <Shell

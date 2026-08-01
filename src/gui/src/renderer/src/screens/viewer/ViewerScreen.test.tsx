@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
 import type { ReactElement } from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ViewerScreen } from "./ViewerScreen";
+import type { FakeEditor, FakeViewZone } from "./monacoFake";
 import { AppStateProvider, useAppState } from "../../state/AppStateContext";
 import { SPLIT_PANES, initialState, type AppState } from "../../state/appState";
 import { SAMPLE_INVENTORY } from "../explorer/fixtures";
@@ -20,144 +21,19 @@ import type {
   SourceTextResult,
 } from "../../../../shared/engine-api";
 
-/** 偽の Monaco エディタ1台の観測結果。 */
-interface FakeDecoration {
-  range: { startLineNumber: number };
-  options: {
-    className?: string;
-    inlineClassName?: string;
-    glyphMarginClassName?: string;
-    hoverMessage?: { value: string };
-    after?: { content: string };
-  };
-}
-
-/** 差し込んだビューゾーン1件(COPY 展開)。 */
-interface FakeViewZone {
-  id: string;
-  afterLineNumber: number;
-  heightInLines: number;
-  domNode: HTMLElement;
-  marginDomNode: HTMLElement;
-}
-
-interface FakeEditor {
-  language: string;
-  ariaLabel: string;
-  rulers: number[];
-  glyphMargin: boolean;
-  value: string;
-  decorations: FakeDecoration[];
-  zones: FakeViewZone[];
-  revealed: number[];
-  disposed: boolean;
-  cursorHandler: ((event: { position: { lineNumber: number } }) => void) | null;
-}
-
 /**
  * Monaco は Worker と実 DOM 計測を要するため jsdom では動かない。描画ライブラリの入口
  * (vendor/monacoEditor・vendor/monacoLanguages)を差し替え、生成したエディタへ渡った本文・言語・
  * 桁ルーラ・装飾・スクロール指示を記録する偽物にする。これにより CodePane の効果を実際に走らせた
- * まま「どの行が強調されたか」「カーソル行の変化が画面へ伝わるか」を検証できる。
+ * まま「どの行が強調されたか」「カーソル行の変化が画面へ伝わるか」を検証できる。偽物の形は
+ * 原本のペインを出す他の画面とも共有する(viewer/monacoFake)。
  */
 const monacoStore = vi.hoisted(() => ({ editors: [] as FakeEditor[] }));
 
-vi.mock("../../vendor/monacoEditor", () => ({
-  monacoEditor: () => ({
-    languages: {
-      register: () => undefined,
-      setMonarchTokensProvider: () => undefined,
-      setLanguageConfiguration: () => undefined,
-    },
-    editor: {
-      // 実測寸法の取得に使う列挙(monaco.editor.EditorOption)。値は本物と同じである必要がない。
-      EditorOption: { fontInfo: "fontInfo" },
-      defineTheme: () => undefined,
-      create: (
-        _container: HTMLElement,
-        options: {
-          value?: string;
-          language?: string;
-          rulers?: number[];
-          ariaLabel?: string;
-          glyphMargin?: boolean;
-        },
-      ) => {
-        const editor: FakeEditor = {
-          language: options.language ?? "",
-          ariaLabel: options.ariaLabel ?? "",
-          rulers: options.rulers ?? [],
-          glyphMargin: options.glyphMargin ?? false,
-          value: options.value ?? "",
-          decorations: [],
-          zones: [],
-          revealed: [],
-          disposed: false,
-          cursorHandler: null,
-        };
-        monacoStore.editors.push(editor);
-        let nextZoneId = 0;
-        return {
-          getValue: () => editor.value,
-          setValue: (value: string) => {
-            editor.value = value;
-          },
-          createDecorationsCollection: (initial: FakeEditor["decorations"]) => {
-            editor.decorations = initial;
-            return {
-              set: (next: FakeEditor["decorations"]) => {
-                editor.decorations = next;
-              },
-            };
-          },
-          onDidChangeCursorPosition: (handler: (event: { position: { lineNumber: number } }) => void) => {
-            editor.cursorHandler = handler;
-            return {
-              dispose: () => {
-                editor.cursorHandler = null;
-              },
-            };
-          },
-          // ビューゾーン(COPY 展開の差し込み)。追加・削除を記録し、行番号は消費しない。
-          changeViewZones: (
-            change: (accessor: {
-              addZone: (zone: Omit<FakeViewZone, "id">) => string;
-              removeZone: (id: string) => void;
-            }) => void,
-          ) => {
-            change({
-              addZone: (zone) => {
-                const id = `zone-${(nextZoneId += 1)}`;
-                editor.zones.push({ ...zone, id });
-                return id;
-              },
-              removeZone: (id: string) => {
-                editor.zones = editor.zones.filter((zone) => zone.id !== id);
-              },
-            });
-          },
-          // 桁見出しの位置合わせと展開行の字送りに使う実測寸法。jsdom では実寸を測れないため固定値を返す。
-          getLayoutInfo: () => ({ contentLeft: 60 }),
-          getOption: () => ({
-            typicalHalfwidthCharacterWidth: 7,
-            fontFamily: "'BIZ UDGothic',monospace",
-            fontSize: 12,
-            lineHeight: 19,
-          }),
-          getScrollLeft: () => 0,
-          onDidLayoutChange: () => ({ dispose: () => undefined }),
-          onDidScrollChange: () => ({ dispose: () => undefined }),
-          revealLineInCenter: (line: number) => {
-            editor.revealed.push(line);
-          },
-          dispose: () => {
-            editor.disposed = true;
-          },
-        };
-      },
-    },
-  }),
-}));
+vi.mock("../../vendor/monacoEditor", async () => {
+  const { createMonacoFake } = await import("./monacoFake");
+  return { monacoEditor: () => createMonacoFake(monacoStore) };
+});
 
 vi.mock("../../vendor/monacoLanguages", () => ({
   GENERATED_LANGUAGE_ID: { python: "python", java: "java" },
@@ -650,7 +526,8 @@ describe("ViewerScreen のペイン幅", () => {
     expect(handle).toHaveAttribute("aria-orientation", "vertical");
     expect(handle).toHaveAttribute("aria-valuenow", String(SPLIT_PANES.viewerTranslation.initial));
     expect(handle).toHaveAttribute("aria-valuemin", String(SPLIT_PANES.viewerTranslation.min));
-    expect(handle).toHaveAttribute("aria-valuemax", String(SPLIT_PANES.viewerTranslation.max));
+    // 可動上限はコンテナの実寸から導くため、レイアウトを持たない環境では示さない
+    // (導出そのものは SplitHandle.test.tsx が確かめる)。
     expect(translationWidth()).toBe(`${SPLIT_PANES.viewerTranslation.initial}px`);
   });
 
@@ -676,11 +553,15 @@ describe("ViewerScreen のペイン幅", () => {
   it("ファイルを切り替えても幅を保つ", async () => {
     renderViewer(analyzedState());
     await waitForPanes();
-    fireEvent.keyDown(screen.getByRole("separator", { name: "逐語対訳ペインの幅" }), { key: "End" });
+    fireEvent.keyDown(screen.getByRole("separator", { name: "逐語対訳ペインの幅" }), {
+      key: "ArrowLeft",
+    });
     fireEvent.change(screen.getByLabelText("表示する資産"), {
       target: { value: SAMPLE_INVENTORY[0].path },
     });
-    await waitFor(() => expect(translationWidth()).toBe(`${SPLIT_PANES.viewerTranslation.max}px`));
+    await waitFor(() =>
+      expect(translationWidth()).toBe(`${SPLIT_PANES.viewerTranslation.initial + 24}px`),
+    );
   });
 });
 

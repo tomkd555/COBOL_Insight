@@ -27,10 +27,14 @@
   border-bottom: 1px solid var(--ci-border-soft);
 }
 
-/* --- 左のフォーム(400px) --- */
+/*
+ * --- 左のフォーム(400px) ---
+ * 定型入力であり内容の長さに依存しないため分割ハンドルは置かない。ただし幅が足りないときは
+ * 縮めて、拡大時に横スクロールを出さない。
+ */
 .ci-import__form {
-  width: 400px;
-  flex: none;
+  flex: 0 1 400px;
+  min-width: 280px;
   display: flex;
   flex-direction: column;
   gap: var(--ci-space-4);
@@ -96,9 +100,13 @@
   min-height: 0;
   padding: var(--ci-space-3) var(--ci-space-4);
 }
+/*
+ * 貼り付け欄。高さは視野の高さに従わせ、下限は端末の1画面ぶんの貼り付けが見える程度、上限は
+ * プレビューを画面外へ押し出さない程度とする(利用者は手で伸ばせる)。
+ */
 .ci-import__paste {
   flex: none;
-  height: 200px;
+  height: clamp(120px, 22vh, 260px);
   resize: vertical;
   padding: var(--ci-space-2);
   border: 1px solid var(--ci-border-strong);

@@ -132,29 +132,63 @@ export interface ProjectState {
 }
 
 /**
- * 幅を保持する分割ペイン。いずれも分割ハンドルの右側のペインで、画面ごとに独立した値を持つ。
- * viewerTranslation はソースビューアの逐語対訳ペイン(左は COBOL 原本)である。
+ * 寸法を保持する分割ペイン。補助側(一覧・詳細)が寸法を持ち、コード面は残りを取る。
+ * 括弧内はハンドルの向きと、ハンドルのどちら側のペインを操作するかである。
  */
-export type SplitPaneId = "explorerDetail" | "graphDetail" | "sqlDetail" | "viewerTranslation";
+export type SplitPaneId =
+  | "explorerDetail" // 資産一覧 右の詳細(幅・after)
+  | "graphNodes" // 呼出関係図 左のノード一覧(幅・before)
+  | "graphDetail" // 呼出関係図 右の詳細(幅・after)
+  | "findingsList" // 指摘一覧 上の一覧(高さ・before)
+  | "sqlList" // SQL指摘 上の一覧(高さ・before)
+  | "sqlDetail" // SQL指摘 下段の右の詳細(幅・after)
+  | "viewerTranslation" // ソースビューア 右の逐語対訳(幅・after)
+  | "diffList"; // 修正案の差分 左の一覧(幅・before)
 
-/** 分割ペインの初期幅と可動範囲(画素)。 */
+/** 分割ペインの初期の寸法と、可動範囲を導くための2つの下限(画素)。 */
 export interface SplitPaneLimits {
+  /** 初期の寸法。 */
   readonly initial: number;
+  /** このペインが役目を果たす最小。 */
   readonly min: number;
-  readonly max: number;
+  /** 相手側(コード面)へ必ず残す最小。 */
+  readonly oppositeMin: number;
 }
 
 /**
- * 分割ペインの寸法。下限はペインが役目を果たす最小の幅、上限は隣のペインを潰さない幅である。
- * viewerTranslation の下限 240px は、最小ウィンドウ幅 1280px でも COBOL 原本ペインへ
- * 固定形式 80 桁と行番号 5 桁を横スクロールなしで描ける幅を残す。初期幅も同じ条件を満たす。
+ * 分割ペインの寸法。可動上限は画素の定数で持たず、描画のたびに
+ * 「コンテナの寸法 − oppositeMin − ハンドルの寸法」で導く(components/SplitHandle の maxSplitSize)。
+ * 上限を定数で持つと、ウィンドウが小さいときは上限まで広げると相手が潰れ、大きいときは
+ * これ以上広げられない理由が利用者に分からない、の両方が起きるためである。
+ *
+ * min と oppositeMin の根拠は各行の注記のとおりで、いずれも「そのペインが役目を果たす最小」である。
  */
 export const SPLIT_PANES: Record<SplitPaneId, SplitPaneLimits> = {
-  explorerDetail: { initial: 330, min: 240, max: 560 },
-  graphDetail: { initial: 252, min: 200, max: 480 },
-  sqlDetail: { initial: 380, min: 280, max: 640 },
-  viewerTranslation: { initial: 520, min: 240, max: 900 },
+  // min=固定形式 80 桁 + 余白 / oppositeMin=資産一覧の最小内容幅
+  explorerDetail: { initial: 520, min: 400, oppositeMin: 657 },
+  graphNodes: { initial: 200, min: 140, oppositeMin: 400 },
+  graphDetail: { initial: 260, min: 200, oppositeMin: 400 },
+  // min=表の見出し + 2 行 / oppositeMin=コード面に 10 行
+  findingsList: { initial: 260, min: 120, oppositeMin: 200 },
+  sqlList: { initial: 240, min: 120, oppositeMin: 200 },
+  // oppositeMin=SQL 本文に 80 桁
+  sqlDetail: { initial: 360, min: 260, oppositeMin: 600 },
+  // oppositeMin=原本に固定形式 80 桁 + 行番号
+  viewerTranslation: { initial: 480, min: 300, oppositeMin: 600 },
+  // oppositeMin=差分 2 面へ各 300
+  diffList: { initial: 300, min: 200, oppositeMin: 600 },
 };
+
+/**
+ * 各ペインの初期の寸法。SPLIT_PANES のキーから組み、ペインを増減しても直す箇所を1つに保つ。
+ */
+function initialPaneSizes(): Record<SplitPaneId, number> {
+  const sizes: Record<string, number> = {};
+  for (const [id, limits] of Object.entries(SPLIT_PANES)) {
+    sizes[id] = limits.initial;
+  }
+  return sizes;
+}
 
 /** SET_IMPORT で更新する項目。省略した項目は現在値を保つ。 */
 export interface ImportPatch {
@@ -334,11 +368,22 @@ export interface AppState {
   /** 編集中の定義が既存の何番目か。null は新規追加である。 */
   readonly userRuleDraftIndex: number | null;
 
-  /* 分割ペインの幅(GUI 専用) */
-  /** 画面ごとの分割ペインの幅(画素)。タブを移動しても保つ。 */
+  /* 分割ペインの寸法(GUI 専用) */
+  /** 画面ごとの分割ペインの寸法(画素)。タブを移動しても保つ。 */
   readonly paneWidths: Record<SplitPaneId, number>;
+  /**
+   * 分割ハンドルの操作が終わった回数。ドラッグは1画素ごとに寸法を変えるため、その全部を
+   * 保存すると1回のドラッグで数十回の書き込みが走る。保存はこの回数の変化だけを合図に行う
+   * (時間のしきい値を持たないので、何ミリ秒が適切かという説明のつかない選択が要らない)。
+   */
+  readonly paneCommitCount: number;
   /** 呼出関係図の右ペインを畳んでいるか。畳むとペインとハンドルを出さず、図が全幅を使う。 */
   readonly graphDetailCollapsed: boolean;
+  /**
+   * コードを最大化しているか。真のとき各画面は補助領域をハンドルごと出さず、コード面が全体を取る。
+   * 1回の作業の間だけ意味を持つ値であり、保存はしない。
+   */
+  readonly codeFocus: boolean;
 
   /* 横断 */
   /** トースト通知の文言(design toastMsg)。null は非表示。 */
@@ -433,13 +478,10 @@ export const initialState: AppState = {
   userRuleDraft: null,
   userRuleDraftIndex: null,
 
-  paneWidths: {
-    explorerDetail: SPLIT_PANES.explorerDetail.initial,
-    graphDetail: SPLIT_PANES.graphDetail.initial,
-    sqlDetail: SPLIT_PANES.sqlDetail.initial,
-    viewerTranslation: SPLIT_PANES.viewerTranslation.initial,
-  },
+  paneWidths: initialPaneSizes(),
+  paneCommitCount: 0,
   graphDetailCollapsed: false,
+  codeFocus: false,
 
   toastMsg: null,
 };

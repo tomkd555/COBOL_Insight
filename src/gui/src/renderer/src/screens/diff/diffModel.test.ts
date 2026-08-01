@@ -17,6 +17,7 @@ import {
   fixRuleDescriptionLabel,
   fixRuleIdLabel,
   joinPath,
+  mergeWarnings,
   readFixSummary,
   reparseWarning,
   resolveSelection,
@@ -306,6 +307,18 @@ describe("警告と注意の文言", () => {
   it("解析段のエラーを件数付きで示す", () => {
     expect(analysisWarning(summaryOf({ analysisErrors: 3 }))).toContain("3 件");
     expect(analysisWarning(summaryOf())).toBeNull();
+  });
+
+  it("再パース検証と解析段の警告を1本にまとめる", () => {
+    expect(mergeWarnings("再パースが 2 件失敗した。", "解析で 3 件のエラーがある。")).toBe(
+      "再パースが 2 件失敗した。 解析で 3 件のエラーがある。",
+    );
+  });
+
+  it("片方だけのときはその文言を、どちらも無いときは null を返す", () => {
+    expect(mergeWarnings("再パースが 2 件失敗した。", null)).toBe("再パースが 2 件失敗した。");
+    expect(mergeWarnings(null, "解析で 3 件のエラーがある。")).toBe("解析で 3 件のエラーがある。");
+    expect(mergeWarnings(null, null)).toBeNull();
   });
 
   it("棄却があるときだけ書き出し前の注意を出す", () => {

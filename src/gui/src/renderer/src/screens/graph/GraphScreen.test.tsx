@@ -494,6 +494,30 @@ describe("GraphScreen の詳細ペインの幅と畳み込み", () => {
     return (graph as HTMLElement).style.getPropertyValue("--ci-graph-detail-w");
   }
 
+  /**
+   * ハンドルの親要素(コンテナ)とハンドル自身へ実寸を持たせる。可動上限はコンテナの実寸から
+   * 導くため、レイアウトを持たない jsdom では明示的に与える。
+   */
+  function stubContainerWidth(handle: HTMLElement, width: number, handleWidth = 6): void {
+    const parent = handle.parentElement;
+    if (parent === null) {
+      throw new Error("ハンドルの親要素が無い");
+    }
+    const rect = (w: number, h: number): DOMRect => ({
+      x: 0,
+      y: 0,
+      width: w,
+      height: h,
+      top: 0,
+      left: 0,
+      right: w,
+      bottom: h,
+      toJSON: () => ({}),
+    });
+    parent.getBoundingClientRect = () => rect(width, 600);
+    handle.getBoundingClientRect = () => rect(handleWidth, 600);
+  }
+
   it("図と詳細ペインの境界に分割ハンドルを置く", async () => {
     renderGraph(analyzedState());
     await waitForGraph();
@@ -501,17 +525,19 @@ describe("GraphScreen の詳細ペインの幅と畳み込み", () => {
     expect(handle).toHaveAttribute("aria-orientation", "vertical");
     expect(handle).toHaveAttribute("aria-valuenow", String(SPLIT_PANES.graphDetail.initial));
     expect(handle).toHaveAttribute("aria-valuemin", String(SPLIT_PANES.graphDetail.min));
-    expect(handle).toHaveAttribute("aria-valuemax", String(SPLIT_PANES.graphDetail.max));
+    // 可動上限はコンテナの実寸から導くため、レイアウトを持たない環境では示さない
+    // (導出そのものは SplitHandle.test.tsx が確かめる)。
     expect(detailWidth()).toBe(`${SPLIT_PANES.graphDetail.initial}px`);
   });
 
-  it("End キーで上限まで広げる", async () => {
+  it("End キーで、図へ下限を残せる上限まで広げる", async () => {
     renderGraph(analyzedState());
     await waitForGraph();
-    fireEvent.keyDown(screen.getByRole("separator", { name: "ノード情報と凡例のペインの幅" }), {
-      key: "End",
-    });
-    expect(detailWidth()).toBe(`${SPLIT_PANES.graphDetail.max}px`);
+    const handle = screen.getByRole("separator", { name: "ノード情報と凡例のペインの幅" });
+    stubContainerWidth(handle, 1000);
+    fireEvent.keyDown(handle, { key: "End" });
+    // 1000 - 400(図へ残す下限) - 6(ハンドル) = 594
+    expect(detailWidth()).toBe(`${1000 - SPLIT_PANES.graphDetail.oppositeMin - 6}px`);
   });
 
   it("畳むと詳細ペインもハンドルも出さず、図が全幅を使う", async () => {

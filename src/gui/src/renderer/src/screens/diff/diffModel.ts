@@ -302,6 +302,19 @@ export function analysisWarning(summary: FixSummaryInfo): string | null {
 }
 
 /**
+ * 再パース検証の警告と解析段の警告を1本にまとめる。両方が出ると帯が2段になり、そのぶんコード面の
+ * 高さが減る。どちらも「修正案の信頼度に関わる注意」であり、読む側にとって段を分ける意味が無い。
+ * どちらも無ければ null を返し、帯そのものを出さない。
+ */
+export function mergeWarnings(
+  reparse: string | null,
+  analysis: string | null,
+): string | null {
+  const parts = [reparse, analysis].filter((part): part is string => part !== null);
+  return parts.length === 0 ? null : parts.join(" ");
+}
+
+/**
  * 「適用(書き出し)」の前に示す注意文。engine の `fix apply` は修正案を選んで書き出す機能を持たず
  * 全件を書き出すため、棄却した修正案も出力先に現れる。その事実を書き出し前に明示する。
  */

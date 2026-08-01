@@ -378,7 +378,8 @@ describe("DiffScreen の適用(書き出し)", () => {
     renderDiff(analyzedState());
     await waitForList();
     fireEvent.click(screen.getByRole("button", { name: "適用（書き出し）" }));
-    expect(screen.getByText("C:\\proj\\fix")).toBeInTheDocument();
+    // 書き出し先は専用のブロックを持たず、注意文と束ねた1行で示す。
+    expect(screen.getByText(/書き出し先（原本は変更しない）: C:\\proj\\fix/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "修正版を書き出す" }));
     await waitFor(() => expect(runFixApply).toHaveBeenCalledTimes(2));

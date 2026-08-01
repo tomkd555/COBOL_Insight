@@ -221,9 +221,14 @@
   color: var(--ci-type-other-text);
 }
 
-/* --- 右の詳細ペイン(幅は ExplorerScreen が分割ハンドルの現在値から与える) --- */
+/*
+ * --- 右の詳細ペイン(幅は ExplorerScreen が分割ハンドルの現在値から与える) ---
+ * 上限は「画面の容れ物 − 一覧へ残す最小」で、その最小(--ci-opposite-min)も画面側が流す。
+ * ページ拡大で容れ物が縮んだときに一覧を潰さないための歯止めである。
+ */
 .ci-detail {
   width: var(--ci-explorer-detail-w);
+  max-width: calc(100% - var(--ci-opposite-min));
   flex: none;
   display: flex;
   flex-direction: column;

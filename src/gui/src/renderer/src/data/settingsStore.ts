@@ -19,6 +19,7 @@ export function toAppSettings(state: AppState): AppSettings {
     severityThreshold: state.severityThreshold,
     defaultEncoding: state.defaultEncoding,
     copybookPaths: [...state.project.copybookPaths],
+    paneSizes: { ...state.paneWidths },
   };
 }
 

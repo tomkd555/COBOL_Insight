@@ -21,6 +21,11 @@ export interface AppSettings {
   readonly defaultEncoding: string;
   /** コピー句探索パス。並びのまま --copybook-path へ渡る。 */
   readonly copybookPaths: readonly string[];
+  /**
+   * 分割ペインの寸法(画素)。キーは renderer の SplitPaneId だが、その型は renderer 側にあり
+   * ここからは参照できないため文字列で持つ。知らないキーを捨てる突き合わせは復元時に行う。
+   */
+  readonly paneSizes: Readonly<Record<string, number>>;
 }
 
 /** 保存ファイルの中身。 */
@@ -36,6 +41,7 @@ export function emptyAppSettings(): AppSettings {
     severityThreshold: "",
     defaultEncoding: "",
     copybookPaths: [],
+    paneSizes: {},
   };
 }
 
@@ -48,6 +54,7 @@ export function normalizeAppSettings(value: unknown): AppSettings {
     severityThreshold: asString(settings["severityThreshold"]),
     defaultEncoding: asString(settings["defaultEncoding"]),
     copybookPaths: asStringArray(settings["copybookPaths"]),
+    paneSizes: asNumberRecord(settings["paneSizes"]),
   };
 }
 
@@ -63,4 +70,16 @@ function asString(value: unknown): string {
 
 function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((element) => typeof element === "string") : [];
+}
+
+/** 数値の欄だけを残す。数として扱えない値(文字列・NaN・無限大)は落とす。 */
+function asNumberRecord(value: unknown): Record<string, number> {
+  const source = asObject(value);
+  const result: Record<string, number> = {};
+  for (const [key, element] of Object.entries(source)) {
+    if (typeof element === "number" && Number.isFinite(element)) {
+      result[key] = element;
+    }
+  }
+  return result;
 }

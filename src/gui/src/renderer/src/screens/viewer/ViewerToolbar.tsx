@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 import { Button } from "../../components/Button";
+import { CodeFocusButton } from "../../components/CodeFocusButton";
 import { SEVERITY_META, SEVERITY_ORDER } from "../../components/severity";
 import type { ViewerFileOption } from "./viewerModel";
 
@@ -14,6 +15,10 @@ export interface ViewerToolbarProps {
   onBack: (() => void) | null;
   /** 戻り先の画面名。 */
   backLabel: string | null;
+  /** コードを最大化しているか(対訳ペインを畳んでいるか)。 */
+  codeFocus: boolean;
+  /** 最大化の切替。 */
+  onToggleCodeFocus: () => void;
 }
 
 /**
@@ -38,6 +43,8 @@ export function ViewerToolbar({
   from,
   onBack,
   backLabel,
+  codeFocus,
+  onToggleCodeFocus,
 }: ViewerToolbarProps): ReactElement {
   return (
     <div className="ci-viewer__toolbar">
@@ -68,26 +75,34 @@ export function ViewerToolbar({
         </div>
       )}
       <div className="ci-viewer__spacer" />
-      <ul className="ci-viewer__legend" aria-label="ハイライトの凡例">
-        {LEGEND.map((entry) => (
-          <li key={entry.modifier} className="ci-viewer__legend-item">
-            <span
-              className={`ci-viewer__swatch ci-viewer__swatch--${entry.modifier}`}
-              aria-hidden="true"
-            />
-            {entry.label}
-          </li>
-        ))}
-        <li className="ci-viewer__legend-item ci-viewer__legend-heading">指摘のある行</li>
-        {SEVERITY_ORDER.map((severity) => (
-          <li key={severity} className="ci-viewer__legend-item">
-            <span className={`ci-viewer__sev ci-viewer__sev--${severity}`} aria-hidden="true">
-              {SEVERITY_META[severity].symbol}
-            </span>
-            {SEVERITY_META[severity].label}
-          </li>
-        ))}
-      </ul>
+      {/*
+        凡例は8項目あり、開いたままではツールバーが2行に増えてコード面の高さを削る。畳んでおき、
+        開いたときはツールバーの下へ重ねて落とす(ツールバー自身の高さは変わらない)。
+      */}
+      <details className="ci-viewer__legend-box">
+        <summary className="ci-viewer__legend-summary">凡例</summary>
+        <ul className="ci-viewer__legend" aria-label="ハイライトの凡例">
+          {LEGEND.map((entry) => (
+            <li key={entry.modifier} className="ci-viewer__legend-item">
+              <span
+                className={`ci-viewer__swatch ci-viewer__swatch--${entry.modifier}`}
+                aria-hidden="true"
+              />
+              {entry.label}
+            </li>
+          ))}
+          <li className="ci-viewer__legend-item ci-viewer__legend-heading">指摘のある行</li>
+          {SEVERITY_ORDER.map((severity) => (
+            <li key={severity} className="ci-viewer__legend-item">
+              <span className={`ci-viewer__sev ci-viewer__sev--${severity}`} aria-hidden="true">
+                {SEVERITY_META[severity].symbol}
+              </span>
+              {SEVERITY_META[severity].label}
+            </li>
+          ))}
+        </ul>
+      </details>
+      <CodeFocusButton active={codeFocus} onToggle={onToggleCodeFocus} target="逐語対訳" />
     </div>
   );
 }
