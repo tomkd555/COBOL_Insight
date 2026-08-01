@@ -52,8 +52,35 @@
 .ci-viewer__spacer {
   flex: 1;
 }
+/*
+ * 凡例。畳んだ状態を既定とし、開いた分はツールバーの下へ重ねて落とす。ツールバーの流れの中で
+ * 開くと8項目が折り返して2行になり、そのぶんコード面の高さが減る。
+ */
+.ci-viewer__legend-box {
+  position: relative;
+  flex: none;
+}
+.ci-viewer__legend-summary {
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-muted);
+  cursor: pointer;
+  padding: 2px var(--ci-space-2);
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius-sm);
+  list-style-position: inside;
+}
+.ci-viewer__legend-summary:focus-visible {
+  outline: 2px solid var(--ci-focus-ring);
+  outline-offset: 2px;
+}
 /* 項目が多く1行に収まらないため、右へ寄せたうえで折り返す。 */
 .ci-viewer__legend {
+  position: absolute;
+  top: calc(100% + var(--ci-space-1));
+  right: 0;
+  z-index: 2;
+  width: max-content;
+  max-width: 90vw;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -61,10 +88,14 @@
   column-gap: 10px;
   row-gap: 2px;
   margin: 0;
-  padding: 0;
+  padding: var(--ci-space-2);
   list-style: none;
   font-size: var(--ci-fs-xs);
   color: var(--ci-text-muted);
+  background: var(--ci-panel);
+  border: 1px solid var(--ci-border);
+  border-radius: var(--ci-radius-md);
+  box-shadow: var(--ci-shadow-sm);
 }
 .ci-viewer__legend-heading {
   color: var(--ci-text-subtle);
@@ -132,11 +163,20 @@
   border-radius: var(--ci-radius-lg);
   overflow: hidden;
 }
-/* 対訳ペインは幅を持ち、原本ペインへ固定形式 80 桁ぶんの幅を残す。幅は ViewerScreen が与える。 */
+/*
+ * 対訳ペインは幅を持ち、原本ペインへ固定形式 80 桁ぶんの幅を残す。幅は ViewerScreen が与える。
+ * 上限は「ペインの容れ物 − 原本へ残す最小」で、その最小(--ci-opposite-min)も ViewerScreen が
+ * SPLIT_PANES から流す。ページ拡大で容れ物が縮んだときに原本を潰さないための歯止めである。
+ */
 .ci-viewer__pane--translation {
   flex: none;
   width: var(--ci-viewer-translation-w);
+  max-width: calc(100% - var(--ci-opposite-min));
 }
+/*
+ * ペイン見出し。折り返すとコード面の高さが減るため1行に留め、あふれる題目は省略記号で切る
+ * (題目の全文は資産選択とコード面が示す)。
+ */
 .ci-viewer__pane-head {
   display: flex;
   align-items: center;
@@ -145,17 +185,33 @@
   background: var(--ci-surface-header);
   border-bottom: 1px solid var(--ci-border);
   flex: none;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 .ci-viewer__pane-title {
   margin: 0;
   font-size: var(--ci-fs-pane-title);
   font-weight: 700;
   color: var(--ci-text-heading);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .ci-viewer__pane-meta {
   font-size: var(--ci-fs-note);
   color: var(--ci-text-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ci-viewer__pane-spacer {
+  flex: 1;
+  min-width: 0;
+}
+/* 相互ハイライトの状態。見出しの右端へ置き、専用の行を持たない。 */
+.ci-viewer__pane-status {
+  flex: none;
+  max-width: 40%;
 }
 .ci-viewer__pane-body {
   flex: 1;
@@ -305,38 +361,41 @@
   font-size: var(--ci-fs-sm);
   color: var(--ci-text-muted);
 }
-.ci-viewer__status {
-  margin: 0;
-  padding: var(--ci-space-1) 10px;
-  flex: none;
-  font-size: var(--ci-fs-xs);
-  color: var(--ci-text-muted);
-  background: var(--ci-surface-soft);
-  border-top: 1px solid var(--ci-border-soft);
-}
-
-/* 直訳不能の注記 */
+/*
+ * 直訳不能の注記。既定では見出し(summary)だけの高さで、開いた分は内側でスクロールさせる。
+ * 上限は割合ではなく「ペインの高さ − 対訳のコード面へ残す 200px(10 行)」とする。200px の出所は
+ * SPLIT_PANES.viewerTranslation の oppositeMin と同じ根拠であり、値の出所を1つに保つ。
+ */
 .ci-viewer__notes {
   flex: none;
-  max-height: 30%;
+  max-height: calc(100% - 200px);
   overflow: auto;
   padding: var(--ci-space-2) 10px;
   border-top: 1px solid var(--ci-border);
   background: var(--ci-surface-soft);
+  min-height: 0;
+}
+/* 0 件のときは開く先が無く、見出しだけを置く。 */
+.ci-viewer__notes--empty {
+  max-height: none;
+}
+.ci-viewer__notes-summary {
+  cursor: pointer;
+  list-style-position: inside;
+}
+.ci-viewer__notes-summary:focus-visible {
+  outline: 2px solid var(--ci-focus-ring);
+  outline-offset: 2px;
 }
 .ci-viewer__notes-title {
-  margin: 0 0 var(--ci-space-1);
+  display: inline;
+  margin: 0;
   font-size: var(--ci-fs-pane-title);
   font-weight: 700;
   color: var(--ci-caution);
 }
-.ci-viewer__notes-empty {
-  margin: 0;
-  font-size: var(--ci-fs-xs);
-  color: var(--ci-text-subtle);
-}
 .ci-viewer__notes-list {
-  margin: 0;
+  margin: var(--ci-space-1) 0 0;
   padding: 0;
   list-style: none;
   display: flex;

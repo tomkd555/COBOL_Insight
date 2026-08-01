@@ -12,6 +12,7 @@
  *   7. 端末取込が貼り付けた本文を桁で切り出し、桁定規付きのプレビューへ等幅で並べる
  *   8. 200% 拡大でも横スクロールが出ない(縦横 2 方向のスクロールにならない)
  *   9. console にエラーと CSP 拒否("Refused to ...")が出ない
+ *  10. 指摘一覧で行番号を押すと、同じ画面のまま下段へコードが出る
  *
  * engine CLI は起動しない。preload を smoke/fake-preload.cjs へ差し替え、window.cobolInsight を
  * 固定データで満たして画面を results 状態まで進める。本番と同じ contextIsolation:true・sandbox:true で
@@ -226,6 +227,45 @@ async function checkViewer(win) {
   record("識別欄(73〜80桁)の装飾が描かれる", identification > 0, `装飾 ${identification} 箇所`);
 }
 
+/**
+ * 指摘一覧の一覧とコードの併存(検査10)。行番号のセルを押すと、同じ画面のまま下段へコードが出る。
+ * タブが移ってしまうと「指摘を見て該当行を読む」作業が成り立たないため、活性タブも併せて見る。
+ */
+async function checkFindingsSplit(win) {
+  await waitUntil(win, clickTab("指摘一覧"), "指摘一覧タブの押下");
+  await waitUntil(
+    win,
+    `(() => {
+      const cell = document.querySelector('.ci-findings-table__line--jump');
+      if (cell === null) return false;
+      cell.click();
+      return true;
+    })()`,
+    "行番号セルの押下",
+  );
+  const lines = await waitUntil(
+    win,
+    `(() => {
+      const tops = [...document.querySelectorAll('.ci-findings-split__code .view-line')].map((line) => Math.round(line.getBoundingClientRect().top));
+      return tops.length >= 5 ? tops : null;
+    })()`,
+    "指摘一覧の下段の行描画",
+  );
+  const unique = new Set(lines);
+  const active = await evaluate(
+    win,
+    `(() => {
+      const tab = document.querySelector('[role="tab"][aria-selected="true"]');
+      return tab === null ? '' : tab.textContent.trim();
+    })()`,
+  );
+  record(
+    "指摘一覧の下段にコードが出て、画面は移らない",
+    unique.size === lines.length && unique.size >= 5 && active === "指摘一覧",
+    `view-line ${lines.length} 本・異なる y ${unique.size} 個・活性タブ ${active}`,
+  );
+}
+
 /** Monaco DiffEditor の実描画(検査4)。差分の行が重なっていないことを y 座標で確かめる。 */
 async function checkDiff(win) {
   await waitUntil(win, clickTab("修正案の差分"), "修正案の差分タブの押下");
@@ -435,7 +475,7 @@ function checkConsole() {
 async function checkZoomReflow(win) {
   const original = win.webContents.getZoomFactor();
   try {
-    // 200% 拡大。1400px のウィンドウでビューポートは 700 CSS px 相当となり、下限 1280px を下回る。
+    // 200% 拡大。1440px のウィンドウでビューポートは 720 CSS px 相当となり、下限 1120px を下回る。
     win.webContents.setZoomFactor(2);
     await delay(400);
     const overflow = await evaluate(
@@ -465,7 +505,8 @@ async function main() {
   }
 
   const win = new BrowserWindow({
-    width: 1400,
+    // 本番の既定寸法(main の windowOptions)にそろえる。
+    width: 1440,
     height: 900,
     show: false,
     webPreferences: {
@@ -501,6 +542,7 @@ async function main() {
     await runAnalysis(win);
     await checkGraph(win);
     await checkViewer(win);
+    await checkFindingsSplit(win);
     await checkDiff(win);
     await checkReport(win);
     await checkSettings(win);

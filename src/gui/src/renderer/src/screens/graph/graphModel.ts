@@ -482,10 +482,16 @@ export function nodeKindCounts(data: CallGraphData): Record<AnyNodeKind, number>
 }
 
 /**
- * 一度に描く表示ノード数の上限目安。Cytoscape は約 3200 ノードで性能が落ちるため、
- * 体感が落ちる前の水準で警告し、フィルタと畳み込みへ誘導する(全体像は SVG/PNG 出力で見る)。
+ * 一度に描く表示ノード数の上限目安。この値を超えたら警告するだけで、描画は打ち切らない。
+ *
+ * 値は実測に基づく。合成グラフ(N 個の起点ノードを1本に連ねた N-1 本の辺)を偽 preload から与え、
+ * 呼出関係図のタブを押してから canvas へ画素が乗るまでの時間を Electron の offscreen 描画で測った
+ * 結果は、50 件=167ms・300 件=301ms・1,000 件=623ms・2,000 件=1,102ms・4,000 件=2,014ms であり、
+ * 特定の件数で急に落ちる点は無く、件数へおおむね比例した。操作の流れが途切れない上限を 1 秒と置くと
+ * この合成グラフでは約 2,000 件に当たるが、実資産のグラフは辺が密でレイアウトの費用がこれより高い。
+ * そのため半分の 1,000 件を目安とする。合成グラフは辺が疎であり、測定値は下限として読む。
  */
-export const VISIBLE_NODE_WARNING_THRESHOLD = 300;
+export const VISIBLE_NODE_WARNING_THRESHOLD = 1000;
 
 /** 表示ノード数が閾値を超えたときの警告文。閾値以下は null。 */
 export function graphWarning(visibleCount: number): string | null {

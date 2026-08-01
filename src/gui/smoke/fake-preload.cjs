@@ -273,6 +273,7 @@ const api = {
       severityThreshold: "warning",
       defaultEncoding: "手動: Shift_JIS",
       copybookPaths: [],
+      paneSizes: {},
     }),
   writeSettings: () => Promise.resolve(undefined),
   readSarif: (path) => Promise.resolve(path === SQL_SARIF ? SQL_ADVICE : FINDINGS),

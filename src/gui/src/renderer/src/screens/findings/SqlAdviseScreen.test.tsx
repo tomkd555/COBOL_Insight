@@ -7,7 +7,19 @@ import { SAMPLE_INVENTORY } from "../explorer/fixtures";
 import { ScreenRouter } from "../ScreenRouter";
 import { AppStateProvider, useAppState, useAppDispatch } from "../../state/AppStateContext";
 import { SPLIT_PANES, initialState, type AppState } from "../../state/appState";
+import type { FakeEditor } from "../viewer/monacoFake";
 import type { AssetInventoryItem, CobolInsightApi, SarifFinding } from "../../../../shared/engine-api";
+
+/**
+ * 下段の原本は Monaco が描く。jsdom では動かないため、描画ライブラリの入口を偽物へ差し替える
+ * (形はソースビューアと共有する)。
+ */
+const monacoStore = vi.hoisted(() => ({ editors: [] as FakeEditor[] }));
+
+vi.mock("../../vendor/monacoEditor", async () => {
+  const { createMonacoFake } = await import("../viewer/monacoFake");
+  return { monacoEditor: () => createMonacoFake(monacoStore) };
+});
 
 /** 指摘の対象ファイルを資産一覧へ足す(本文の復号に用いるコードページの供給源)。 */
 const SQL_ASSETS: readonly AssetInventoryItem[] = [
@@ -30,6 +42,7 @@ let readSarif: ReturnType<typeof vi.fn>;
 let readSourceText: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
+  monacoStore.editors = [];
   // この画面は CLI を起動しない。呼ばれたことを検出するためだけにモックを置く。
   runSqlAdvise = vi.fn();
   readSarif = vi.fn();
@@ -222,7 +235,9 @@ describe("SqlAdviseScreen(SQL指摘)", () => {
     readSourceText.mockRejectedValue(new Error("資産フォルダの外にあるため読み取れません"));
     renderSql(resultsSeed);
     fireEvent.click(screen.getByRole("row", { name: /^S001 / }));
-    expect(await screen.findByText(/資産フォルダの外にあるため読み取れません/)).toBeInTheDocument();
+    // 同じ本文から作る下段の原本も理由を示すため、詳細ペインの中に限って確かめる。
+    const detail = within(screen.getByRole("complementary", { name: "SQL 文と最適化の指摘の詳細" }));
+    expect(await detail.findByText(/資産フォルダの外にあるため読み取れません/)).toBeInTheDocument();
   });
 
   it("復号非対応のコードページは本文を空と見せず、利用者向けの表記で非対応として示す", async () => {
@@ -278,22 +293,23 @@ describe("SqlAdviseScreen(SQL指摘)", () => {
 });
 
 describe("SqlAdviseScreen の詳細ペインの幅", () => {
-  /** 詳細ペインへ渡っている幅。 */
+  /** 詳細ペインへ渡っている幅。寸法は下段の容れ物が持つ(一覧は上に縦分割で載る)。 */
   function detailWidth(): string {
-    const sql = document.querySelector(".ci-sql");
-    if (sql === null) {
-      throw new Error("SQL指摘の枠が無い");
+    const body = document.querySelector(".ci-sql__body");
+    if (body === null) {
+      throw new Error("SQL指摘の下段が無い");
     }
-    return (sql as HTMLElement).style.getPropertyValue("--ci-sql-detail-w");
+    return (body as HTMLElement).style.getPropertyValue("--ci-sql-detail-w");
   }
 
-  it("一覧と詳細ペインの境界に分割ハンドルを置く", () => {
+  it("原本と詳細ペインの境界に分割ハンドルを置く", () => {
     renderSql(resultsSeed);
     const handle = screen.getByRole("separator", { name: "SQL 文と指摘の詳細ペインの幅" });
     expect(handle).toHaveAttribute("aria-orientation", "vertical");
     expect(handle).toHaveAttribute("aria-valuenow", String(SPLIT_PANES.sqlDetail.initial));
     expect(handle).toHaveAttribute("aria-valuemin", String(SPLIT_PANES.sqlDetail.min));
-    expect(handle).toHaveAttribute("aria-valuemax", String(SPLIT_PANES.sqlDetail.max));
+    // 可動上限はコンテナの実寸から導くため、レイアウトを持たない環境では示さない
+    // (導出そのものは SplitHandle.test.tsx が確かめる)。
     expect(detailWidth()).toBe(`${SPLIT_PANES.sqlDetail.initial}px`);
   });
 

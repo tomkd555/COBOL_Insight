@@ -14,15 +14,26 @@ function rangeText(range: LineRange): string {
 
 /**
  * 直訳できなかった箇所の一覧。engine が LINE_MAP.note へ記録した注記を、対応する COBOL 行と
- * 生成行の範囲とともに下部へ並べる。逐語対訳が原文と等価でない箇所を隠さないための提示である。
+ * 生成行の範囲とともに対訳ペインの下部へ並べる。逐語対訳が原文と等価でない箇所を隠さないための
+ * 提示である。
+ *
+ * 既定では畳んでおく。開いたままではコード面の高さを常に削り、0 件でも見出しと空文言で場所を取る。
+ * 0 件のときは開く先が無いので見出しだけを置く。
  */
 export function TranslationNotes({ notes, onSelect }: TranslationNotesProps): ReactElement {
+  if (notes.length === 0) {
+    return (
+      <section className="ci-viewer__notes ci-viewer__notes--empty" aria-label="直訳不能の注記">
+        <p className="ci-viewer__notes-title">直訳不能の注記 0 件</p>
+      </section>
+    );
+  }
   return (
     <section className="ci-viewer__notes" aria-label="直訳不能の注記">
-      <h4 className="ci-viewer__notes-title">{`直訳不能の注記 ${notes.length} 件`}</h4>
-      {notes.length === 0 ? (
-        <p className="ci-viewer__notes-empty">この生成物には直訳できなかった箇所の注記はない。</p>
-      ) : (
+      <details className="ci-viewer__notes-box">
+        <summary className="ci-viewer__notes-summary">
+          <h4 className="ci-viewer__notes-title">{`直訳不能の注記 ${notes.length} 件`}</h4>
+        </summary>
         <ul className="ci-viewer__notes-list">
           {notes.map((note) => (
             <li key={`${note.generated.start}-${note.cobol.start}`} className="ci-viewer__note">
@@ -38,7 +49,7 @@ export function TranslationNotes({ notes, onSelect }: TranslationNotesProps): Re
             </li>
           ))}
         </ul>
-      )}
+      </details>
     </section>
   );
 }

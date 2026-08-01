@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { appReducer } from "./appReducer";
+import { appReducer, restorePaneSizes } from "./appReducer";
 import { SPLIT_PANES, initialState, type AppState, type SplitPaneId } from "./appState";
 import { MANUAL_ENCODING_OPTIONS } from "../screens/explorer/assetView";
 import { SAMPLE_INVENTORY } from "../screens/explorer/fixtures";
@@ -102,6 +102,33 @@ describe("appReducer", () => {
       expect(next.copybookOpen).toBe(false);
       expect(next.linkedCobolLines).toEqual([]);
       expect(next.linkedTranspileLines).toEqual([]);
+    });
+
+    it("stay を立てると画面を移らず、ファイルと行だけを移す", () => {
+      const seed = withState({ screen: "findings" });
+      const next = appReducer(seed, {
+        type: "JUMP",
+        file: "SYK001.cbl",
+        line: 85,
+        from: "指摘一覧",
+        stay: true,
+      });
+      expect(next.screen).toBe("findings");
+      expect(next.sourceFile).toBe("SYK001.cbl");
+      expect(next.sourceLine).toBe(85);
+      expect(next.sourceFrom).toBe("指摘一覧 から SYK001.cbl:85 へジャンプ");
+    });
+
+    it("stay を立てなければ従来どおりソースビューアへ移る", () => {
+      const seed = withState({ screen: "findings" });
+      const next = appReducer(seed, {
+        type: "JUMP",
+        file: "SYK001.cbl",
+        line: 85,
+        from: "指摘一覧",
+        stay: false,
+      });
+      expect(next.screen).toBe("viewer");
     });
 
     it("行なしジャンプは「を表示」文言にする", () => {
@@ -446,13 +473,23 @@ describe("appReducer", () => {
   });
 
   describe("分割ペインの幅と畳み込み", () => {
-    it("初期幅は SPLIT_PANES の initial であり、可動範囲に収まる", () => {
+    it("初期の寸法は SPLIT_PANES の initial であり、下限を下回らない", () => {
       for (const pane of Object.keys(SPLIT_PANES) as SplitPaneId[]) {
         const limits = SPLIT_PANES[pane];
         expect(initialState.paneWidths[pane]).toBe(limits.initial);
         expect(limits.initial).toBeGreaterThanOrEqual(limits.min);
-        expect(limits.initial).toBeLessThanOrEqual(limits.max);
       }
+    });
+
+    it("可動上限を状態として持たない(コンテナの実寸から導くため)", () => {
+      for (const limits of Object.values(SPLIT_PANES)) {
+        expect("max" in limits).toBe(false);
+        expect(limits.oppositeMin).toBeGreaterThan(0);
+      }
+    });
+
+    it("初期の寸法は SPLIT_PANES のキーから組む(ペインの増減で直す箇所を増やさない)", () => {
+      expect(Object.keys(initialState.paneWidths)).toEqual(Object.keys(SPLIT_PANES));
     });
 
     it("SET_PANE_WIDTH は指定した画面の幅だけを変える", () => {
@@ -508,11 +545,73 @@ describe("appReducer", () => {
     });
 
     it("ソースビューアの対訳ペインは、最小ウィンドウ幅でも原本へ 85 桁分を残せる下限である", () => {
-      // 最小ウィンドウ幅 1280px(tokens の --ci-min-width)から、2ペインの外周(左右の余白 24px)と
+      // 最小ウィンドウ幅 1120px(tokens の --ci-min-width)から、2ペインの外周(左右の余白 24px)と
       // ペインの間(余白 20px + ハンドル 6px)、対訳ペインの下限を引いた残りが原本ペインの幅である。
-      const remaining = 1280 - 24 - 26 - SPLIT_PANES.viewerTranslation.min;
+      const remaining = 1120 - 24 - 26 - SPLIT_PANES.viewerTranslation.min;
       // 固定形式 80 桁 + 行番号 5 桁を 12px 等幅(送り 7.2px)で描くのに要する幅。
       expect(remaining).toBeGreaterThanOrEqual(85 * 7.2);
+    });
+
+    it("COMMIT_PANE_SIZE は操作の完了を数える(保存の合図)", () => {
+      expect(initialState.paneCommitCount).toBe(0);
+      const once = appReducer(initialState, { type: "COMMIT_PANE_SIZE" });
+      expect(once.paneCommitCount).toBe(1);
+      expect(appReducer(once, { type: "COMMIT_PANE_SIZE" }).paneCommitCount).toBe(2);
+    });
+
+    it("寸法を変えただけでは保存の合図にならない(ドラッグ中に書き込まない)", () => {
+      const resized = appReducer(initialState, {
+        type: "SET_PANE_WIDTH",
+        pane: "diffList",
+        width: 420,
+      });
+      expect(resized.paneCommitCount).toBe(initialState.paneCommitCount);
+    });
+  });
+
+  describe("restorePaneSizes(保存した寸法の復元)", () => {
+    it("知っているペインの寸法だけを戻す", () => {
+      const restored = restorePaneSizes(
+        { explorerDetail: 600, sqlList: 300 },
+        initialState.paneWidths,
+      );
+      expect(restored.explorerDetail).toBe(600);
+      expect(restored.sqlList).toBe(300);
+      expect(restored.diffList).toBe(SPLIT_PANES.diffList.initial);
+    });
+
+    it("知らないキーは捨てる", () => {
+      const restored = restorePaneSizes({ 廃止したペイン: 999 }, initialState.paneWidths);
+      expect(restored).toEqual(initialState.paneWidths);
+      expect("廃止したペイン" in restored).toBe(false);
+    });
+
+    it("下限を割る寸法は下限で丸める", () => {
+      const restored = restorePaneSizes({ viewerTranslation: 10 }, initialState.paneWidths);
+      expect(restored.viewerTranslation).toBe(SPLIT_PANES.viewerTranslation.min);
+    });
+
+    it("画素の端数を丸める", () => {
+      expect(restorePaneSizes({ diffList: 320.6 }, initialState.paneWidths).diffList).toBe(321);
+    });
+  });
+
+  describe("TOGGLE_CODE_FOCUS(コードの最大化)", () => {
+    it("切り替えるたびに反転する", () => {
+      expect(initialState.codeFocus).toBe(false);
+      const focused = appReducer(initialState, { type: "TOGGLE_CODE_FOCUS" });
+      expect(focused.codeFocus).toBe(true);
+      expect(appReducer(focused, { type: "TOGGLE_CODE_FOCUS" }).codeFocus).toBe(false);
+    });
+
+    it("畳んでも寸法は保つ(戻したときに畳む前の寸法で開く)", () => {
+      const resized = appReducer(initialState, {
+        type: "SET_PANE_WIDTH",
+        pane: "findingsList",
+        width: 360,
+      });
+      const focused = appReducer(resized, { type: "TOGGLE_CODE_FOCUS" });
+      expect(focused.paneWidths.findingsList).toBe(360);
     });
   });
 
@@ -526,6 +625,7 @@ describe("appReducer", () => {
       severityThreshold: "medium",
       defaultEncoding: MANUAL_ENCODING_OPTIONS[1],
       copybookPaths: ["C:\\copy", "C:\\copy2"],
+      paneSizes: {},
     };
 
     it("保存した4項目を戻し、復元済みの印を立てる", () => {
@@ -545,6 +645,7 @@ describe("appReducer", () => {
           severityThreshold: "",
           defaultEncoding: "",
           copybookPaths: [],
+          paneSizes: {},
         },
       });
       expect(next.settingsLoaded).toBe(true);
@@ -561,10 +662,22 @@ describe("appReducer", () => {
           severityThreshold: "critical",
           defaultEncoding: "手動: 存在しない文字コード",
           copybookPaths: [],
+          paneSizes: {},
         },
       });
       expect(next.severityThreshold).toBe(initialState.severityThreshold);
       expect(next.defaultEncoding).toBe(initialState.defaultEncoding);
+    });
+
+    it("保存した分割ペインの寸法を戻す", () => {
+      const next = appReducer(initialState, {
+        type: "RESTORE_SETTINGS",
+        settings: { ...saved, paneSizes: { explorerDetail: 640, findingsList: 300 } },
+      });
+      expect(next.paneWidths.explorerDetail).toBe(640);
+      expect(next.paneWidths.findingsList).toBe(300);
+      // 保存に無いペインは初期の寸法のままである。
+      expect(next.paneWidths.viewerTranslation).toBe(SPLIT_PANES.viewerTranslation.initial);
     });
 
     it("復元は資産フォルダの選択を変えない", () => {

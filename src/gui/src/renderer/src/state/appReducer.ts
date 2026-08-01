@@ -25,6 +25,7 @@ import type {
   SourceLang,
   SplitPaneId,
 } from "./appState";
+import { SPLIT_PANES } from "./appState";
 import type {
   AssetInventoryItem,
   SarifFinding,
@@ -57,7 +58,7 @@ export type Action =
   | { type: "TOGGLE_GRAPH_KIND"; kind: GraphNodeKind }
   | { type: "TOGGLE_GRAPH_EXPANDED"; id: string }
   | { type: "SELECT_GRAPH_NODE"; id: string }
-  | { type: "JUMP"; file: string; line: number | null; from: string }
+  | { type: "JUMP"; file: string; line: number | null; from: string; stay?: boolean }
   | { type: "SET_SOURCE_FILE"; file: string }
   | { type: "SET_SOURCE_LANG"; lang: SourceLang }
   | { type: "TOGGLE_COPYBOOK_OPEN" }
@@ -98,9 +99,34 @@ export type Action =
   | { type: "SET_DEFAULT_ENCODING"; value: string }
   | { type: "SET_NEW_COPYBOOK_PATH"; value: string }
   | { type: "SET_PANE_WIDTH"; pane: SplitPaneId; width: number }
+  | { type: "COMMIT_PANE_SIZE" }
   | { type: "TOGGLE_GRAPH_DETAIL" }
+  | { type: "TOGGLE_CODE_FOCUS" }
   | { type: "SHOW_TOAST"; message: string }
   | { type: "DISMISS_TOAST" };
+
+/**
+ * 保存してある分割ペインの寸法を現在の寸法へ重ねる。保存側は型を整えるだけで語彙を見ないため、
+ * 知らないキーはここで捨てる(ペインの名前を変えた後の古い保存を読んでも壊れない)。
+ *
+ * 下限を割る値は下限で丸める。上限はコンテナの実寸から導く値であり、状態だけでは決まらないため、
+ * ここでは丸めない。上限を超えた寸法は SplitHandle がコンテナを測った時点で端へ丸める。
+ */
+export function restorePaneSizes(
+  // 保存の内容は IPC の向こうから来る。欄ごと欠けていても起動を止めない。
+  saved: Readonly<Record<string, number>> | undefined,
+  current: Record<SplitPaneId, number>,
+): Record<SplitPaneId, number> {
+  const sizes = saved ?? {};
+  const restored: Record<string, number> = { ...current };
+  for (const [id, limits] of Object.entries(SPLIT_PANES)) {
+    const size = sizes[id];
+    if (size !== undefined) {
+      restored[id] = Math.max(limits.min, Math.round(size));
+    }
+  }
+  return restored;
+}
 
 export function appReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -194,9 +220,10 @@ export function appReducer(state: AppState, action: Action): AppState {
 
     case "JUMP":
       // design の jump: viewer へ遷移し、ジャンプ元→先の文言を組み、対訳連携をリセットする。
+      // stay を立てた場合は画面を移らない(一覧と同じ画面でコードを読む経路のため)。
       return {
         ...state,
-        screen: "viewer",
+        screen: action.stay === true ? state.screen : "viewer",
         sourceFile: action.file,
         sourceLine: action.line,
         sourceFrom:
@@ -346,6 +373,7 @@ export function appReducer(state: AppState, action: Action): AppState {
         severityThreshold: threshold ?? state.severityThreshold,
         defaultEncoding: encoding,
         project: { ...state.project, copybookPaths: [...settings.copybookPaths] },
+        paneWidths: restorePaneSizes(settings.paneSizes, state.paneWidths),
       };
     }
 
@@ -391,9 +419,17 @@ export function appReducer(state: AppState, action: Action): AppState {
       // 可動範囲の適用は分割ハンドル(SplitHandle)が担い、ここは受け取った幅をそのまま保つ。
       return { ...state, paneWidths: { ...state.paneWidths, [action.pane]: action.width } };
 
+    case "COMMIT_PANE_SIZE":
+      // 分割ハンドルの操作が終わった合図。保存の効果はこの回数だけを見る。
+      return { ...state, paneCommitCount: state.paneCommitCount + 1 };
+
     case "TOGGLE_GRAPH_DETAIL":
       // 畳んでも幅は保つ。戻したときに畳む前の幅で開く。
       return { ...state, graphDetailCollapsed: !state.graphDetailCollapsed };
+
+    case "TOGGLE_CODE_FOCUS":
+      // 畳んでも寸法は paneWidths に残る。戻すと畳む前の寸法で開く。
+      return { ...state, codeFocus: !state.codeFocus };
 
     case "SHOW_TOAST":
       return { ...state, toastMsg: action.message };

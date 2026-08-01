@@ -17,8 +17,8 @@ export interface FindingsTableProps {
   /** 選択中の指摘。行の強調に使う。選択の概念を持たない画面は渡さない。 */
   selectedFinding?: SarifFinding | null;
   /**
-   * 資産・行のセルをソースへのジャンプ操作にする。渡した画面だけがセルをボタンにし、
-   * 渡さない画面(詳細ペインでジャンプする SQL指摘)は従来通りの文字表示のままにする。
+   * 行のセルを、その位置をコード面へ出す明示的な操作にする。渡した画面だけがセルをボタンにし、
+   * 渡さない画面(詳細ペインから操作する SQL指摘)は文字表示のままにする。
    */
   onJumpRow?: (row: FindingRow) => void;
   /** フィルタで 0 件になったときのメッセージ(全件は存在する場合)。 */
@@ -65,9 +65,9 @@ function SortHeader({ label, column, sort, onSortChange }: SortHeaderProps): Rea
 
 /**
  * 指摘の表。列は 重大度/ルール/資産/行/内容(根拠)/修正案。重大度・ルール・資産・行の
- * 4 列は見出しクリックでソートする。行は Enter・Space でも活性化でき、活性化は選択だけを行う
- * (ソースへのジャンプは含まない)。onJumpRow を渡した画面だけ、資産・行のセルがソースへ
- * ジャンプする明示的なボタンになる。
+ * 4 列は見出しクリックでソートする。行は Enter・Space でも活性化でき、活性化が何を起こすかは
+ * 画面が決める(指摘一覧は下段のコードを追従させ、SQL指摘は詳細ペインを差し替える)。onJumpRow を
+ * 渡した画面だけ、行のセルが同じことを行う明示的なボタンになる。
  *
  * 行の焦点は roving tabindex で選択行へ集約し、上下左右の矢印キーで移す(端では反対の端へ回し、
  * Home・End で端へ移る)。指摘は数百件になるため、全行を Tab 停止にすると表を抜けるだけで
@@ -184,12 +184,12 @@ export function FindingsTable({
                     <button
                       type="button"
                       className="ci-findings-table__line ci-findings-table__line--jump"
-                      aria-label={`${finding.file}:${finding.startLine} のソースへジャンプ`}
+                      aria-label={`${finding.file}:${finding.startLine} を下段のコードに表示`}
                       // 行の title は行の活性化を説明するため、入れ子のこのボタンでは自前の
-                      // 説明で上書きする(そうしないとジャンプに対して選択の説明が出る)。
-                      title={`${finding.file}:${finding.startLine} のソースへジャンプ`}
+                      // 説明で上書きする(そうしないと表示に対して選択の説明が出る)。
+                      title={`${finding.file}:${finding.startLine} を下段のコードに表示`}
                       onClick={(event) => {
-                        // 行のクリックは選択だけを行うため、ボタンの押下がそこへ伝わらないようにする。
+                        // 行のクリックは行の活性化を起こすため、ボタンの押下がそこへ伝わらないようにする。
                         event.stopPropagation();
                         onJumpRow(row);
                       }}

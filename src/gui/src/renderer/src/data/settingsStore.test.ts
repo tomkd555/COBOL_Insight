@@ -7,7 +7,7 @@ function stateOf(overrides: Partial<AppState>): AppState {
 }
 
 describe("toAppSettings", () => {
-  it("設定画面の4項目を保存する形へ写す", () => {
+  it("設定画面の4項目と分割ペインの寸法を保存する形へ写す", () => {
     const settings = toAppSettings(
       stateOf({
         rulesDisabled: { R004: true },
@@ -21,7 +21,15 @@ describe("toAppSettings", () => {
       severityThreshold: "medium",
       defaultEncoding: "手動: EBCDIC CP939",
       copybookPaths: ["C:\\copy"],
+      paneSizes: initialState.paneWidths,
     });
+  });
+
+  it("ドラッグした寸法をそのまま保存する", () => {
+    const settings = toAppSettings(
+      stateOf({ paneWidths: { ...initialState.paneWidths, explorerDetail: 640 } }),
+    );
+    expect(settings.paneSizes["explorerDetail"]).toBe(640);
   });
 
   it("無効化した ID を昇順で並べ、保存の差分を安定させる", () => {
@@ -53,6 +61,7 @@ describe("toAppSettings", () => {
       "severityThreshold",
       "defaultEncoding",
       "copybookPaths",
+      "paneSizes",
     ]);
   });
 });

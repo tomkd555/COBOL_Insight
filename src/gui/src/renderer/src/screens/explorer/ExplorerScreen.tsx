@@ -252,8 +252,12 @@ export function ExplorerScreen(): ReactElement {
   const banner = deriveRunBanner(state);
   const scanNoticeSections = deriveScanNotice(state);
   const detailWidth = state.paneWidths.explorerDetail;
-  // 詳細ペインの幅は CSS カスタムプロパティで渡す(寸法の指定は CSS 側に置く)。
-  const paneStyle = { "--ci-explorer-detail-w": `${detailWidth}px` } as CSSProperties;
+  // 詳細ペインの幅と、一覧へ必ず残す最小を CSS カスタムプロパティで渡す(寸法の指定は CSS 側に置く)。
+  // 最小は SPLIT_PANES の oppositeMin をそのまま流し、上限の値を CSS 側の定数として二重に持たない。
+  const paneStyle = {
+    "--ci-explorer-detail-w": `${detailWidth}px`,
+    "--ci-opposite-min": `${SPLIT_PANES.explorerDetail.oppositeMin}px`,
+  } as CSSProperties;
 
   return (
     <div className="ci-explorer" style={paneStyle}>
@@ -310,10 +314,11 @@ export function ExplorerScreen(): ReactElement {
         </div>
       </div>
       <SplitHandle
-        width={detailWidth}
+        size={detailWidth}
         min={SPLIT_PANES.explorerDetail.min}
-        max={SPLIT_PANES.explorerDetail.max}
-        onWidthChange={(width) => dispatch({ type: "SET_PANE_WIDTH", pane: "explorerDetail", width })}
+        oppositeMin={SPLIT_PANES.explorerDetail.oppositeMin}
+        onSizeChange={(width) => dispatch({ type: "SET_PANE_WIDTH", pane: "explorerDetail", width })}
+        onCommit={() => dispatch({ type: "COMMIT_PANE_SIZE" })}
         ariaLabel="資産の詳細ペインの幅"
       />
       <AssetDetail

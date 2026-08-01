@@ -8,6 +8,7 @@ const SETTINGS: AppSettings = {
   severityThreshold: "medium",
   defaultEncoding: "手動: Shift_JIS",
   copybookPaths: ["C:\\資産\\copybook"],
+  paneSizes: { explorerDetail: 520 },
 };
 
 function fakeFs(

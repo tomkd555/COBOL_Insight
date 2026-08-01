@@ -155,13 +155,13 @@
   --ci-split-grip-w: 2px;
   --ci-split-grip-h: 28px;
 
-  /* シェルの固定寸法 */
-  --ci-titlebar-h: 44px;
+  /* シェルの固定寸法。タイトルバーの中身はブランド名と実行中表示だけであり、この高さで足りる */
+  --ci-titlebar-h: 34px;
   --ci-statusbar-h: 24px;
   --ci-progress-h: 4px;
   /* シェルの想定最小幅。main が開くウィンドウの最小幅と同じ値で、各画面の固定幅の枠はこの幅を
      前提に組む。ビューポートがこれに満たないとき(ページ拡大時)は Shell.css が下限を解く */
-  --ci-min-width: 1280px;
+  --ci-min-width: 1120px;
 
   /* フォーカスリング */
   --ci-focus-ring: var(--ci-accent);

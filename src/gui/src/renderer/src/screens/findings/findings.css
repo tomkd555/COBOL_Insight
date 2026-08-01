@@ -217,7 +217,56 @@
   color: var(--ci-text-subtle);
 }
 
-/* --- SQL指摘画面(一覧 UI を包み、判定範囲の説明を上部に置く) --- */
+/*
+ * --- 指摘一覧の縦分割(上=一覧 / 下=COBOL 原本) ---
+ * 一覧だけが高さを持ち、コード面は残りを取る。ウィンドウを広げた分は必ずコード面が受け取る。
+ * 高さは FindingsScreen が分割ハンドルの現在値から与え、割合の歯止めは重ねない(可動上限は
+ * ハンドルがコンテナの実寸と oppositeMin から導くため、どの高さでもコード面は潰れない)。
+ */
+.ci-findings-split {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: var(--ci-panel);
+}
+.ci-findings-split__list {
+  flex: none;
+  height: var(--ci-findings-list-h);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.ci-findings-split__code {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  border-top: 1px solid var(--ci-border);
+}
+
+/* 資産を選ぶ前の案内。コード面の場所をそのまま使い、選んだ時点で原本へ置き換わる。 */
+.ci-findings-code__hint {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ci-space-3);
+  flex-wrap: wrap;
+  padding: var(--ci-space-4);
+  font-size: var(--ci-fs-sm);
+  color: var(--ci-text-subtle);
+}
+.ci-findings-code__hint-text {
+  margin: 0;
+  max-width: 46em;
+  line-height: 1.7;
+}
+
+/* --- SQL指摘画面(縦分割の上=一覧、下=原本と詳細の横並び) --- */
 .ci-sql {
   flex: 1;
   display: flex;
@@ -234,18 +283,39 @@
   color: var(--ci-text-muted);
   line-height: 1.6;
 }
+.ci-sql__list {
+  flex: none;
+  height: var(--ci-sql-list-h);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
 
-/* 一覧(共有 UI)と分割ハンドルと詳細ペインの横並び */
+/* 下段。COBOL 原本と分割ハンドルと詳細ペインの横並び。 */
 .ci-sql__body {
   flex: 1;
   display: flex;
   min-height: 0;
   min-width: 0;
+  border-top: 1px solid var(--ci-border);
+}
+.ci-sql__code {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
 }
 
-/* --- 詳細ペイン(SQL指摘の一覧の右) --- 幅は SqlAdviseScreen が分割ハンドルの現在値から与える。 */
+/*
+ * --- 詳細ペイン(SQL指摘の下段の右) ---
+ * 幅は SqlAdviseScreen が分割ハンドルの現在値から与える。上限は「下段の容れ物 − 原本へ残す最小」で、
+ * その最小(--ci-opposite-min)も画面側が SPLIT_PANES から流す。
+ */
 .ci-sql-detail {
   width: var(--ci-sql-detail-w);
+  max-width: calc(100% - var(--ci-opposite-min));
   flex: none;
   overflow-y: auto;
   border-left: 1px solid var(--ci-border);

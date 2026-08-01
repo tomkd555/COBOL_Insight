@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactElement } from "react";
 import type { SarifFinding } from "../../../../shared/engine-api";
 import { Button } from "../../components/Button";
+import { CodeFocusButton } from "../../components/CodeFocusButton";
 import { EmptyState } from "../../components/EmptyState";
 import { RunningIndicator } from "../../components/RunningIndicator";
+import { SplitHandle } from "../../components/SplitHandle";
 import { useAppDispatch, useAppState } from "../../state/AppStateContext";
-import type { FixDecision } from "../../state/appState";
+import { SPLIT_PANES, type FixDecision } from "../../state/appState";
 import { SCREEN_META } from "../screenMeta";
 import { DiffPane } from "./DiffPane";
 import { FixList } from "./FixList";
@@ -22,6 +24,7 @@ import {
   fixRuleDescriptionLabel,
   fixRuleIdLabel,
   joinPath,
+  mergeWarnings,
   readFixSummary,
   reparseWarning,
   resolveSelection,
@@ -261,24 +264,45 @@ export function DiffScreen(): ReactElement {
 
   const reparse = fix.status === "ready" ? reparseWarning(fix.reparseFailures) : null;
   const analysis = summary === null ? null : analysisWarning(summary);
+  const warning = mergeWarnings(reparse, analysis);
   const caution = applyCaution(counts);
   const preview = diffMode === "preview";
+  const listWidth = state.paneWidths.diffList;
+  // 一覧の幅と、差分の2面へ必ず残す最小を CSS カスタムプロパティで渡す(寸法の指定は CSS 側に置く)。
+  const paneStyle = {
+    "--ci-diff-list-w": `${listWidth}px`,
+    "--ci-opposite-min": `${SPLIT_PANES.diffList.oppositeMin}px`,
+  } as CSSProperties;
 
   return (
-    <div className="ci-diff">
-      <FixList
-        candidates={candidates}
-        selected={candidate.relPath}
-        decisions={decisions}
-        onSelect={(relPath) => dispatch({ type: "SELECT_FIX", relPath })}
-      />
+    <div className="ci-diff" style={paneStyle}>
+      {/* 最大化しているあいだは一覧をハンドルごと出さない。幅は畳む前の値を保つ。 */}
+      {state.codeFocus ? null : (
+        <>
+          <FixList
+            candidates={candidates}
+            selected={candidate.relPath}
+            decisions={decisions}
+            onSelect={(relPath) => dispatch({ type: "SELECT_FIX", relPath })}
+          />
+          <SplitHandle
+            size={listWidth}
+            min={SPLIT_PANES.diffList.min}
+            oppositeMin={SPLIT_PANES.diffList.oppositeMin}
+            side="before"
+            onSizeChange={(width) => dispatch({ type: "SET_PANE_WIDTH", pane: "diffList", width })}
+            onCommit={() => dispatch({ type: "COMMIT_PANE_SIZE" })}
+            ariaLabel="修正案一覧の幅"
+          />
+        </>
+      )}
       <div className="ci-diff__main">
         <div className="ci-diff__toolbar">
           <div className="ci-diff__heading">
             <h3 className="ci-diff__title">{`${candidateRuleSummary(candidate)} ― ${candidateLocation(candidate)}`}</h3>
-            <p className="ci-diff__subtitle">
+            <span className="ci-diff__subtitle">
               {`判定: 採用 ${counts.adopted} ・ 棄却 ${counts.rejected} ・ 未判定 ${counts.pending}`}
-            </p>
+            </span>
           </div>
           <div className="ci-diff__spacer" />
           <div className="ci-diff__modes" role="group" aria-label="差分の表示モード">
@@ -312,42 +336,38 @@ export function DiffScreen(): ReactElement {
           >
             <span aria-hidden="true">✗</span> 棄却
           </Button>
-        </div>
-
-        {reparse === null ? null : (
-          <div className="ci-banner ci-banner--error" role="alert">
-            {reparse}
-          </div>
-        )}
-        {analysis === null ? null : (
-          <div className="ci-banner ci-banner--error" role="alert">
-            {analysis}
-          </div>
-        )}
-        {candidate.copybook ? (
-          <div className="ci-diff__impact" role="note">
-            <p className="ci-diff__impact-title">
-              コピー句内の修正 ― この変更は当該コピー句を組み込む全プログラムへ波及する
-            </p>
-            <p className="ci-diff__impact-progs">{`組み込み元プログラム: ${candidate.importers.join("、 ")}`}</p>
-          </div>
-        ) : null}
-
-        {preview ? null : (
-          <div className="ci-diff__apply">
-            <p className="ci-diff__apply-label">書き出し先（原本は変更しない）:</p>
-            <p className="ci-diff__apply-path">{paths.applyDir}</p>
-            <div className="ci-diff__spacer" />
+          {/* 書き出しは付帯領域を持たせず、ツールバーの右端へ置く(書き出し先は下の1行が示す)。 */}
+          {preview ? null : (
             <Button variant="primary" disabled={applying} onClick={() => void writeFix()}>
               {applying ? "書き出している…" : "修正版を書き出す"}
             </Button>
+          )}
+          <CodeFocusButton
+            active={state.codeFocus}
+            onToggle={() => dispatch({ type: "TOGGLE_CODE_FOCUS" })}
+            target="一覧"
+          />
+        </div>
+
+        {warning === null ? null : (
+          <div className="ci-banner ci-banner--error" role="alert">
+            {warning}
           </div>
         )}
-        {!preview && caution !== null ? (
-          <p className="ci-diff__caution" role="note">
-            {caution}
-          </p>
+        {candidate.copybook ? (
+          <details className="ci-diff__impact">
+            <summary className="ci-diff__impact-title">
+              コピー句内の修正 ― この変更は当該コピー句を組み込む全プログラムへ波及する
+            </summary>
+            <p className="ci-diff__impact-progs">{`組み込み元プログラム: ${candidate.importers.join("、 ")}`}</p>
+          </details>
         ) : null}
+
+        {preview ? null : (
+          <p className="ci-diff__apply" role="note">
+            {`書き出し先（原本は変更しない）: ${paths.applyDir}${caution === null ? "" : ` ${caution}`}`}
+          </p>
+        )}
         {!preview && applyOutcome !== null ? (
           <p className="ci-diff__result" role="status">
             {applyNotice(applyOutcome)}

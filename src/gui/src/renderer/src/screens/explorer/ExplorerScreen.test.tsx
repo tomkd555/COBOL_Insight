@@ -535,7 +535,8 @@ describe("ExplorerScreen の詳細ペインの幅", () => {
     expect(handle).toHaveAttribute("aria-orientation", "vertical");
     expect(handle).toHaveAttribute("aria-valuenow", String(SPLIT_PANES.explorerDetail.initial));
     expect(handle).toHaveAttribute("aria-valuemin", String(SPLIT_PANES.explorerDetail.min));
-    expect(handle).toHaveAttribute("aria-valuemax", String(SPLIT_PANES.explorerDetail.max));
+    // 可動上限はコンテナの実寸から導くため、レイアウトを持たない環境では示さない
+    // (導出そのものは SplitHandle.test.tsx が確かめる)。
     expect(detailWidth()).toBe(`${SPLIT_PANES.explorerDetail.initial}px`);
   });
 

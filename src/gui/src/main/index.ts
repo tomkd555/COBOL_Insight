@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, Menu, screen } from "electron";
 import { join } from "node:path";
 import { registerEngineIpc, stopRunningEngine } from "./ipc";
 import { ensureWritable, resolvePortableUserData } from "./portable";
@@ -27,7 +27,9 @@ function applyPortableUserData(): void {
  * 到達させない。ファイル読取と engine の起動は preload が公開する IPC 経由で main だけが行う。
  */
 function createWindow(): void {
-  const mainWindow = new BrowserWindow(buildWindowOptions(join(__dirname, "../preload/index.js")));
+  const mainWindow = new BrowserWindow(
+    buildWindowOptions(join(__dirname, "../preload/index.js"), screen.getPrimaryDisplay().workAreaSize),
+  );
 
   mainWindow.on("ready-to-show", () => {
     mainWindow.show();
@@ -45,6 +47,12 @@ applyPortableUserData();
 
 app.whenReady().then(() => {
   console.log("[main] app whenReady reached");
+  // 既定のメニューバー(File/Edit/View)を外す。GUI にメニュー機能は無く、英語の項目が
+  // 日本語の画面と噛み合わないうえ、アプリ内のタイトルバーと二重になる。開発時
+  // (ELECTRON_RENDERER_URL がある = electron-vite dev)は DevTools を開くために残す。
+  if (process.env["ELECTRON_RENDERER_URL"] === undefined) {
+    Menu.setApplicationMenu(null);
+  }
   registerEngineIpc();
   createWindow();
 

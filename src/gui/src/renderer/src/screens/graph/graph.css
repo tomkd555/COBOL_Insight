@@ -83,9 +83,15 @@
   background: var(--ci-surface-soft);
 }
 
-/* --- 図と等価なノード一覧(canvas のノードはキーボードで選べないため併置する) --- */
+/*
+ * --- 図と等価なノード一覧(canvas のノードはキーボードで選べないため併置する) ---
+ * 幅は GraphScreen が分割ハンドルの現在値から与える。ノード名の長さで必要な幅が変わり、固定だと
+ * 長い名前が縦へ伸びる。上限は「図の領域 − 図へ残す最小」で、その最小(--ci-opposite-min)も
+ * GraphScreen が SPLIT_PANES から流す。
+ */
 .ci-graph__nodes {
-  width: 184px;
+  width: var(--ci-graph-nodes-w);
+  max-width: calc(100% - var(--ci-opposite-min));
   flex: none;
   display: flex;
   flex-direction: column;
@@ -148,9 +154,13 @@
   color: var(--ci-text-subtle);
 }
 
-/* --- 右の詳細ペイン(幅は GraphScreen が分割ハンドルの現在値から与える) --- */
+/*
+ * --- 右の詳細ペイン(幅は GraphScreen が分割ハンドルの現在値から与える) ---
+ * 上限は「画面の容れ物 − 図へ残す最小」で、その最小(--ci-opposite-min)も画面側が流す。
+ */
 .ci-graph-detail {
   width: var(--ci-graph-detail-w);
+  max-width: calc(100% - var(--ci-opposite-min));
   flex: none;
   display: flex;
   flex-direction: column;

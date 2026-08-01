@@ -3,6 +3,7 @@ import {
   screen,
   fireEvent,
   createEvent,
+  waitFor,
   within,
   type RenderResult,
 } from "@testing-library/react";
@@ -10,18 +11,40 @@ import type { ReactElement } from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { FindingsScreen } from "./FindingsScreen";
 import { SAMPLE_FINDINGS } from "./fixtures";
+import { SAMPLE_INVENTORY } from "../explorer/fixtures";
+import { SAMPLE_COBOL_TEXT } from "../viewer/fixtures";
+import type { FakeEditor } from "../viewer/monacoFake";
 import { AppStateProvider, useAppState } from "../../state/AppStateContext";
-import { initialState, type AppState } from "../../state/appState";
+import { SPLIT_PANES, initialState, type AppState } from "../../state/appState";
 import type { CobolInsightApi } from "../../../../shared/engine-api";
+
+/**
+ * 下段の原本は Monaco が描く。jsdom では動かないため、描画ライブラリの入口を偽物へ差し替える
+ * (形はソースビューアと共有する)。
+ */
+const monacoStore = vi.hoisted(() => ({ editors: [] as FakeEditor[] }));
+
+vi.mock("../../vendor/monacoEditor", async () => {
+  const { createMonacoFake } = await import("../viewer/monacoFake");
+  return { monacoEditor: () => createMonacoFake(monacoStore) };
+});
 
 let runLint: ReturnType<typeof vi.fn>;
 let readSarif: ReturnType<typeof vi.fn>;
+let readSourceText: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
+  monacoStore.editors = [];
   // この画面は CLI を起動しない。呼ばれたことを検出するためだけにモックを置く。
   runLint = vi.fn();
   readSarif = vi.fn();
-  window.cobolInsight = { runLint, readSarif } as unknown as CobolInsightApi;
+  readSourceText = vi.fn().mockResolvedValue({
+    text: SAMPLE_COBOL_TEXT,
+    codepage: "UTF-8",
+    truncated: false,
+    unsupported: false,
+  });
+  window.cobolInsight = { runLint, readSarif, readSourceText } as unknown as CobolInsightApi;
 });
 
 afterEach(() => {
@@ -159,21 +182,22 @@ describe("FindingsScreen(指摘一覧)", () => {
     expect(rowNames()[0]).toMatch(/R002/);
   });
 
-  it("行クリックでは選択だけを行い、viewer へは遷移しない", () => {
+  it("行クリックでは画面を移らず、下段のコードだけがその指摘へ追従する", () => {
     renderFindings(resultsSeed);
     const row = screen.getByRole("row", { name: /^R017 /  });
     fireEvent.click(row);
-    expect(screen.getByTestId("probe")).toHaveTextContent("findings||");
+    // 画面は指摘一覧のままで、表示対象と行だけが選んだ指摘のものになる。
+    expect(screen.getByTestId("probe")).toHaveTextContent("findings|cobol/SYK001.cbl|85");
     expect(row).toHaveAttribute("aria-current", "true");
     expect(row).toHaveClass("ci-findings-table__row--selected");
   });
 
-  it("行は Enter でも選択できる(ジャンプはしない)", () => {
+  it("行は Enter でも選択できる(画面は移らない)", () => {
     renderFindings(resultsSeed);
     const row = screen.getByRole("row", { name: /^R017 / });
     fireEvent.keyDown(row, { key: "Enter" });
     expect(row).toHaveAttribute("aria-current", "true");
-    expect(screen.getByTestId("probe")).toHaveTextContent("findings||");
+    expect(screen.getByTestId("probe")).toHaveTextContent("findings|cobol/SYK001.cbl|85");
   });
 
   it("Tab 停止は 1 つに集約する(roving tabindex)", () => {
@@ -223,15 +247,15 @@ describe("FindingsScreen(指摘一覧)", () => {
     expect(rows[rows.length - 1]).toHaveAttribute("aria-current", "true");
   });
 
-  it("ファイル・行のセルはジャンプ操作のボタンで、押すと viewer へ該当行付きで遷移する", () => {
+  it("行番号のセルは下段へ該当行を出す操作で、画面は移らない", () => {
     renderFindings(resultsSeed);
-    fireEvent.click(screen.getByRole("button", { name: "cobol/SYK001.cbl:85 のソースへジャンプ" }));
-    expect(screen.getByTestId("probe")).toHaveTextContent("viewer|cobol/SYK001.cbl|85");
+    fireEvent.click(screen.getByRole("button", { name: "cobol/SYK001.cbl:85 を下段のコードに表示" }));
+    expect(screen.getByTestId("probe")).toHaveTextContent("findings|cobol/SYK001.cbl|85");
   });
 
-  it("ジャンプ操作のボタンは見た目を CSS の修飾で整え、インラインスタイルを持たない", () => {
+  it("行番号のセルの操作は見た目を CSS の修飾で整え、インラインスタイルを持たない", () => {
     renderFindings(resultsSeed);
-    const jump = screen.getByRole("button", { name: "cobol/SYK001.cbl:85 のソースへジャンプ" });
+    const jump = screen.getByRole("button", { name: "cobol/SYK001.cbl:85 を下段のコードに表示" });
     expect(jump).toHaveClass("ci-findings-table__line", "ci-findings-table__line--jump");
     expect(jump.getAttribute("style")).toBeNull();
   });
@@ -307,5 +331,89 @@ describe("FindingsScreen(指摘一覧)", () => {
     renderFindings(resultsSeed);
     fireEvent.click(screen.getByRole("button", { name: "レポート出力へ" }));
     expect(screen.getByTestId("probe")).toHaveTextContent("report|");
+  });
+});
+
+describe("FindingsScreen の一覧とコードの併存", () => {
+  /** 資産フォルダと資産一覧を伴う解析済みの状態(下段が原本を読める条件)。 */
+  const analyzedSeed: AppState = {
+    ...resultsSeed,
+    project: { inputDir: "C:\\資産\\SYK", dbPath: "proj.db", copybookPaths: [] },
+    inventory: { status: "ready", items: SAMPLE_INVENTORY },
+  };
+
+  /** 生存している偽エディタのうち最後のもの。 */
+  function editor(): FakeEditor {
+    const found = monacoStore.editors.filter((entry) => !entry.disposed).at(-1);
+    if (found === undefined) {
+      throw new Error("下段のエディタが無い");
+    }
+    return found;
+  }
+
+  it("資産が未選択のうちは下段に案内を出し、原本を読まない", () => {
+    renderFindings(analyzedSeed);
+    expect(screen.getByText(/一覧の行番号を押すと/)).toBeInTheDocument();
+    expect(readSourceText).not.toHaveBeenCalled();
+  });
+
+  it("行を選ぶと同じ画面のまま下段へ原本を出し、該当行を強調する", async () => {
+    renderFindings(analyzedSeed);
+    fireEvent.click(screen.getByRole("row", { name: /^R017 / }));
+    await waitFor(() =>
+      expect(readSourceText).toHaveBeenCalledWith({
+        inputDir: "C:\\資産\\SYK",
+        path: "cobol/SYK001.cbl",
+        // 資産一覧の検出コードページは engine の charset 名である。
+        codepage: "windows-31j",
+      }),
+    );
+    await waitFor(() => expect(editor().value).toContain("IDENTIFICATION"));
+    // 一覧とコードが同時に見える(タブは移らない)。
+    expect(screen.getByRole("table", { name: "指摘一覧" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "COBOL ソース" })).toBeInTheDocument();
+    expect(
+      editor()
+        .decorations.filter((decoration) => decoration.options.className === "ci-code__line--focus")
+        .map((decoration) => decoration.range.startLineNumber),
+    ).toEqual([85]);
+  });
+
+  it("コード面の見出しからソースビューアへ移れる(逐語対訳との突き合わせはあちらの役目)", async () => {
+    renderFindings(analyzedSeed);
+    fireEvent.click(screen.getByRole("row", { name: /^R017 / }));
+    await waitFor(() => expect(readSourceText).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("button", { name: "ソースビューアで開く" }));
+    expect(screen.getByTestId("probe")).toHaveTextContent("viewer|cobol/SYK001.cbl|85");
+  });
+
+  it("一覧とコードの境界に横向きの分割ハンドルを置く", () => {
+    renderFindings(analyzedSeed);
+    const handle = screen.getByRole("separator", { name: "指摘一覧の高さ" });
+    expect(handle).toHaveAttribute("aria-orientation", "horizontal");
+    expect(handle).toHaveAttribute("aria-valuenow", String(SPLIT_PANES.findingsList.initial));
+    expect(handle).toHaveAttribute("aria-valuemin", String(SPLIT_PANES.findingsList.min));
+  });
+
+  it("最大化すると一覧をハンドルごと畳み、戻すと同じ高さで開く", () => {
+    renderFindings(analyzedSeed);
+    const listHeight = (): string => {
+      const split = document.querySelector(".ci-findings-split");
+      if (split === null) {
+        throw new Error("指摘一覧の枠が無い");
+      }
+      return (split as HTMLElement).style.getPropertyValue("--ci-findings-list-h");
+    };
+    fireEvent.keyDown(screen.getByRole("separator", { name: "指摘一覧の高さ" }), { key: "ArrowUp" });
+    const shrunk = listHeight();
+    expect(shrunk).toBe(`${SPLIT_PANES.findingsList.initial - 24}px`);
+
+    fireEvent.click(screen.getByRole("button", { name: "コードを最大化" }));
+    expect(screen.queryByRole("table", { name: "指摘一覧" })).toBeNull();
+    expect(screen.queryByRole("separator", { name: "指摘一覧の高さ" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "一覧を戻す" }));
+    expect(screen.getByRole("table", { name: "指摘一覧" })).toBeInTheDocument();
+    expect(listHeight()).toBe(shrunk);
   });
 });

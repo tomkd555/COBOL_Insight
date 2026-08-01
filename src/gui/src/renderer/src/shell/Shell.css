@@ -20,7 +20,7 @@
   font-size: var(--ci-fs-base);
 }
 
-/* --- タイトルバー(44px) --- */
+/* --- タイトルバー(34px) --- */
 .ci-titlebar {
   display: flex;
   align-items: center;
@@ -72,7 +72,8 @@
 .ci-tab {
   font-family: inherit;
   font-size: var(--ci-fs-detail-title);
-  padding: var(--ci-space-2) 15px;
+  /* 上下の余白はタブバーを 30px に収める値とし、中央のコンテンツ領域へ高さを譲る。 */
+  padding: 6px 15px;
   border: none;
   border-right: 1px solid var(--ci-border-soft);
   border-top: 2px solid transparent;
