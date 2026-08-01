@@ -16,11 +16,11 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 /**
- * `transpile` サブコマンド。資産フォルダの COBOL を Python/Java へ逐語対訳し、生成ファイルを出力先へ書き、
+ * `translate` サブコマンド。資産フォルダの COBOL を Python/Java へ逐語対訳し、生成ファイルを出力先へ書き、
  * COBOL 行と生成行の対応表を SQLite の LINE_MAP へ保存する。終了コードは復号・パース失敗で分岐する
  * (成功=0・エラー=2)。
  */
-@Command(name = "transpile", mixinStandardHelpOptions = true,
+@Command(name = "translate", mixinStandardHelpOptions = true,
         description = "資産フォルダの COBOL を Python/Java へ逐語対訳し、行対応表を保存する")
 public final class TranspileCommand implements Callable<Integer> {
 

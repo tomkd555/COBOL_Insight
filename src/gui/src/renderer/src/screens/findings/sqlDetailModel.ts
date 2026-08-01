@@ -1,6 +1,6 @@
 /**
- * SQL助言の詳細ペインのビューモデル導出(React 非依存の純関数)。詳細ペインが示す「SQL 文の本文」と
- * 「最適化助言の一覧」を、sql-advise の SARIF と原本ソースから組む。本文の供給源は main の
+ * SQL指摘の詳細ペインのビューモデル導出(React 非依存の純関数)。詳細ペインが示す「SQL 文の本文」と
+ * 「最適化の指摘の一覧」を、sql-lint の SARIF と原本ソースから組む。本文の供給源は main の
  * readSourceText(表示専用の復号)であり、GUI は SQL の構文解析を行わない。SQL 文の総数は SARIF から
  * 厳密に導けないため扱わない。
  */
@@ -20,7 +20,7 @@ export type SqlBodyState =
   | { readonly status: "unsupported"; readonly codepage: string }
   | { readonly status: "error"; readonly message: string };
 
-/** 詳細ペインの助言カード1件。 */
+/** 詳細ペインの指摘カード1件。 */
 export interface SqlAdviceEntry {
   readonly finding: SarifFinding;
   readonly ruleName: string;
@@ -57,7 +57,7 @@ export function extractSqlStatement(
 }
 
 /**
- * 同一ファイル・同一開始行の助言を集める。1 つの SQL 文へ複数の助言(S001/S004/S006 等)が
+ * 同一ファイル・同一開始行の指摘を集める。1 つの SQL 文へ複数の指摘(S001/S004/S006 等)が
  * 付くため、詳細ペインは選択した 1 件ではなくその位置の全件を示す。
  */
 export function adviceAt(

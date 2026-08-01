@@ -252,7 +252,7 @@ describe("DiffScreen の差分表示", () => {
     await waitFor(() =>
       expect(screen.getByLabelText(`統一形式の差分 ${COPYBOOK}`)).toBeInTheDocument(),
     );
-    expect(screen.getByText("取込プログラム: SYK001、 SYK002")).toBeInTheDocument();
+    expect(screen.getByText("組み込み元プログラム: SYK001、 SYK002")).toBeInTheDocument();
     expect(screen.getByLabelText(`統一形式の差分 ${COPYBOOK}`)).toHaveTextContent(
       "+ 05 ORD-状態 PIC X(1).",
     );

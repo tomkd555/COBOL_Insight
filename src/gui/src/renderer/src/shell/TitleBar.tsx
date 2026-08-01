@@ -5,7 +5,7 @@ export interface TitleBarProps {
   appName?: string;
   /** 解析実行中か。実行中はスピナーと対象・キャンセルを表示する。 */
   isRunning?: boolean;
-  /** 実行中の対象表示(例「SYK006.cbl（13 / 19 ファイル）」)。 */
+  /** 実行中の対象表示(例「SYK006.cbl（13 / 19 件）」)。 */
   runningLabel?: string;
   onCancelRun?: () => void;
 }

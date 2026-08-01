@@ -1,7 +1,7 @@
 import { Fragment, type ReactElement } from "react";
 
 /**
- * 実行中に提示する解析段。「▶ 解析実行」が起動するサブコマンドの順序(scan → lint → sql-advise)を
+ * 実行中に提示する解析段。「▶ 解析実行」が起動するサブコマンドの順序(scan → lint → sql-lint)を
  * 単一の正とし、現在の段を AppState の runStage が指す。lint は構文・制御フロー・データフローの
  * ルール段を 1 プロセスで実行するため、GUI からは内部の段の進行を観測できない。観測できない段を
  * 強調しないよう、GUI が起動を観測できるサブコマンド単位の 3 段だけを提示する。
@@ -9,13 +9,13 @@ import { Fragment, type ReactElement } from "react";
 export const RUN_STAGES: readonly string[] = [
   "第1段 資産の走査と構文解析",
   "第2段 指摘の検出",
-  "第3段 SQL助言",
+  "第3段 SQL指摘",
 ];
 
 export interface RunningIndicatorProps {
   /** 見出し。既定「解析を実行しています…」。画面ごとに上書きする(例: 指摘の検出、呼出関係の構築)。画面の題目は Screen の隠し見出し(h2)が担うため h3 で描く。 */
   title?: string;
-  /** 提示する段の並び。既定は RUN_STAGES の3段(scan → lint → sql-advise)。 */
+  /** 提示する段の並び。既定は RUN_STAGES の3段(scan → lint → sql-lint)。 */
   stages?: readonly string[];
   /** 現在の段(1始まり)。指定時は該当段を強調し aria-current=step にする。 */
   activeStage?: number;

@@ -76,9 +76,9 @@ describe("ノード種別の見え方", () => {
     expect(isGraphNodeKind("UNANALYZABLE")).toBe(true);
   });
 
-  it("列挙に無い種別は隠さず、種別名をそのまま表示名にした代替の見え方で扱う", () => {
+  it("列挙に無い種別は隠さず、「不明な種別」とした代替の見え方で扱う", () => {
     const style = nodeKindStyle("FUTURE_KIND");
-    expect(style.label).toBe("FUTURE_KIND");
+    expect(style.label).toBe("不明な種別");
     expect(style.shape).toBe("rectangle");
   });
 });

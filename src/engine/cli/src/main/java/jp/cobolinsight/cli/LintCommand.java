@@ -30,7 +30,7 @@ public final class LintCommand implements Callable<Integer> {
     Path inputDir;
 
     @Option(names = "--sarif", paramLabel = "FILE", defaultValue = "cobol-insight.sarif",
-            description = "SARIF 2.1.0出力ファイル(既定: ${DEFAULT-VALUE})")
+            description = "指摘の一覧を書き出すファイル(SARIF 2.1.0形式)(既定: ${DEFAULT-VALUE})")
     Path sarifFile;
 
     @Option(names = "--copybook-path", paramLabel = "DIR",

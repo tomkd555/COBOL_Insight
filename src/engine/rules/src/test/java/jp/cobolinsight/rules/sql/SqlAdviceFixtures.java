@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * SQL助言(Sルール)テストの補助。合成SQL・samples の埋め込みSQLを、本番と同じ SqlParser SPI
+ * SQL指摘(Sルール)テストの補助。合成SQL・samples の埋め込みSQLを、本番と同じ SqlParser SPI
  * (sql-frontend の {@link JsqlSqlParser})で {@link SqlStatementModel} へ変換し、それを
  * {@code sqlStatements} に載せた AnalysisContext を組む。sql-frontend が算出した構造シグナルを
  * 消費側ルールへそのまま流す点は、本番経路(ScanRunner.persistSqlStatements)と同じである。

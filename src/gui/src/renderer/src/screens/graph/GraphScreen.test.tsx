@@ -55,7 +55,7 @@ const INPUT_DIR = "C:\\資産\\SYK";
 
 function callgraphResult(overrides: Partial<EngineResult> = {}): EngineResult {
   return {
-    subcommand: "callgraph",
+    subcommand: "call-graph",
     exitCode: 0,
     summary: null,
     stdout: "",
@@ -133,7 +133,7 @@ function tapNode(id: string): void {
 }
 
 describe("GraphScreen(呼出関係図)の4状態", () => {
-  it("解析未実行では誘導を出し、callgraph を起動しない", () => {
+  it("解析未実行では誘導を出し、call-graph を起動しない", () => {
     renderGraph();
     expect(screen.getByRole("region", { name: "解析結果がありません" })).toBeInTheDocument();
     expect(runCallgraph).not.toHaveBeenCalled();
@@ -145,7 +145,7 @@ describe("GraphScreen(呼出関係図)の4状態", () => {
     expect(runCallgraph).not.toHaveBeenCalled();
   });
 
-  it("解析済みなら callgraph を起動し、JSON から図を組む", async () => {
+  it("解析済みなら call-graph を起動し、JSON から図を組む", async () => {
     renderGraph(analyzedState());
     await waitForGraph();
     expect(runCallgraph).toHaveBeenCalledWith({
@@ -158,7 +158,7 @@ describe("GraphScreen(呼出関係図)の4状態", () => {
     expect(screen.getByRole("application", { name: /呼出関係図/ })).toBeInTheDocument();
   });
 
-  it("callgraph の失敗は 0 件と区別し、理由と再試行を示す", async () => {
+  it("call-graph の失敗は 0 件と区別し、理由と再試行を示す", async () => {
     runCallgraph.mockRejectedValueOnce(new Error("java が見つからない"));
     renderGraph(analyzedState());
     const region = await screen.findByRole("region", { name: "呼出関係図を取得できませんでした" });
@@ -450,7 +450,7 @@ describe("GraphScreen の詳細ペイン", () => {
 });
 
 describe("GraphScreen の図の書出と再構築", () => {
-  it("SVG 出力は engine の callgraph --svg を起動し、書かれたパスを示す", async () => {
+  it("SVG 出力は engine の call-graph --svg を起動し、書かれたパスを示す", async () => {
     renderGraph(analyzedState());
     await waitForGraph();
     runCallgraph.mockResolvedValueOnce(
@@ -476,7 +476,7 @@ describe("GraphScreen の図の書出と再構築", () => {
     await waitFor(() => expect(screen.getByTestId("toast")).toHaveTextContent("graphviz の描画に失敗"));
   });
 
-  it("再構築で callgraph を起動し直す", async () => {
+  it("再構築で call-graph を起動し直す", async () => {
     renderGraph(analyzedState());
     await waitForGraph();
     fireEvent.click(screen.getByRole("button", { name: "再構築" }));

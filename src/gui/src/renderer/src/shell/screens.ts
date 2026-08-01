@@ -19,12 +19,12 @@ export interface ScreenTab {
 }
 
 export const SCREENS: readonly ScreenTab[] = [
-  { id: "explorer", label: "資産エクスプローラー" },
+  { id: "explorer", label: "資産一覧" },
   { id: "import", label: "端末取込" },
   { id: "graph", label: "呼出関係図" },
   { id: "findings", label: "指摘一覧" },
   { id: "viewer", label: "ソースビューア" },
-  { id: "sql", label: "SQL助言" },
+  { id: "sql", label: "SQL指摘" },
   { id: "diff", label: "修正案の差分" },
   { id: "report", label: "レポート出力" },
   { id: "settings", label: "設定" },

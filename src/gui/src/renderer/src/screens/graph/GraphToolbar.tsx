@@ -11,7 +11,7 @@ export interface GraphToolbarProps {
   onToggleKind: (kind: AnyNodeKind) => void;
   visibleCount: number;
   totalCount: number;
-  /** callgraph を再実行してグラフを取り直す。 */
+  /** call-graph を再実行してグラフを取り直す。 */
   onRebuild: () => void;
   /** 解析エンジンで図を SVG として書き出す。 */
   onExportSvg: () => void;
@@ -28,7 +28,7 @@ export interface GraphToolbarProps {
 /**
  * 呼出関係図上部のツールバー。ノード種別フィルタのチップ(種別ごとの件数付き)、表示件数、
  * 再構築、SVG／PNG 出力を並べる。チップは複数選択なのでトグルボタン(aria-pressed)として表す。
- * 種別と図形・配色の対応は凡例(GraphLegend)が示す。書出は engine の callgraph サブコマンドが
+ * 種別と図形・配色の対応は凡例(GraphLegend)が示す。書出は engine の call-graph サブコマンドが
  * 行い、renderer はファイルを書かない。
  *
  * 右の詳細ペインを畳む操作もここに置く。畳むとペインは消えるため、戻す操作は常に見えている

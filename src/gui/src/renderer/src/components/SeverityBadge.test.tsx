@@ -7,7 +7,7 @@ describe("SeverityBadge", () => {
     const { rerender } = render(<SeverityBadge severity="high" />);
     expect(screen.getByLabelText("重大度: 高")).toHaveTextContent("●高");
     rerender(<SeverityBadge severity="warning" />);
-    expect(screen.getByLabelText("重大度: 警告")).toHaveTextContent("▲警告");
+    expect(screen.getByLabelText("重大度: 推奨")).toHaveTextContent("▲推奨");
   });
 
   it("色トークンを結び付ける重大度別の修飾子クラスを付与する", () => {

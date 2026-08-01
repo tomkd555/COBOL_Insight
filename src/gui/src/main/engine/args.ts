@@ -7,7 +7,7 @@ import {
 
 /**
  * engine CLI サブコマンドの引数を、型付きリクエストから決定論的に組み立てる純関数。
- * サブコマンドごとに受理するオプションが異なる(lint/sql-advise/fix は --db を持たない)ため、
+ * サブコマンドごとに受理するオプションが異なる(lint/sql-lint/fix は --db を持たない)ため、
  * 共通部と個別部を分けて扱う。picocli の位置引数 INPUT_DIR を先頭に置く。
  */
 export function buildEngineArgs(invocation: EngineInvocation): string[] {
@@ -24,10 +24,10 @@ export function buildEngineArgs(invocation: EngineInvocation): string[] {
         r.copyExpansion ?? COPY_EXPANSION_FILE_NAME,
       ];
     }
-    case "callgraph": {
+    case "call-graph": {
       const r = invocation.request;
       return [
-        "callgraph",
+        "call-graph",
         ...common(r),
         ...opt("--db", r.db),
         ...opt("--json", r.jsonFile),
@@ -46,10 +46,10 @@ export function buildEngineArgs(invocation: EngineInvocation): string[] {
         ...opt("--user-rules", r.userRulesFile),
       ];
     }
-    case "sql-advise": {
+    case "sql-lint": {
       const r = invocation.request;
       return [
-        "sql-advise",
+        "sql-lint",
         ...common(r),
         ...opt("--sarif", r.sarifFile),
         ...repeated("--disable-rule", r.disabledRules),
@@ -71,10 +71,10 @@ export function buildEngineArgs(invocation: EngineInvocation): string[] {
       // 資産フォルダを取らないため common を挟まない。出力は常に JSON とし、画面が読む形へ揃える。
       return ["rules", "--json", ...opt("--user-rules", invocation.request.userRulesFile)];
     }
-    case "transpile": {
+    case "translate": {
       const r = invocation.request;
       return [
-        "transpile",
+        "translate",
         ...common(r),
         ...opt("--db", r.db),
         ...opt("--language", r.language),

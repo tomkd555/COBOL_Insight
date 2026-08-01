@@ -1,5 +1,5 @@
 /**
- * 逐語対訳の行対応索引。engine の LINE_MAP(transpile が SQLite へ書く対応表)から、
+ * 逐語対訳の行対応索引。engine の LINE_MAP(translate が SQLite へ書く対応表)から、
  * 「COBOL 行 → 生成行範囲」と「生成行 → COBOL 行範囲」の双方向の引きを作る純ロジックである。
  * 索引は生成ファイル1件を単位とする。生成ファイル名は PROGRAM-ID とレコード名から決まり
  * COBOL のファイル名と一致しないため、どの生成物がどの COBOL 行に対応するかは LINE_MAP の

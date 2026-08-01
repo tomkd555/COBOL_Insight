@@ -218,7 +218,7 @@ const api = {
   runScan: () => Promise.resolve(engineResult("scan", { db: DB_PATH })),
   runCallgraph: (request) =>
     Promise.resolve(
-      engineResult("callgraph", {
+      engineResult("call-graph", {
         db: DB_PATH,
         ...(request.jsonFile === undefined ? {} : { json: CALLGRAPH_JSON }),
         ...(request.svgFile === undefined ? {} : { svg: request.svgFile }),
@@ -226,7 +226,7 @@ const api = {
       }),
     ),
   runLint: () => Promise.resolve(engineResult("lint", { sarif: LINT_SARIF })),
-  runSqlAdvise: () => Promise.resolve(engineResult("sql-advise", { sarif: SQL_SARIF })),
+  runSqlLint: () => Promise.resolve(engineResult("sql-lint", { sarif: SQL_SARIF })),
   runReport: (request) =>
     Promise.resolve(
       engineResult(
@@ -238,7 +238,7 @@ const api = {
         { assets: 5, findings: 2, sqlAdvice: 1, callEdges: 7, analysisErrors: 0 },
       ),
     ),
-  runTranspile: () => Promise.resolve(engineResult("transpile", { outDir: "C:\\smoke\\transpile" })),
+  runTranspile: () => Promise.resolve(engineResult("translate", { outDir: "C:\\smoke\\transpile" })),
   runFixPreview: () =>
     Promise.resolve(engineResult("fix-preview", {}, FIX_PREVIEW_SUMMARY, FIX_UNIFIED_DIFF)),
   runFixApply: (request) =>

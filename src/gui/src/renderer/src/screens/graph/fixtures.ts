@@ -1,5 +1,5 @@
 /**
- * テスト用の呼出関係グラフ fixture。samples を callgraph サブコマンドへ通した実出力
+ * テスト用の呼出関係グラフ fixture。samples を call-graph サブコマンドへ通した実出力
  * (gui/src/main/__fixtures__/callgraph.json)の形と ID 体系(job:/step:/program:/dataset:/
  * db2:/transaction:/bmsmap:/unresolved:/utility: の接頭辞)にそろえた抜粋である。
  * 実出力に現れない解決根拠と種別も検証できるよう、データフロー由来の CALL・未解決ノード・

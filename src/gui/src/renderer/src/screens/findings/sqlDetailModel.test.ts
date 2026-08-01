@@ -48,14 +48,14 @@ describe("extractSqlStatement(SQL 本文の切り出し)", () => {
   });
 });
 
-describe("adviceAt(同一 SQL 文へ付く助言の集約)", () => {
-  it("同一ファイル・同一開始行の助言を全件返し、名称と重大度を添える", () => {
+describe("adviceAt(同一 SQL 文へ付く指摘の集約)", () => {
+  it("同一ファイル・同一開始行の指摘を全件返し、名称と重大度を添える", () => {
     const entries = adviceAt(SAMPLE_SQL_FINDINGS, "cobol/SYK006.cbl", 145);
     expect(entries.map((e) => e.finding.ruleId)).toEqual(["S001", "S004", "S006"]);
     expect(entries[0]).toMatchObject({ ruleName: "SELECT * の回避", severity: "medium" });
   });
 
-  it("別のファイル・別の行の助言は含めない", () => {
+  it("別のファイル・別の行の指摘は含めない", () => {
     const entries = adviceAt(SAMPLE_SQL_FINDINGS, "cobol/SYK007.cbl", 84);
     expect(entries.map((e) => e.finding.ruleId)).toEqual(["S002", "S003"]);
   });

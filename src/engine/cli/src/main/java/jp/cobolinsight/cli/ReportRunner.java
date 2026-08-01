@@ -25,7 +25,7 @@ import java.util.TreeMap;
 
 /**
  * `report` の中核処理。scan 済み SQLite を入力に、資産インベントリ・呼出関係の
- * 要約・scan 由来 finding を DB から読む。lint 検出(id が "R")と SQL 助言(id が "S")は scan が
+ * 要約・scan 由来 finding を DB から読む。lint 検出(id が "R")と SQL 指摘(id が "S")は scan が
  * 永続化しないため、DB と同じ資産フォルダに対し {@link LintRunner}・{@link SqlAdviseRunner} を
  * メモリ上で再実行して収集する。統合結果を HTML とテキストの両形式へ整形し、CI 向け終了コードを
  * {@link ExitCodes#fromFindings} で返す。

@@ -1,5 +1,5 @@
 /**
- * transpile 成果物の読取。生成物は TranspileRunner が出力先直下へ平坦に書き(TranspileRunner.java:233)、
+ * translate 成果物の読取。生成物は TranspileRunner が出力先直下へ平坦に書き(TranspileRunner.java:233)、
  * COBOL 行と生成行の対応は SQLite の LINE_MAP 表が持つ(Schema.java:120-133)。
  * 生成ファイル名は PROGRAM-ID とレコード名から決まり COBOL のファイル名とは一致しないため、
  * ある COBOL ソースの対訳がどのファイルかは LINE_MAP の gen_file だけが示す。

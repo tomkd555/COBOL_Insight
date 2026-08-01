@@ -11,7 +11,7 @@ import { nextSortState, type FindingFilters } from "./findingsModel";
  * この画面は lint を起動しない(タブを開くたびの再解析が起きない)。フィルタ(重大度/ルール/
  * ファイル/内容)・ソート・選択は共有一覧 UI(FindingsView)へ委ね、いずれも AppState に持つ。
  *
- * 行のクリック・Enter/Space は選択だけを行う(SQL助言・呼出関係図と同じ規則)。ソースへの
+ * 行のクリック・Enter/Space は選択だけを行う(SQL指摘・呼出関係図と同じ規則)。ソースへの
  * ジャンプは、詳細ペインを持たないこの画面ではファイル・行のセル自身を明示的なボタンにして行う。
  *
  * 空状態は 2 バリアント: mode=empty は「未解析」、解析済みで 0 件は「指摘なし」。lint の起動または
@@ -27,8 +27,8 @@ export function FindingsScreen(): ReactElement {
     return (
       <EmptyState
         title="解析がまだ実行されていません"
-        description="資産をインポートして解析を実行すると、31 種の検出ルール（R001〜R031）による指摘を一覧できる。"
-        actionLabel="資産エクスプローラーへ"
+        description="資産を取り込んで解析を実行すると、31 種の検出ルール（R001〜R031）による指摘を一覧できる。"
+        actionLabel="資産一覧へ"
         onAction={() => dispatch({ type: "NAV", screen: "explorer" })}
       />
     );
@@ -42,7 +42,7 @@ export function FindingsScreen(): ReactElement {
         icon="！"
         title="指摘を取得できませんでした"
         description={`指摘の検出の実行または検出結果の読み取りに失敗したため、指摘の件数は分からない。${result.message}`}
-        actionLabel="資産エクスプローラーへ"
+        actionLabel="資産一覧へ"
         onAction={() => dispatch({ type: "NAV", screen: "explorer" })}
       />
     );
@@ -51,8 +51,8 @@ export function FindingsScreen(): ReactElement {
     return (
       <EmptyState
         title="指摘をまだ取得していません"
-        description="解析実行が完了していないため、指摘を表示できない。資産エクスプローラーで解析を実行する。"
-        actionLabel="資産エクスプローラーへ"
+        description="解析実行が完了していないため、指摘を表示できない。資産一覧で解析を実行する。"
+        actionLabel="資産一覧へ"
         onAction={() => dispatch({ type: "NAV", screen: "explorer" })}
       />
     );

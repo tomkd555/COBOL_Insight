@@ -206,7 +206,7 @@ public final class LintRunner {
                         ControlFlowGraphs.class, cfgs,
                         DataFlowFacts.class, dataFlowFacts));
         // lint は構文・制御フロー・データフローの3段階のバグ検出ルール(id が "R")と、
-        // 利用者定義ルール(id が "U")を実行する。SQL 助言(id が "S")は sql-advise が担う。
+        // 利用者定義ルール(id が "U")を実行する。SQL 指摘(id が "S")は sql-lint が担う。
         List<Rule> activeRules = Stream.of(
                         services.rules(AnalysisPhase.SYNTAX),
                         services.rules(AnalysisPhase.CONTROL_FLOW),

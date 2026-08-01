@@ -9,8 +9,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 統合レポートの HTML・テキスト整形を担う。scan/lint/sql-advise/callgraph の統合結果を
- * 「資産インベントリ」「検出結果一覧(scan+lint)」「呼出関係の要約」「SQL 助言」の4節へ組む。
+ * 統合レポートの HTML・テキスト整形を担う。scan/lint/sql-lint/call-graph の統合結果を
+ * 「資産インベントリ」「検出結果一覧(scan+lint)」「呼出関係の要約」「SQL 指摘」の4節へ組む。
  */
 final class ReportRenderer {
 
@@ -52,7 +52,7 @@ final class ReportRenderer {
         }
         sb.append('\n');
 
-        sb.append("4. SQL助言 (").append(sqlAdvice.size()).append("件)\n");
+        sb.append("4. SQL指摘 (").append(sqlAdvice.size()).append("件)\n");
         appendFindingLinesText(sb, sqlAdvice);
         sb.append('\n');
 
@@ -126,7 +126,7 @@ final class ReportRenderer {
         }
         sb.append("</tbody>\n</table>\n");
 
-        sb.append("<h2>4. SQL助言 (").append(sqlAdvice.size()).append("件)</h2>\n");
+        sb.append("<h2>4. SQL指摘 (").append(sqlAdvice.size()).append("件)</h2>\n");
         appendFindingTableHtml(sb, sqlAdvice);
 
         sb.append("</body>\n</html>\n");

@@ -140,7 +140,7 @@ export const SEVERITY_LABELS_BY_ENGINE_NAME: Readonly<Record<string, string>> = 
   HIGH: "高",
   MEDIUM: "中",
   LOW: "低",
-  ADVISORY: "警告",
+  ADVISORY: "推奨",
 };
 
 /** 一覧に出す対象種別の表示名。 */

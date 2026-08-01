@@ -5,7 +5,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * 埋め込みSQL文の構文レベルの構造シグナル。SQL助言ルール(S001〜S006)が真偽値・リストで読む。
+ * 埋め込みSQL文の構文レベルの構造シグナル。SQL指摘ルール(S001〜S006)が真偽値・リストで読む。
  * sql-frontend が JSqlParser の構文木と Db2 固有句の正規表現から算出し、SqlStatementModel へ載せる。
  *
  * @param selectStar                 SELECT 句に * が出現するか(S001)

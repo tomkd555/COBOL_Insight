@@ -15,7 +15,7 @@ describe("extractSummaryJson", () => {
     expect(summary?.["exitCode"]).toBe(0);
   });
 
-  it("callgraph 無指定時のグラフ本体 JSON を拾う", () => {
+  it("call-graph 無指定時のグラフ本体 JSON を拾う", () => {
     const stdout = `${LOGBACK}\n{"nodes":[{"id":"program:A","kind":"PROGRAM","label":"A"}],"edges":[]}`;
     const summary = extractSummaryJson(stdout);
     expect(Array.isArray(summary?.["nodes"])).toBe(true);
@@ -32,7 +32,7 @@ describe("extractSummaryJson", () => {
     expect(summary?.["fixCount"]).toBe(1);
   });
 
-  it("JSON 行が無い(callgraph が --json でファイル出力)なら null", () => {
+  it("JSON 行が無い(call-graph が --json でファイル出力)なら null", () => {
     expect(extractSummaryJson(LOGBACK)).toBeNull();
   });
 

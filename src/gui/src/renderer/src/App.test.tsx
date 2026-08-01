@@ -35,31 +35,31 @@ describe("App シェル", () => {
     const level1 = screen.getAllByRole("heading", { level: 1 });
     expect(level1).toHaveLength(1);
     expect(level1[0]).toHaveTextContent("COBOL Insight");
-    // 画面の題目は Screen の隠し見出しが h2 として担い、資産エクスプローラーの空状態の見出しは h3 になる
+    // 画面の題目は Screen の隠し見出しが h2 として担い、資産一覧の空状態の見出しは h3 になる
     // (右の詳細ペインの題目も同じ h3 のため、空状態の見出しを名前で絞って確かめる)。
-    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("資産エクスプローラー");
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("資産一覧");
     expect(
-      screen.getByRole("heading", { level: 3, name: "資産がまだインポートされていません" }),
+      screen.getByRole("heading", { level: 3, name: "資産がまだ取り込まれていません" }),
     ).toBeInTheDocument();
   });
 
-  it("9タブを提示し、既定は資産エクスプローラーを選択する", () => {
+  it("9タブを提示し、既定は資産一覧を選択する", () => {
     render(<App />);
     expect(screen.getAllByRole("tab")).toHaveLength(9);
-    expect(screen.getByRole("tab", { name: "資産エクスプローラー" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "資産一覧" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("タブを切り替えると選択状態とオーバーレイ内容が変わる", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("tab", { name: "レポート出力" }));
     expect(screen.getByRole("tab", { name: "レポート出力" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tab", { name: "資産エクスプローラー" })).toHaveAttribute("aria-selected", "false");
+    expect(screen.getByRole("tab", { name: "資産一覧" })).toHaveAttribute("aria-selected", "false");
     expect(screen.getByRole("tabpanel")).toHaveTextContent("レポート出力");
   });
 
   it("9タブすべてを順に選択でき、対応するオーバーレイへ切り替わる", () => {
     render(<App />);
-    const tabs = ["資産エクスプローラー", "端末取込", "呼出関係図", "指摘一覧", "ソースビューア", "SQL助言", "修正案の差分", "レポート出力", "設定"];
+    const tabs = ["資産一覧", "端末取込", "呼出関係図", "指摘一覧", "ソースビューア", "SQL指摘", "修正案の差分", "レポート出力", "設定"];
     tabs.forEach((name) => {
       fireEvent.click(screen.getByRole("tab", { name }));
       expect(screen.getByRole("tab", { name })).toHaveAttribute("aria-selected", "true");
@@ -77,7 +77,7 @@ describe("App シェル", () => {
     it("empty は空状態プレースホルダを描画し進捗バーを出さない", () => {
       renderShell({ ...initialState, mode: "empty" });
       expect(screen.queryByRole("progressbar")).toBeNull();
-      expect(screen.getByRole("region", { name: "資産がまだインポートされていません" })).toBeInTheDocument();
+      expect(screen.getByRole("region", { name: "資産がまだ取り込まれていません" })).toBeInTheDocument();
     });
 
     it("running は進捗バーと3段の進行提示を描画する", () => {
@@ -128,7 +128,7 @@ describe("App シェル", () => {
           <JumpTrigger />
         </AppStateProvider>,
       );
-      expect(screen.getByRole("tab", { name: "資産エクスプローラー" })).toHaveAttribute("aria-selected", "true");
+      expect(screen.getByRole("tab", { name: "資産一覧" })).toHaveAttribute("aria-selected", "true");
       fireEvent.click(screen.getByText("ジャンプ実行"));
       expect(screen.getByRole("tab", { name: "ソースビューア" })).toHaveAttribute("aria-selected", "true");
     });

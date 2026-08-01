@@ -1,7 +1,7 @@
 /**
  * ステータスバー文言と解析実行の失敗バナーの導出。design gvGlobal の mode 別
  * statusLeft/statusCounts を移植する。件数は解析実行が得た成果物(inventory=scan・findings=lint・
- * sqlAdvice=sql-advise)の実件数から取り、実行中・未取得・取得失敗は「―」で示して 0 件と混同させない。
+ * sqlAdvice=sql-lint)の実件数から取り、実行中・未取得・取得失敗は「―」で示して 0 件と混同させない。
  * ルールの有効数は設定で無効化した集合(rulesDisabled)から導く。
  */
 
@@ -28,7 +28,7 @@ export function deriveStatus(state: AppState): StatusText {
 
   if (state.mode === "empty") {
     return {
-      left: "準備完了 ― 資産のインポート待ち",
+      left: "準備完了 ― 資産の取込待ち",
       counts: `資産 0 ・ ルール ${rulesEnabled} 有効 ・ v${version}`,
     };
   }
@@ -47,7 +47,7 @@ export function deriveStatus(state: AppState): StatusText {
 
   return {
     left,
-    counts: `資産 ${assets} ・ 指摘 ${findings} ・ SQL助言 ${sqlAdvice} ・ ルール ${rulesEnabled} 有効 ・ v${version}`,
+    counts: `資産 ${assets} ・ 指摘 ${findings} ・ SQL指摘 ${sqlAdvice} ・ ルール ${rulesEnabled} 有効 ・ v${version}`,
   };
 }
 
@@ -68,7 +68,7 @@ export function deriveRunBanner(state: AppState): string | null {
     parts.push(`指摘の取得に失敗した。${state.findings.message}`);
   }
   if (state.sqlAdvice.status === "error") {
-    parts.push(`SQL助言の取得に失敗した。${state.sqlAdvice.message}`);
+    parts.push(`SQL指摘の取得に失敗した。${state.sqlAdvice.message}`);
   }
   if (parts.length > 0) {
     return parts.join(" ");

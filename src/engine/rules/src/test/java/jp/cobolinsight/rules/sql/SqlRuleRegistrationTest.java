@@ -13,7 +13,7 @@ import static java.util.Map.entry;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** SQL助言6ルール(S001〜S006)の ServiceLoader 登録・ID順・severity・段階の検証。 */
+/** SQL指摘6ルール(S001〜S006)の ServiceLoader 登録・ID順・severity・段階の検証。 */
 class SqlRuleRegistrationTest {
 
     private static final Map<String, Severity> EXPECTED = Map.ofEntries(

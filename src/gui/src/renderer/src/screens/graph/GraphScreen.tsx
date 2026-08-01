@@ -37,13 +37,13 @@ function messageOf(error: unknown): string {
 }
 
 /**
- * 呼出関係図(callgraph)。engine の callgraph サブコマンドが書いた JSON を唯一の供給源とし、
+ * 呼出関係図(call-graph)。engine の call-graph サブコマンドが書いた JSON を唯一の供給源とし、
  * GUI は種別フィルタ・部分展開・詳細表示を担う。全ノードの一括描画は約 3200 ノードで
  * 劣化するため既定にせず、ジョブ・トランザクションを起点とする部分展開から始める。図の書出は
- * engine の callgraph --svg / --png を起動して行い、renderer からファイルは書かない。
+ * engine の call-graph --svg / --png を起動して行い、renderer からファイルは書かない。
  *
- * 4状態は実状態から導く。empty=解析未実行、running=解析実行中または callgraph 起動中、
- * results=グラフ取得済み、error=callgraph の起動または JSON 読取の失敗である。callgraph の
+ * 4状態は実状態から導く。empty=解析未実行、running=解析実行中または call-graph 起動中、
+ * results=グラフ取得済み、error=call-graph の起動または JSON 読取の失敗である。call-graph の
  * 非ゼロ終了(警告あり・エラーあり)はグラフ本体が書かれる部分的な失敗なので、図を隠さず警告で示す。
  * 構文解析に失敗した資産も「解析不能」ノードとして図に含め、隠さず件数を案内する。
  */
@@ -74,7 +74,7 @@ export function GraphScreen(): ReactElement {
     [data, state.selectedNode, visibleIds],
   );
 
-  // 解析済みでグラフが未取得なら、この画面が callgraph を起動して JSON を読む。
+  // 解析済みでグラフが未取得なら、この画面が call-graph を起動して JSON を読む。
   useEffect(() => {
     if (!analyzed || inputDir === null || graph.status !== "none") {
       return;
@@ -145,8 +145,8 @@ export function GraphScreen(): ReactElement {
     return (
       <EmptyState
         title="解析結果がありません"
-        description="資産をインポートして解析を実行すると、ジョブ → プログラム → サブルーチン → データセットの呼出関係を表示する。"
-        actionLabel="資産エクスプローラーへ"
+        description="資産を取り込んで解析を実行すると、ジョブ → プログラム → サブルーチン → データセットの呼出関係を表示する。"
+        actionLabel="資産一覧へ"
         onAction={() => dispatch({ type: "NAV", screen: "explorer" })}
       />
     );
@@ -158,8 +158,8 @@ export function GraphScreen(): ReactElement {
     return (
       <EmptyState
         title="資産フォルダが選ばれていません"
-        description="資産エクスプローラーで資産フォルダをインポートすると、呼出関係図を構築できる。"
-        actionLabel="資産エクスプローラーへ"
+        description="資産一覧で資産フォルダを取り込むと、呼出関係図を構築できる。"
+        actionLabel="資産一覧へ"
         onAction={() => dispatch({ type: "NAV", screen: "explorer" })}
       />
     );

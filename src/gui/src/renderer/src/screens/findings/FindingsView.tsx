@@ -24,11 +24,11 @@ export interface FindingsViewHandlers {
 }
 
 export interface FindingsViewProps {
-  /** この画面のフィルタ前の全指摘(lint または sql-advise の SARIF)。 */
+  /** この画面のフィルタ前の全指摘(lint または sql-lint の SARIF)。 */
   findings: readonly SarifFinding[];
   filters: FindingFilters;
   handlers: FindingsViewHandlers;
-  /** 行の活性化(指摘一覧・SQL助言のいずれも選択だけを行う)。 */
+  /** 行の活性化(指摘一覧・SQL指摘のいずれも選択だけを行う)。 */
   onActivateRow: (row: FindingRow) => void;
   /** 行を活性化したときに起きることの説明。 */
   rowHint: string;
@@ -36,13 +36,13 @@ export interface FindingsViewProps {
   tableLabel: string;
   /** 選択中の指摘(行の強調に使う)。選択の概念を持たない画面は渡さない。 */
   selectedFinding?: SarifFinding | null;
-  /** ソート状態(列・向き)。指摘一覧・SQL助言はそれぞれ AppState に持ち、タブを跨いでも保たれる。 */
+  /** ソート状態(列・向き)。指摘一覧・SQL指摘はそれぞれ AppState に持ち、タブを跨いでも保たれる。 */
   sort: SortState;
   /** 見出しクリックで押された列。次のソート状態への変換は呼び出し側(AppState)が行う。 */
   onSortChange: (column: SortColumn) => void;
   /**
    * ファイル・行のセルをソースへのジャンプ操作にする。詳細ペインを持たない指摘一覧だけが渡し、
-   * 詳細ペインを持つ SQL助言はジャンプをペイン側の操作に委ねるため渡さない。
+   * 詳細ペインを持つ SQL指摘はジャンプをペイン側の操作に委ねるため渡さない。
    */
   onJumpRow?: (row: FindingRow) => void;
   onGoReport: () => void;
@@ -51,7 +51,7 @@ export interface FindingsViewProps {
 }
 
 /**
- * 指摘一覧と SQL助言で共有する一覧 UI。ツールバー(重大度チップ・ルール/ファイル選択・
+ * 指摘一覧と SQL指摘で共有する一覧 UI。ツールバー(重大度チップ・ルール/ファイル選択・
  * 内容検索・要約・レポート出力)と表(重大度/ルール/ファイル/行のソート・行の活性化)を組む。
  * フィルタ・ソート状態はいずれも呼び出し側が AppState から供給し、タブを跨いでも保たれる。
  */

@@ -1,7 +1,7 @@
 import type { SarifFinding } from "../../shared/engine-api";
 
 /**
- * SARIF 2.1.0 テキストを、画面が要する平坦な検出結果一覧へ変換する純関数。lint・sql-advise の
+ * SARIF 2.1.0 テキストを、画面が要する平坦な検出結果一覧へ変換する純関数。lint・sql-lint の
  * --sarif 出力を入力とする。未知構造には防御的に当たり、region 欠落は行・列を 0、level 欠落は
  * none で補う。
  */

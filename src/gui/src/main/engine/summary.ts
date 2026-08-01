@@ -3,7 +3,7 @@ import type { EngineOutputs } from "../../shared/engine-api";
 /**
  * engine CLI の stdout からサマリ JSON を取り出す。Che4z LSP が logback のステータス行を
  * stdout へ書くため、サマリ JSON は「末尾の、JSON オブジェクトとしてパースできる行」とする。
- * callgraph 無指定時はグラフ本体 JSON がこの位置に来る。--json 等でファイル出力した場合は
+ * call-graph 無指定時はグラフ本体 JSON がこの位置に来る。--json 等でファイル出力した場合は
  * JSON 行が無く null を返す。
  */
 export function extractSummaryJson(stdout: string): Record<string, unknown> | null {

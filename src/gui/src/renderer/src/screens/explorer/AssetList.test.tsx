@@ -38,10 +38,10 @@ describe("AssetList(資産一覧)", () => {
     expect(screen.queryAllByRole("row")).toHaveLength(0);
   });
 
-  it("ディレクトリ見出しとファイル数を出す", () => {
+  it("ディレクトリ見出しと資産件数を出す", () => {
     renderList();
     const cobolHeader = screen.getByRole("button", { name: /cobol/ });
-    expect(cobolHeader).toHaveTextContent("3 ファイル");
+    expect(cobolHeader).toHaveTextContent("3 件");
     expect(cobolHeader).toHaveAttribute("aria-expanded", "true");
   });
 

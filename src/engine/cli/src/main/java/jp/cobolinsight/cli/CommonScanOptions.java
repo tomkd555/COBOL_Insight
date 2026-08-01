@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * `scan`・`callgraph` 両サブコマンドが共有する入力・保存先・解析設定のオプション群
+ * `scan`・`call-graph` 両サブコマンドが共有する入力・保存先・解析設定のオプション群
  * (picocli の @Mixin として取り込む)。
  */
 final class CommonScanOptions {

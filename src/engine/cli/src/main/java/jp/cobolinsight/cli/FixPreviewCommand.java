@@ -50,9 +50,9 @@ public final class FixPreviewCommand implements Callable<Integer> {
                 System.out.println(line);
             }
             if (fix.copybook()) {
-                // 原本コピー句は書き換えず提示のみ。影響範囲として取り込みプログラムを併記する。
+                // 原本コピー句は書き換えず提示のみ。影響範囲として組み込み元プログラムを併記する。
                 System.out.println("# コピー句 " + fix.relPath()
-                        + " は原本を書き換えず提示のみ。取り込みプログラム: "
+                        + " は原本を書き換えず提示のみ。組み込み元プログラム: "
                         + String.join(", ", fix.importers()));
             }
         }

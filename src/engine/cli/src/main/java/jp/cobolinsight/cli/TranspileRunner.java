@@ -42,7 +42,7 @@ import java.util.TreeSet;
 import java.util.stream.Stream;
 
 /**
- * `transpile` の中核処理。資産フォルダの COBOL を復号・パースして {@link CobolSemanticModel} を得て、
+ * `translate` の中核処理。資産フォルダの COBOL を復号・パースして {@link CobolSemanticModel} を得て、
  * 対象言語(Python/Java)へ逐語対訳し、生成ファイルを出力先へ(改行 LF・BOM なし UTF-8 で)書き、
  * COBOL 行と生成行の対応を LINE_MAP へ永続化する。対応先の COBOL ソースは本体だけでなくコピー句にも
  * 及ぶため、本体・コピー句の双方を SOURCE として登録してから外部キーを満たす形で LINE_MAP を書く。

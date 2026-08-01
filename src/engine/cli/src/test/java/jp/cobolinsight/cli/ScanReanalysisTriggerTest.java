@@ -50,12 +50,12 @@ class ScanReanalysisTriggerTest {
                 List.of(assets.resolve("copybook")), Map.of(),
                 List.of(TargetLanguage.PYTHON), tempDir.resolve("out")));
 
-        // transpile は行対応表の外部キーを満たすため SOURCE 行だけを登録する。内容ハッシュは
+        // translate は行対応表の外部キーを満たすため SOURCE 行だけを登録する。内容ハッシュは
         // 一致するが解析済みではないため、続く scan はそれらを解析対象に含める必要がある。
         ScanRunner.Summary summary = ScanRunner.run(new ScanRunner.Options(assets, databaseFile,
                 List.of(assets.resolve("copybook")), Map.of()));
 
-        assertEquals(List.of(), summary.skipped(), "transpile が登録した行を解析済みとみなさないこと");
+        assertEquals(List.of(), summary.skipped(), "translate が登録した行を解析済みとみなさないこと");
         assertEquals(0, summary.exitCode());
         try (PersistenceDatabase database = PersistenceDatabase.open(databaseFile)) {
             PersistenceDao dao = new PersistenceDao(database.connection());

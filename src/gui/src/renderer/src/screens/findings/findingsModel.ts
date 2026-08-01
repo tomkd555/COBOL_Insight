@@ -1,9 +1,9 @@
 /**
- * 指摘一覧・SQL助言で共有する一覧のビューモデル(React 非依存の純関数)。重大度の集計・
+ * 指摘一覧・SQL指摘で共有する一覧のビューモデル(React 非依存の純関数)。重大度の集計・
  * ルール/ファイル選択肢の導出・重大度/ルール/ファイル/内容のフィルタ・重大度/ファイル/行の
  * ソート・要約文を持つ。
  *
- * データ供給源は lint / sql-advise の --sarif を parseSarif で平坦化した SarifFinding[] である。
+ * データ供給源は lint / sql-lint の --sarif を parseSarif で平坦化した SarifFinding[] である。
  * 重大度は SARIF の level ではなく、ルールカタログ(ruleOf)を引いて決める。
  */
 
@@ -42,7 +42,7 @@ export const initialFindingFilters: FindingFilters = {
 /** 表でソート可能な列。AppState の FindingSortColumn(sev/rule/file/line)と同じ。 */
 export type SortColumn = FindingSortColumn;
 
-/** 列とソートの向きの組。AppState の FindingSort と同じ形で、指摘一覧・SQL助言はそれぞれ AppState に持つ。 */
+/** 列とソートの向きの組。AppState の FindingSort と同じ形で、指摘一覧・SQL指摘はそれぞれ AppState に持つ。 */
 export type SortState = FindingSort;
 
 /** 表の既定のソート状態(重大度列・昇順)。 */
@@ -104,11 +104,11 @@ export function ruleOptions(findings: readonly SarifFinding[]): FindingOption[] 
   ];
 }
 
-/** ファイル選択肢。出現するファイルを昇順に並べ、先頭へ「すべて」を置く。 */
+/** 資産選択肢。出現する資産を昇順に並べ、先頭へ「すべて」を置く。 */
 export function fileOptions(findings: readonly SarifFinding[]): FindingOption[] {
   const files = [...new Set(findings.map((f) => f.file))].sort();
   return [
-    { value: ALL, label: "ファイル: すべて" },
+    { value: ALL, label: "資産: すべて" },
     ...files.map((file) => ({ value: file, label: file })),
   ];
 }
@@ -193,7 +193,7 @@ export function summaryText(
   counts: Record<Severity, number> = severityCounts(findings),
 ): string {
   return (
-    `${findings.length} 件（高 ${counts.high} / 中 ${counts.medium} / 低 ${counts.low} / 警告 ${counts.warning}）` +
+    `${findings.length} 件（高 ${counts.high} / 中 ${counts.medium} / 低 ${counts.low} / 推奨 ${counts.warning}）` +
     `― 表示 ${visibleCount} 件`
   );
 }

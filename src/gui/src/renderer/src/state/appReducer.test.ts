@@ -71,7 +71,7 @@ describe("appReducer", () => {
       expect(next.mode).toBe("error");
     });
 
-    it("START_RUN は前回の資産一覧・指摘・SQL助言を破棄する(古い結果を残さない)", () => {
+    it("START_RUN は前回の資産一覧・指摘・SQL指摘を破棄する(古い結果を残さない)", () => {
       const seed = withState({
         inventory: { status: "ready", items: SAMPLE_INVENTORY },
         findings: { status: "ready", items: SAMPLE_FINDINGS },
@@ -195,7 +195,7 @@ describe("appReducer", () => {
     });
   });
 
-  describe("SQL助言のフィルタと選択(指摘一覧と同じく AppState に持つ)", () => {
+  describe("SQL指摘のフィルタと選択(指摘一覧と同じく AppState に持つ)", () => {
     it("TOGGLE_SQL_SEVERITY で重大度を切り替え、他の重大度は保つ", () => {
       const next = appReducer(initialState, { type: "TOGGLE_SQL_SEVERITY", severity: "medium" });
       expect(next.sqlSeverity).toEqual({ high: true, medium: false, low: true, warning: true });
@@ -216,7 +216,7 @@ describe("appReducer", () => {
       expect(next.findingSort).toEqual({ column: "sev", direction: "asc" });
     });
 
-    it("SET_FINDING_SORT・SELECT_FINDING を保持する(SQL助言とは独立)", () => {
+    it("SET_FINDING_SORT・SELECT_FINDING を保持する(SQL指摘とは独立)", () => {
       const target = SAMPLE_FINDINGS[2];
       let next = appReducer(initialState, {
         type: "SET_FINDING_SORT",
@@ -225,7 +225,7 @@ describe("appReducer", () => {
       next = appReducer(next, { type: "SELECT_FINDING", finding: target });
       expect(next.findingSort).toEqual({ column: "rule", direction: "desc" });
       expect(next.findingSelected).toBe(target);
-      // SQL助言のソート・選択は独立に保たれる。
+      // SQL指摘のソート・選択は独立に保たれる。
       expect(next.sqlSort).toEqual({ column: "sev", direction: "asc" });
       expect(next.sqlSelected).toBeNull();
     });
@@ -314,7 +314,7 @@ describe("appReducer", () => {
       expect(next.inventory).toEqual({ status: "error", message: "scan の起動に失敗しました" });
     });
 
-    it("SET_FINDINGS・SET_SQL_ADVICE で指摘と SQL 助言を保持する", () => {
+    it("SET_FINDINGS・SET_SQL_ADVICE で指摘一覧と SQL指摘を保持する", () => {
       const withFindings = appReducer(initialState, {
         type: "SET_FINDINGS",
         result: { status: "ready", items: SAMPLE_FINDINGS },

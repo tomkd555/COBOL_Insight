@@ -18,7 +18,7 @@ import {
 } from "./reportModel";
 
 /** レポート生成中に提示する段。 */
-const REPORT_RUN_STAGES = ["資産の走査結果と、指摘・SQL助言の再検出を1つの文書へ束ねている"];
+const REPORT_RUN_STAGES = ["資産の走査結果と、指摘・SQL指摘の再検出を1つの文書へ束ねている"];
 
 /** 未生成のときの状態。参照を固定して依存を安定させる。 */
 const IDLE_REPORT: ReportState = { status: "idle" };
@@ -108,8 +108,8 @@ export function ReportScreen(): ReactElement {
     return placeholder(
       <EmptyState
         title="出力できる解析結果がありません"
-        description="資産をインポートして解析を実行すると、呼出関係サマリ・指摘一覧・SQL助言をレポートとして書き出せる。"
-        actionLabel="資産エクスプローラーへ"
+        description="資産を取り込んで解析を実行すると、呼出関係サマリ・指摘一覧・SQL指摘をレポートとして書き出せる。"
+        actionLabel="資産一覧へ"
         onAction={() => dispatch({ type: "NAV", screen: "explorer" })}
       />,
     );
@@ -121,8 +121,8 @@ export function ReportScreen(): ReactElement {
     return placeholder(
       <EmptyState
         title="資産フォルダが選ばれていません"
-        description="資産エクスプローラーで資産フォルダをインポートすると、レポートを書き出せる。"
-        actionLabel="資産エクスプローラーへ"
+        description="資産一覧で資産フォルダを取り込むと、レポートを書き出せる。"
+        actionLabel="資産一覧へ"
         onAction={() => dispatch({ type: "NAV", screen: "explorer" })}
       />,
     );

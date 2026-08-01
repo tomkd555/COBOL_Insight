@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * ServiceLoader登録と、ID・severity・段階の検証。
- * SYNTAX 段には構文ルール(R系7件)と SQL助言ルール(S系6件)が同居するため、本テストは R系に
+ * SYNTAX 段には構文ルール(R系7件)と SQL指摘ルール(S系6件)が同居するため、本テストは R系に
  * 限定して突合する(S系の登録は SqlRuleRegistrationTest が検証する)。
  */
 class SyntaxRuleRegistrationTest {

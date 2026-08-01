@@ -299,7 +299,7 @@ describe("SettingsScreen のコピー句探索パスの実在確認", () => {
 describe("SettingsScreen の重大度しきい値と文字コード", () => {
   it("しきい値を選ぶと対象の重大度を説明文へ並べる", () => {
     renderSettings(seedState());
-    expect(screen.getByText(/「警告」以上を表示/)).toBeInTheDocument();
+    expect(screen.getByText(/「推奨」以上を表示/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: "中" }));
     expect(screen.getByText("現在の設定: 「中」以上を表示（高・中 が対象）")).toBeInTheDocument();
   });
@@ -384,7 +384,7 @@ describe("SettingsScreen の engine の実行", () => {
   it("配布時と開発時の起動対象を示す", () => {
     renderSettings(seedState());
     expect(screen.getByText(/resources\\engine\\COBOLInsight\.exe/)).toBeInTheDocument();
-    expect(screen.getByText(/JAVA_HOME の java/)).toBeInTheDocument();
+    expect(screen.getByText(/端末にインストール済みの Java 実行環境を使う/)).toBeInTheDocument();
     expect(screen.getByText(initialState.version)).toBeInTheDocument();
   });
 

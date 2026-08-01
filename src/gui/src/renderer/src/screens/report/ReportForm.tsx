@@ -25,7 +25,7 @@ export interface ReportFormProps {
  * レポート出力のフォーム(design scRep の左 400px)。出力形式・出力先フォルダ・書き出しの操作を持つ。
  *
  * 章の取捨は engine の `report` に選択肢が無いため置かない。レポートには呼出関係サマリ・指摘一覧・
- * SQL助言が常に含まれ、1回の実行で HTML とテキストの両方が書かれる。
+ * SQL指摘が常に含まれ、1回の実行で HTML とテキストの両方が書かれる。
  */
 export function ReportForm({
   format,
@@ -68,7 +68,7 @@ export function ReportForm({
       <div className="ci-report-form__field">
         <p className="ci-report-form__label">出力内容</p>
         <p className="ci-report-form__note">
-          {"呼出関係サマリ・指摘一覧・SQL助言を1つの文書へ束ねる。章は選べず、常に全章を出力する。"}
+          {"呼出関係サマリ・指摘一覧・SQL指摘を1つの文書へ束ねる。章は選べず、常に全章を出力する。"}
           {disabledRuleCount === 0
             ? ""
             : `設定で無効化した ${disabledRuleCount} 件のルールは検出から除く。`}

@@ -1,5 +1,5 @@
 /*
- * ソースビューア(transpile 統合)のスタイル。厳格 BEM で命名し、値は :root トークンを参照する。
+ * ソースビューア(translate 統合)のスタイル。厳格 BEM で命名し、値は :root トークンを参照する。
  * design/COBOL Insight.dc.html の scSrc の配置・寸法にそろえる。
  * コードの本体は Monaco が自前の DOM を描くため、CSS は枠・ツールバー・欄の見出し・注記一覧と、
  * Monaco の行へ付ける装飾クラス・コピー句展開のビューゾーンを担う。

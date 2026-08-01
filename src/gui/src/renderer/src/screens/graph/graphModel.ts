@@ -1,5 +1,5 @@
 /**
- * 呼出関係図の純ロジック。callgraph サブコマンドの JSON(CallGraphData)から、Cytoscape の要素・
+ * 呼出関係図の純ロジック。call-graph サブコマンドの JSON(CallGraphData)から、Cytoscape の要素・
  * スタイル・レイアウト指定・可視集合・詳細情報を導く。描画そのもの(canvas 操作)は GraphCanvas が
  * 担い、ここは DOM にも cytoscape の実行時 API にも触れない。
  *
@@ -21,7 +21,7 @@ import type { GraphNodeKind } from "../../state/appState";
 /**
  * ノード種別。engine の NodeKind(GraphNodeKind、10 種)に、構文解析に失敗した資産を表す
  * 「解析不能」(UNANALYZABLE)を加えた 11 種。UNANALYZABLE は engine の NodeKind 列挙には無く、
- * callgraph JSON のノードで kind が "UNANALYZABLE" のものを GUI 側だけで識別する。
+ * call-graph JSON のノードで kind が "UNANALYZABLE" のものを GUI 側だけで識別する。
  */
 export type AnyNodeKind = GraphNodeKind | "UNANALYZABLE";
 
@@ -80,7 +80,7 @@ export function nodeKindStyle(kind: string): NodeKindStyle {
   }
   return {
     kind: "UNRESOLVED",
-    label: kind,
+    label: "不明な種別",
     shape: "rectangle",
     shapeLabel: "長方形(破線)",
     background: "#f2f2f2",
@@ -501,7 +501,7 @@ export function graphWarning(visibleCount: number): string | null {
 /** SQLite の位置が未確定なときに使う既定名(engine CLI の --db の既定値と同じ)。 */
 export const DEFAULT_DB_FILE = "cobol-insight.db";
 
-/** callgraph の成果物パス一式。 */
+/** call-graph の成果物パス一式。 */
 export interface GraphArtifactPaths {
   readonly db: string;
   readonly json: string;
@@ -510,7 +510,7 @@ export interface GraphArtifactPaths {
 }
 
 /**
- * callgraph へ渡す成果物パスを、解析で使う SQLite と同じフォルダへそろえて導く。
+ * call-graph へ渡す成果物パスを、解析で使う SQLite と同じフォルダへそろえて導く。
  * SQLite の位置が未確定(未解析)なら、engine CLI の既定と同じ作業フォルダ直下の相対名を使う。
  */
 export function graphArtifactPaths(dbPath: string | null): GraphArtifactPaths {
@@ -599,7 +599,7 @@ export function nodeDetail(
 }
 
 /**
- * ノードに対応するソースの相対パス。callgraph JSON はノードにソースの位置を持たないため、
+ * ノードに対応するソースの相対パス。call-graph JSON はノードにソースの位置を持たないため、
  * 資産一覧(scan が SQLite へ書いた SOURCE)の側から名前で対応づける。プログラムは PROGRAM-ID、
  * ジョブはジョブ名、BMS マップはマップセット名(修飾名の先頭要素)をファイル名の主部と照合する。
  *
@@ -640,7 +640,7 @@ function baseName(fileName: string): string {
 }
 
 /**
- * callgraph の終了コードを利用者へ示す文。非ゼロは部分的な失敗であってグラフ本体は書かれるため、
+ * call-graph の終了コードを利用者へ示す文。非ゼロは部分的な失敗であってグラフ本体は書かれるため、
  * 図を隠さず警告として添える(0=成功 / 1=警告あり / 2=エラーあり)。
  */
 export function graphExitBanner(exitCode: number): string | null {

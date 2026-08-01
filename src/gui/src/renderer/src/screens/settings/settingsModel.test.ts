@@ -23,7 +23,7 @@ import {
 } from "../explorer/assetView";
 
 describe("ルールカタログの読み出し", () => {
-  it("バグ検出 31 件と SQL 助言 6 件の合計 37 件を扱う", () => {
+  it("バグ検出 31 件と SQL 指摘 6 件の合計 37 件を扱う", () => {
     expect(ruleCount()).toBe(37);
     expect(ruleIds().filter((id) => id.startsWith("R"))).toHaveLength(31);
     expect(ruleIds().filter((id) => id.startsWith("S"))).toHaveLength(6);

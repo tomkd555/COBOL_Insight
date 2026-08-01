@@ -52,7 +52,7 @@ describe("engine から取り込んだカタログ", () => {
     expect(ruleOf("R014").name).toBe("セクション末尾のEXIT文欠如によるフォールスルー");
     expect(ruleOf("R029").name).toBe("呼び出し先プログラムの戻りコード(RETURN-CODE)未検査");
     expect(ruleOf("S001").category).toBe("可読性・保守性");
-    expect(ruleOf("S004").category).toBe("性能・信頼性");
+    expect(ruleOf("S004").category).toBe("性能");
   });
 
   it("説明の各項目を持ち、画面がルールの内容を示せる", () => {

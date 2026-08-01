@@ -125,7 +125,7 @@ export function appReducer(state: AppState, action: Action): AppState {
         // 破棄した成果物の指摘を詳細ペイン・選択が指し続けないよう、両画面の選択を外す。
         sqlSelected: null,
         findingSelected: null,
-        // 呼出関係図も古い実行の結果を残さない。次に画面を開いた時点で callgraph を取り直す。
+        // 呼出関係図も古い実行の結果を残さない。次に画面を開いた時点で call-graph を取り直す。
         graph: { status: "none" },
         graphExpanded: {},
         selectedNode: null,

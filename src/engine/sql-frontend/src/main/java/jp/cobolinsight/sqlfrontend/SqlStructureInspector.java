@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * JSqlParser の SELECT 構文木を走査し、SQL助言 S001〜S003 の構造シグナルを算出する。
+ * JSqlParser の SELECT 構文木を走査し、SQL指摘 S001〜S003 の構造シグナルを算出する。
  * 述語の該当箇所は {@link MangledSql#restore} でホスト変数を原データ名へ復元して文字列で返す。
  */
 final class SqlStructureInspector {

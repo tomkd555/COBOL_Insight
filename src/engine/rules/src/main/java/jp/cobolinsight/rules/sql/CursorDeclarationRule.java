@@ -27,7 +27,7 @@ public final class CursorDeclarationRule implements Rule {
 
     @Override
     public RuleDoc doc() {
-        return RuleDoc.named("カーソルの適切な宣言・後始末の確認", "性能・信頼性")
+        return RuleDoc.named("カーソルの適切な宣言・後始末の確認", "性能")
                 .summary("更新を伴わないのに FOR READ ONLY・FOR FETCH ONLY の"
                         + "いずれも指定していないカーソル宣言を指摘する。")
                 .rationale("更新可能カーソルとして扱われるため、"

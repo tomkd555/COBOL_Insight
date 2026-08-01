@@ -11,7 +11,7 @@ import java.util.Map;
 
 /**
  * `fix preview`・`fix apply` の子コマンドが共有する入力・解析設定のオプション群(picocli の
- * {@code @Mixin} として取り込む)。オプションは lint/transpile と整合させる。
+ * {@code @Mixin} として取り込む)。オプションは lint/translate と整合させる。
  */
 final class FixCommonOptions {
 

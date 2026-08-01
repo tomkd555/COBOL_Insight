@@ -26,9 +26,9 @@ const PREVIEW_LINES = 5;
 /** 資産をまだ取り込んでいないときの誘導。取込は解析の起点でもあるため、主アクションを1つだけ置く。 */
 const EMPTY_STATE = {
   icon: "＋",
-  title: "資産がまだインポートされていません",
+  title: "資産がまだ取り込まれていません",
   description: "資産フォルダを取り込むと、走査と解析をそのまま実行する。",
-  actionLabel: "フォルダをインポート",
+  actionLabel: "フォルダを取り込む",
   note: "文字コードは自動判定（Shift_JIS / UTF-8）または推定（EBCDIC CP930/939）。",
 } as const;
 
@@ -41,9 +41,9 @@ function messageOf(error: unknown): string {
  * 資産エクスプローラー(scan)。上部ツールバー(インポート/名前フィルタ/種別チップ/解析実行)、
  * 中央の資産一覧、右 330px の詳細ペインを組む。
  *
- * 「▶ 解析実行」は解析の単一の起点であり、scan・lint・sql-advise を順に起動して、資産一覧・
- * 指摘・SQL助言を AppState へ収める。したがってタブを移動しても結果は失われず、指摘一覧・
- * SQL助言の各画面は再起動せずにこの結果を表示する。段ごとの失敗は空の結果に潰さず、失敗として
+ * 「▶ 解析実行」は解析の単一の起点であり、scan・lint・sql-lint を順に起動して、資産一覧・
+ * 指摘・SQL指摘を AppState へ収める。したがってタブを移動しても結果は失われず、指摘一覧・
+ * SQL指摘の各画面は再起動せずにこの結果を表示する。段ごとの失敗は空の結果に潰さず、失敗として
  * バナーと各画面へ伝える。empty/running/results/error の4状態を描き分ける。
  */
 export function ExplorerScreen(): ReactElement {
@@ -151,7 +151,7 @@ export function ExplorerScreen(): ReactElement {
       if (db === undefined) {
         // 保存先が分からなければ資産一覧を読めない。0 件として黙って通すと、解析できたのか
         // 対象が無いのかを利用者が区別できなくなる。
-        throw new Error("解析結果の保存先を engine から受け取れなかった。");
+        throw new Error("解析結果の保存先を解析エンジンから受け取れなかった。");
       }
       const inventory = await window.cobolInsight.readAssetInventory(db);
       dispatch({
@@ -191,20 +191,20 @@ export function ExplorerScreen(): ReactElement {
     }
   }
 
-  /** sql-advise を起動し、SARIF から SQL 助言を読む。 */
-  async function runSqlAdviseStage(inputDir: string): Promise<boolean> {
+  /** sql-lint を起動し、SARIF から SQL 指摘を読む。 */
+  async function runSqlLintStage(inputDir: string): Promise<boolean> {
     try {
       const paths = await window.cobolInsight.getOutputPaths();
-      const result = await window.cobolInsight.runSqlAdvise({
+      const result = await window.cobolInsight.runSqlLint({
         inputDir,
         sarifFile: paths.sqlAdviseSarif,
         copybookPaths: state.project.copybookPaths,
-        // S001〜S006 も設定で無効化できるため、sql-advise へも --disable-rule を渡す。
+        // S001〜S006 も設定で無効化できるため、sql-lint へも --disable-rule を渡す。
         disabledRules: disabledRules(state.rulesDisabled),
       });
       const sarif = result.outputs.sarif;
       if (sarif === undefined) {
-        throw new Error("SQL助言の結果が出力されなかった。");
+        throw new Error("SQL指摘の結果が出力されなかった。");
       }
       const advice = await window.cobolInsight.readSarif(sarif);
       dispatch({ type: "SET_SQL_ADVICE", result: { status: "ready", items: advice } });
@@ -216,7 +216,7 @@ export function ExplorerScreen(): ReactElement {
   }
 
   /**
-   * 解析の単一の起点。scan → lint → sql-advise の順に起動し、段の進行を SET_RUN_STAGE で
+   * 解析の単一の起点。scan → lint → sql-lint の順に起動し、段の進行を SET_RUN_STAGE で
    * 実行中インジケータへ伝える(START_RUN が第1段から始める)。
    */
   async function onRun(dir: string): Promise<void> {
@@ -225,7 +225,7 @@ export function ExplorerScreen(): ReactElement {
     dispatch({ type: "SET_RUN_STAGE", stage: 2 });
     const lintFailed = await runLintStage(dir);
     dispatch({ type: "SET_RUN_STAGE", stage: 3 });
-    const sqlFailed = await runSqlAdviseStage(dir);
+    const sqlFailed = await runSqlLintStage(dir);
     const failed = scanFailed || lintFailed || sqlFailed;
     dispatch({
       type: "FINISH_RUN",

@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** SQL助言 S001〜S006 の構造シグナルが合成SQLで正しく立つことの検証。 */
+/** SQL指摘 S001〜S006 の構造シグナルが合成SQLで正しく立つことの検証。 */
 class SqlStructureSignalsTest {
 
     private final SqlStatementAnalyzer analyzer = new SqlStatementAnalyzer();

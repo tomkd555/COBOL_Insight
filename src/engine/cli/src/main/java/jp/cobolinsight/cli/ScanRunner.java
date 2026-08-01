@@ -332,7 +332,7 @@ public final class ScanRunner {
                 SourceRecord existing = existingByPath.get(file.relPath());
                 long id = existing != null ? existing.id() : ++maxId;
                 idByRel.put(file.relPath(), id);
-                // NODE 行が無いソースは、内容ハッシュが一致しても解析済みではない。transpile が
+                // NODE 行が無いソースは、内容ハッシュが一致しても解析済みではない。translate が
                 // 行対応表の外部キーを満たすために登録した SOURCE 行がこれにあたる。
                 if (existing == null || reanalysisIds.contains(id) || dao.findNode(id).isEmpty()) {
                     targets.add(file);

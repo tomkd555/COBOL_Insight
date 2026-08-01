@@ -18,7 +18,7 @@ export interface ExplorerToolbarProps {
 }
 
 /**
- * 資産エクスプローラー上部のツールバー。インポート・名前フィルタ・種別チップ・解析実行を並べる。
+ * 資産一覧上部のツールバー。取込・名前フィルタ・種別チップ・解析実行を並べる。
  * 種別チップは単一選択なので、ラジオグループ(role=radiogroup / role=radio)として表す。
  *
  * 記号は追加(＋)・実行(▶)の意味が確立したものだけを残し、読み上げ名に混ざらないよう
@@ -36,7 +36,7 @@ export function ExplorerToolbar({
   return (
     <div className="ci-explorer__toolbar">
       <Button onClick={onImport}>
-        <span aria-hidden="true">＋</span> インポート
+        <span aria-hidden="true">＋</span> 取り込む
       </Button>
       <label className="ci-field">
         名前

@@ -218,8 +218,8 @@ export function DiffScreen(): ReactElement {
     return (
       <EmptyState
         title="修正案がありません"
-        description={`資産をインポートして解析を実行すると、${fixRuleDescriptionLabel()}の修正案を生成する。他の指摘は助言のみで、差分は生成されない。`}
-        actionLabel="資産エクスプローラーへ"
+        description={`資産を取り込んで解析を実行すると、${fixRuleDescriptionLabel()}の修正案を生成する。他の指摘は検出のみで、差分は生成されない。`}
+        actionLabel="資産一覧へ"
         onAction={() => dispatch({ type: "NAV", screen: "explorer" })}
       />
     );
@@ -231,8 +231,8 @@ export function DiffScreen(): ReactElement {
     return (
       <EmptyState
         title="資産フォルダが選ばれていません"
-        description="資産エクスプローラーで資産フォルダをインポートすると、修正案を生成できる。"
-        actionLabel="資産エクスプローラーへ"
+        description="資産一覧で資産フォルダを取り込むと、修正案を生成できる。"
+        actionLabel="資産一覧へ"
         onAction={() => dispatch({ type: "NAV", screen: "explorer" })}
       />
     );
@@ -252,7 +252,7 @@ export function DiffScreen(): ReactElement {
     return (
       <EmptyState
         title="修正案は生成されませんでした"
-        description={`解析した資産に、${fixRuleIdLabel()} の修正案を生成できる指摘は見つからなかった。他の指摘は助言のみで、差分は生成されない。`}
+        description={`解析した資産に、${fixRuleIdLabel()} の修正案を生成できる指摘は見つからなかった。他の指摘は検出のみで、差分は生成されない。`}
         actionLabel="修正案を作り直す"
         onAction={() => setFix(IDLE_FIX)}
       />
@@ -327,9 +327,9 @@ export function DiffScreen(): ReactElement {
         {candidate.copybook ? (
           <div className="ci-diff__impact" role="note">
             <p className="ci-diff__impact-title">
-              コピー句内の修正 ― この変更は当該コピー句を取り込む全プログラムへ波及する
+              コピー句内の修正 ― この変更は当該コピー句を組み込む全プログラムへ波及する
             </p>
-            <p className="ci-diff__impact-progs">{`取込プログラム: ${candidate.importers.join("、 ")}`}</p>
+            <p className="ci-diff__impact-progs">{`組み込み元プログラム: ${candidate.importers.join("、 ")}`}</p>
           </div>
         ) : null}
 

@@ -8,7 +8,7 @@ function withState(overrides: Partial<AppState>): AppState {
   return { ...initialState, ...overrides };
 }
 
-/** 解析が全段成功した状態(資産 6 件・指摘 10 件・SQL助言 6 件)。 */
+/** 解析が全段成功した状態(資産 6 件・指摘 10 件・SQL指摘 6 件)。 */
 const analyzed = withState({
   mode: "results",
   inventory: { status: "ready", items: SAMPLE_INVENTORY },
@@ -19,20 +19,20 @@ const analyzed = withState({
 describe("deriveStatus(ステータスバー)", () => {
   it("empty は資産 0 とルール有効数を出す", () => {
     const status = deriveStatus(initialState);
-    expect(status.left).toBe("準備完了 ― 資産のインポート待ち");
+    expect(status.left).toBe("準備完了 ― 資産の取込待ち");
     expect(status.counts).toBe("資産 0 ・ ルール 37 有効 ・ v1.0.0");
   });
 
-  it("running は指摘と SQL 助言を「―」で伏せる", () => {
+  it("running は指摘と SQL 指摘を「―」で伏せる", () => {
     const status = deriveStatus({ ...analyzed, mode: "running" });
     expect(status.counts).toContain("指摘 ―");
-    expect(status.counts).toContain("SQL助言 ―");
+    expect(status.counts).toContain("SQL指摘 ―");
   });
 
-  it("results は lint と sql-advise の実件数を出す", () => {
+  it("results は lint と sql-lint の実件数を出す", () => {
     const status = deriveStatus(analyzed);
     expect(status.left).toBe("解析完了 ― 正常終了");
-    expect(status.counts).toBe("資産 6 ・ 指摘 10 ・ SQL助言 6 ・ ルール 37 有効 ・ v1.0.0");
+    expect(status.counts).toBe("資産 6 ・ 指摘 10 ・ SQL指摘 6 ・ ルール 37 有効 ・ v1.0.0");
   });
 
   it("指摘の取得が失敗した段は 0 件ではなく「―」で示す", () => {
@@ -50,7 +50,7 @@ describe("deriveStatus(ステータスバー)", () => {
       ...analyzed,
       sqlAdvice: { status: "none" },
     });
-    expect(status.counts).toContain("SQL助言 ―");
+    expect(status.counts).toContain("SQL指摘 ―");
   });
 
   it("ルールの有効数は設定で無効化した件数を差し引く", () => {
@@ -89,13 +89,13 @@ describe("deriveRunBanner(解析実行の失敗バナー)", () => {
     expect(banner).toContain("lint が SARIF を出力しませんでした");
   });
 
-  it("sql-advise が失敗したときは SQL 助言の取得失敗として示す", () => {
+  it("sql-lint が失敗したときは SQL 指摘の取得失敗として示す", () => {
     const banner = deriveRunBanner({
       ...analyzed,
       mode: "error",
-      sqlAdvice: { status: "error", message: "sql-advise が異常終了しました" },
+      sqlAdvice: { status: "error", message: "sql-lint が異常終了しました" },
     });
-    expect(banner).toContain("SQL助言の取得に失敗した");
+    expect(banner).toContain("SQL指摘の取得に失敗した");
   });
 
   it("全段が成功していて error モードなら構文解析の部分的失敗として示す", () => {

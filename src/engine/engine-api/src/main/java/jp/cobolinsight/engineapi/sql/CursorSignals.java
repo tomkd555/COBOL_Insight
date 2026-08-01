@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * DECLARE CURSOR のカーソル情報。SQL助言 S004 が読む。
+ * DECLARE CURSOR のカーソル情報。SQL指摘 S004 が読む。
  *
  * @param cursorName       カーソル名
  * @param forReadOnly      FOR READ ONLY 句の有無

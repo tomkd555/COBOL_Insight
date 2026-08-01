@@ -186,7 +186,7 @@ describe("viewerFileOptions・isTranspileTarget(表示対象の資産)", () => {
 describe("originScreen(ジャンプ元への戻り導線)", () => {
   it("ジャンプ文言の先頭にある画面名から遷移元を引く", () => {
     expect(originScreen("指摘一覧 から cobol/SYK001.cbl:85 へジャンプ")).toBe("findings");
-    expect(originScreen("SQL助言 から cobol/SYK007.cbl:84 へジャンプ")).toBe("sql");
+    expect(originScreen("SQL指摘 から cobol/SYK007.cbl:84 へジャンプ")).toBe("sql");
     expect(originScreen("呼出関係図 から cobol/SYK002.cbl を表示")).toBe("graph");
   });
 
@@ -261,7 +261,7 @@ describe("findingLinesOf(表示中のファイルの指摘を行ごとに集約�
     expect(text).toContain("R008");
     expect(text).toContain("PERFORM単独段落名の直接指定");
     expect(text).toContain("THRU 句が無い。");
-    expect(text).toContain("▲ 警告");
+    expect(text).toContain("▲ 推奨");
   });
 });
 
