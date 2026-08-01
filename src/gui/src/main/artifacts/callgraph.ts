@@ -1,7 +1,7 @@
 import type { CallGraphData, CallGraphEdge, CallGraphNode } from "../../shared/engine-api";
 
 /**
- * callgraph サブコマンドの JSON(CallGraph.toJson)を、Cytoscape 等が消費できる形へ変換する
+ * call-graph サブコマンドの JSON(CallGraph.toJson)を、Cytoscape 等が消費できる形へ変換する
  * 純関数。nodes {id,kind,label,attributes}・edges {from,to,kind,resolution} を写す。attributes は
  * 省略時に空 Record とする。
  */

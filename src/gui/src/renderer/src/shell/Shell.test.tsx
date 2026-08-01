@@ -37,9 +37,9 @@ describe("Shell", () => {
   });
 
   it("実行中は進捗バーとタイトルバーの実行中表示を描画する", () => {
-    renderShell({ isRunning: true, runningLabel: "SYK006.cbl（13 / 19 ファイル）" });
+    renderShell({ isRunning: true, runningLabel: "SYK006.cbl（13 / 19 件）" });
     expect(screen.getByRole("progressbar")).toBeInTheDocument();
-    expect(screen.getByRole("banner")).toHaveTextContent("解析実行中 ― SYK006.cbl（13 / 19 ファイル）");
+    expect(screen.getByRole("banner")).toHaveTextContent("解析実行中 ― SYK006.cbl（13 / 19 件）");
   });
 
   it("toast を渡すとメッセージを表示する", () => {

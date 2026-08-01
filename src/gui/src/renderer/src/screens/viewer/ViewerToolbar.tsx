@@ -4,7 +4,7 @@ import { SEVERITY_META, SEVERITY_ORDER } from "../../components/severity";
 import type { ViewerFileOption } from "./viewerModel";
 
 export interface ViewerToolbarProps {
-  /** 表示中のファイル(資産の相対パス)。未選択は空文字。 */
+  /** 表示中の資産(相対パス)。未選択は空文字。 */
   file: string;
   options: readonly ViewerFileOption[];
   onFileChange: (file: string) => void;
@@ -28,7 +28,7 @@ const LEGEND: readonly { readonly modifier: string; readonly label: string }[] =
 ];
 
 /**
- * ソースビューアの上部ツールバー(design scSrc)。ファイル選択・ジャンプ元の提示・凡例を置く。
+ * ソースビューアの上部ツールバー(design scSrc)。資産選択・ジャンプ元の提示・凡例を置く。
  * ジャンプで開いた場合は遷移元を示し、そこへ戻る導線を添える。
  */
 export function ViewerToolbar({
@@ -42,7 +42,7 @@ export function ViewerToolbar({
   return (
     <div className="ci-viewer__toolbar">
       <label className="ci-viewer__file-label" htmlFor="ci-viewer-file">
-        表示するファイル
+        表示する資産
       </label>
       <select
         id="ci-viewer-file"

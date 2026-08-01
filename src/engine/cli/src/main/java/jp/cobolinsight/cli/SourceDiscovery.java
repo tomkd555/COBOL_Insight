@@ -14,7 +14,7 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 /**
- * 資産フォルダから解析対象のソースを発見する。scan・lint・sql-advise・transpile・fix の
+ * 資産フォルダから解析対象のソースを発見する。scan・lint・sql-lint・translate・fix の
  * 各 Runner はこのクラスだけを走査の入口とする。
  *
  * <p>走査は二段構えである。まず従来のフォルダ規約(INPUT_DIR 直下の bms・cobol・copy|copybook・

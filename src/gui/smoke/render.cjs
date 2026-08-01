@@ -111,9 +111,9 @@ async function checkTabs(win) {
   record("9タブが列挙される", labels.length === 9, labels.join(" / "));
 }
 
-/** 取込を起点に解析(scan→lint→sql-advise)が進み results 状態になることを見る。 */
+/** 取込を起点に解析(scan→lint→sql-lint)が進み results 状態になることを見る。 */
 async function runAnalysis(win) {
-  await waitUntil(win, clickButton("＋ インポート"), "インポートボタンの押下");
+  await waitUntil(win, clickButton("＋ 取り込む"), "取込ボタンの押下");
   // 取込だけで解析まで進む。解析実行ボタンは押さない(押さずに一覧が出ることがこの検査の主眼)。
   const rows = await waitUntil(
     win,

@@ -8,7 +8,7 @@ export interface FindingsTableProps {
   rows: readonly FindingRow[];
   sort: SortState;
   onSortChange: (column: SortColumn) => void;
-  /** 行の活性化。指摘一覧・SQL助言のいずれも選択だけを行い、ジャンプは別の明示的な操作に委ねる。 */
+  /** 行の活性化。指摘一覧・SQL指摘のいずれも選択だけを行い、ジャンプは別の明示的な操作に委ねる。 */
   onActivateRow: (row: FindingRow) => void;
   /** 行を活性化したときに起きることの説明(title と各行の aria-label へ与える)。 */
   rowHint: string;
@@ -17,8 +17,8 @@ export interface FindingsTableProps {
   /** 選択中の指摘。行の強調に使う。選択の概念を持たない画面は渡さない。 */
   selectedFinding?: SarifFinding | null;
   /**
-   * ファイル・行のセルをソースへのジャンプ操作にする。渡した画面だけがセルをボタンにし、
-   * 渡さない画面(詳細ペインでジャンプする SQL助言)は従来通りの文字表示のままにする。
+   * 資産・行のセルをソースへのジャンプ操作にする。渡した画面だけがセルをボタンにし、
+   * 渡さない画面(詳細ペインでジャンプする SQL指摘)は従来通りの文字表示のままにする。
    */
   onJumpRow?: (row: FindingRow) => void;
   /** フィルタで 0 件になったときのメッセージ(全件は存在する場合)。 */
@@ -64,9 +64,9 @@ function SortHeader({ label, column, sort, onSortChange }: SortHeaderProps): Rea
 }
 
 /**
- * 指摘の表。列は 重大度/ルール/ファイル/行/内容(根拠)/修正案。重大度・ルール・ファイル・行の
+ * 指摘の表。列は 重大度/ルール/資産/行/内容(根拠)/修正案。重大度・ルール・資産・行の
  * 4 列は見出しクリックでソートする。行は Enter・Space でも活性化でき、活性化は選択だけを行う
- * (ソースへのジャンプは含まない)。onJumpRow を渡した画面だけ、ファイル・行のセルがソースへ
+ * (ソースへのジャンプは含まない)。onJumpRow を渡した画面だけ、資産・行のセルがソースへ
  * ジャンプする明示的なボタンになる。
  *
  * 行の焦点は roving tabindex で選択行へ集約し、上下左右の矢印キーで移す(端では反対の端へ回し、
@@ -130,7 +130,7 @@ export function FindingsTable({
           <tr role="row" className="ci-findings-table__head">
             <SortHeader label="重大度" column="sev" sort={sort} onSortChange={onSortChange} />
             <SortHeader label="ルール" column="rule" sort={sort} onSortChange={onSortChange} />
-            <SortHeader label="ファイル" column="file" sort={sort} onSortChange={onSortChange} />
+            <SortHeader label="資産" column="file" sort={sort} onSortChange={onSortChange} />
             <SortHeader label="行" column="line" sort={sort} onSortChange={onSortChange} />
             <th role="columnheader" scope="col" className="ci-findings-table__col">
               内容（根拠）

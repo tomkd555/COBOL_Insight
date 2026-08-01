@@ -40,7 +40,7 @@ const SEVERITY_LABELS: readonly string[] = SEVERITY_ORDER.map(
  * 検出ルール 37 件の有効/無効・表示する重大度のしきい値を扱う。解析の実行中は読み取り専用にする。
  *
  * 設定値はすべて AppState を正とし、画面内に控えを持たない。無効化したルールは解析実行が engine の
- * `--disable-rule` へ渡し、しきい値は指摘一覧・SQL助言の絞り込みへ効き、コピー句探索パスは
+ * `--disable-rule` へ渡し、しきい値は指摘一覧・SQL指摘の絞り込みへ効き、コピー句探索パスは
  * `--copybook-path` へ同じ順序で渡る。したがってタブを移動しても設定は失われない。
  */
 export function SettingsScreen(): ReactElement {
@@ -186,7 +186,7 @@ export function SettingsScreen(): ReactElement {
           <h4 className="ci-settings__card-title">既定の文字コード</h4>
           <p className="ci-settings__desc">
             解析エンジンが文字コードを判定できなかった資産で、文字コード選択欄とデコードプレビューの
-            初期値として用いる。資産ごとの手動指定（資産エクスプローラー）が常に優先される。
+            初期値として用いる。資産ごとの手動指定（資産一覧）が常に優先される。
             解析エンジンは既定の文字コードを受け取らないため、解析実行へ渡るのは資産ごとの
             手動指定だけである。
           </p>
@@ -206,7 +206,7 @@ export function SettingsScreen(): ReactElement {
         </section>
 
         <section className="ci-settings__card">
-          <h4 className="ci-settings__card-title">コピー句検索パス</h4>
+          <h4 className="ci-settings__card-title">コピー句探索パス</h4>
           <p className="ci-settings__desc">
             上から順に検索する。同名のコピー句が複数ある場合、先に見つかったものを使う。
             解析エンジンはここで並べた順序のままコピー句を探索する。
@@ -240,7 +240,7 @@ export function SettingsScreen(): ReactElement {
             </label>
           </div>
           <p className="ci-settings__desc">
-            指摘の検出（R001〜R031）と SQL 最適化助言（S001〜S006）、および利用者定義ルール（U〜）。
+            指摘の検出（R001〜R031）と SQL 最適化の指摘（S001〜S006）、および利用者定義ルール（U〜）。
             すべて既定で有効である。無効にしたルールは解析実行の検出対象から除く。
             各行の「説明」から、そのルールが何を検出し、なぜ問題で、どう直すかを読める。
           </p>
@@ -328,7 +328,7 @@ export function SettingsScreen(): ReactElement {
         <section className="ci-settings__card">
           <h4 className="ci-settings__card-title">表示する重大度のしきい値</h4>
           <p className="ci-settings__desc">
-            選んだ重大度以上の指摘・助言を指摘一覧と SQL助言へ表示する。しきい値より低い重大度は
+            選んだ重大度以上の指摘を指摘一覧と SQL指摘へ表示する。しきい値より低い重大度は
             一覧から外れ、その重大度のフィルタチップも操作できなくなる。
           </p>
           <ChipRadioGroup

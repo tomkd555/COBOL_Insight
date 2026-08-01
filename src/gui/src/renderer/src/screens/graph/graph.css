@@ -1,5 +1,5 @@
 /*
- * 呼出関係図(callgraph)のスタイル。厳格 BEM で命名し、値は :root トークンを参照する。
+ * 呼出関係図(call-graph)のスタイル。厳格 BEM で命名し、値は :root トークンを参照する。
  * design/COBOL Insight.dc.html の scGraph の配置・寸法にそろえる。
  * 図そのものは Cytoscape が canvas へ描くため、CSS は枠・ツールバー・詳細ペイン・凡例を担う。
  */

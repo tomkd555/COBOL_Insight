@@ -18,7 +18,7 @@ class ReportCommandTest {
     @TempDir
     Path tempDir;
 
-    /** カーソル宣言(FOR句なし・OPTIMIZE FORなし)を持つプログラム。SQL助言 S004(中→警告)を含む。 */
+    /** カーソル宣言(FOR句なし・OPTIMIZE FORなし)を持つプログラム。SQL指摘 S004(中→警告)を含む。 */
     private static final String CURSOR = String.join("\n",
             "       IDENTIFICATION DIVISION.",
             "       PROGRAM-ID.  CURDECL.",
@@ -55,18 +55,18 @@ class ReportCommandTest {
         int exitCode = new CommandLine(new Main()).execute("report", dir.toString(),
                 "--db", db.toString(), "--html", html.toString(), "--text", text.toString());
 
-        assertEquals(1, exitCode, "SQL助言 S004(中→警告)を含むため終了コード1であること");
+        assertEquals(1, exitCode, "SQL指摘 S004(中→警告)を含むため終了コード1であること");
         assertTrue(Files.exists(html), "HTMLレポートが書き出されること");
         assertTrue(Files.exists(text), "テキストレポートが書き出されること");
 
         String htmlText = Files.readString(html, StandardCharsets.UTF_8);
         assertTrue(htmlText.startsWith("<!DOCTYPE html>"), "HTML文書であること");
-        assertTrue(htmlText.contains("S004"), "SQL助言 S004 が HTML に載ること: " + htmlText);
+        assertTrue(htmlText.contains("S004"), "SQL指摘 S004 が HTML に載ること: " + htmlText);
         assertTrue(htmlText.contains("cobol/CURDECL.cbl"),
                 "資産がインベントリに載ること");
 
         String textReport = Files.readString(text, StandardCharsets.UTF_8);
         assertTrue(textReport.contains("呼出関係の要約"), "テキストに呼出関係の要約節があること");
-        assertTrue(textReport.contains("S004"), "テキストに SQL助言 S004 が載ること");
+        assertTrue(textReport.contains("S004"), "テキストに SQL指摘 S004 が載ること");
     }
 }

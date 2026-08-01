@@ -12,11 +12,11 @@ import type { AppSettings } from "./appSettings";
 /** engine CLI の起動対象サブコマンド。fix は preview/apply を別値として区別する。 */
 export type EngineSubcommand =
   | "scan"
-  | "callgraph"
+  | "call-graph"
   | "lint"
-  | "sql-advise"
+  | "sql-lint"
   | "report"
-  | "transpile"
+  | "translate"
   | "fix-preview"
   | "fix-apply"
   | "rules";
@@ -55,7 +55,7 @@ export interface LintRequest extends EngineCommonOptions {
   userRulesFile?: string;
 }
 
-/** sql-advise は SQL 文モデルを見るルールだけを走らせるため、利用者定義ルールを受けない。 */
+/** sql-lint は SQL 文モデルを見るルールだけを走らせるため、利用者定義ルールを受けない。 */
 export type SqlAdviseRequest = Omit<LintRequest, "userRulesFile">;
 
 export interface ReportRequest extends EngineCommonOptions {
@@ -89,11 +89,11 @@ export interface FixApplyRequest extends EngineCommonOptions {
 /** サブコマンドと、その型付きリクエストを対にした判別可能ユニオン。引数組立の入力とする。 */
 export type EngineInvocation =
   | { subcommand: "scan"; request: ScanRequest }
-  | { subcommand: "callgraph"; request: CallgraphRequest }
+  | { subcommand: "call-graph"; request: CallgraphRequest }
   | { subcommand: "lint"; request: LintRequest }
-  | { subcommand: "sql-advise"; request: SqlAdviseRequest }
+  | { subcommand: "sql-lint"; request: SqlAdviseRequest }
   | { subcommand: "report"; request: ReportRequest }
-  | { subcommand: "transpile"; request: TranspileRequest }
+  | { subcommand: "translate"; request: TranspileRequest }
   | { subcommand: "fix-preview"; request: FixPreviewRequest }
   | { subcommand: "fix-apply"; request: FixApplyRequest }
   | { subcommand: "rules"; request: RulesRequest };
@@ -117,7 +117,7 @@ export interface EngineOutputs {
 export interface EngineResult {
   subcommand: EngineSubcommand;
   exitCode: number;
-  /** stdout 末尾の1行サマリ JSON(callgraph 無指定時はグラフ本体 JSON)。無ければ null。 */
+  /** stdout 末尾の1行サマリ JSON(call-graph 無指定時はグラフ本体 JSON)。無ければ null。 */
   summary: Record<string, unknown> | null;
   stdout: string;
   stderr: string;
@@ -305,9 +305,9 @@ export interface SourceTextResult {
   unsupported: boolean;
 }
 
-/** transpile 成果物の読取要求。outDir は transpile の --out、cobolRelPath は SOURCE.path と同形。 */
+/** translate 成果物の読取要求。outDir は translate の --out、cobolRelPath は SOURCE.path と同形。 */
 export interface TranspileArtifactsRequest {
-  /** transpile の出力先。TranspileRunner はこの直下へ平坦に生成物を書く。 */
+  /** translate の出力先。TranspileRunner はこの直下へ平坦に生成物を書く。 */
   outDir: string;
   /** LINE_MAP を持つ SQLite プロジェクトファイル。 */
   dbPath: string;
@@ -318,7 +318,7 @@ export interface TranspileArtifactsRequest {
 /** 逐語対訳の生成言語。生成物の拡張子(.py/.java)から決まる。 */
 export type TranspileLanguage = "python" | "java";
 
-/** transpile が出力先直下へ書いた生成物1件。 */
+/** translate が出力先直下へ書いた生成物1件。 */
 export interface TranspileGeneratedFile {
   /** ファイル名(出力先直下の平坦な名前)。 */
   name: string;
@@ -344,7 +344,7 @@ export interface LineMapEntry {
   anchorId: string;
 }
 
-/** ソースビューアが要する transpile 成果物一式(生成物本文と行対応表)。 */
+/** ソースビューアが要する translate 成果物一式(生成物本文と行対応表)。 */
 export interface TranspileArtifacts {
   files: TranspileGeneratedFile[];
   lineMap: LineMapEntry[];
@@ -435,7 +435,7 @@ export interface CobolInsightApi {
   runScan(request: ScanRequest): Promise<EngineResult>;
   runCallgraph(request: CallgraphRequest): Promise<EngineResult>;
   runLint(request: LintRequest): Promise<EngineResult>;
-  runSqlAdvise(request: SqlAdviseRequest): Promise<EngineResult>;
+  runSqlLint(request: SqlAdviseRequest): Promise<EngineResult>;
   runReport(request: ReportRequest): Promise<EngineResult>;
   runTranspile(request: TranspileRequest): Promise<EngineResult>;
   runFixPreview(request: FixPreviewRequest): Promise<EngineResult>;
@@ -478,7 +478,7 @@ export const ENGINE_CHANNELS = {
   runScan: "engine:run-scan",
   runCallgraph: "engine:run-callgraph",
   runLint: "engine:run-lint",
-  runSqlAdvise: "engine:run-sql-advise",
+  runSqlLint: "engine:run-sql-lint",
   runReport: "engine:run-report",
   runTranspile: "engine:run-transpile",
   runFixPreview: "engine:run-fix-preview",

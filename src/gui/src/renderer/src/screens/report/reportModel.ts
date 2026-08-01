@@ -5,7 +5,7 @@
  * レポートの本文は GUI で組み立てない。`report` は1回の実行で HTML(--html)とテキスト
  * (--text)の両方を書き、GUI は readReportHtml / readReportText で読んだものを表示するだけである。
  * 章の取捨は engine のオプションに無いため、GUI は章を選ばせない。レポートには呼出関係サマリ・
- * 指摘一覧・SQL助言が常に含まれる。
+ * 指摘一覧・SQL指摘が常に含まれる。
  */
 
 import type { ReportFormat, ScreenMode } from "../../state/appState";
@@ -41,7 +41,7 @@ export interface ReportSummary {
   readonly scanFindings: number;
   /** lint 由来の指摘(R001〜R031)。 */
   readonly lintFindings: number;
-  /** SQL 最適化助言(S001〜S006)。 */
+  /** SQL 最適化の指摘(S001〜S006)。 */
   readonly sqlAdvice: number;
   readonly callGraphNodes: number;
   readonly callGraphEdges: number;
@@ -119,7 +119,7 @@ export function reportMetrics(summary: ReportSummary): ReportMetric[] {
   return [
     { label: "資産", value: String(summary.assets) },
     { label: "指摘", value: String(summary.lintFindings) },
-    { label: "SQL助言", value: String(summary.sqlAdvice) },
+    { label: "SQL指摘", value: String(summary.sqlAdvice) },
     {
       label: "呼出関係",
       value: `ノード ${summary.callGraphNodes} ・ エッジ ${summary.callGraphEdges}`,

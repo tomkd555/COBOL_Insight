@@ -111,7 +111,7 @@ describe("reportMetrics", () => {
     expect(metrics.map((metric) => metric.label)).toEqual([
       "資産",
       "指摘",
-      "SQL助言",
+      "SQL指摘",
       "呼出関係",
       "解析エラー",
     ]);

@@ -19,12 +19,12 @@ import java.util.concurrent.Callable;
 
 /**
  * `report` サブコマンド。scan 済み SQLite(--db)から資産インベントリ・呼出関係の
- * 要約・scan 由来 finding を読み、同じ資産フォルダに対し lint 検出と SQL 助言をメモリ上で再実行して
+ * 要約・scan 由来 finding を読み、同じ資産フォルダに対し lint 検出と SQL 指摘をメモリ上で再実行して
  * 統合し、HTML とテキストの両形式でレポートを書き出す。処理サマリを JSON で標準出力へ書き、
  * 終了コードは統合した検出結果で分岐する(成功=0・警告あり=1・エラー=2)。
  */
 @Command(name = "report", mixinStandardHelpOptions = true,
-        description = "scan/lint/sql-advise/callgraph の結果を統合し、HTML/テキストのレポートを生成する")
+        description = "資産の走査結果・指摘・呼出関係グラフを統合し、HTML/テキストのレポートを生成する")
 public final class ReportCommand implements Callable<Integer> {
 
     @Parameters(index = "0", paramLabel = "INPUT_DIR", description = "資産フォルダ")

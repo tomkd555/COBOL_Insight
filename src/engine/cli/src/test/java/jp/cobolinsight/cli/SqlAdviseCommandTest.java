@@ -12,7 +12,7 @@ import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** sql-adviseサブコマンドのpicocli配線・SARIFファイル出力・終了コード分岐の検証。 */
+/** sql-lintサブコマンドのpicocli配線・SARIFファイル出力・終了コード分岐の検証。 */
 class SqlAdviseCommandTest {
 
     @TempDir
@@ -43,7 +43,7 @@ class SqlAdviseCommandTest {
             "           GOBACK.",
             "");
 
-    /** 埋め込みSQLを持たないプログラム。SQL助言は0件。 */
+    /** 埋め込みSQLを持たないプログラム。SQL指摘は0件。 */
     private static final String NO_SQL = String.join("\n",
             "       IDENTIFICATION DIVISION.",
             "       PROGRAM-ID.  NOSQL.",
@@ -63,10 +63,10 @@ class SqlAdviseCommandTest {
         Path dir = assets("nosql", NO_SQL);
         Path sarif = tempDir.resolve("nosql.sarif");
 
-        int exitCode = new CommandLine(new Main()).execute("sql-advise", dir.toString(),
+        int exitCode = new CommandLine(new Main()).execute("sql-lint", dir.toString(),
                 "--sarif", sarif.toString());
 
-        assertEquals(0, exitCode, "SQL助言なしは成功(0)であること");
+        assertEquals(0, exitCode, "SQL指摘なしは成功(0)であること");
         assertTrue(Files.exists(sarif), "SARIFファイルが書き出されること");
         String json = Files.readString(sarif, StandardCharsets.UTF_8);
         assertTrue(json.contains("\"version\":\"2.1.0\""));
@@ -78,7 +78,7 @@ class SqlAdviseCommandTest {
         Path dir = assets("cur", CURSOR);
         Path sarif = tempDir.resolve("cur.sarif");
 
-        int exitCode = new CommandLine(new Main()).execute("sql-advise", dir.toString(),
+        int exitCode = new CommandLine(new Main()).execute("sql-lint", dir.toString(),
                 "--sarif", sarif.toString());
 
         assertEquals(1, exitCode, "S004(中→警告)を含むため終了コード1であること");
@@ -93,7 +93,7 @@ class SqlAdviseCommandTest {
         Path dir = assets("curoff", CURSOR.replace("CURDECL", "CUROFF"));
         Path sarif = tempDir.resolve("curoff.sarif");
 
-        new CommandLine(new Main()).execute("sql-advise", dir.toString(),
+        new CommandLine(new Main()).execute("sql-lint", dir.toString(),
                 "--sarif", sarif.toString(), "--disable-rule", "S004");
 
         String json = Files.readString(sarif, StandardCharsets.UTF_8);

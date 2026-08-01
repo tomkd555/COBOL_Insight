@@ -60,7 +60,7 @@ export function AssetList({ groups, collapsed, showFindingColumn, onToggleDir, o
               >
                 <span aria-hidden="true">{isCollapsed ? "▸" : "▾"}</span>
                 <span className="ci-asset-group__dir">{group.dir}</span>
-                <span className="ci-asset-group__count">{group.count} ファイル</span>
+                <span className="ci-asset-group__count">{group.count} 件</span>
               </button>
               {isCollapsed
                 ? null

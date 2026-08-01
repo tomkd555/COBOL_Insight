@@ -12,14 +12,14 @@ import { nextSortState, type FindingFilters } from "./findingsModel";
 import { adviceAt, extractSqlStatement, type SqlBodyState } from "./sqlDetailModel";
 
 /**
- * 実行中に提示する段。この画面が扱うのは sql-advise だけなので、解析実行の3段
- * (scan → lint → sql-advise)ではなく、SQL 構文木の走査だけを示す。
+ * 実行中に提示する段。この画面が扱うのは sql-lint だけなので、解析実行の3段
+ * (scan → lint → sql-lint)ではなく、SQL 構文木の走査だけを示す。
  */
 const SQL_RUN_STAGES = ["SQL 構文木の走査（S001〜S006）"];
 
-/** 画面上部の説明。助言が構文レベルの判定に限られることを、一覧を見る前に明示する。 */
+/** 画面上部の説明。指摘が構文レベルの判定に限られることを、一覧を見る前に明示する。 */
 const SQL_INTRO =
-  "埋め込み Db2 SQL（EXEC SQL … END-EXEC）を抽出し、構文レベルの最適化助言（S001〜S006）を提示する。実行計画やカタログには依存しない。";
+  "埋め込み Db2 SQL（EXEC SQL … END-EXEC）を抽出し、構文レベルの最適化の指摘（S001〜S006）を提示する。実行計画やカタログには依存しない。";
 
 /** 例外・非 Error 値から表示用の文言を取り出す。 */
 function messageOf(error: unknown): string {
@@ -27,11 +27,11 @@ function messageOf(error: unknown): string {
 }
 
 /**
- * SQL助言(sql-advise)。表示する助言は「▶ 解析実行」が起動した sql-advise の SARIF を AppState へ
- * 収めたもので、この画面は sql-advise を起動しない。一覧 UI は指摘一覧と共有し(FindingsView)、
+ * SQL指摘(sql-lint)。表示する指摘は「▶ 解析実行」が起動した sql-lint の SARIF を AppState へ
+ * 収めたもので、この画面は sql-lint を起動しない。一覧 UI は指摘一覧と共有し(FindingsView)、
  * フィルタ・ソート・選択はいずれも AppState に持つためタブを移動しても失われない。
  *
- * 行を選ぶと右の詳細ペインへ、原本から読んだ SQL 本文とその位置の助言を出す。ソースビューアへの
+ * 行を選ぶと右の詳細ペインへ、原本から読んだ SQL 本文とその位置の指摘を出す。ソースビューアへの
  * 遷移は詳細ペインの「該当ソース行へ」で行う。SQL 文の総数は SARIF から厳密に導けないため
  * 提示しない。起動または SARIF 読取の失敗は 0 件と区別する。
  */
@@ -99,9 +99,9 @@ export function SqlAdviseScreen(): ReactElement {
     return (
       <EmptyState
         icon="！"
-        title="SQL助言を取得できませんでした"
-        description={`SQL助言の実行または検出結果の読み取りに失敗したため、助言の件数は分からない。${result.message}`}
-        actionLabel="資産エクスプローラーへ"
+        title="SQL指摘を取得できませんでした"
+        description={`SQL指摘の実行または検出結果の読み取りに失敗したため、指摘の件数は分からない。${result.message}`}
+        actionLabel="資産一覧へ"
         onAction={() => dispatch({ type: "NAV", screen: "explorer" })}
       />
     );
@@ -109,9 +109,9 @@ export function SqlAdviseScreen(): ReactElement {
   if (result.status === "none") {
     return (
       <EmptyState
-        title="SQL助言をまだ取得していません"
-        description="解析実行が完了していないため、SQL助言を表示できない。資産エクスプローラーで解析を実行する。"
-        actionLabel="資産エクスプローラーへ"
+        title="SQL指摘をまだ取得していません"
+        description="解析実行が完了していないため、SQL指摘を表示できない。資産一覧で解析を実行する。"
+        actionLabel="資産一覧へ"
         onAction={() => dispatch({ type: "NAV", screen: "explorer" })}
       />
     );
@@ -120,7 +120,7 @@ export function SqlAdviseScreen(): ReactElement {
     return (
       <EmptyState
         title="表示できる SQL がありません"
-        description="解析対象に、埋め込み SQL の最適化助言（S001〜S006）は見つからなかった。"
+        description="解析対象に、埋め込み SQL の最適化の指摘（S001〜S006）は見つからなかった。"
       />
     );
   }
@@ -151,20 +151,20 @@ export function SqlAdviseScreen(): ReactElement {
             onTextChange: (value) => dispatch({ type: "SET_SQL_TEXT", value }),
           }}
           onActivateRow={(row) => dispatch({ type: "SELECT_SQL_ADVICE", finding: row.finding })}
-          rowHint="SQL 本文と助言の詳細を表示"
-          tableLabel="SQL助言一覧"
+          rowHint="SQL 本文と指摘の詳細を表示"
+          tableLabel="SQL指摘一覧"
           selectedFinding={selected}
           sort={state.sqlSort}
           onSortChange={(column) => dispatch({ type: "SET_SQL_SORT", sort: nextSortState(state.sqlSort, column) })}
           onGoReport={() => dispatch({ type: "NAV", screen: "report" })}
-          noHitMessage="現在のフィルタ条件に一致する SQL助言はない"
+          noHitMessage="現在のフィルタ条件に一致する SQL指摘はない"
         />
         <SplitHandle
           width={detailWidth}
           min={SPLIT_PANES.sqlDetail.min}
           max={SPLIT_PANES.sqlDetail.max}
           onWidthChange={(width) => dispatch({ type: "SET_PANE_WIDTH", pane: "sqlDetail", width })}
-          ariaLabel="SQL 文と助言の詳細ペインの幅"
+          ariaLabel="SQL 文と指摘の詳細ペインの幅"
         />
         <SqlDetail
           selected={selected}
@@ -176,7 +176,7 @@ export function SqlAdviseScreen(): ReactElement {
               type: "JUMP",
               file: selected.file,
               line: selected.startLine,
-              from: "SQL助言",
+              from: "SQL指摘",
             });
           }}
         />

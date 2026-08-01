@@ -73,7 +73,7 @@ function outputPaths(): EngineOutputPaths {
   return {
     db: join(dir, "cobol-insight.db"),
     lintSarif: join(dir, "cobol-insight.sarif"),
-    // lint と別名にする。同名にすると後段の sql-advise が lint の結果を上書きする。
+    // lint と別名にする。同名にすると後段の sql-lint が lint の結果を上書きする。
     sqlAdviseSarif: join(dir, "cobol-insight-sql.sarif"),
     copyExpansion: join(dir, COPY_EXPANSION_FILE_NAME),
     // 解析成果物ではなく利用者が作る設定であるが、engine へ渡す位置を1か所に定めるため併せて持つ。
@@ -152,7 +152,7 @@ async function withDatabase<T>(dbPath: string, read: (db: Database) => T): Promi
   }
 }
 
-/** transpile 生成物の読取に使う fs 束ね。出力先直下の平坦なファイルだけを対象にする。 */
+/** translate 生成物の読取に使う fs 束ね。出力先直下の平坦なファイルだけを対象にする。 */
 const generatedFileSystem: GeneratedFileSystem = {
   list: (dir) => readdir(dir),
   readText: (absPath) => readFile(absPath, "utf-8"),
@@ -208,19 +208,19 @@ export function registerEngineIpc(): void {
     invoke({ subcommand: "scan", request }),
   );
   ipcMain.handle(ENGINE_CHANNELS.runCallgraph, (_event, request: CallgraphRequest) =>
-    invoke({ subcommand: "callgraph", request }),
+    invoke({ subcommand: "call-graph", request }),
   );
   ipcMain.handle(ENGINE_CHANNELS.runLint, (_event, request: LintRequest) =>
     invoke({ subcommand: "lint", request }),
   );
-  ipcMain.handle(ENGINE_CHANNELS.runSqlAdvise, (_event, request: SqlAdviseRequest) =>
-    invoke({ subcommand: "sql-advise", request }),
+  ipcMain.handle(ENGINE_CHANNELS.runSqlLint, (_event, request: SqlAdviseRequest) =>
+    invoke({ subcommand: "sql-lint", request }),
   );
   ipcMain.handle(ENGINE_CHANNELS.runReport, (_event, request: ReportRequest) =>
     invoke({ subcommand: "report", request }),
   );
   ipcMain.handle(ENGINE_CHANNELS.runTranspile, (_event, request: TranspileRequest) =>
-    invoke({ subcommand: "transpile", request }),
+    invoke({ subcommand: "translate", request }),
   );
   ipcMain.handle(ENGINE_CHANNELS.runFixPreview, (_event, request: FixPreviewRequest) =>
     invoke({ subcommand: "fix-preview", request }),

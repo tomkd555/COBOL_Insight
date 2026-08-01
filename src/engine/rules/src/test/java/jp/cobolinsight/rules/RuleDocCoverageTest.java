@@ -63,7 +63,7 @@ class RuleDocCoverageTest {
         assertEquals(List.of(), missing);
     }
 
-    /** ID は検出ルールが R、SQL 助言が S で始まる。lint と sql-advise はこの接頭辞で振り分ける。 */
+    /** ID は検出ルールが R、SQL 指摘が S で始まる。lint と sql-lint はこの接頭辞で振り分ける。 */
     @Test
     void ruleIdsUseKnownPrefixes() {
         for (Rule rule : allRules()) {

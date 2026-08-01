@@ -116,10 +116,10 @@ async function loadCopybookLines(
 }
 
 /**
- * ソースビューア(transpile 統合)。左に COBOL 原本、右に逐語対訳の生成物を並べ、LINE_MAP の
+ * ソースビューア(translate 統合)。左に COBOL 原本、右に逐語対訳の生成物を並べ、LINE_MAP の
  * 行範囲対応で相互ハイライトする。原本の側には lint の指摘を重ね、重大度の記号と色で示す。
  * COPY 文は、取り込まれる行を原本の COPY 文の直後へ差し込んで示す。
- * 本文は main の readSourceText、対訳は transpile の生成物と LINE_MAP、指摘は SARIF、COPY 展開は
+ * 本文は main の readSourceText、対訳は translate の生成物と LINE_MAP、指摘は SARIF、COPY 展開は
  * scan の対応表が供給源であり、GUI は解析も復号も展開も行わない。
  *
  * 4状態は実状態から導く。empty=解析未実行、running=解析実行中、results=本文と対訳を表示、
@@ -152,7 +152,7 @@ export function ViewerScreen(): ReactElement {
   const [expansion, setExpansion] = useState<CopyExpansionState>(IDLE_EXPANSION);
   const [origin, setOrigin] = useState<LinkOrigin>(null);
   const [metrics, setMetrics] = useState<EditorMetrics | null>(null);
-  // 対応表が空の資産に対して transpile を繰り返し起動しないよう、起動済みの組を覚える。
+  // 対応表が空の資産に対して translate を繰り返し起動しないよう、起動済みの組を覚える。
   const generatedOnce = useRef<Set<string>>(new Set());
 
   // 選択ファイルまたは文字コード指定が変わるたびに本文を取り直す。古い応答は捨てる。
@@ -176,7 +176,7 @@ export function ViewerScreen(): ReactElement {
     };
   }, [analyzed, inputDir, sourceFile, codepage]);
 
-  // 対訳の成果物を読む。対応表が無ければ transpile を起動して作り、読み直す。
+  // 対訳の成果物を読む。対応表が無ければ translate を起動して作り、読み直す。
   useEffect(() => {
     if (!analyzed || inputDir === null || dbPath === null || sourceFile === "" || !transpileTarget) {
       setTranspile(IDLE_TRANSPILE);
@@ -370,8 +370,8 @@ export function ViewerScreen(): ReactElement {
     return (
       <EmptyState
         title="解析結果がありません"
-        description="資産をインポートして解析を実行すると、COBOL 原本と逐語対訳を左右に並べて表示する。"
-        actionLabel="資産エクスプローラーへ"
+        description="資産を取り込んで解析を実行すると、COBOL 原本と逐語対訳を左右に並べて表示する。"
+        actionLabel="資産一覧へ"
         onAction={() => dispatch({ type: "NAV", screen: "explorer" })}
       />
     );
@@ -383,8 +383,8 @@ export function ViewerScreen(): ReactElement {
     return (
       <EmptyState
         title="資産フォルダが選ばれていません"
-        description="資産エクスプローラーで資産フォルダをインポートすると、ソースを表示できる。"
-        actionLabel="資産エクスプローラーへ"
+        description="資産一覧で資産フォルダを取り込むと、ソースを表示できる。"
+        actionLabel="資産一覧へ"
         onAction={() => dispatch({ type: "NAV", screen: "explorer" })}
       />
     );
@@ -412,8 +412,8 @@ export function ViewerScreen(): ReactElement {
       />
       {sourceFile === "" ? (
         <EmptyState
-          title="ファイルが選択されていません"
-          description="上のファイル選択でソースを開く。呼出関係図・指摘一覧・SQL助言の「該当行へジャンプ」からも開く。"
+          title="資産が選択されていません"
+          description="上の資産選択でソースを開く。呼出関係図・指摘一覧・SQL指摘の「該当行へジャンプ」からも開く。"
         />
       ) : (
         <div className="ci-viewer__panes">
@@ -471,7 +471,7 @@ export function ViewerScreen(): ReactElement {
                 <EmptyState
                   icon="！"
                   title="このコードページは表示できません"
-                  description={`${document.codepage} は表示用の復号に対応していない（EBCDIC CP930/CP939 とコードページ不明）。資産エクスプローラーで文字コードを手動指定すると表示できる場合がある。`}
+                  description={`${document.codepage} は表示用の復号に対応していない（EBCDIC CP930/CP939 とコードページ不明）。資産一覧で文字コードを手動指定すると表示できる場合がある。`}
                 />
               ) : document.status === "error" ? (
                 <EmptyState
@@ -556,7 +556,7 @@ export function ViewerScreen(): ReactElement {
               ) : dbPath === null ? (
                 <EmptyState
                   title="解析結果のプロジェクトファイルがありません"
-                  description="資産エクスプローラーで解析を実行すると、対訳の対応表を持つプロジェクトファイルができる。"
+                  description="資産一覧で解析を実行すると、対訳の対応表を持つプロジェクトファイルができる。"
                 />
               ) : transpile.status === "loading" ? (
                 <p className="ci-viewer__loading" role="status">

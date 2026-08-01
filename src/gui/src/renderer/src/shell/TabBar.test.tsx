@@ -39,7 +39,7 @@ describe("TabBar", () => {
     rerender(<TabBar tabs={SCREENS} activeId="import" onSelect={onSelect} />);
     fireEvent.keyDown(screen.getByRole("tablist"), { key: "ArrowLeft" });
     expect(onSelect).toHaveBeenLastCalledWith("explorer");
-    expect(screen.getByRole("tab", { name: "資産エクスプローラー" })).toHaveFocus();
+    expect(screen.getByRole("tab", { name: "資産一覧" })).toHaveFocus();
   });
 
   it("端では反対の端へ回り、Home・End で端へ移る", () => {

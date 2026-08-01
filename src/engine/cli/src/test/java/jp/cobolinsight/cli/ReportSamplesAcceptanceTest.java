@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * samples/ 全体の report 受入回帰テスト。samples を scan して SQLite を作り、
  * その DB と資産フォルダに対し report を実行して、統合レポートに次を含むことを突合する:
  * データフロー解析による7欠陥(期待結果.md No.1/2/3/5/9/13/14 = R001/R003/R004/R005)を lint 検出として、
- * SQL 助言 S004/S006(SYK006:145)を、呼出関係の要約(プログラム間の CALL 辺)を含み、
+ * SQL 指摘 S004/S006(SYK006:145)を、呼出関係の要約(プログラム間の CALL 辺)を含み、
  * HTML とテキストの両形式を生成し、統合の終了コードが 2(samples は ERROR レベルの検出を含む)に
  * なること。
  */
@@ -66,9 +66,9 @@ class ReportSamplesAcceptanceTest {
     void sqlAdvicePortionContainsCursorAdvice() {
         Set<String> advice = keyed(result.sqlAdviceFindings());
         assertTrue(advice.contains("S004@cobol/SYK006.cbl:145"),
-                () -> "SQL助言に S004(SYK006:145)を含むこと: " + advice);
+                () -> "SQL指摘に S004(SYK006:145)を含むこと: " + advice);
         assertTrue(advice.contains("S006@cobol/SYK006.cbl:145"),
-                () -> "SQL助言に S006(SYK006:145)を含むこと: " + advice);
+                () -> "SQL指摘に S006(SYK006:145)を含むこと: " + advice);
     }
 
     @Test
@@ -99,10 +99,10 @@ class ReportSamplesAcceptanceTest {
         assertTrue(html.contains("資産インベントリ"), "資産インベントリ節を持つこと");
         assertTrue(html.contains("検出結果一覧"), "検出結果一覧節を持つこと");
         assertTrue(html.contains("呼出関係の要約"), "呼出関係の要約節を持つこと");
-        assertTrue(html.contains("SQL助言"), "SQL助言節を持つこと");
+        assertTrue(html.contains("SQL指摘"), "SQL指摘節を持つこと");
         assertTrue(html.contains("R001") && html.contains("R004"),
                 "7欠陥のルールIDが HTML に描画されること");
-        assertTrue(html.contains("S004"), "SQL助言 S004 が HTML に描画されること");
+        assertTrue(html.contains("S004"), "SQL指摘 S004 が HTML に描画されること");
         assertTrue(html.contains("SYK002") && html.contains("SYK004"),
                 "呼出辺のノードラベルが HTML に描画されること");
     }
@@ -114,9 +114,9 @@ class ReportSamplesAcceptanceTest {
         assertTrue(text.contains("1. 資産インベントリ"), "資産インベントリ節を持つこと");
         assertTrue(text.contains("2. 検出結果一覧"), "検出結果一覧節を持つこと");
         assertTrue(text.contains("3. 呼出関係の要約"), "呼出関係の要約節を持つこと");
-        assertTrue(text.contains("4. SQL助言"), "SQL助言節を持つこと");
+        assertTrue(text.contains("4. SQL指摘"), "SQL指摘節を持つこと");
         assertTrue(text.contains("R001") && text.contains("S006"),
-                "検出とSQL助言がテキストに描画されること");
+                "検出とSQL指摘がテキストに描画されること");
         assertTrue(text.contains("終了コード: 2"), "終了コードを明記すること");
     }
 

@@ -339,7 +339,7 @@ public final class PersistenceDao {
                 PersistenceDao::mapLineMap, cobolSourceId);
     }
 
-    /** 指定ソースの行対応を全消去する(transpile の再実行を冪等にするため書込前に呼ぶ)。 */
+    /** 指定ソースの行対応を全消去する(translate の再実行を冪等にするため書込前に呼ぶ)。 */
     public void deleteLineMapsBySource(long cobolSourceId) {
         update("DELETE FROM LINE_MAP WHERE cobol_source_id = ?", cobolSourceId);
     }

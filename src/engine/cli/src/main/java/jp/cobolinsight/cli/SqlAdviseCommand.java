@@ -18,19 +18,19 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 
 /**
- * `sql-advise` サブコマンド。資産フォルダの埋め込みSQLをSQL助言ルール(S001〜S006)で解析し、
- * SARIF 2.1.0ファイルを書き出して処理サマリをJSONで標準出力へ書く。終了コードは検出結果で
+ * `sql-lint` サブコマンド。資産フォルダの埋め込みSQLを解析し、指摘(S001〜S006)を
+ * SARIF 2.1.0ファイルへ書き出して処理サマリをJSONで標準出力へ書く。終了コードは検出結果で
  * 分岐する(成功=0・警告あり=1・エラー=2)。バグ検出は lint サブコマンドが担う。
  */
-@Command(name = "sql-advise", mixinStandardHelpOptions = true,
-        description = "資産フォルダの埋め込みSQLをSQL助言ルールで解析し、SARIFを出力する")
+@Command(name = "sql-lint", mixinStandardHelpOptions = true,
+        description = "資産フォルダの埋め込みSQLを解析し、指摘をSARIFへ出力する")
 public final class SqlAdviseCommand implements Callable<Integer> {
 
     @Parameters(index = "0", paramLabel = "INPUT_DIR", description = "資産フォルダ")
     Path inputDir;
 
     @Option(names = "--sarif", paramLabel = "FILE", defaultValue = "cobol-insight-sql.sarif",
-            description = "SARIF 2.1.0出力ファイル(既定: ${DEFAULT-VALUE})")
+            description = "指摘の一覧を書き出すファイル(SARIF 2.1.0形式)(既定: ${DEFAULT-VALUE})")
     Path sarifFile;
 
     @Option(names = "--copybook-path", paramLabel = "DIR",

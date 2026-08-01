@@ -1,5 +1,5 @@
 /**
- * テスト用の指摘 fixture。window.cobolInsight.readSarif が返す SarifFinding[](lint / sql-advise の
+ * テスト用の指摘 fixture。window.cobolInsight.readSarif が返す SarifFinding[](lint / sql-lint の
  * --sarif を parseSarif で平坦化した形)を模す。lint が実際に出力した SARIF から代表を抜き、
  * 4 段の重大度・修正案ありルール(R004/R017/R018)・複数ファイルを網羅する。
  */
@@ -20,7 +20,7 @@ export const SAMPLE_FINDINGS: readonly SarifFinding[] = [
   { ruleId: "R022", level: "warning", message: "CICS 参加プログラム SYK009 は EXEC CICS RETURN を持たずに終端する。", file: "cobol/SYK009.cbl", startLine: 21, startColumn: 1 },
 ];
 
-/** SQL助言(sql-advise)用。S001〜S006 を扱う。 */
+/** SQL指摘(sql-lint)用。S001〜S006 を扱う。 */
 export const SAMPLE_SQL_FINDINGS: readonly SarifFinding[] = [
   { ruleId: "S001", level: "warning", message: "SELECT * はテーブル構造変更の影響を受けやすく、不要な列の転送で I/O を増大させる。必要な列のみを明示する。", file: "cobol/SYK006.cbl", startLine: 145, startColumn: 1 },
   { ruleId: "S004", level: "warning", message: "更新を伴わないカーソルに FOR READ ONLY が指定されていない。ロック競合の原因になる。", file: "cobol/SYK006.cbl", startLine: 145, startColumn: 1 },

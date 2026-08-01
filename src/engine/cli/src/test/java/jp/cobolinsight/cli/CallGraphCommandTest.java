@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** `callgraph` サブコマンドのJSON/DOT/SVG/PNG出力の検証。 */
+/** `call-graph` サブコマンドのJSON/DOT/SVG/PNG出力の検証。 */
 class CallGraphCommandTest {
 
     private static final Path SAMPLES = Path.of("..", "..", "..", "samples").toAbsolutePath().normalize();
@@ -28,7 +28,7 @@ class CallGraphCommandTest {
         Path svg = tempDir.resolve("graph.svg");
         Path png = tempDir.resolve("graph.png");
 
-        int exitCode = new CommandLine(new Main()).execute("callgraph", SAMPLES.toString(),
+        int exitCode = new CommandLine(new Main()).execute("call-graph", SAMPLES.toString(),
                 "--db", tempDir.resolve("m2.db").toString(),
                 "--json", json.toString(), "--dot", dot.toString(),
                 "--svg", svg.toString(), "--png", png.toString());

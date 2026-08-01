@@ -22,7 +22,7 @@ import type { ScreenId } from "../shell/screens";
 /** 解析ライフサイクル。全画面が共有し、各画面はこの値で4状態を描き分ける(design mode)。 */
 export type ScreenMode = "empty" | "running" | "results" | "error";
 
-/** 実行中に提示する解析段(第1段=scan / 第2段=lint / 第3段=sql-advise)。 */
+/** 実行中に提示する解析段(第1段=scan / 第2段=lint / 第3段=sql-lint)。 */
 export type RunStage = 1 | 2 | 3;
 
 /** 資産一覧の種別フィルタ(design aType)。 */
@@ -31,7 +31,7 @@ export type AssetTypeFilter = "すべて" | "JCL" | "COBOL" | "コピー句" | "
 /**
  * 呼出関係図のノード種別(design gTypes のキー)。値は engine の NodeKind(10種)に、構文解析に
  * 失敗した資産を表す UNANALYZABLE(engine の列挙には無い GUI 限定の種別)を加えた11種。
- * callgraph JSON のノードの kind をそのままフィルタのキーとして扱う。
+ * call-graph JSON のノードの kind をそのままフィルタのキーとして扱う。
  */
 export type GraphNodeKind =
   | "JOB"
@@ -46,13 +46,13 @@ export type GraphNodeKind =
   | "BMS_MAP"
   | "UNANALYZABLE";
 
-/** 指摘一覧・SQL助言の表でソート可能な列(design fSort に、ルール列を加える)。 */
+/** 指摘一覧・SQL指摘の表でソート可能な列(design fSort に、ルール列を加える)。 */
 export type FindingSortColumn = "sev" | "rule" | "file" | "line";
 
 /** ソートの向き。 */
 export type SortDirection = "asc" | "desc";
 
-/** ソート状態(列と向きの組)。指摘一覧と SQL助言はそれぞれ独立に持つ。 */
+/** ソート状態(列と向きの組)。指摘一覧と SQL指摘はそれぞれ独立に持つ。 */
 export interface FindingSort {
   readonly column: FindingSortColumn;
   readonly direction: SortDirection;
@@ -95,9 +95,9 @@ export interface ScanDiscovery {
 }
 
 /**
- * 呼出関係図の取得状態。callgraph は資産エクスプローラーの「▶ 解析実行」では起動せず、
+ * 呼出関係図の取得状態。call-graph は資産エクスプローラーの「▶ 解析実行」では起動せず、
  * 呼出関係図の画面が必要になった時点で起動するため、起動中(loading)を状態として持つ。
- * exitCode は callgraph の終了コード(0=成功 / 1=警告あり / 2=エラーあり)で、非ゼロでも
+ * exitCode は call-graph の終了コード(0=成功 / 1=警告あり / 2=エラーあり)で、非ゼロでも
  * グラフ本体は書かれるため、図を隠さず警告として示すために保持する。
  */
 export type GraphArtifactState =
@@ -111,7 +111,7 @@ export type GraphArtifactState =
  * 画面ごとの入力フォルダ定数は持たない。
  */
 export interface ProjectState {
-  /** 資産フォルダ(scan/lint/sql-advise の位置引数)。未インポートは null。 */
+  /** 資産フォルダ(scan/lint/sql-lint の位置引数)。未インポートは null。 */
   readonly inputDir: string | null;
   /** scan が書いた SQLite プロジェクトファイル。未解析は null。 */
   readonly dbPath: string | null;
@@ -179,7 +179,7 @@ export interface AppState {
   readonly scanDiscovery: ScanDiscovery | null;
   /** lint → readSarif で得た指摘(R001〜R031)。 */
   readonly findings: ArtifactState<SarifFinding>;
-  /** sql-advise → readSarif で得た SQL 最適化助言(S001〜S006)。 */
+  /** sql-lint → readSarif で得た SQL 最適化の指摘(S001〜S006)。 */
   readonly sqlAdvice: ArtifactState<SarifFinding>;
 
   /* 資産エクスプローラー(scan) */
@@ -192,8 +192,8 @@ export interface AppState {
   /** 資産(相対パス)ごとの文字コード手動指定(design encSel)。次回の scan で codepageOverrides に反映する。 */
   readonly encodingSel: Record<string, string>;
 
-  /* 呼出関係図(callgraph) */
-  /** callgraph → readCallgraphJson で得た呼出関係グラフ。 */
+  /* 呼出関係図(call-graph) */
+  /** call-graph → readCallgraphJson で得た呼出関係グラフ。 */
   readonly graph: GraphArtifactState;
   /** ノード種別フィルタの ON/OFF(design gTypes)。 */
   readonly graphTypes: Record<GraphNodeKind, boolean>;
@@ -221,7 +221,7 @@ export interface AppState {
   /** 空状態のバリアント(design emptyVariant)。0=未解析 / 1=指摘0件。 */
   readonly findingsEmptyVariant: number;
 
-  /* ソースビューア(transpile 統合) */
+  /* ソースビューア(translate 統合) */
   /** 表示中のソースファイル(design srcFile)。 */
   readonly sourceFile: string;
   /** ジャンプ先の行(design srcLine)。null は行指定なし。 */
@@ -237,9 +237,9 @@ export interface AppState {
   /** hover 相互ハイライトの対訳側行(design linkP)。 */
   readonly linkedTranspileLines: number[];
 
-  /* SQL助言(sql-advise) */
+  /* SQL指摘(sql-lint) */
   /**
-   * 選択中の SQL 助言(design sqlSel)。詳細ペインが本文と助言を出す対象で、未選択は null。
+   * 選択中の SQL 指摘(design sqlSel)。詳細ペインが本文と指摘を出す対象で、未選択は null。
    * sqlAdvice.items の要素をそのまま持ち、同一位置・同一ルールの重複があっても取り違えない。
    */
   readonly sqlSelected: SarifFinding | null;
@@ -288,7 +288,7 @@ export interface AppState {
   readonly ruleSearch: string;
   /** 無効化したルール ID の集合(design rulesOff)。engine の --disable-rule へ渡す。 */
   readonly rulesDisabled: Record<string, boolean>;
-  /** 表示する重大度しきい値(design sevTh)。これより低い重大度は指摘・SQL助言の一覧に出さない。 */
+  /** 表示する重大度しきい値(design sevTh)。これより低い重大度は指摘・SQL指摘の一覧に出さない。 */
   readonly severityThreshold: Severity;
   /**
    * 既定文字コード(design encDef)。文字コードの検出に失敗した資産で手動指定が無い場合に、

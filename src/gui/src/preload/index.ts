@@ -33,8 +33,8 @@ const api: CobolInsightApi = {
   runCallgraph: (request: CallgraphRequest) =>
     ipcRenderer.invoke(ENGINE_CHANNELS.runCallgraph, request),
   runLint: (request: LintRequest) => ipcRenderer.invoke(ENGINE_CHANNELS.runLint, request),
-  runSqlAdvise: (request: SqlAdviseRequest) =>
-    ipcRenderer.invoke(ENGINE_CHANNELS.runSqlAdvise, request),
+  runSqlLint: (request: SqlAdviseRequest) =>
+    ipcRenderer.invoke(ENGINE_CHANNELS.runSqlLint, request),
   runReport: (request: ReportRequest) => ipcRenderer.invoke(ENGINE_CHANNELS.runReport, request),
   runTranspile: (request: TranspileRequest) =>
     ipcRenderer.invoke(ENGINE_CHANNELS.runTranspile, request),

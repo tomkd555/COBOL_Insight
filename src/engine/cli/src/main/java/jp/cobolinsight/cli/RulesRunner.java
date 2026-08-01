@@ -91,7 +91,7 @@ public final class RulesRunner {
             out.append(rule.id()).append(' ').append(doc.name()).append('\n')
                     .append("カテゴリ: ").append(doc.category())
                     .append(" / 重大度: ").append(rule.defaultSeverity().label())
-                    .append(" / 解析段階: ").append(rule.phase().name())
+                    .append(" / 解析段階: ").append(rule.phase().label())
                     .append(" / 修正案: ").append(rule.fixProducer().isPresent() ? "あり" : "なし")
                     .append("\n\n");
             appendSection(out, "何を検出するか", doc.summary());

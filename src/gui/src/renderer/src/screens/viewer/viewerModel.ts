@@ -2,7 +2,7 @@
  * ソースビューアのビューモデル導出(React 非依存の純ロジック)。design gvViewer の
  * ファイル選択・言語切替・相互ハイライトの提示を移植する。
  *
- * 本文は main の readSourceText(表示専用の復号)、対訳は transpile の生成物と LINE_MAP が供給源で
+ * 本文は main の readSourceText(表示専用の復号)、対訳は translate の生成物と LINE_MAP が供給源で
  * あり、GUI は解析も復号も行わない。固定形式の欄割りのうち識別欄(73〜80桁)は Monarch では
  * 桁位置を条件にできないため、ここで範囲を求めて装飾として示す。
  */
@@ -78,7 +78,7 @@ function directoryOf(path: string): string {
   return separator < 0 ? "" : path.slice(0, separator + 1);
 }
 
-/** transpile の出力先。解析で使う SQLite と同じフォルダの transpile へそろえる。 */
+/** translate の出力先。解析で使う SQLite と同じフォルダの transpile へそろえる。 */
 export function transpileOutDir(dbPath: string): string {
   return `${directoryOf(dbPath)}transpile`;
 }

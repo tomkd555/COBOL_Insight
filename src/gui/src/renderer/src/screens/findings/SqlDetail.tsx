@@ -8,7 +8,7 @@ import type { SqlAdviceEntry, SqlBodyState } from "./sqlDetailModel";
 export interface SqlDetailProps {
   /** 選択中の指摘。未選択は null。 */
   selected: SarifFinding | null;
-  /** 選択した位置の SQL 文へ付く助言の全件。 */
+  /** 選択した位置の SQL 文へ付く指摘の全件。 */
   advice: readonly SqlAdviceEntry[];
   /** 原本から読んだ SQL 本文の取得状態。 */
   body: SqlBodyState;
@@ -17,18 +17,18 @@ export interface SqlDetailProps {
 }
 
 /**
- * SQL助言の詳細ペイン(一覧の右)。選択した指摘の位置・SQL 本文・その位置の
- * 最適化助言を示す。本文は原本を読んで表示するだけであり、読取に失敗した場合や復号に対応しない
+ * SQL指摘の詳細ペイン(一覧の右)。選択した指摘の位置・SQL 本文・その位置の
+ * 最適化の指摘を示す。本文は原本を読んで表示するだけであり、読取に失敗した場合や復号に対応しない
  * コードページの場合は、本文が空の状態と区別してその旨を示す。
  */
 export function SqlDetail({ selected, advice, body, onJump }: SqlDetailProps): ReactElement {
   return (
-    <aside className="ci-sql-detail" aria-label="SQL 文と最適化助言の詳細">
+    <aside className="ci-sql-detail" aria-label="SQL 文と最適化の指摘の詳細">
       {selected === null ? (
         <p className="ci-sql-detail__empty">
-          一覧から助言を選ぶと
+          一覧から指摘を選ぶと
           <br />
-          SQL 本文と助言の詳細を表示する
+          SQL 本文と指摘の詳細を表示する
         </p>
       ) : (
         <div className="ci-sql-detail__body">
@@ -43,10 +43,10 @@ export function SqlDetail({ selected, advice, body, onJump }: SqlDetailProps): R
             <div className="ci-sql-detail__section-head">SQL 文</div>
             <SqlBody body={body} />
           </section>
-          <section className="ci-sql-detail__section-plain" aria-label="最適化助言">
-            <div className="ci-sql-detail__advice-title">{`最適化助言 ${advice.length} 件`}</div>
+          <section className="ci-sql-detail__section-plain" aria-label="最適化の指摘">
+            <div className="ci-sql-detail__advice-title">{`最適化の指摘 ${advice.length} 件`}</div>
             {advice.map((entry, index) => (
-              // 1 行に SQL 文が2つ並ぶと同一位置・同一ルールの助言が生じるため、並び順の位置を含める。
+              // 1 行に SQL 文が2つ並ぶと同一位置・同一ルールの指摘が生じるため、並び順の位置を含める。
               <div key={`${index}:${entry.finding.ruleId}`} className="ci-sql-detail__advice">
                 <div className="ci-sql-detail__advice-head">
                   <SeverityBadge severity={entry.severity} />
@@ -70,7 +70,7 @@ function SqlBody({ body }: { body: SqlBodyState }): ReactElement {
   if (body.status === "unsupported") {
     return (
       <div className="ci-sql-detail__warn" role="alert">
-        コードページ {codepageLabel(body.codepage)} は本文の表示に対応していない。資産エクスプローラーで
+        コードページ {codepageLabel(body.codepage)} は本文の表示に対応していない。資産一覧で
         文字コードを指定し直すと表示できる場合がある。
       </div>
     );

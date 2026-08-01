@@ -66,13 +66,13 @@ describe("FindingsScreen(指摘一覧)", () => {
   it("empty(未解析)ではエクスプローラー誘導を出し、lint は起動しない", () => {
     renderFindings(emptySeed);
     expect(screen.getByRole("region", { name: "解析がまだ実行されていません" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "資産エクスプローラーへ" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "資産一覧へ" })).toBeInTheDocument();
     expect(runLint).not.toHaveBeenCalled();
   });
 
-  it("未解析の誘導ボタンで資産エクスプローラーへ遷移する", () => {
+  it("未解析の誘導ボタンで資産一覧へ遷移する", () => {
     renderFindings(emptySeed);
-    fireEvent.click(screen.getByRole("button", { name: "資産エクスプローラーへ" }));
+    fireEvent.click(screen.getByRole("button", { name: "資産一覧へ" }));
     expect(screen.getByTestId("probe")).toHaveTextContent("explorer|");
   });
 
@@ -129,9 +129,9 @@ describe("FindingsScreen(指摘一覧)", () => {
     expect(screen.queryByRole("row", { name: /^R008 /  })).toBeNull();
   });
 
-  it("ファイル選択で 1 ファイルへ絞る", () => {
+  it("資産選択で 1 資産へ絞る", () => {
     renderFindings(resultsSeed);
-    fireEvent.change(screen.getByRole("combobox", { name: "ファイル" }), {
+    fireEvent.change(screen.getByRole("combobox", { name: "資産" }), {
       target: { value: "cobol/SYK001.cbl" },
     });
     // SYK001.cbl は R008/R017/R005/R001 の 4 件。
@@ -292,7 +292,7 @@ describe("FindingsScreen(指摘一覧)", () => {
     const chips = within(screen.getByRole("group", { name: "重大度フィルタ" }));
     expect(chips.getByRole("button", { name: /高/ })).toBeEnabled();
     expect(chips.getByRole("button", { name: /低/ })).toBeDisabled();
-    expect(chips.getByRole("button", { name: /警告/ })).toBeDisabled();
+    expect(chips.getByRole("button", { name: /推奨/ })).toBeDisabled();
   });
 
   it("しきい値が許した範囲の中でチップが絞る", () => {

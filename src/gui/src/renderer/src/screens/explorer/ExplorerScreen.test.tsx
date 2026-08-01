@@ -29,7 +29,7 @@ const lintResult: EngineResult = {
 };
 
 const sqlResult: EngineResult = {
-  subcommand: "sql-advise",
+  subcommand: "sql-lint",
   exitCode: 0,
   summary: {},
   stdout: "",
@@ -43,7 +43,7 @@ const SELECTED_DIR = "C:\\資産\\SYK";
 let runScan: ReturnType<typeof vi.fn>;
 let readAssetInventory: ReturnType<typeof vi.fn>;
 let runLint: ReturnType<typeof vi.fn>;
-let runSqlAdvise: ReturnType<typeof vi.fn>;
+let runSqlLint: ReturnType<typeof vi.fn>;
 let readSarif: ReturnType<typeof vi.fn>;
 let selectInputFolder: ReturnType<typeof vi.fn>;
 let readSourceText: ReturnType<typeof vi.fn>;
@@ -61,7 +61,7 @@ beforeEach(() => {
   runScan = vi.fn().mockResolvedValue(scanResult);
   readAssetInventory = vi.fn().mockResolvedValue([...SAMPLE_INVENTORY]);
   runLint = vi.fn().mockResolvedValue(lintResult);
-  runSqlAdvise = vi.fn().mockResolvedValue(sqlResult);
+  runSqlLint = vi.fn().mockResolvedValue(sqlResult);
   readSarif = vi.fn().mockImplementation((path: string) =>
     Promise.resolve(path === "sql.sarif" ? [...SAMPLE_SQL_FINDINGS] : [...SAMPLE_FINDINGS]),
   );
@@ -77,7 +77,7 @@ beforeEach(() => {
     runScan,
     readAssetInventory,
     runLint,
-    runSqlAdvise,
+    runSqlLint,
     readSarif,
     selectInputFolder,
     readSourceText,
@@ -133,20 +133,20 @@ function renderApp(): void {
 
 /** インポート(フォルダ選択ダイアログ)を実行し、取込を起点に始まる解析の起動まで待つ。 */
 async function importFolder(): Promise<void> {
-  fireEvent.click(screen.getByRole("button", { name: "インポート" }));
+  fireEvent.click(screen.getByRole("button", { name: "取り込む" }));
   await waitFor(() => expect(runScan).toHaveBeenCalled());
 }
 
 /** インポートから自動で走る解析の完了(資産一覧の表示)まで待つ。 */
 async function importAndRun(): Promise<void> {
-  fireEvent.click(screen.getByRole("button", { name: "インポート" }));
+  fireEvent.click(screen.getByRole("button", { name: "取り込む" }));
   await screen.findByRole("button", { name: /SYK001\.cbl/ });
 }
 
-describe("ExplorerScreen(資産エクスプローラー container)", () => {
+describe("ExplorerScreen(資産一覧 container)", () => {
   it("空状態ではインポート誘導を出し、解析実行は無効", () => {
     renderExplorer();
-    expect(screen.getByRole("region", { name: "資産がまだインポートされていません" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "資産がまだ取り込まれていません" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "解析実行" })).toBeDisabled();
   });
 
@@ -156,17 +156,17 @@ describe("ExplorerScreen(資産エクスプローラー container)", () => {
     // 表示文字はスモークテストが押下対象を選ぶ手がかりでもあるため、厳密に照合する。
     expect(run.textContent).toBe("▶ 解析実行");
     expect(run).toHaveAccessibleName("解析実行");
-    const importButton = screen.getByRole("button", { name: "インポート" });
-    expect(importButton.textContent).toBe("＋ インポート");
-    expect(importButton).toHaveAccessibleName("インポート");
+    const importButton = screen.getByRole("button", { name: "取り込む" });
+    expect(importButton.textContent).toBe("＋ 取り込む");
+    expect(importButton).toHaveAccessibleName("取り込む");
   });
 
   it("空状態の誘導はフォルダの取込だけを示す", () => {
     renderExplorer();
-    expect(screen.getByRole("button", { name: "フォルダをインポート" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "フォルダを取り込む" })).toBeInTheDocument();
   });
 
-  it("インポートで選んだフォルダをプロジェクトの入力フォルダにする", async () => {
+  it("取込で選んだフォルダをプロジェクトの入力フォルダにする", async () => {
     renderExplorer();
     await importAndRun();
     expect(selectInputFolder).toHaveBeenCalledTimes(1);
@@ -176,29 +176,29 @@ describe("ExplorerScreen(資産エクスプローラー container)", () => {
   it("フォルダを取り込んだらそのまま解析を始め、一覧を出す", async () => {
     // 取込だけで止めると画面が空状態のまま変わらず、取り込めたのかが利用者へ伝わらない。
     renderExplorer();
-    fireEvent.click(screen.getByRole("button", { name: "インポート" }));
+    fireEvent.click(screen.getByRole("button", { name: "取り込む" }));
     await screen.findByRole("button", { name: /SYK001\.cbl/ });
     expect(runScan).toHaveBeenCalledTimes(1);
     expect(runScan.mock.calls[0][0].inputDir).toBe(SELECTED_DIR);
   });
 
-  it("インポートをキャンセルしたら入力フォルダを変えず、解析も始めない", async () => {
+  it("取込をキャンセルしたら入力フォルダを変えず、解析も始めない", async () => {
     selectInputFolder.mockResolvedValue(null);
     renderExplorer();
-    fireEvent.click(screen.getByRole("button", { name: "インポート" }));
+    fireEvent.click(screen.getByRole("button", { name: "取り込む" }));
     await waitFor(() => expect(selectInputFolder).toHaveBeenCalledTimes(1));
     expect(screen.getByRole("button", { name: "解析実行" })).toBeDisabled();
     expect(runScan).not.toHaveBeenCalled();
   });
 
-  it("解析実行で scan・lint・sql-advise を順に起動し資産一覧を表示する(ゲート経路)", async () => {
+  it("解析実行で scan・lint・sql-lint を順に起動し資産一覧を表示する(ゲート経路)", async () => {
     renderExplorer();
     await importAndRun();
 
     expect(runScan).toHaveBeenCalledTimes(1);
     expect(runScan.mock.calls[0][0]).toMatchObject({ inputDir: SELECTED_DIR, codepageOverrides: {} });
     expect(readAssetInventory).toHaveBeenCalledWith("proj.db");
-    await waitFor(() => expect(runSqlAdvise).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(runSqlLint).toHaveBeenCalledTimes(1));
     expect(runLint).toHaveBeenCalledTimes(1);
     expect(runLint.mock.calls[0][0]).toMatchObject({ inputDir: SELECTED_DIR, disabledRules: [] });
     expect(readSarif).toHaveBeenCalledWith("lint.sarif");
@@ -206,17 +206,17 @@ describe("ExplorerScreen(資産エクスプローラー container)", () => {
 
     expect(screen.getByRole("button", { name: /SYKMAP1\.bms/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /SYKD010\.jcl/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /cobol/ })).toHaveTextContent("3 ファイル");
+    expect(screen.getByRole("button", { name: /cobol/ })).toHaveTextContent("3 件");
   });
 
-  it("実行中は解析段の進行(scan→lint→sql-advise)を実際の起動に合わせて強調する", async () => {
+  it("実行中は解析段の進行(scan→lint→sql-lint)を実際の起動に合わせて強調する", async () => {
     // 各段の完了をテストから制御し、強調が段の進行に追従することを観測する。
     const pending: Array<() => void> = [];
     const hold = (result: EngineResult) => () =>
       new Promise<EngineResult>((resolve) => pending.push(() => resolve(result)));
     runScan.mockImplementation(hold(scanResult));
     runLint.mockImplementation(hold(lintResult));
-    runSqlAdvise.mockImplementation(hold(sqlResult));
+    runSqlLint.mockImplementation(hold(sqlResult));
 
     renderExplorer();
     await importFolder();
@@ -236,7 +236,7 @@ describe("ExplorerScreen(資産エクスプローラー container)", () => {
     expect(stageOf("第1段 資産の走査と構文解析")).not.toHaveAttribute("aria-current");
 
     await releaseStage();
-    await waitFor(() => expect(stageOf("第3段 SQL助言")).toHaveAttribute("aria-current", "step"));
+    await waitFor(() => expect(stageOf("第3段 SQL指摘")).toHaveAttribute("aria-current", "step"));
 
     await releaseStage();
     await screen.findByRole("button", { name: /SYK001\.cbl/ });
@@ -270,12 +270,12 @@ describe("ExplorerScreen(資産エクスプローラー container)", () => {
     expect(within(row2).queryByText("4")).toBeNull();
   });
 
-  it("ステータスバーは解析後に資産・指摘・SQL助言の実件数を示す", async () => {
+  it("ステータスバーは解析後に資産・指摘・SQL指摘の実件数を示す", async () => {
     renderApp();
     await importAndRun();
     await waitFor(() =>
       expect(screen.getByTestId("status")).toHaveTextContent(
-        "資産 6 ・ 指摘 10 ・ SQL助言 6 ・ ルール 37 有効 ・ v1.0.0",
+        "資産 6 ・ 指摘 10 ・ SQL指摘 6 ・ ルール 37 有効 ・ v1.0.0",
       ),
     );
   });
@@ -406,7 +406,7 @@ describe("ExplorerScreen(資産エクスプローラー container)", () => {
     renderExplorer();
     await importFolder();
     await waitFor(() =>
-      expect(screen.getByRole("alert")).toHaveTextContent("解析結果の保存先を engine から受け取れなかった"),
+      expect(screen.getByRole("alert")).toHaveTextContent("解析結果の保存先を解析エンジンから受け取れなかった"),
     );
     expect(readAssetInventory).not.toHaveBeenCalled();
   });
@@ -440,12 +440,12 @@ describe("ExplorerScreen(資産エクスプローラー container)", () => {
   it("成果物の位置を main から受け取り、各段へ絶対パスで指定する", async () => {
     renderExplorer();
     await importAndRun();
-    await waitFor(() => expect(runSqlAdvise).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(runSqlLint).toHaveBeenCalledTimes(1));
     expect(runScan.mock.calls[0][0].db).toBe(OUTPUT_PATHS.db);
     expect(runScan.mock.calls[0][0].copyExpansion).toBe(OUTPUT_PATHS.copyExpansion);
     expect(runLint.mock.calls[0][0].sarifFile).toBe(OUTPUT_PATHS.lintSarif);
     // lint と別名にする。同名だと後段が前段の SARIF を上書きする。
-    expect(runSqlAdvise.mock.calls[0][0].sarifFile).toBe(OUTPUT_PATHS.sqlAdviseSarif);
+    expect(runSqlLint.mock.calls[0][0].sarifFile).toBe(OUTPUT_PATHS.sqlAdviseSarif);
   });
 
   it("取りこぼしが無ければ警告を出さない", async () => {
@@ -455,12 +455,12 @@ describe("ExplorerScreen(資産エクスプローラー container)", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
-  it("設定で無効化したルールを lint と sql-advise の両方へ渡す", async () => {
+  it("設定で無効化したルールを lint と sql-lint の両方へ渡す", async () => {
     renderExplorer(seedState({ rulesDisabled: { S001: true, R009: true } }));
     await importAndRun();
-    await waitFor(() => expect(runSqlAdvise).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(runSqlLint).toHaveBeenCalledTimes(1));
     expect(runLint.mock.calls[0][0].disabledRules).toEqual(["R009", "S001"]);
-    expect(runSqlAdvise.mock.calls[0][0].disabledRules).toEqual(["R009", "S001"]);
+    expect(runSqlLint.mock.calls[0][0].disabledRules).toEqual(["R009", "S001"]);
   });
 
   it("既定の文字コードは検出に失敗した資産の選択欄とプレビューの初期値になる", async () => {

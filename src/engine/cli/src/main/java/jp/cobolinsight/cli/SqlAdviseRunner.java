@@ -33,8 +33,8 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * `sql-advise` の中核処理。資産フォルダのCOBOLを復号・パースし、埋め込みSQLを SqlParser SPI で
- * SQL文モデルへ変換して {@link AnalysisContext#sqlStatements()} に供給したうえで、SQL助言
+ * `sql-lint` の中核処理。資産フォルダのCOBOLを復号・パースし、埋め込みSQLを SqlParser SPI で
+ * SQL文モデルへ変換して {@link AnalysisContext#sqlStatements()} に供給したうえで、SQL指摘
  * (id が "S" で始まる構文段階のルール)のみを実行して findings を返す。復号失敗・
  * COBOLパース失敗も errorレベルの finding として合流させる。出力は決定論とする: findings は
  * (ファイル・行・桁・ルールID・メッセージ)の昇順に正規化し、位置のファイルは入力フォルダからの
@@ -147,7 +147,7 @@ public final class SqlAdviseRunner {
 
         AnalysisContext context = AnalysisContext.of(models, List.of(), sqlStatements, List.of(),
                 Optional.empty(), Map.of());
-        // sql-advise は SQL助言(id が "S")のみを実行し、バグ検出(id が "R")は lint が担う。
+        // sql-lint は SQL指摘(id が "S")のみを実行し、バグ検出(id が "R")は lint が担う。
         List<Rule> activeRules = services.rules(AnalysisPhase.SYNTAX).stream()
                 .filter(rule -> rule.id().startsWith("S"))
                 .filter(rule -> !options.disabledRuleIds().contains(rule.id()))
@@ -167,7 +167,7 @@ public final class SqlAdviseRunner {
 
     /**
      * 埋め込みSQLブロックを SqlParser SPI で SQL文モデルへ変換して集める。解析できないブロックは
-     * 助言対象から外す。
+     * 指摘の対象から外す。
      */
     private static void collectSqlStatements(CobolSemanticModel model, SqlParser sqlParser,
             List<SqlStatementModel> sqlStatements) {

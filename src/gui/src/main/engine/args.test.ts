@@ -66,9 +66,9 @@ describe("buildEngineArgs", () => {
     ]);
   });
 
-  it("callgraph は各出力先オプションを付与する", () => {
+  it("call-graph は各出力先オプションを付与する", () => {
     const inv: EngineInvocation = {
-      subcommand: "callgraph",
+      subcommand: "call-graph",
       request: {
         inputDir: "assets",
         db: "p.db",
@@ -77,7 +77,7 @@ describe("buildEngineArgs", () => {
       },
     };
     expect(buildEngineArgs(inv)).toEqual([
-      "callgraph",
+      "call-graph",
       "assets",
       "--db",
       "p.db",
@@ -109,13 +109,13 @@ describe("buildEngineArgs", () => {
     ]);
   });
 
-  it("sql-advise は lint と同じ形で --sarif を組み立てる", () => {
+  it("sql-lint は lint と同じ形で --sarif を組み立てる", () => {
     const inv: EngineInvocation = {
-      subcommand: "sql-advise",
+      subcommand: "sql-lint",
       request: { inputDir: "assets", sarifFile: "out/sql.sarif" },
     };
     expect(buildEngineArgs(inv)).toEqual([
-      "sql-advise",
+      "sql-lint",
       "assets",
       "--sarif",
       "out/sql.sarif",
@@ -144,13 +144,13 @@ describe("buildEngineArgs", () => {
     ]);
   });
 
-  it("transpile は --language と --out を組み立てる", () => {
+  it("translate は --language と --out を組み立てる", () => {
     const inv: EngineInvocation = {
-      subcommand: "transpile",
+      subcommand: "translate",
       request: { inputDir: "assets", db: "p.db", language: "python", outDir: "out/tp" },
     };
     expect(buildEngineArgs(inv)).toEqual([
-      "transpile",
+      "translate",
       "assets",
       "--db",
       "p.db",
@@ -195,7 +195,7 @@ describe("buildEngineArgs", () => {
 describe("collectRequestedOutputs", () => {
   it("指定した出力先だけを解決済みパスとして拾う", () => {
     const inv: EngineInvocation = {
-      subcommand: "callgraph",
+      subcommand: "call-graph",
       request: { inputDir: "assets", db: "p.db", jsonFile: "out/cg.json", svgFile: "out/cg.svg" },
     };
     expect(collectRequestedOutputs(inv)).toEqual({

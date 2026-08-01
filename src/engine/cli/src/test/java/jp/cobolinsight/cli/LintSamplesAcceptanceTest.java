@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * (未使用変数)・R008(THRUなし単独段落PERFORM)、制御フロー段階のR007/R011/R017/R018/R021/R022/R031、
  * データフロー段階のR001/R003/R004/R005(期待結果.md No.1/2/3/5/9/13/14)の検出と、samplesがERRORレベルの検出を
  * 含むため終了コードが2であることを確認する。lint は rule id が "R" で始まるルールのみを実行し、
- * SQL助言(S接頭辞)を除外する。R017は path-sensitive な忠実実装のため付随検出を許容し、
+ * SQL指摘(S接頭辞)を除外する。R017は path-sensitive な忠実実装のため付随検出を許容し、
  * 必須2件の包含とOPEN/CLOSE非検出のみを表明する。
  *
  * <p>正解の出所は samples/期待結果.md(12種別18件)。この18件は「意図的に混入した欠陥15件」と
@@ -120,9 +120,9 @@ class LintSamplesAcceptanceTest {
     @Test
     void lintRunsOnlyRPrefixedRulesAndExcludesSqlAdviceRules() {
         assertTrue(result.findings().stream().noneMatch(f -> f.ruleId().startsWith("S")),
-                "lintの検出にSQL助言(S接頭辞)が混じらないこと");
+                "lintの検出にSQL指摘(S接頭辞)が混じらないこと");
         assertFalse(result.sarifJson().contains("\"id\":\"S"),
-                "lintのSARIF driver.rules にS接頭辞のSQL助言ルールが載らないこと");
+                "lintのSARIF driver.rules にS接頭辞のSQL指摘ルールが載らないこと");
     }
 
     @Test

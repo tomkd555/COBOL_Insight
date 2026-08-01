@@ -16,11 +16,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * samples/ 全体の sql-advise 受入回帰テスト。埋め込みSQLを SqlParser SPI で SQL文モデルへ変換し、
- * SQL助言(id が "S" のルール)のみを実行して、次のとおりに検出することを突合する。
+ * samples/ 全体の sql-lint 受入回帰テスト。埋め込みSQLを SqlParser SPI で SQL文モデルへ変換し、
+ * SQL指摘(id が "S" のルール)のみを実行して、次のとおりに検出することを突合する。
  * SYK006 は S004・S006 をカーソル宣言行(145)で、S005 を SELECT INTO(96)とカーソル宣言(145)で
  * 検出し、SYK007 は S005 を SELECT INTO(69)で検出する。S001〜S003 は samples に該当構文が無いため
- * 陰性である。SQL助言の最上位は S004(中→警告)のため終了コードは1になる。
+ * 陰性である。SQL指摘の最上位は S004(中→警告)のため終了コードは1になる。
  */
 class SqlAdviseSamplesAcceptanceTest {
 
@@ -54,13 +54,13 @@ class SqlAdviseSamplesAcceptanceTest {
     @Test
     void onlySqlAdviceRulesRunAndNoBugDetectionRulesLeak() {
         assertTrue(result.findings().stream().allMatch(f -> f.ruleId().startsWith("S")),
-                "sql-advise の検出は全て SQL助言(S接頭辞)であること: " + result.findings());
+                "sql-lint の検出は全て SQL指摘(S接頭辞)であること: " + result.findings());
         assertTrue(result.findings().stream().noneMatch(f -> f.ruleId().startsWith("R")),
                 "バグ検出(R接頭辞)が混じらないこと");
         assertTrue(result.sarifJson().contains("\"id\":\"S001\""),
-                "sql-advise の SARIF driver.rules に S接頭辞のルールが載ること");
+                "sql-lint の SARIF driver.rules に S接頭辞のルールが載ること");
         assertTrue(!result.sarifJson().contains("\"id\":\"R"),
-                "sql-advise の SARIF driver.rules に R接頭辞のルールが載らないこと");
+                "sql-lint の SARIF driver.rules に R接頭辞のルールが載らないこと");
     }
 
     @Test
@@ -98,7 +98,7 @@ class SqlAdviseSamplesAcceptanceTest {
     @Test
     void exitCodeIsWarningsBecauseHighestAdviceLevelIsWarning() {
         assertEquals(0, result.countByLevel(FindingLevel.ERROR),
-                "samples の SQL助言に error レベル(S002/S003)は無いこと");
+                "samples の SQL指摘に error レベル(S002/S003)は無いこと");
         assertTrue(result.countByLevel(FindingLevel.WARNING) > 0, "S004(警告)を含むこと");
         assertEquals(1, result.exitCode(), "警告あり=1で分岐すること");
     }

@@ -131,7 +131,7 @@ export function UserRuleForm({
       </label>
       <p className="ci-settings__note">
         1 行ずつ当てる。既定では注記行を除き、8〜72 桁の範囲だけを見る。
-        解析を実行したときの判定は解析エンジン（Java の正規表現）が行うため、
+        この場でのお試しは画面上の簡易判定であり、解析実行時の判定は解析エンジンが行うため、
         後方参照や先読みの細部でこの試験結果と異なることがある。
       </p>
 
@@ -177,6 +177,8 @@ export function UserRuleForm({
       </label>
       <p className="ci-settings__note">
         メッセージに <code>{"${match}"}</code> と書くと、一致した文字列へ置き換わる。
+        例えば「不正な値: <code>{"${match}"}</code>」と書き、正規表現が <code>ABC123</code> に一致すると、
+        指摘には「不正な値: ABC123」と表示される。
       </p>
 
       <label className="ci-field">

@@ -93,7 +93,7 @@ export function ImportScreen(): ReactElement {
       dispatch({ type: "SET_IMPORT", patch: { importText: "", importFileName: "" } });
       dispatch({
         type: "SHOW_TOAST",
-        message: `${result.relPath} へ ${result.lineCount} 行を保存しました。資産エクスプローラーの「▶ 解析実行」で解析へ反映します。`,
+        message: `${result.relPath} へ ${result.lineCount} 行を保存しました。資産一覧の「▶ 解析実行」で解析へ反映します。`,
       });
     } catch (error) {
       setStatus({ kind: "error", message: messageOf(error) });

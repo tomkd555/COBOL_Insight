@@ -15,7 +15,7 @@ import java.util.List;
  * @param hostVariables    ホスト変数の対応(原データ名を含む)
  * @param intoTargets      INTO 句のホスト変数の原データ名(SELECT INTO・FETCH)
  * @param mangledSql       マングリング済みSQLテキスト。マングリング不能時は null
- * @param structureSignals SQL助言(S001〜S006)が読む構文レベルの構造シグナル
+ * @param structureSignals SQL指摘(S001〜S006)が読む構文レベルの構造シグナル
  */
 public record SqlAnalysisResult(
         AnalysisStatus status,

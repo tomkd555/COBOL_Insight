@@ -112,12 +112,12 @@ describe("runEngine", () => {
     expect(result.exitCode).toBe(2);
   });
 
-  it("サマリ JSON が無い(callgraph ファイル出力)なら summary は null", async () => {
+  it("サマリ JSON が無い(call-graph ファイル出力)なら summary は null", async () => {
     const { spawn } = fakeSpawn({ stdout: "logback only, no json", code: 0 });
     const result = await runEngine(
       { spawn },
       launch,
-      { subcommand: "callgraph", request: { inputDir: "assets", jsonFile: "out/cg.json" } },
+      { subcommand: "call-graph", request: { inputDir: "assets", jsonFile: "out/cg.json" } },
     );
     expect(result.summary).toBeNull();
     expect(result.outputs.json).toBe("out/cg.json");

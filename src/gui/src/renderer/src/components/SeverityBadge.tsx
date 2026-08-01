@@ -3,7 +3,7 @@ import { SEVERITY_META, type Severity } from "./severity";
 
 export interface SeverityBadgeProps {
   severity: Severity;
-  /** ラベル(高/中/低/警告)を記号の右に表示するか。既定は表示する。 */
+  /** ラベル(高/中/低/推奨)を記号の右に表示するか。既定は表示する。 */
   showLabel?: boolean;
   className?: string;
 }

@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * transpile サブコマンドの picocli 配線・生成ファイル出力・LINE_MAP 永続化・決定論・言語選択・
+ * translate サブコマンドの picocli 配線・生成ファイル出力・LINE_MAP 永続化・決定論・言語選択・
  * 終了コードを、samples/ を対象に end-to-end で検証する。
  */
 class TranspileCommandTest {
@@ -34,7 +34,7 @@ class TranspileCommandTest {
 
     private int transpile(Path out, Path db, String... extra) {
         java.util.List<String> args = new java.util.ArrayList<>(List.of(
-                "transpile", SAMPLES.toString(), "--out", out.toString(), "--db", db.toString()));
+                "translate", SAMPLES.toString(), "--out", out.toString(), "--db", db.toString()));
         args.addAll(List.of(extra));
         return new CommandLine(new Main()).execute(args.toArray(new String[0]));
     }

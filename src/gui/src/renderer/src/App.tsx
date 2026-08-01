@@ -25,7 +25,7 @@ function assetFolderName(path: string): string {
 /**
  * タイトルバーの実行中表示へ渡す対象・段の文言。engine の起動は IPC の invoke/handle が1回きりの
  * 応答を返すだけで、main はファイル単位の進捗を持たない。取得できる範囲、すなわち解析対象の
- * 資産フォルダ名と現在の実行段(scan/lint/sql-advise)だけを示し、取得できないファイル単位の
+ * 資産フォルダ名と現在の実行段(scan/lint/sql-lint)だけを示し、取得できないファイル単位の
  * 件数は表示しない。
  */
 function deriveRunningLabel(state: AppState): string | undefined {

@@ -17,7 +17,7 @@ export interface ScreenMeta {
 export const SCREEN_META: Record<ScreenId, ScreenMeta> = {
   explorer: {
     id: "explorer",
-    label: "資産エクスプローラー",
+    label: "資産一覧",
     runningTitle: "資産を解析しています…",
   },
   import: {
@@ -42,7 +42,7 @@ export const SCREEN_META: Record<ScreenId, ScreenMeta> = {
   },
   sql: {
     id: "sql",
-    label: "SQL助言",
+    label: "SQL指摘",
     runningTitle: "SQL を解析しています…",
   },
   diff: {

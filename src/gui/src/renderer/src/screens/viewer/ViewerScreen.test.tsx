@@ -174,7 +174,7 @@ function textResult(text: string, overrides: Partial<SourceTextResult> = {}): So
 
 function transpileResult(): EngineResult {
   return {
-    subcommand: "transpile",
+    subcommand: "translate",
     exitCode: 0,
     summary: null,
     stdout: "",
@@ -297,15 +297,15 @@ describe("ViewerScreen(ソースビューア)の4状態", () => {
     expect(readSourceText).not.toHaveBeenCalled();
   });
 
-  it("資産フォルダが未確定なら資産エクスプローラーへ誘導する", () => {
+  it("資産フォルダが未確定なら資産一覧へ誘導する", () => {
     renderViewer(analyzedState({ project: { inputDir: null, dbPath: null, copybookPaths: [] } }));
     expect(screen.getByRole("region", { name: "資産フォルダが選ばれていません" })).toBeInTheDocument();
   });
 
-  it("ファイル未選択ではジャンプで開く画面である旨を示し、選択肢は出す", () => {
+  it("資産未選択ではジャンプで開く画面である旨を示し、選択肢は出す", () => {
     renderViewer(analyzedState({ sourceFile: "" }));
-    expect(screen.getByRole("region", { name: "ファイルが選択されていません" })).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "表示するファイル" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "資産が選択されていません" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "表示する資産" })).toBeInTheDocument();
     expect(readSourceText).not.toHaveBeenCalled();
   });
 
@@ -353,7 +353,7 @@ describe("ViewerScreen(ソースビューア)の4状態", () => {
 });
 
 describe("ViewerScreen の逐語対訳", () => {
-  it("対応表が空なら transpile を起動して生成し、読み直す", async () => {
+  it("対応表が空なら translate を起動して生成し、読み直す", async () => {
     readTranspileArtifacts
       .mockResolvedValueOnce({ files: [], lineMap: [] })
       .mockResolvedValue({ files: SAMPLE_GENERATED_FILES, lineMap: SAMPLE_LINE_MAP });
@@ -431,7 +431,7 @@ describe("ViewerScreen の逐語対訳", () => {
     await waitFor(() => expect(editorOf("python").value).toContain("Syk1Rec"));
   });
 
-  it("逐語対訳の対象でない資産では対象外である旨を示し、transpile を起動しない", async () => {
+  it("逐語対訳の対象でない資産では対象外である旨を示し、translate を起動しない", async () => {
     renderViewer(analyzedState({ sourceFile: "jcl/SYKD010.jcl" }));
     expect(
       await screen.findByRole("region", { name: "この資産は逐語対訳の対象ではありません" }),
@@ -576,7 +576,7 @@ describe("ViewerScreen の指摘ハイライト", () => {
     expect(legend).toHaveTextContent("●高");
     expect(legend).toHaveTextContent("◆中");
     expect(legend).toHaveTextContent("■低");
-    expect(legend).toHaveTextContent("▲警告");
+    expect(legend).toHaveTextContent("▲推奨");
   });
 
   it("指摘が無ければ指摘の装飾を出さない", async () => {
@@ -677,7 +677,7 @@ describe("ViewerScreen のペイン幅", () => {
     renderViewer(analyzedState());
     await waitForPanes();
     fireEvent.keyDown(screen.getByRole("separator", { name: "逐語対訳ペインの幅" }), { key: "End" });
-    fireEvent.change(screen.getByLabelText("表示するファイル"), {
+    fireEvent.change(screen.getByLabelText("表示する資産"), {
       target: { value: SAMPLE_INVENTORY[0].path },
     });
     await waitFor(() => expect(translationWidth()).toBe(`${SPLIT_PANES.viewerTranslation.max}px`));
@@ -725,7 +725,7 @@ describe("ViewerScreen のジャンプ受領", () => {
   it("ファイル選択を変えると、その資産の本文を読み直す", async () => {
     renderViewer(analyzedState());
     await waitForPanes();
-    fireEvent.change(screen.getByRole("combobox", { name: "表示するファイル" }), {
+    fireEvent.change(screen.getByRole("combobox", { name: "表示する資産" }), {
       target: { value: "cobol/SYK002.cbl" },
     });
     await waitFor(() =>

@@ -33,9 +33,9 @@ describe("findingsView(共有一覧のビューモデル)", () => {
     expect(opts[1].label).toBe("R001 未初期化変数の参照");
   });
 
-  it("ファイル選択肢は出現ファイルを昇順に並べ先頭へ「すべて」を置く", () => {
+  it("資産選択肢は出現する資産を昇順に並べ先頭へ「すべて」を置く", () => {
     const opts = fileOptions(SAMPLE_FINDINGS);
-    expect(opts[0]).toEqual({ value: ALL, label: "ファイル: すべて" });
+    expect(opts[0]).toEqual({ value: ALL, label: "資産: すべて" });
     expect(opts.map((o) => o.value)).toEqual([
       ALL, "cobol/SYK001.cbl", "cobol/SYK002.cbl", "cobol/SYK003.cbl",
       "cobol/SYK004.cbl", "cobol/SYK006.cbl", "cobol/SYK007.cbl", "cobol/SYK009.cbl",
@@ -150,7 +150,7 @@ describe("findingsView(共有一覧のビューモデル)", () => {
   it("空配列は行 0 件・件数 0 件の要約になる", () => {
     expect(filterAndSortFindings([], initialFindingFilters)).toEqual([]);
     expect(severityCounts([])).toEqual({ high: 0, medium: 0, low: 0, warning: 0 });
-    expect(summaryText([], 0)).toBe("0 件（高 0 / 中 0 / 低 0 / 警告 0）― 表示 0 件");
+    expect(summaryText([], 0)).toBe("0 件（高 0 / 中 0 / 低 0 / 推奨 0）― 表示 0 件");
   });
 
   it("カタログに無いルール ID(engine の解析エラー)も重大度 高として扱い、フィルタで残す", () => {
@@ -215,7 +215,7 @@ describe("findingsView(共有一覧のビューモデル)", () => {
   it("要約文は全件・重大度内訳・表示件数を示す", () => {
     const rows = filterAndSortFindings(SAMPLE_FINDINGS, initialFindingFilters);
     expect(summaryText(SAMPLE_FINDINGS, rows.length)).toBe(
-      "10 件（高 5 / 中 3 / 低 1 / 警告 1）― 表示 10 件",
+      "10 件（高 5 / 中 3 / 低 1 / 推奨 1）― 表示 10 件",
     );
   });
 });

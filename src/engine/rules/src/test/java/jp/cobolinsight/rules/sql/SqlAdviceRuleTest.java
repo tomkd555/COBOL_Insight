@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * SQL助言6ルール(S001〜S006)の検出。S001〜S003 が陽性になる文は samples に無いため、合成SQLで
+ * SQL指摘6ルール(S001〜S006)の検出。S001〜S003 が陽性になる文は samples に無いため、合成SQLで
  * 検証する。S004 と S006 は samples SYK006 のカーソル宣言 DECLARE SYKZAIKOCUR で陽性になり、
  * S005 は文の種別だけで判定するため該当する全ての文へ発火する。SqlStatementModel は本番と同じ
  * SqlParser SPI で組む({@link SqlAdviceFixtures})。

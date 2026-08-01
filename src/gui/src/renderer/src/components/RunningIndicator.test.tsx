@@ -3,12 +3,12 @@ import { describe, it, expect } from "vitest";
 import { RunningIndicator, RUN_STAGES } from "./RunningIndicator";
 
 describe("RunningIndicator", () => {
-  it("既定で解析実行の3段(scan→lint→sql-advise)の進行を提示する", () => {
+  it("既定で解析実行の3段(scan→lint→sql-lint)の進行を提示する", () => {
     render(<RunningIndicator />);
     expect(RUN_STAGES).toEqual([
       "第1段 資産の走査と構文解析",
       "第2段 指摘の検出",
-      "第3段 SQL助言",
+      "第3段 SQL指摘",
     ]);
     RUN_STAGES.forEach((label) => {
       expect(screen.getByText(label)).toBeInTheDocument();

@@ -12,11 +12,11 @@ import java.nio.file.Path;
 import java.util.concurrent.Callable;
 
 /**
- * `callgraph` サブコマンド。資産フォルダを解析して呼出関係グラフを構築し、SQLiteの
+ * `call-graph` サブコマンド。資産フォルダを解析して呼出関係グラフを構築し、SQLiteの
  * NODE・CALL_EDGE表へ保存したうえで、単一グラフモデルをJSON/DOTで出力する。SVG/PNGは
  * graphviz-java(JVM内)で生成する。出力先の指定が無い場合はJSONを標準出力へ書く。
  */
-@Command(name = "callgraph", mixinStandardHelpOptions = true,
+@Command(name = "call-graph", mixinStandardHelpOptions = true,
         description = "呼出関係グラフを構築してSQLiteへ保存し、JSON/DOT/SVG/PNGで出力する")
 public final class CallGraphCommand implements Callable<Integer> {
 
