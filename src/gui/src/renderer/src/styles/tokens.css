@@ -1,0 +1,168 @@
+/*
+ * デザイントークン。design/COBOL Insight.dc.html のインライン style 値を :root の
+ * CSS カスタムプロパティへ集中管理する。配色・境界・重大度色・タイポグラフィ・間隔・
+ * 寸法をここで一元管理し、各コンポーネントは値を直書きせずトークンを参照する。
+ */
+
+:root {
+  /* 基本配色 */
+  --ci-bg: #eceef1;
+  --ci-panel: #ffffff;
+  --ci-surface-alt: #f3f4f6;
+  --ci-surface-header: #f6f7f9;
+  --ci-surface-soft: #fbfcfd;
+
+  /* アクセント青と選択・情報の派生色 */
+  --ci-accent: #005fb8;
+  --ci-accent-hover: #096cc6;
+  --ci-accent-strong: #084b85;
+  --ci-select-tint: #e4f0fb;
+  --ci-select-tint-soft: #eff6fd;
+  --ci-select-border: #7fb3e3;
+  /* 選択行の左端に出す帯。地色(1.16)・枠線(2.22)だけでは 3:1 に届かないため、
+     非テキスト要素の 3:1 を満たすこの帯で選択位置を示す */
+  --ci-select-bar: var(--ci-accent);
+  --ci-info-bg: #eff6fd;
+  --ci-info-border: #bdd8f0;
+  --ci-info-text: #0b4e8f;
+
+  /* 境界 */
+  --ci-border: #d9dde3;
+  --ci-border-strong: #c9cfd6;
+  --ci-border-soft: #e4e7eb;
+  /* 入力欄をポインタで指したときの境界。非テキスト要素の 3:1 を白地で満たす濃さにする */
+  --ci-border-hover: #8593a3;
+  /* 入力値を受け付けない状態の境界 */
+  --ci-invalid-border: var(--ci-sev-high);
+
+  /* 文字色 */
+  --ci-text: #1f2328;
+  --ci-text-secondary: #5f6b7a;
+  --ci-text-muted: #5c6670;
+  --ci-text-subtle: #626c79;
+  --ci-text-inverse: #ffffff;
+  --ci-tab-text: #454c55;
+  --ci-text-heading: #3a4149;
+  /* 無効化した検出ルールの名称。補助テキストと同じ薄さでは機能的な意味を伝えられないため一段濃くする */
+  --ci-rule-off-text: var(--ci-text-secondary);
+
+  /* 重大度(色 + 記号の二重符号化。記号は severity.ts が持つ) */
+  --ci-sev-high: #c50f1f;
+  --ci-sev-medium: #a75500;
+  --ci-sev-low: #005fb8;
+  --ci-sev-warning: #5f6b7a;
+
+  /* 重大度の淡い地色(ソースビューアで指摘のある行に敷く) */
+  --ci-sev-high-tint: #fdecea;
+  --ci-sev-medium-tint: #fbeee0;
+  --ci-sev-low-tint: #e4f0fb;
+  --ci-sev-warning-tint: #eef0f3;
+
+  /* 意味色(エラー・成功・注意) */
+  --ci-error-bg: #fdecea;
+  --ci-error-border: #e7b4ae;
+  --ci-error-text: #7a1c13;
+  --ci-success: #2f6d45;
+  --ci-caution: #83681e;
+  --ci-caution-bg: #f5efe0;
+
+  /* 資産種別バッジ(design tyMeta) */
+  --ci-type-jcl-bg: #e4f0fb;
+  --ci-type-jcl-text: #0b5394;
+  --ci-type-cobol-bg: #eaf2ea;
+  --ci-type-cobol-text: #2f6d45;
+  --ci-type-copybook-bg: #f5efe0;
+  --ci-type-copybook-text: #83681e;
+  --ci-type-bms-bg: #fbeee0;
+  --ci-type-bms-text: #a05c1f;
+  --ci-type-other-bg: #f0eaf7;
+  --ci-type-other-text: #6a4e9c;
+
+  /* ステータスバー */
+  --ci-statusbar-bg: var(--ci-accent);
+  --ci-statusbar-text: #dcebfa;
+
+  /* 進捗バー(縞アニメの2色) */
+  --ci-progress-a: #3e8fd6;
+  --ci-progress-b: #7fb3e3;
+
+  /* トースト */
+  --ci-toast-bg: #2b3138;
+  --ci-toast-text: #f2f5f8;
+  --ci-toast-close-hover-bg: rgba(255, 255, 255, 0.15);
+  --ci-shadow-toast: 0 4px 14px rgba(0, 0, 0, 0.25);
+
+  /* コード表示の行装飾(相互ハイライト・ジャンプ先・注記行の枠) */
+  --ci-line-linked-bg: #fff3d0;
+  --ci-line-linked-border: #e3ce8e;
+  --ci-line-focus-bg: #cbe3fa;
+  --ci-caution-border: #e0d3a8;
+
+  /* 固定形式の欄見出しの地色(一連番号欄・識別欄) */
+  --ci-surface-column: #eef0f3;
+
+  /* コピー句展開(取り込み元の本文であることを地色で分ける) */
+  --ci-copy-bg: #f5f9f1;
+  --ci-copy-border: #cfe0c4;
+  --ci-copy-title: #4a6b37;
+  --ci-copy-text: #33512b;
+  --ci-copy-meta: #5f784b;
+
+  /* タイポグラフィ */
+  --ci-font-ui: "BIZ UDPGothic", "Yu Gothic UI", "Meiryo", sans-serif;
+  --ci-font-code: "BIZ UDGothic", "MS Gothic", monospace;
+  --ci-fs-xs: 11px;
+  --ci-fs-sm: 12px;
+  --ci-fs-md: 13px;
+  --ci-fs-lg: 14px;
+  --ci-fs-base: var(--ci-fs-md);
+
+  /*
+   * 補助的な字送り(小見出し・注記・タグ・桁の欄見出し)。
+   * 折り返す日本語の文章は --ci-fs-xs(11px) を下限とする。漢字は同じ級数のラテン文字より
+   * 画数が多く、これより小さくすると字画がつぶれる。10px 以下は折り返さない短い語と、
+   * 桁位置をそろえる欄見出しにだけ用いる。
+   */
+  --ci-fs-pane-title: 11.5px;
+  --ci-fs-detail-title: 12.5px;
+  --ci-fs-note: 10px;
+  --ci-fs-tag: 9.5px;
+  --ci-fs-ruler: 9px;
+
+  /* 角丸 */
+  --ci-radius-sm: 4px;
+  --ci-radius-md: 5px;
+  --ci-radius-lg: 6px;
+  --ci-radius-pill: 10px;
+  --ci-radius-badge: 8px;
+
+  /* 間隔 */
+  --ci-space-1: 4px;
+  --ci-space-2: 8px;
+  --ci-space-3: 12px;
+  --ci-space-4: 14px;
+  --ci-space-5: 18px;
+  --ci-space-6: 20px;
+  --ci-space-7: 22px;
+  --ci-space-8: 26px;
+  --ci-space-9: 30px;
+
+  /* 影 */
+  --ci-shadow-sm: 0 1px 2px rgb(0 0 0 / 25%);
+
+  /* 分割ハンドル(隣り合うペインの境界)の寸法 */
+  --ci-split-w: 6px;
+  --ci-split-grip-w: 2px;
+  --ci-split-grip-h: 28px;
+
+  /* シェルの固定寸法 */
+  --ci-titlebar-h: 44px;
+  --ci-statusbar-h: 24px;
+  --ci-progress-h: 4px;
+  /* シェルの想定最小幅。main が開くウィンドウの最小幅と同じ値で、各画面の固定幅の枠はこの幅を
+     前提に組む。ビューポートがこれに満たないとき(ページ拡大時)は Shell.css が下限を解く */
+  --ci-min-width: 1280px;
+
+  /* フォーカスリング */
+  --ci-focus-ring: var(--ci-accent);
+}

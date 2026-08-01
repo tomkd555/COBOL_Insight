@@ -1,0 +1,73 @@
+{
+  "name": "cobol-insight-gui",
+  "version": "0.1.0",
+  "private": true,
+  "description": "COBOL Insight の Electron GUI(electron-vite + React、ネットワーク非接続・全依存ローカル同梱)",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "typecheck": "tsc -b",
+    "start": "electron-vite build && electron-vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "smoke:render": "electron-vite build && electron smoke/render.cjs",
+    "dist": "electron-vite build && electron-builder"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "sql.js": "^1.12.0"
+  },
+  "devDependencies": {
+    "7zip-bin": "^5.2.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/cytoscape": "3.21.9",
+    "@types/node": "^24.0.0",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@types/sql.js": "^1.4.11",
+    "@vitejs/plugin-react": "^4.7.0",
+    "cytoscape": "3.34.0",
+    "cytoscape-elk": "2.3.0",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.0",
+    "electron-vite": "^2.3.0",
+    "elkjs": "0.12.0",
+    "jsdom": "^25.0.1",
+    "monaco-editor": "0.56.0",
+    "typescript": "^5.6.0",
+    "vite": "^5.4.21",
+    "vitest": "^2.1.9"
+  },
+  "build": {
+    "appId": "jp.cobolinsight.gui",
+    "productName": "COBOL Insight",
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/sql.js/dist/sql-wasm.wasm"
+    ],
+    "extraResources": [
+      {
+        "from": "../engine/cli/build/jpackage/app-image/COBOLInsight",
+        "to": "engine",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "directories": {
+      "output": "../../release"
+    },
+    "win": {
+      "target": "dir",
+      "signAndEditExecutable": false
+    },
+    "afterAllArtifactBuild": "./scripts/stage-release.cjs"
+  }
+}
