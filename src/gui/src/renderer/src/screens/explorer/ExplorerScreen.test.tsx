@@ -334,7 +334,6 @@ describe("ExplorerScreen(資産一覧 container)", () => {
         path: "cobol/SYK001.cbl",
         // 検出コードページは engine の charset 名(windows-31j)をそのまま main へ渡す。
         codepage: "windows-31j",
-        maxLines: 5,
       }),
     );
     expect(await screen.findByText("001000 IDENTIFICATION DIVISION.")).toBeInTheDocument();
@@ -360,7 +359,6 @@ describe("ExplorerScreen(資産一覧 container)", () => {
         inputDir: SELECTED_DIR,
         path: "cobol/SYK001.cbl",
         codepage: "CP930",
-        maxLines: 5,
       }),
     );
     expect(await screen.findByText(/表示に対応していない/)).toBeInTheDocument();
@@ -411,30 +409,53 @@ describe("ExplorerScreen(資産一覧 container)", () => {
     expect(readAssetInventory).not.toHaveBeenCalled();
   });
 
-  it("対象が 1 件も無ければ認識する拡張子を警告で案内する", async () => {
+  it("対象が 1 件も無ければ資産の種別を警告で案内する", async () => {
     readAssetInventory.mockResolvedValue([]);
     renderExplorer();
     await importFolder();
     await waitFor(() =>
-      expect(screen.getByRole("status")).toHaveTextContent("対象のファイルが 1 件も見つからなかった"),
+      expect(screen.getByRole("status")).toHaveTextContent("対象の資産が 1 件も見つからなかった"),
     );
-    expect(screen.getByRole("status")).toHaveTextContent(".cbl");
+    expect(screen.getByRole("status")).toHaveTextContent("COBOL・コピー句・JCL・BMS");
   });
 
-  it("規約の外に残った対象ファイルは件数と例を警告で示す", async () => {
+  it("種別を判定できなかったものは件数と該当ファイルを警告で示す", async () => {
     runScan.mockResolvedValue({
       ...scanResult,
-      summary: {
-        discoveryMode: "convention",
-        outsideConventionCount: 2,
-        outsideConventionSamples: ["encoding/SYKENC1_SJIS.cbl", "encoding/SYKENC1_UTF8.cbl"],
-      },
+      summary: { undecided: ["misc/README.txt", "misc/NOTES.txt"] },
     });
     renderExplorer();
     await importAndRun();
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("2 件"));
-    expect(screen.getByRole("status")).toHaveTextContent("encoding/SYKENC1_SJIS.cbl");
+    expect(screen.getByRole("status")).toHaveTextContent("種別を判定できなかった");
+    expect(screen.getByRole("status")).toHaveTextContent("misc/README.txt");
     expect(screen.getByRole("button", { name: /SYK001\.cbl/ })).toBeInTheDocument();
+  });
+
+  it("拡張子と内容が食い違ったものは件数と対応関係を警告で示す", async () => {
+    runScan.mockResolvedValue({
+      ...scanResult,
+      summary: {
+        mismatches: [{ path: "copy/SYK001.cpy", byExtension: "COPYBOOK", byContent: "COBOL" }],
+      },
+    });
+    renderExplorer();
+    await importAndRun();
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("1 件"));
+    expect(screen.getByRole("status")).toHaveTextContent("拡張子と内容が食い違った");
+    expect(screen.getByRole("status")).toHaveTextContent("copy/SYK001.cpy → COBOL 本体");
+  });
+
+  it("読み取れなかったものは件数と該当ファイルを警告で示す", async () => {
+    runScan.mockResolvedValue({
+      ...scanResult,
+      summary: { unreadable: ["cobol/LOCKED.cbl"] },
+    });
+    renderExplorer();
+    await importAndRun();
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("1 件"));
+    expect(screen.getByRole("status")).toHaveTextContent("読み取れなかった");
+    expect(screen.getByRole("status")).toHaveTextContent("cobol/LOCKED.cbl");
   });
 
   it("成果物の位置を main から受け取り、各段へ絶対パスで指定する", async () => {
@@ -474,7 +495,6 @@ describe("ExplorerScreen(資産一覧 container)", () => {
         inputDir: SELECTED_DIR,
         path: "cobol/SYKENC1.cbl",
         codepage: "Shift_JIS",
-        maxLines: 5,
       }),
     );
   });

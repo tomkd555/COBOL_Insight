@@ -92,8 +92,10 @@ function SqlBody({ body }: { body: SqlBodyState }): ReactElement {
           {line}
         </div>
       ))}
-      {body.truncated ? (
-        <p className="ci-sql-detail__sql-note">END-EXEC が現れないため、先頭 30 行で打ち切って表示している。</p>
+      {body.unterminated ? (
+        <p className="ci-sql-detail__sql-note">
+          END-EXEC が見つからないため、SQL 文の終端を特定できていない。次の文の開始行(無ければ末尾)までを表示している。
+        </p>
       ) : null}
     </div>
   );

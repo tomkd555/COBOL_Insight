@@ -20,6 +20,7 @@ import jp.cobolinsight.engineapi.json.JsonWriter;
 import jp.cobolinsight.engineapi.pipeline.AnalysisServices;
 import jp.cobolinsight.engineapi.pipeline.ExitCodes;
 import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
+import jp.cobolinsight.engineapi.source.AssetKind;
 import jp.cobolinsight.engineapi.source.DecodedSource;
 import jp.cobolinsight.engineapi.source.SourcePosition;
 import jp.cobolinsight.engineapi.source.SourceRange;
@@ -35,7 +36,6 @@ import jp.cobolinsight.rules.sarif.SarifWriter;
 import jp.cobolinsight.rules.user.UserRuleLoader;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -43,7 +43,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -238,27 +237,37 @@ public final class LintRunner {
         return implementations.get(0);
     }
 
-    /** scan と同じ走査で、lint対象のCOBOL本体・コピー句・BMSを発見する(相対パスの辞書順)。JCLは対象外。 */
+    /**
+     * scan と同じ走査で、lint対象のCOBOL本体・コピー句・BMSを発見する(相対パスの辞書順)。
+     * JCLは対象外。走査の取りこぼしと解釈の変更は標準エラーへ出す。
+     */
     private static List<LintFile> discover(Path inputDir) {
+        SourceDiscovery.Result discovery = SourceDiscovery.discover(inputDir);
+        reportDiscoveryWarnings(discovery);
         List<LintFile> files = new ArrayList<>();
-        for (SourceDiscovery.DiscoveredFile file : SourceDiscovery.discover(inputDir).files()) {
-            LintKind kind = toLintKind(file.kind());
-            if (kind != null) {
-                files.add(new LintFile(file.relPath(), file.absPath(), kind));
-            }
+        for (SourceDiscovery.DiscoveredFile file
+                : discovery.filesOf(Set.of(AssetKind.BMS, AssetKind.COBOL, AssetKind.COPYBOOK))) {
+            files.add(new LintFile(file.relPath(), file.absPath(), toLintKind(file.kind())));
         }
         files.sort(Comparator.comparing(LintFile::relPath));
         return files;
     }
 
-    /** lint が扱わない種別(JCL)には null を返す。 */
-    private static LintKind toLintKind(SourceDiscovery.Kind kind) {
+    /** lint が扱う3種別への写し。JCL は {@code filesOf} で除いてあるため到達しない。 */
+    private static LintKind toLintKind(AssetKind kind) {
         return switch (kind) {
             case BMS -> LintKind.BMS;
             case COBOL -> LintKind.COBOL;
             case COPYBOOK -> LintKind.COPYBOOK;
-            case JCL -> null;
+            case JCL -> throw new IllegalArgumentException("JCL は lint の対象外");
         };
+    }
+
+    /** 走査の警告を標準エラーへ出す。scan 以外のサブコマンドはサマリ JSON を持たない。 */
+    static void reportDiscoveryWarnings(SourceDiscovery.Result discovery) {
+        for (String warning : discovery.warnings()) {
+            System.err.println("警告: " + warning);
+        }
     }
 
 

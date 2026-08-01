@@ -1,5 +1,7 @@
 package jp.cobolinsight.fix;
 
+import jp.cobolinsight.engineapi.source.FixedFormatColumns;
+
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,10 +27,10 @@ import java.util.List;
  */
 public final class FixedFormatNormalizer {
 
-    /** B領域の開始桁(1始まり)。 */
-    public static final int B_AREA_START_COLUMN = 12;
+    /** B領域の開始桁(1始まり)。桁番号の正典は {@link FixedFormatColumns} にある。 */
+    public static final int B_AREA_START_COLUMN = FixedFormatColumns.AREA_B_START;
     /** 本文を収められる最終桁(1始まり)。73桁目以降は識別欄であり本文を置かない。 */
-    public static final int CONTENT_END_COLUMN = 72;
+    public static final int CONTENT_END_COLUMN = FixedFormatColumns.CONTENT_END;
     /** 7桁目指示欄の継続指示。 */
     private static final char CONTINUATION_INDICATOR = '-';
 

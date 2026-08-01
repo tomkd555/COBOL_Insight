@@ -92,7 +92,10 @@ class GoldenTranspileTest {
             return;
         }
         try (Stream<Path> walk = Files.walk(GOLDEN_DIR)) {
-            List<Path> actual = walk.filter(Files::isRegularFile).sorted().toList();
+            // 名前が . で始まるファイルは版数管理の設定(.gitattributes)であり、生成物ではない。
+            List<Path> actual = walk.filter(Files::isRegularFile)
+                    .filter(p -> !p.getFileName().toString().startsWith("."))
+                    .sorted().toList();
             for (Path file : actual) {
                 assertTrue(expected.contains(file.toAbsolutePath().normalize()),
                         "生成物に対応しない golden が残っている: " + rel(file));

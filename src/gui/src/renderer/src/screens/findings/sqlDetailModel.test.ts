@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { adviceAt, extractSqlStatement, SQL_BODY_MAX_LINES } from "./sqlDetailModel";
+import { adviceAt, extractSqlStatement } from "./sqlDetailModel";
 import { SAMPLE_SQL_FINDINGS } from "./fixtures";
 
 /** 3 行目から 5 行目に EXEC SQL 文を持つ固定形式ソースを模した本文。 */
@@ -20,7 +20,7 @@ describe("extractSqlStatement(SQL 本文の切り出し)", () => {
         "000400          SELECT * FROM SYKDB.ZAIKOM",
         "000500     END-EXEC.",
       ],
-      truncated: false,
+      unterminated: false,
     });
   });
 
@@ -29,22 +29,28 @@ describe("extractSqlStatement(SQL 本文の切り出し)", () => {
     expect(extractSqlStatement(SOURCE.replace(/\r\n/g, "\r"), 3).lines).toHaveLength(3);
   });
 
-  it("上限行までに END-EXEC が無ければ上限で打ち切る", () => {
-    const long = Array.from({ length: 50 }, (_, i) => `line ${i + 1}`).join("\n");
-    const result = extractSqlStatement(long, 1, 5);
-    expect(result.lines).toEqual(["line 1", "line 2", "line 3", "line 4", "line 5"]);
-    expect(result.truncated).toBe(true);
+  it("END-EXEC が無ければ行数で打ち切らず、次の文の開始行の手前までを返す", () => {
+    const long =
+      "EXEC SQL\n" +
+      Array.from({ length: 50 }, (_, i) => `  line ${i + 1}`).join("\n") +
+      "\nEXEC SQL\n  SELECT 2\nEND-EXEC.\n";
+    const result = extractSqlStatement(long, 1);
+    // 52 行目(2 つ目の EXEC SQL)の手前、1〜51 行目までを返す。行数の上限では打ち切らない。
+    expect(result.lines).toHaveLength(51);
+    expect(result.lines[0]).toBe("EXEC SQL");
+    expect(result.lines[50]).toBe("  line 50");
+    expect(result.unterminated).toBe(true);
   });
 
-  it("ファイル末尾で終わる場合は打ち切りとしない", () => {
-    const result = extractSqlStatement("EXEC SQL\n  SELECT 1", 1, SQL_BODY_MAX_LINES);
+  it("次の文も無くファイル末尾に達した場合も、終端不明として末尾までを返す", () => {
+    const result = extractSqlStatement("EXEC SQL\n  SELECT 1", 1);
     expect(result.lines).toEqual(["EXEC SQL", "  SELECT 1"]);
-    expect(result.truncated).toBe(false);
+    expect(result.unterminated).toBe(true);
   });
 
   it("開始行がファイルの範囲外なら空を返す", () => {
-    expect(extractSqlStatement(SOURCE, 99)).toEqual({ lines: [], truncated: false });
-    expect(extractSqlStatement(SOURCE, 0)).toEqual({ lines: [], truncated: false });
+    expect(extractSqlStatement(SOURCE, 99)).toEqual({ lines: [], unterminated: false });
+    expect(extractSqlStatement(SOURCE, 0)).toEqual({ lines: [], unterminated: false });
   });
 });
 

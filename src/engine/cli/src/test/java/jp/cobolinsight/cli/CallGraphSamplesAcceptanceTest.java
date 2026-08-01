@@ -132,8 +132,9 @@ class CallGraphSamplesAcceptanceTest {
     void nodesAreTypedAsExpected() {
         Map<String, CallGraphNode> byId = result.callGraph().nodes().stream()
                 .collect(Collectors.toMap(CallGraphNode::id, n -> n));
-        assertEquals(31, byId.size(),
-                "ジョブ3・ステップ6・プログラム9・データセット8・Db2表2・トランザクション1・BMSマップ2");
+        assertEquals(32, byId.size(),
+                "ジョブ3・ステップ6・プログラム10(SYK001〜009とSYKENC1)・データセット8・Db2表2・"
+                        + "トランザクション1・BMSマップ2");
         assertEquals(NodeKind.JOB, byId.get("job:SYKD010").kind());
         assertEquals(NodeKind.STEP, byId.get("step:SYKD020.STEP020.STEP020").kind());
         assertEquals(NodeKind.PROGRAM, byId.get("program:SYK004").kind());
@@ -236,7 +237,7 @@ class CallGraphSamplesAcceptanceTest {
         ScanRunner.Result second = ScanRunner.runWithGraph(new ScanRunner.Options(SAMPLES,
                 rescanDb, List.of(SAMPLES.resolve("copybook")), Map.of()));
         assertEquals(List.of(), second.summary().analyzed(), "変更が無ければ再解析しないこと");
-        assertEquals(16, second.summary().skipped().size());
+        assertEquals(18, second.summary().skipped().size());
         assertEquals(0, second.summary().exitCode());
         assertEquals(result.callGraph().toJson(), second.callGraph().toJson(),
                 "増分scan(全ファイルskip)でも同一のグラフが再構築されること");

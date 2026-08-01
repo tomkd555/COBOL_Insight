@@ -13,6 +13,7 @@ import jp.cobolinsight.engineapi.finding.FixSuggestion;
 import jp.cobolinsight.engineapi.finding.TextEdit;
 import jp.cobolinsight.engineapi.pipeline.AnalysisServices;
 import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
+import jp.cobolinsight.engineapi.source.AssetKind;
 import jp.cobolinsight.engineapi.source.DecodedSource;
 import jp.cobolinsight.engineapi.source.SourcePosition;
 import jp.cobolinsight.engineapi.spi.AnalysisContext;
@@ -34,9 +35,9 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -55,7 +56,6 @@ import java.util.stream.Stream;
 public final class FixRunner {
 
     private static final String DECODE_FAILURE_RULE_ID = "decode-failure";
-    private static final String COPYBOOK_EXTENSION = ".cpy";
 
     public record Options(Path inputDir, List<Path> copybookSearchPaths,
             Map<String, String> codepageOverrides) {
@@ -245,41 +245,26 @@ public final class FixRunner {
 
     /**
      * scan と同じ走査で COBOL 本体を、コピー句探索パス配下からコピー句を発見する(相対パスの
-     * 辞書順)。コピー句は入力フォルダの外を指せるため、走査ではなく探索パスを起点とする。
+     * 辞書順)。コピー句は入力フォルダの外を指せるため、走査ではなく探索パスを起点とする
+     * ({@link CopybookScan})。走査の取りこぼしと解釈の変更は標準エラーへ出す。
      */
     private static List<FixFile> discover(Options options) {
+        SourceDiscovery.Result discovery = SourceDiscovery.discover(options.inputDir());
+        LintRunner.reportDiscoveryWarnings(discovery);
         Map<String, FixFile> byRel = new LinkedHashMap<>();
-        for (SourceDiscovery.DiscoveredFile file
-                : SourceDiscovery.discover(options.inputDir()).files()) {
-            if (file.kind() == SourceDiscovery.Kind.COBOL) {
-                byRel.putIfAbsent(file.relPath(),
-                        new FixFile(file.relPath(), file.absPath(), FixKind.COBOL));
-            }
+        for (SourceDiscovery.DiscoveredFile file : discovery.filesOf(Set.of(AssetKind.COBOL))) {
+            byRel.putIfAbsent(file.relPath(),
+                    new FixFile(file.relPath(), file.absPath(), FixKind.COBOL));
         }
         for (Path dir : options.copybookSearchPaths()) {
-            collect(dir, COPYBOOK_EXTENSION, FixKind.COPYBOOK, options.inputDir(), byRel);
+            for (Path copybook : CopybookScan.collect(dir)) {
+                String relPath = relativize(options.inputDir(), copybook);
+                byRel.putIfAbsent(relPath, new FixFile(relPath, copybook, FixKind.COPYBOOK));
+            }
         }
         List<FixFile> files = new ArrayList<>(byRel.values());
         files.sort(Comparator.comparing(FixFile::relPath));
         return files;
-    }
-
-    private static void collect(Path dir, String extension, FixKind kind, Path inputDir,
-            Map<String, FixFile> byRel) {
-        if (!Files.isDirectory(dir)) {
-            return;
-        }
-        try (Stream<Path> children = Files.list(dir)) {
-            children.filter(Files::isRegularFile)
-                    .filter(p -> p.getFileName().toString().toLowerCase(Locale.ROOT)
-                            .endsWith(extension))
-                    .forEach(p -> {
-                        String relPath = relativize(inputDir, p);
-                        byRel.putIfAbsent(relPath, new FixFile(relPath, p, kind));
-                    });
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
     }
 
     /** 入力フォルダ配下なら相対パス、そうでなければ「親ディレクトリ名/ファイル名」を相対パスとする。 */

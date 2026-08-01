@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactElement } from "react";
 import { SPLIT_PANES, type AssetTypeFilter } from "../../state/appState";
 import { useAppState, useAppDispatch } from "../../state/AppStateContext";
-import { deriveRunBanner, deriveScanNotice } from "../../state/status";
+import { deriveRunBanner, deriveScanNotice, type ScanNoticeSection } from "../../state/status";
 import { readScanDiscovery } from "./scanSummary";
 import { EmptyState } from "../../components/EmptyState";
 import { RunningIndicator } from "../../components/RunningIndicator";
@@ -19,9 +19,6 @@ import {
   previewCodepage,
   toCodepageOverrides,
 } from "./assetView";
-
-/** デコードプレビューの行数。main へ要求する行数であり、DecodePreview の表示上限とそろえる。 */
-const PREVIEW_LINES = 5;
 
 /** 資産をまだ取り込んでいないときの誘導。取込は解析の起点でもあるため、主アクションを1つだけ置く。 */
 const EMPTY_STATE = {
@@ -101,7 +98,6 @@ export function ExplorerScreen(): ReactElement {
         inputDir,
         path: selectedPath,
         codepage: selectedCodepage,
-        maxLines: PREVIEW_LINES,
       })
       .then((result) => {
         if (current) setPreview(toSourcePreview(result));
@@ -254,7 +250,7 @@ export function ExplorerScreen(): ReactElement {
       ? ""
       : encodingSelectValue(selectedItem, state.encodingSel, state.defaultEncoding);
   const banner = deriveRunBanner(state);
-  const scanNotice = deriveScanNotice(state);
+  const scanNoticeSections = deriveScanNotice(state);
   const detailWidth = state.paneWidths.explorerDetail;
   // 詳細ペインの幅は CSS カスタムプロパティで渡す(寸法の指定は CSS 側に置く)。
   const paneStyle = { "--ci-explorer-detail-w": `${detailWidth}px` } as CSSProperties;
@@ -278,9 +274,11 @@ export function ExplorerScreen(): ReactElement {
             {banner}
           </div>
         )}
-        {scanNotice === null ? null : (
+        {scanNoticeSections.length === 0 ? null : (
           <div className="ci-banner ci-banner--warn" role="status">
-            {scanNotice}
+            {scanNoticeSections.map((section, index) => (
+              <ScanNoticeItem key={index} section={section} />
+            ))}
           </div>
         )}
         <div className="ci-explorer__content">
@@ -326,6 +324,28 @@ export function ExplorerScreen(): ReactElement {
         onEncodingChange={onEncodingChange}
         preview={preview}
       />
+    </div>
+  );
+}
+
+/**
+ * 走査の警告1件。該当ファイルの一覧は engine が全件返すため件数を切らず、`<details>` で畳んで
+ * 全件を添える(畳むのは表示の整理であって取りこぼしではない)。
+ */
+function ScanNoticeItem({ section }: { section: ScanNoticeSection }): ReactElement {
+  return (
+    <div className="ci-scan-notice">
+      <p className="ci-scan-notice__text">{section.text}</p>
+      {section.details.length === 0 ? null : (
+        <details className="ci-scan-notice__details">
+          <summary>該当ファイル {section.details.length} 件</summary>
+          <ul className="ci-scan-notice__list">
+            {section.details.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </details>
+      )}
     </div>
   );
 }

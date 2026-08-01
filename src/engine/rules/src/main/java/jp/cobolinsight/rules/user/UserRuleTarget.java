@@ -1,6 +1,6 @@
 package jp.cobolinsight.rules.user;
 
-import java.util.Locale;
+import jp.cobolinsight.engineapi.source.AssetKind;
 
 /**
  * 利用者定義ルールが走査する資産の種別。lint がテキスト索引へ載せるのは COBOL 本体・コピー句・
@@ -12,20 +12,19 @@ public enum UserRuleTarget {
     BMS;
 
     /**
-     * パスの拡張子から種別を決める。対応は cli の SourceDiscovery が再帰探索で使う拡張子と
-     * 同一であり、片方だけを増やすと利用者定義ルールの対象が走査結果とずれる。
-     * 対象外の拡張子(JCL など)には null を返す。
+     * パスの拡張子から種別を決める。拡張子表は {@link AssetKind} が唯一の正であり、
+     * ここはその写しを持たない。対象外の種別(JCL)と未知の拡張子には null を返す。
      */
     public static UserRuleTarget ofPath(String path) {
-        int dot = path.lastIndexOf('.');
-        if (dot < 0) {
+        AssetKind kind = AssetKind.ofFileName(path);
+        if (kind == null) {
             return null;
         }
-        return switch (path.substring(dot + 1).toLowerCase(Locale.ROOT)) {
-            case "cbl", "cob", "cobol" -> COBOL;
-            case "cpy", "copy" -> COPYBOOK;
-            case "bms" -> BMS;
-            default -> null;
+        return switch (kind) {
+            case COBOL -> COBOL;
+            case COPYBOOK -> COPYBOOK;
+            case BMS -> BMS;
+            case JCL -> null;
         };
     }
 

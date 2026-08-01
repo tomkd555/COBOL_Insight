@@ -109,19 +109,19 @@ describe("deriveScanNotice(走査の警告)", () => {
   const empty = withState({
     mode: "results",
     inventory: { status: "ready", items: [] },
-    scanDiscovery: { mode: "convention", truncated: false, outsideCount: 0, outsideSamples: [] },
+    scanDiscovery: { undecided: [], mismatches: [], truncated: false, unreadable: [] },
   });
 
   it("資産を取り込めていれば警告を出さない", () => {
-    expect(deriveScanNotice(analyzed)).toBeNull();
+    expect(deriveScanNotice(analyzed)).toEqual([]);
   });
 
   it("解析前は警告を出さない", () => {
-    expect(deriveScanNotice(initialState)).toBeNull();
+    expect(deriveScanNotice(initialState)).toEqual([]);
   });
 
   it("実行中は警告を出さない", () => {
-    expect(deriveScanNotice({ ...empty, mode: "running" })).toBeNull();
+    expect(deriveScanNotice({ ...empty, mode: "running" })).toEqual([]);
   });
 
   it("取得に失敗した場合は失敗バナーに任せ、警告を出さない", () => {
@@ -129,44 +129,85 @@ describe("deriveScanNotice(走査の警告)", () => {
       mode: "error",
       inventory: { status: "error", message: "読み取りに失敗しました" },
     });
-    expect(deriveScanNotice(failed)).toBeNull();
+    expect(deriveScanNotice(failed)).toEqual([]);
   });
 
-  it("0 件のときは従来構成が認識する拡張子を案内する", () => {
-    const notice = deriveScanNotice(empty);
-    expect(notice).toContain("対象のファイルが 1 件も見つからなかった");
-    expect(notice).toContain(".cbl");
-    expect(notice).not.toContain(".cobol");
+  it("0 件のときは資産の種別と、拡張子が無くても内容で判定する旨を案内する", () => {
+    const [section] = deriveScanNotice(empty);
+    expect(section.text).toContain("対象の資産が 1 件も見つからなかった");
+    expect(section.text).toContain("COBOL・コピー句・JCL・BMS");
+    expect(section.text).toContain("内容から種別を判定する");
+    expect(section.details).toEqual([]);
   });
 
-  it("再帰で走査して 0 件のときは再帰が認識する拡張子を案内する", () => {
-    const notice = deriveScanNotice({
-      ...empty,
-      scanDiscovery: { mode: "recursive", truncated: false, outsideCount: 0, outsideSamples: [] },
-    });
-    expect(notice).toContain(".cobol");
-    expect(notice).toContain(".copy");
-  });
-
-  it("規約の外に対象ファイルが残っていれば件数と例を示す", () => {
-    const notice = deriveScanNotice({
+  it("undecided は件数と判定条件を示し、該当ファイルを全件添える", () => {
+    const [section] = deriveScanNotice({
       ...analyzed,
       scanDiscovery: {
-        mode: "convention",
+        undecided: ["misc/README.txt", "misc/NOTES.txt"],
+        mismatches: [],
         truncated: false,
-        outsideCount: 2,
-        outsideSamples: ["encoding/A.cbl", "encoding/B.cbl"],
+        unreadable: [],
       },
     });
-    expect(notice).toContain("2 件");
-    expect(notice).toContain("encoding/A.cbl");
+    expect(section.text).toContain("2 件");
+    expect(section.text).toContain("種別を判定できなかった");
+    expect(section.text).toContain("IDENTIFICATION DIVISION");
+    expect(section.details).toEqual(["misc/README.txt", "misc/NOTES.txt"]);
+  });
+
+  it("unreadable は件数を示し、該当ファイルを全件添える", () => {
+    const [section] = deriveScanNotice({
+      ...analyzed,
+      scanDiscovery: {
+        undecided: [],
+        mismatches: [],
+        truncated: false,
+        unreadable: ["cobol/LOCKED.cbl"],
+      },
+    });
+    expect(section.text).toContain("1 件");
+    expect(section.text).toContain("読み取れなかった");
+    expect(section.details).toEqual(["cobol/LOCKED.cbl"]);
+  });
+
+  it("mismatches は件数を示し、どちらとして扱ったかを全件添える", () => {
+    const [section] = deriveScanNotice({
+      ...analyzed,
+      scanDiscovery: {
+        undecided: [],
+        mismatches: [{ path: "copybook/X.cpy", byExtension: "COPYBOOK", byContent: "COBOL" }],
+        truncated: false,
+        unreadable: [],
+      },
+    });
+    expect(section.text).toContain("1 件");
+    expect(section.text).toContain("拡張子と内容が食い違った");
+    expect(section.details).toEqual(["copybook/X.cpy → COBOL 本体"]);
   });
 
   it("上限で打ち切ったときはその旨を示す", () => {
-    const notice = deriveScanNotice({
+    const [section] = deriveScanNotice({
       ...analyzed,
-      scanDiscovery: { mode: "recursive", truncated: true, outsideCount: 0, outsideSamples: [] },
+      scanDiscovery: { undecided: [], mismatches: [], truncated: true, unreadable: [] },
     });
-    expect(notice).toContain("上限");
+    expect(section.text).toContain("上限");
+  });
+
+  it("報告の優先順位は undecided・unreadable ＞ mismatches ＞ truncated の順に並ぶ", () => {
+    const sections = deriveScanNotice({
+      ...analyzed,
+      scanDiscovery: {
+        undecided: ["a.txt"],
+        mismatches: [{ path: "b.cpy", byExtension: "COPYBOOK", byContent: "COBOL" }],
+        truncated: true,
+        unreadable: ["c.cbl"],
+      },
+    });
+    expect(sections).toHaveLength(4);
+    expect(sections[0].text).toContain("種別を判定できなかった");
+    expect(sections[1].text).toContain("読み取れなかった");
+    expect(sections[2].text).toContain("拡張子と内容が食い違った");
+    expect(sections[3].text).toContain("走査の上限");
   });
 });
