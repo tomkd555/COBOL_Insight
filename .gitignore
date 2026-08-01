@@ -6,11 +6,14 @@ build/
 .idea/
 *.iml
 
-# 上流OSS clone(vendor配下)は追跡しない
-vendor/
+# 上流OSS clone(src/vendor配下)は追跡しない
+/src/vendor/
 
 # Node(Electron GUI)
 node_modules/
+
+# 配布物の出力先(リポジトリ直下のみ)
+/release/
 
 # 修正案の既定出力先(リポジトリ直下のみ)
 /fix/
@@ -18,6 +21,11 @@ node_modules/
 # CLIの既定出力先(リポジトリ直下のみ)
 /cobol-insight.db
 /cobol-insight-report.txt
+
+# GUIの開発起動がengineを走らせたときの出力先(カレントがsrc/guiになる)
+/src/gui/cobol-insight.db
+/src/gui/cobol-insight-report.txt
+/src/gui/cobol-insight-copy-expansion.json
 
 # graphifyの知識グラフ生成物
 graphify-out/
@@ -27,6 +35,6 @@ graphify-out/
 /CLAUDE.md
 
 # GUIの手動確認用データ(Windows予約デバイス名を含み、gitがindexへ入れられない)
-gui/devtest/
+/src/gui/devtest/
 
 *.class

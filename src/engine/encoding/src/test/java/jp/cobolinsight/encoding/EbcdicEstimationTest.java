@@ -1,0 +1,57 @@
+package jp.cobolinsight.encoding;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * EBCDICの推定と復号の検証。実機のEBCDICファイルを持たないため、UTF-8のサンプルを各EBCDIC
+ * コードページへ再変換したバイト列を入力にする。自動判別はIBM930とIBM939を区別しないため、
+ * 推定側はコードページの一致ではなくEBCDICであることだけを表明する。
+ */
+class EbcdicEstimationTest {
+
+    private static final Path UTF8_SAMPLE =
+            Path.of("..", "..", "..", "samples", "encoding", "SYKENC1_UTF8.cbl");
+
+    private final CodePageDetector detector = new CodePageDetector();
+    private final SourceDecoder decoder = new SourceDecoder();
+
+    private static String sampleText() throws IOException {
+        return new String(Files.readAllBytes(UTF8_SAMPLE), StandardCharsets.UTF_8);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = CodePage.class, names = {"IBM930", "IBM939"})
+    void syntheticEbcdicBytesAreEstimatedAsEbcdic(CodePage codePage) throws IOException {
+        byte[] ebcdic = sampleText().getBytes(codePage.charset());
+
+        DetectionResult result = detector.detect(ebcdic);
+
+        assertTrue(result.codePage().isEbcdic());
+        assertTrue(result.estimated());
+        assertTrue(result.soSiPresent());
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = CodePage.class, names = {"IBM930", "IBM939"})
+    void manualCodePageDecodesAndRoundTripsSyntheticEbcdicBytes(CodePage codePage) throws IOException {
+        String original = sampleText();
+        byte[] ebcdic = original.getBytes(codePage.charset());
+
+        DecodedSource source = decoder.decode(ebcdic, codePage);
+
+        assertEquals(original, source.text());
+        assertArrayEquals(ebcdic, source.text().getBytes(codePage.charset()));
+        assertArrayEquals(ebcdic, source.originalBytes());
+    }
+}

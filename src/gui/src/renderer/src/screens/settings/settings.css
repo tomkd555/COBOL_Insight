@@ -1,0 +1,569 @@
+/*
+ * 設定画面のスタイル。厳格 BEM で命名し、値は :root トークンを参照する。
+ * design/COBOL Insight.dc.html の scSet のカード配置にそろえる。
+ */
+
+.ci-settings {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  background: var(--ci-bg);
+}
+.ci-settings__page {
+  padding: var(--ci-space-4) var(--ci-space-6) var(--ci-space-9);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-space-3);
+}
+/* 実行中の読み取り専用の告知 */
+.ci-settings__lock {
+  padding: var(--ci-space-2) 13px;
+  background: var(--ci-info-bg);
+  border: 1px solid var(--ci-info-border);
+  border-radius: var(--ci-radius-md);
+  font-size: var(--ci-fs-pane-title);
+  color: var(--ci-info-text);
+}
+
+/* 設定の1区画 */
+.ci-settings__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-space-2);
+  padding: var(--ci-space-4) var(--ci-space-5);
+  background: var(--ci-panel);
+  border: 1px solid var(--ci-border);
+  border-radius: var(--ci-radius-lg);
+}
+.ci-settings__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+/* 画面の題目(h3)。下の節の題目(h4)より一段大きくし、見出しの階層を級数でも示す。 */
+.ci-settings__title {
+  margin: 0;
+  font-size: var(--ci-fs-lg);
+  font-weight: 700;
+  color: var(--ci-text);
+}
+/* 節の題目(h4)。 */
+.ci-settings__card-title {
+  margin: 0;
+  font-size: var(--ci-fs-md);
+  font-weight: 700;
+  color: var(--ci-text-heading);
+}
+/* カード自体は全幅のまま、説明文だけ読みやすい行長にとどめる。 */
+.ci-settings__desc {
+  margin: 0;
+  max-width: 760px;
+  font-size: var(--ci-fs-pane-title);
+  color: var(--ci-text-muted);
+  line-height: 1.7;
+}
+.ci-settings__note {
+  margin: 0;
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-subtle);
+}
+.ci-settings__count {
+  font-size: var(--ci-fs-pane-title);
+  color: var(--ci-text-muted);
+}
+.ci-settings__spacer {
+  flex: 1;
+}
+.ci-settings__search {
+  width: 250px;
+}
+.ci-settings__select {
+  width: 340px;
+  font-family: inherit;
+  font-size: var(--ci-fs-sm);
+  padding: 6px 9px;
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius-sm);
+  background: var(--ci-panel);
+  color: var(--ci-text);
+}
+.ci-settings__select:focus-visible {
+  outline: 2px solid var(--ci-focus-ring);
+  outline-offset: 2px;
+}
+.ci-settings__bulk {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-2);
+}
+
+/* engine の起動対象と製品の版。列数は ENGINE_LAUNCH_INFO の 3 件に版の 1 件を加えた数である */
+.ci-settings__versions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--ci-space-2);
+  margin: 0;
+}
+.ci-settings__version {
+  padding: 6px 10px;
+  background: var(--ci-surface-soft);
+  border: 1px solid var(--ci-border-soft);
+  border-radius: var(--ci-radius-md);
+}
+.ci-settings__version-label {
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-muted);
+}
+.ci-settings__version-value {
+  margin: 0;
+  font-family: var(--ci-font-code);
+  font-size: var(--ci-fs-sm);
+  color: var(--ci-text);
+}
+
+/* --- コピー句探索パス --- */
+.ci-paths {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-space-2);
+}
+.ci-paths__empty {
+  margin: 0;
+  font-size: var(--ci-fs-sm);
+  color: var(--ci-text-subtle);
+  line-height: 1.7;
+}
+.ci-paths__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.ci-paths__item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.ci-paths__index {
+  width: 20px;
+  text-align: center;
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-subtle);
+}
+.ci-paths__path {
+  flex: 1;
+  padding: 6px 10px;
+  background: var(--ci-surface-soft);
+  border: 1px solid var(--ci-border-soft);
+  border-radius: var(--ci-radius-sm);
+  font-family: var(--ci-font-code);
+  font-size: var(--ci-fs-sm);
+  overflow-wrap: anywhere;
+}
+.ci-paths__add {
+  display: flex;
+  gap: 7px;
+}
+/* ラベルごと横幅いっぱいに伸ばし、入力欄は残りを埋める。 */
+.ci-paths__add-field {
+  flex: 1;
+}
+.ci-paths__input {
+  flex: 1;
+  font-family: var(--ci-font-code);
+}
+.ci-paths__missing {
+  color: var(--ci-error-text);
+  font-weight: 700;
+}
+.ci-paths__add-warn {
+  margin: 0;
+  padding: 6px 9px;
+  background: var(--ci-error-bg);
+  border: 1px solid var(--ci-error-border);
+  border-radius: var(--ci-radius-sm);
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-error-text);
+}
+
+/* --- 検出ルールの一覧 --- */
+.ci-rules {
+  border: 1px solid var(--ci-border-soft);
+  border-radius: var(--ci-radius-md);
+  overflow: hidden;
+}
+.ci-rules__no-hit {
+  margin: 0;
+  padding: var(--ci-space-7);
+  text-align: center;
+  font-size: var(--ci-fs-sm);
+  color: var(--ci-text-subtle);
+}
+.ci-rules__category {
+  margin: 0;
+  padding: 5px var(--ci-space-3);
+  background: var(--ci-surface-header);
+  border-bottom: 1px solid var(--ci-border-soft);
+  font-size: var(--ci-fs-xs);
+  font-weight: 700;
+  color: var(--ci-text-muted);
+}
+.ci-rules__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px var(--ci-space-3);
+  border-bottom: 1px solid var(--ci-border-soft);
+}
+.ci-rules__id {
+  width: 40px;
+  flex: none;
+  font-family: var(--ci-font-code);
+  font-size: var(--ci-fs-pane-title);
+  color: var(--ci-text-muted);
+}
+.ci-rules__name {
+  flex: 1;
+  font-size: var(--ci-fs-sm);
+  color: var(--ci-text);
+}
+.ci-rules__name--off {
+  color: var(--ci-rule-off-text);
+}
+/* 無効であることを色以外でも示す語。 */
+.ci-rules__off-mark {
+  margin-left: var(--ci-space-1);
+  font-size: var(--ci-fs-xs);
+}
+.ci-rules__fix-badge {
+  flex: none;
+  font-size: var(--ci-fs-tag);
+  padding: 1px 6px;
+  border-radius: var(--ci-radius-badge);
+  background: var(--ci-select-tint);
+  color: var(--ci-accent-strong);
+  border: 1px solid var(--ci-info-border);
+}
+.ci-rules__severity {
+  width: 52px;
+  flex: none;
+}
+
+/* 有効・無効のトグル(switch) */
+.ci-switch {
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 9px;
+  background: var(--ci-border-strong);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.ci-switch--on {
+  background: var(--ci-accent);
+}
+.ci-switch:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.ci-switch:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.ci-switch:focus-visible {
+  outline: 2px solid var(--ci-focus-ring);
+  outline-offset: 2px;
+}
+.ci-switch__knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--ci-panel);
+  box-shadow: var(--ci-shadow-sm);
+  /* 位置ではなく変形を動かす。left を動かすとフレームごとにレイアウトが起きる。 */
+  transition: transform 0.15s;
+}
+/* 有効側のつまみの移動量。軌道の幅 30px からつまみ 12px と左右の余白 2px ずつを引いた値である */
+.ci-switch--on .ci-switch__knob {
+  transform: translateX(14px);
+}
+
+/* 1行分の枠。行と、開いたときの説明をまとめる */
+.ci-rules__entry {
+  border-bottom: 1px solid var(--ci-border-soft);
+}
+.ci-rules__entry .ci-rules__row {
+  border-bottom: none;
+}
+.ci-rules__user-badge {
+  flex: none;
+  font-size: var(--ci-fs-tag);
+  padding: 1px 6px;
+  border-radius: var(--ci-radius-badge);
+  background: var(--ci-surface-soft);
+  color: var(--ci-text-muted);
+  border: 1px solid var(--ci-border-soft);
+}
+.ci-rules__detail-toggle {
+  flex: none;
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--ci-border-soft);
+  border-radius: var(--ci-radius-sm);
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-muted);
+  cursor: pointer;
+}
+.ci-rules__detail-toggle:hover {
+  background: var(--ci-surface-soft);
+  color: var(--ci-text);
+}
+.ci-rules__detail-toggle:focus-visible {
+  outline: 2px solid var(--ci-focus-ring);
+  outline-offset: 2px;
+}
+
+/* --- ルール1件の説明 --- */
+.ci-rule-detail {
+  padding: var(--ci-space-3);
+  background: var(--ci-surface-soft);
+  border-top: 1px solid var(--ci-border-soft);
+}
+.ci-rule-detail__list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-space-2);
+}
+.ci-rule-detail__item {
+  display: grid;
+  grid-template-columns: 8em 1fr;
+  gap: var(--ci-space-3);
+}
+.ci-rule-detail__term {
+  font-size: var(--ci-fs-xs);
+  font-weight: 700;
+  color: var(--ci-text-muted);
+}
+.ci-rule-detail__desc {
+  margin: 0;
+  font-size: var(--ci-fs-sm);
+  color: var(--ci-text);
+  /* 日本語の本文は行間を広く取る。 */
+  line-height: 1.8;
+}
+.ci-rule-detail__examples {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--ci-space-3);
+  margin-top: var(--ci-space-3);
+}
+.ci-rule-detail__example {
+  margin: 0;
+}
+.ci-rule-detail__example-title {
+  font-size: var(--ci-fs-xs);
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+/* 該当と修正後を色でも見分けるが、見出しの語だけでも区別できる。 */
+.ci-rule-detail__example-title--bad {
+  color: var(--ci-sev-high);
+}
+.ci-rule-detail__example-title--good {
+  color: var(--ci-accent-strong);
+}
+.ci-rule-detail__code {
+  margin: 0;
+  padding: var(--ci-space-2);
+  background: var(--ci-panel);
+  border: 1px solid var(--ci-border-soft);
+  border-radius: var(--ci-radius-sm);
+  font-family: var(--ci-font-code);
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text);
+  /* COBOL の桁を崩さず、収まらない行は横へ送る。 */
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* --- 利用者定義ルール --- */
+.ci-settings__rule-errors {
+  margin: 0 0 var(--ci-space-2);
+  padding-left: var(--ci-space-5);
+  font-size: var(--ci-fs-sm);
+  color: var(--ci-error-text);
+  line-height: 1.7;
+}
+.ci-user-rules__empty {
+  margin: 0;
+  padding: var(--ci-space-5);
+  text-align: center;
+  font-size: var(--ci-fs-sm);
+  color: var(--ci-text-subtle);
+  border: 1px dashed var(--ci-border-soft);
+  border-radius: var(--ci-radius-md);
+}
+.ci-user-rules__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-space-2);
+}
+.ci-user-rules__item {
+  padding: var(--ci-space-2) var(--ci-space-3);
+  background: var(--ci-surface-soft);
+  border: 1px solid var(--ci-border-soft);
+  border-radius: var(--ci-radius-md);
+}
+.ci-user-rules__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ci-user-rules__name {
+  font-size: var(--ci-fs-sm);
+  color: var(--ci-text);
+}
+.ci-user-rules__meta {
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-muted);
+}
+.ci-user-rules__pattern {
+  display: block;
+  margin-top: 5px;
+  font-family: var(--ci-font-code);
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text);
+  overflow-wrap: anywhere;
+}
+.ci-user-rules__message {
+  margin: 3px 0 0;
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-muted);
+}
+
+/* --- 利用者定義ルールの作成・編集 --- */
+.ci-user-rule-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-space-2);
+  margin-top: var(--ci-space-3);
+  padding: var(--ci-space-3);
+  background: var(--ci-panel);
+  border: 1px solid var(--ci-border);
+  border-radius: var(--ci-radius-md);
+}
+.ci-user-rule-form__title {
+  margin: 0;
+  font-size: var(--ci-fs-md);
+  color: var(--ci-text-heading);
+}
+.ci-user-rule-form__grid {
+  display: grid;
+  grid-template-columns: 8em 1fr 10em 7em;
+  gap: var(--ci-space-2);
+}
+.ci-user-rule-form__wide {
+  grid-column: span 1;
+}
+.ci-user-rule-form__fieldset {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-3);
+  margin: 0;
+  padding: var(--ci-space-2) var(--ci-space-3);
+  border: 1px solid var(--ci-border-soft);
+  border-radius: var(--ci-radius-sm);
+}
+.ci-user-rule-form__legend {
+  padding: 0 5px;
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-muted);
+}
+.ci-user-rule-form__check {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--ci-fs-sm);
+  color: var(--ci-text);
+}
+.ci-user-rule-form__options {
+  display: flex;
+  gap: var(--ci-space-4);
+}
+.ci-user-rule-form__textarea {
+  width: 100%;
+  padding: 6px 10px;
+  font-family: var(--ci-font-code);
+  font-size: var(--ci-fs-sm);
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius-sm);
+  background: var(--ci-panel);
+  color: var(--ci-text);
+  resize: vertical;
+}
+.ci-user-rule-form__textarea:focus-visible {
+  outline: 2px solid var(--ci-focus-ring);
+  outline-offset: 1px;
+}
+.ci-user-rule-form__test-summary {
+  margin: 0;
+  font-size: var(--ci-fs-sm);
+  color: var(--ci-text-muted);
+}
+.ci-user-rule-form__matches {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.ci-user-rule-form__match {
+  display: grid;
+  grid-template-columns: 8em 1fr;
+  gap: var(--ci-space-2);
+  padding: 4px var(--ci-space-2);
+  background: var(--ci-surface-soft);
+  border-radius: var(--ci-radius-sm);
+  font-size: var(--ci-fs-xs);
+}
+.ci-user-rule-form__match-pos {
+  color: var(--ci-text-muted);
+  font-family: var(--ci-font-code);
+}
+.ci-user-rule-form__match-text {
+  font-family: var(--ci-font-code);
+  color: var(--ci-text);
+  white-space: pre;
+  overflow-x: auto;
+}
+.ci-user-rule-form__match-message {
+  grid-column: 2;
+  color: var(--ci-text-muted);
+}
+.ci-user-rule-form__errors {
+  margin: 0;
+  padding-left: var(--ci-space-5);
+  font-size: var(--ci-fs-sm);
+  color: var(--ci-error-text);
+  line-height: 1.7;
+}
+.ci-user-rule-form__actions {
+  display: flex;
+  gap: var(--ci-space-2);
+}
