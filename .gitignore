@@ -38,3 +38,6 @@ graphify-out/
 /src/gui/devtest/
 
 *.class
+
+# CodeGraph のインデックス(ローカル生成物)
+.codegraph/
