@@ -2,21 +2,22 @@
  * 実描画 smoke。ビルド済みの renderer(out/renderer/index.html)を Electron の offscreen
  * レンダリングで実際に描かせ、jsdom では確かめられない次の点を検査する。
  *
- *   1. 9タブが列挙される(シェルが起動している)
- *   2. Cytoscape が canvas を作り、そこへノードを描く(空でない画素がある)
- *   3. Monaco が起動し、view-line が複数行それぞれ異なる y 座標に並ぶ
+ *   1. シェルが4領域(アクティビティバー・側パネル・本文領域・下部パネル)で組み上がる
+ *   2. 資産フォルダを選ぶと解析が走り、資産ツリーが並ぶ
+ *   3. 資産を開くと Monaco が起動し、行が別々の y 座標に並ぶ
  *      (CSP の style-src に 'unsafe-inline' が無いと全行が同じ y へ重なる。この検査がそれを捕らえる)
- *   4. Monaco DiffEditor が左右2ペインで起動し、差分の装飾を描く
- *   5. レポート HTML が sandbox="" の iframe として実際に読み込まれる
- *   6. 設定のルール表が並び、説明を開くと検出条件と例が出て、利用者定義ルールが一覧に載る
- *   7. 端末取込が貼り付けた本文を桁で切り出し、桁定規付きのプレビューへ等幅で並べる
- *   8. 200% 拡大でも横スクロールが出ない(縦横 2 方向のスクロールにならない)
- *   9. console にエラーと CSP 拒否("Refused to ...")が出ない
- *  10. 指摘一覧で行番号を押すと、同じ画面のまま下段へコードが出る
+ *   4. 本文へ打鍵すると、そのタブに未保存の印が立つ
+ *   5. 下部パネルの指摘表が並び、行を押すとその資産のタブが開く
+ *   6. Cytoscape が canvas を作り、そこへノードを描く(不透明な画素がある)
+ *   7. 実行順の一覧が、engine の seq のとおりに下位を並べる
+ *   8. ルールのタブがトグルを並べ、切り替えが設定ファイル経由で往復する
+ *   9. 200% 拡大でも横スクロールが出ない(縦横 2 方向のスクロールにならない)
+ *  10. console にエラーと CSP 拒否("Refused to ...")が出ない
  *
- * engine CLI は起動しない。preload を smoke/fake-preload.cjs へ差し替え、window.cobolInsight を
- * 固定データで満たして画面を results 状態まで進める。本番と同じ contextIsolation:true・sandbox:true で
- * 読み込む。失敗した検査があれば非ゼロで終了する。
+ * 画面の要素は data-testid で選ぶ。表示文字とクラス名で選ぶと、文言や見た目を直すたびに
+ * この smoke が壊れる。engine CLI は起動しない。preload を smoke/fake-preload.cjs へ差し替え、
+ * window.cobolInsight を固定データで満たして画面を results 状態まで進める。本番と同じ
+ * contextIsolation:true・sandbox:true で読み込む。失敗した検査があれば非ゼロで終了する。
  *
  * 実行: npm run smoke:render(electron-vite build のあとに electron smoke/render.cjs)
  */
@@ -30,6 +31,9 @@ const WAIT_TIMEOUT_MS = 30000;
 
 const RENDERER_HTML = join(__dirname, "..", "out", "renderer", "index.html");
 const FAKE_PRELOAD = join(__dirname, "fake-preload.cjs");
+
+/** 偽 preload が返すグラフのノード ID の下限。実行順の一覧の鍵を組むために持つ。 */
+const GRAPH_ID_BASE = 1_000_000_000_000;
 
 /** 検査結果。ok=false が1件でもあれば非ゼロ終了する。 */
 const results = [];
@@ -64,96 +68,143 @@ async function waitUntil(win, expression, description) {
   throw new Error(`時間内に成立しなかった: ${description}（最後の評価値 ${JSON.stringify(last)}）`);
 }
 
-/** 表示文字が一致するボタンを押す式。 */
-function clickButton(label) {
+/** data-testid で引いた要素を押す式。要素が現れるまで待つ用途を兼ねる。 */
+function clickTestId(testId, inner) {
+  const selector = `[data-testid=${JSON.stringify(testId)}]${inner === undefined ? "" : ` ${inner}`}`;
   return `(() => {
-    const target = [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === ${JSON.stringify(label)});
-    if (target === undefined) return false;
+    const target = document.querySelector(${JSON.stringify(selector)});
+    if (target === null) return false;
     target.click();
     return true;
   })()`;
 }
 
-/** 表示文字が一致するタブを押す式。 */
-function clickTab(label) {
+/** 選択子に一致する要素の数を返す式。0 件のときは null を返し、待機の合図にする。 */
+function countOf(selector) {
   return `(() => {
-    const target = [...document.querySelectorAll('[role="tab"]')].find((b) => b.textContent.trim() === ${JSON.stringify(label)});
-    if (target === undefined) return false;
-    target.click();
-    return true;
+    const count = document.querySelectorAll(${JSON.stringify(selector)}).length;
+    return count > 0 ? count : null;
   })()`;
+}
+
+/** 選択子に一致する要素の data-testid を並び順のまま返す式。 */
+function testIdsOf(selector) {
+  return `(() => {
+    const ids = [...document.querySelectorAll(${JSON.stringify(selector)})].map((e) => e.dataset.testid);
+    return ids.length > 0 ? ids : null;
+  })()`;
+}
+
+/** 検査1: シェルの4領域。 */
+async function checkShell(win) {
+  const present = await waitUntil(
+    win,
+    `(() => {
+      const ids = ['activitybar', 'sidepanel', 'editorarea', 'bottompanel'];
+      const found = ids.filter((id) => document.querySelector('[data-testid="' + id + '"]') !== null);
+      return found.length === ids.length ? found : null;
+    })()`,
+    "シェルの4領域",
+  );
+  record("シェルが4領域で組み上がる", present.length === 4, present.join(" / "));
+}
+
+/** 検査2: 資産フォルダの選択から解析、資産ツリーの表示まで。 */
+async function checkAssetTree(win) {
+  await waitUntil(win, clickTestId("select-folder"), "資産フォルダの選択");
+  const rows = await waitUntil(win, countOf('[data-testid^="tree-"]'), "資産ツリーの表示");
+  const badges = await evaluate(win, `document.querySelectorAll('[data-testid^="tree-"] .ci-badge').length`);
+  record("資産ツリーが種別バッジ付きで並ぶ", rows > 0 && badges === 5, `行 ${rows} 件・バッジ ${badges} 件`);
+}
+
+/** 検査3: 資産を開いたときの Monaco の実描画。行が重なっていないことを y 座標で確かめる。 */
+async function checkSourceTab(win) {
+  await waitUntil(win, clickTestId("tree-cobol/SYK001.cbl"), "資産の押下");
+  await waitUntil(win, `document.querySelector('[data-testid="tabpanel-source:cobol/SYK001.cbl"]') !== null`, "資産タブの表示");
+  const lines = await waitUntil(
+    win,
+    `(() => {
+      const tops = [...document.querySelectorAll('[data-testid="editorarea"] .view-line')]
+        .map((line) => Math.round(line.getBoundingClientRect().top));
+      return tops.length >= 5 ? tops : null;
+    })()`,
+    "Monaco の行描画",
+  );
+  const unique = new Set(lines);
+  record(
+    "Monaco の行が別々の y 座標に並ぶ",
+    unique.size === lines.length && unique.size >= 5,
+    `view-line ${lines.length} 本・異なる y ${unique.size} 個（y=${[...unique].slice(0, 4).join(",")}…）`,
+  );
+
+  const identification = await waitUntil(
+    win,
+    countOf(".ci-code__identification"),
+    "識別欄の装飾",
+  );
+  record("識別欄(73〜80桁)の装飾が描かれる", identification > 0, `装飾 ${identification} 箇所`);
 }
 
 /**
- * select の値を変える式。React は value を追跡するため、プロトタイプの setter で値を入れてから
- * change を起こす(要素へ直接代入すると React が変更を検知しない)。
+ * 検査4: 本文への打鍵と未保存の印。面の実体は Monaco が持ち DOM からは辿れないため、
+ * renderer が公開する ciMonaco から編集できる面を引いて打鍵する。
  */
-function selectOption(selector, value) {
-  return `(() => {
-    const element = document.querySelector(${JSON.stringify(selector)});
-    if (element === null) return false;
-    const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set;
-    setter.call(element, ${JSON.stringify(value)});
-    element.dispatchEvent(new Event('change', { bubbles: true }));
-    return true;
-  })()`;
-}
-
-/** 9タブの列挙(検査1)。 */
-async function checkTabs(win) {
-  const labels = await waitUntil(
+async function checkEditing(win) {
+  await waitUntil(
     win,
     `(() => {
-      const tabs = [...document.querySelectorAll('[role="tab"]')].map((t) => t.textContent.trim());
-      return tabs.length === 9 ? tabs : null;
+      const monaco = window.ciMonaco;
+      if (monaco === undefined) return false;
+      const editors = monaco.editor.getEditors()
+        .filter((editor) => !editor.getOption(monaco.editor.EditorOption.readOnly));
+      if (editors.length === 0) return false;
+      const editor = editors[editors.length - 1];
+      editor.setPosition({ lineNumber: 11, column: 1 });
+      editor.trigger('smoke', 'type', { text: '*' });
+      return true;
     })()`,
-    "9タブの列挙",
+    "本文への打鍵",
   );
-  record("9タブが列挙される", labels.length === 9, labels.join(" / "));
+  const marker = await waitUntil(
+    win,
+    countOf('[data-testid="dirty-source:cobol/SYK001.cbl"]'),
+    "未保存の印",
+  );
+  record("打鍵するとタブに未保存の印が立つ", marker === 1, `印 ${marker} 個`);
 }
 
-/** 取込を起点に解析(scan→lint→sql-lint)が進み results 状態になることを見る。 */
-async function runAnalysis(win) {
-  await waitUntil(win, clickButton("＋ 取り込む"), "取込ボタンの押下");
-  // 取込だけで解析まで進む。解析実行ボタンは押さない(押さずに一覧が出ることがこの検査の主眼)。
-  const rows = await waitUntil(
+/** 検査5: 指摘の表と、行から資産を開く経路。 */
+async function checkFindings(win) {
+  const rows = await waitUntil(win, countOf('[data-testid^="finding-"]'), "指摘表の行");
+  await waitUntil(
     win,
     `(() => {
-      const count = document.querySelectorAll('.ci-asset-row__name').length;
-      return count > 0 ? count : null;
+      const row = [...document.querySelectorAll('[data-testid^="finding-"]')]
+        .find((element) => element.textContent.includes('cobol/SYK002.cbl'));
+      if (row === undefined) return false;
+      row.click();
+      return true;
     })()`,
-    "資産一覧の表示",
+    "指摘の行の押下",
   );
-  record("取込がそのまま解析を走らせ資産一覧を表示する", rows > 0, `資産 ${rows} 件`);
+  const opened = await waitUntil(
+    win,
+    `document.querySelector('[data-testid="tab-source:cobol/SYK002.cbl"]') !== null`,
+    "指摘から開いたタブ",
+  );
+  record("指摘の行を押すとその資産のタブが開く", rows >= 3 && opened === true, `指摘 ${rows} 行`);
 }
 
-/** Cytoscape の実描画(検査2)。 */
+/** 検査6・7: Cytoscape の実描画と、実行順の一覧の並び。 */
 async function checkGraph(win) {
-  await waitUntil(win, clickTab("呼出関係図"), "呼出関係図タブの押下");
-  const canvases = await waitUntil(
-    win,
-    `(() => {
-      const count = document.querySelectorAll('.ci-graph__canvas canvas').length;
-      return count > 0 ? count : null;
-    })()`,
-    "Cytoscape の canvas 生成",
-  );
-  record("Cytoscape が canvas を作る", canvases > 0, `canvas ${canvases} 枚`);
-
-  const nodes = await waitUntil(
-    win,
-    `(() => {
-      const count = document.querySelectorAll('.ci-graph__nodes-list [role="option"]').length;
-      return count > 0 ? count : null;
-    })()`,
-    "ノード一覧の生成",
-  );
+  await waitUntil(win, clickTestId("activity-graph"), "呼出関係のアクティビティの押下");
+  await waitUntil(win, countOf('[data-testid="graph-canvas"] canvas'), "Cytoscape の canvas 生成");
 
   // canvas へ実際に描かれたかを画素で確かめる。レイアウト(ELK)は非同期なので描画まで待つ。
   const painted = await waitUntil(
     win,
     `(() => {
-      const canvases = [...document.querySelectorAll('.ci-graph__canvas canvas')];
+      const canvases = [...document.querySelectorAll('[data-testid="graph-canvas"] canvas')];
       for (const canvas of canvases) {
         if (canvas.width === 0 || canvas.height === 0) continue;
         const context = canvas.getContext('2d', { willReadFrequently: true });
@@ -169,296 +220,49 @@ async function checkGraph(win) {
     })()`,
     "canvas への描画",
   );
-  record("Cytoscape がノードを描く", painted > 0, `ノード一覧 ${nodes} 件・不透明画素 ${painted} 個`);
+  record("Cytoscape がノードを描く", painted > 0, `不透明画素 ${painted} 個`);
 
-  // 図と一覧の同期(キーボードからノードを選べること)を、選択の反映で確かめる。
-  await waitUntil(
+  const job = `trace-job:${GRAPH_ID_BASE + 1}`;
+  await waitUntil(win, countOf(`[data-testid="${job}"]`), "実行順の一覧の起点");
+  // 節そのものを押すと資産が開く。開閉だけを起こすため、行の中の開閉ボタンを押す。
+  await waitUntil(win, clickTestId(job, ".ci-trace__marker"), "起点の展開");
+  const steps = await waitUntil(
     win,
     `(() => {
-      const option = document.querySelector('.ci-graph__nodes-list [role="option"]');
-      if (option === null) return false;
-      option.click();
-      return true;
+      const rows = [...document.querySelectorAll('[data-testid="trace-tree"] [role="treeitem"]')];
+      const labels = rows.map((row) => row.querySelector('.ci-trace__label').textContent.trim());
+      return labels.length >= 3 ? labels : null;
     })()`,
-    "ノード一覧からの選択",
+    "起点の下位の表示",
   );
-  const selected = await waitUntil(
-    win,
-    `(() => {
-      const option = document.querySelector('.ci-graph__nodes-list [role="option"][aria-selected="true"]');
-      const detail = document.querySelector('.ci-graph-detail__name');
-      return option !== null && detail !== null ? detail.textContent.trim() : null;
-    })()`,
-    "詳細ペインへの反映",
-  );
-  record("ノード一覧の選択が詳細ペインへ届く", selected.length > 0, `選択ノード ${selected}`);
-}
-
-/** Monaco の実描画(検査3)。行が重なっていないことを y 座標で確かめる。 */
-async function checkViewer(win) {
-  await waitUntil(win, clickTab("ソースビューア"), "ソースビューアタブの押下");
-  await waitUntil(win, selectOption("#ci-viewer-file", "cobol/SYK001.cbl"), "表示ファイルの選択");
-  const lines = await waitUntil(
-    win,
-    `(() => {
-      const tops = [...document.querySelectorAll('.view-line')].map((line) => Math.round(line.getBoundingClientRect().top));
-      return tops.length >= 5 ? tops : null;
-    })()`,
-    "Monaco の行描画",
-  );
-  const unique = new Set(lines);
+  // engine が記録した seq のとおり、STEP010 → STEP020 の順で並ぶ。
   record(
-    "Monaco の行が別々の y 座標に並ぶ",
-    unique.size === lines.length && unique.size >= 5,
-    `view-line ${lines.length} 本・異なる y ${unique.size} 個（y=${[...unique].slice(0, 4).join(",")}…）`,
-  );
-
-  const editors = await evaluate(win, `document.querySelectorAll('.ci-code .monaco-editor').length`);
-  record("Monaco が両ペインで起動する", editors >= 2, `エディタ ${editors} 台`);
-
-  const identification = await waitUntil(
-    win,
-    `(() => {
-      const count = document.querySelectorAll('.ci-code__identification').length;
-      return count > 0 ? count : null;
-    })()`,
-    "識別欄の装飾",
-  );
-  record("識別欄(73〜80桁)の装飾が描かれる", identification > 0, `装飾 ${identification} 箇所`);
-}
-
-/**
- * 指摘一覧の一覧とコードの併存(検査10)。行番号のセルを押すと、同じ画面のまま下段へコードが出る。
- * タブが移ってしまうと「指摘を見て該当行を読む」作業が成り立たないため、活性タブも併せて見る。
- */
-async function checkFindingsSplit(win) {
-  await waitUntil(win, clickTab("指摘一覧"), "指摘一覧タブの押下");
-  await waitUntil(
-    win,
-    `(() => {
-      const cell = document.querySelector('.ci-findings-table__line--jump');
-      if (cell === null) return false;
-      cell.click();
-      return true;
-    })()`,
-    "行番号セルの押下",
-  );
-  const lines = await waitUntil(
-    win,
-    `(() => {
-      const tops = [...document.querySelectorAll('.ci-findings-split__code .view-line')].map((line) => Math.round(line.getBoundingClientRect().top));
-      return tops.length >= 5 ? tops : null;
-    })()`,
-    "指摘一覧の下段の行描画",
-  );
-  const unique = new Set(lines);
-  const active = await evaluate(
-    win,
-    `(() => {
-      const tab = document.querySelector('[role="tab"][aria-selected="true"]');
-      return tab === null ? '' : tab.textContent.trim();
-    })()`,
-  );
-  record(
-    "指摘一覧の下段にコードが出て、画面は移らない",
-    unique.size === lines.length && unique.size >= 5 && active === "指摘一覧",
-    `view-line ${lines.length} 本・異なる y ${unique.size} 個・活性タブ ${active}`,
+    "実行順の一覧が seq のとおりに下位を並べる",
+    steps[0] === "SYKD010" && steps[1] === "STEP010" && steps[2] === "STEP020",
+    steps.slice(0, 3).join(" → "),
   );
 }
 
-/** Monaco DiffEditor の実描画(検査4)。差分の行が重なっていないことを y 座標で確かめる。 */
-async function checkDiff(win) {
-  await waitUntil(win, clickTab("修正案の差分"), "修正案の差分タブの押下");
-  const candidates = await waitUntil(
-    win,
-    `(() => {
-      const count = document.querySelectorAll('.ci-fix-list__items [role="option"]').length;
-      return count > 0 ? count : null;
-    })()`,
-    "修正案一覧の生成",
-  );
-  record("修正案一覧が並ぶ", candidates > 0, `修正案 ${candidates} 件`);
+/** 検査8: ルールの一覧と、有効・無効の切替の往復。 */
+async function checkRules(win) {
+  await waitUntil(win, clickTestId("activity-rules"), "ルールのアクティビティの押下");
+  const switches = await waitUntil(win, countOf('[data-testid^="rule-switch-"]'), "ルールのトグル");
+  const ids = await evaluate(win, testIdsOf('[data-testid^="rule-switch-"]'));
+  record("ルールのタブがトグルを並べる", switches === 3, `${ids.join(" / ")}`);
 
-  const editors = await waitUntil(
+  await waitUntil(win, clickTestId("rule-switch-R001"), "トグルの押下");
+  const off = await waitUntil(
     win,
     `(() => {
-      const count = document.querySelectorAll('.ci-diff__editor .monaco-editor').length;
-      return count >= 2 ? count : null;
+      const toggle = document.querySelector('[data-testid="rule-switch-R001"]');
+      return toggle !== null && toggle.getAttribute('aria-checked') === 'false' ? 'off' : null;
     })()`,
-    "DiffEditor の左右ペイン起動",
+    "設定ファイル経由の反映",
   );
-  const lines = await waitUntil(
-    win,
-    `(() => {
-      const tops = [...document.querySelectorAll('.ci-diff__editor .view-line')].map((line) => Math.round(line.getBoundingClientRect().top));
-      return tops.length >= 5 ? tops : null;
-    })()`,
-    "DiffEditor の行描画",
-  );
-  const unique = new Set(lines);
-  record(
-    "DiffEditor の行が別々の y 座標に並ぶ",
-    unique.size >= 5 && unique.size * 2 >= lines.length,
-    `エディタ ${editors} 台・view-line ${lines.length} 本・異なる y ${unique.size} 個`,
-  );
-
-  // 差分の装飾(行の挿入・変更)が実際に描かれるかを確かめる。
-  const decorations = await waitUntil(
-    win,
-    `(() => {
-      const count = document.querySelectorAll('.ci-diff__editor .line-insert, .ci-diff__editor .char-insert, .ci-diff__editor .line-delete, .ci-diff__editor .char-delete').length;
-      return count > 0 ? count : null;
-    })()`,
-    "差分の装飾",
-  );
-  record("差分の装飾が描かれる", decorations > 0, `装飾 ${decorations} 箇所`);
-
-  // コピー句の修正案は engine が修正後ソースを書かないため、unified diff で示す。
-  await waitUntil(
-    win,
-    `(() => {
-      const options = [...document.querySelectorAll('.ci-fix-list__items [role="option"]')];
-      const target = options.find((option) => option.textContent.includes('コピー句'));
-      if (target === undefined) return false;
-      target.click();
-      return true;
-    })()`,
-    "コピー句の修正案の選択",
-  );
-  const unified = await waitUntil(
-    win,
-    `(() => {
-      const body = document.querySelector('.ci-diff__unified-body');
-      return body !== null && body.textContent.includes('PIC X(12)') ? body.textContent.length : null;
-    })()`,
-    "unified diff の表示",
-  );
-  record("コピー句の修正案が unified diff を出す", unified > 0, `本文 ${unified} 文字`);
+  record("トグルの切替が設定ファイル経由で往復する", off === "off", "R001 を無効にした");
 }
 
-/** レポート HTML の sandbox iframe 描画(検査5)。 */
-async function checkReport(win) {
-  await waitUntil(win, clickTab("レポート出力"), "レポート出力タブの押下");
-  await waitUntil(win, clickButton("レポートを書き出す"), "レポート書き出しの押下");
-  const metrics = await waitUntil(
-    win,
-    `(() => {
-      const count = document.querySelectorAll('.ci-report-preview__metric').length;
-      return count > 0 ? count : null;
-    })()`,
-    "レポート指標の表示",
-  );
-  const framed = await waitUntil(
-    win,
-    `(() => {
-      const frame = document.querySelector('.ci-report-preview__frame');
-      return frame !== null && frame.getAttribute('srcdoc') !== null ? frame.getAttribute('sandbox') === '' : null;
-    })()`,
-    "sandbox iframe の生成",
-  );
-  // 子フレームが実際に読み込まれたかは main プロセス側のフレーム木で確かめる(sandbox="" の
-  // 不透明オリジンのため、renderer からは中身を参照できない)。
-  const frames = win.webContents.mainFrame.framesInSubtree.length;
-  record(
-    "レポート HTML が sandbox iframe で描かれる",
-    metrics > 0 && framed === true && frames >= 2,
-    `指標 ${metrics} 件・sandbox=""・フレーム ${frames} 枚`,
-  );
-}
-
-/** 設定画面のルール表・説明・利用者定義ルール(検査6)。 */
-async function checkSettings(win) {
-  await waitUntil(win, clickTab("設定"), "設定タブの押下");
-  const rows = await waitUntil(
-    win,
-    `(() => {
-      const count = document.querySelectorAll('.ci-rules__row').length;
-      return count > 0 ? count : null;
-    })()`,
-    "ルール表の生成",
-  );
-  // 件数は偽 preload が返すカタログ(組み込み2件・利用者定義1件)と一致させる。
-  record("設定がルール表を並べる", rows === 3, `ルール ${rows} 件`);
-
-  // 開いていなければ押す形にし、待機の再評価でトグルが往復しないようにする。
-  const items = await waitUntil(
-    win,
-    `(() => {
-      const toggle = document.querySelector('.ci-rules__detail-toggle');
-      if (toggle === null) return null;
-      if (toggle.getAttribute('aria-expanded') !== 'true') {
-        toggle.click();
-        return null;
-      }
-      const count = document.querySelectorAll('.ci-rule-detail__item').length;
-      return count > 0 ? count : null;
-    })()`,
-    "ルール説明の展開",
-  );
-  record("ルールの説明が4項目を並べる", items === 4, `説明の項目 ${items} 件`);
-
-  const examples = await win.webContents.executeJavaScript(
-    "document.querySelectorAll('.ci-rule-detail__code').length",
-  );
-  record("説明が該当例と修正例を並べる", examples === 2, `例 ${examples} 件`);
-
-  const userRules = await waitUntil(
-    win,
-    `(() => {
-      const count = document.querySelectorAll('.ci-user-rules__item').length;
-      return count > 0 ? count : null;
-    })()`,
-    "利用者定義ルールの一覧",
-  );
-  record("利用者定義ルールが一覧に並ぶ", userRules === 1, `利用者定義 ${userRules} 件`);
-}
-
-/**
- * 端末取込のプレビュー(検査7)。React は textarea の value を追跡するため、プロトタイプの
- * setter で値を入れてから input を起こす(要素へ直接代入すると React が変更を検知しない)。
- */
-async function checkImport(win) {
-  await waitUntil(win, clickTab("端末取込"), "端末取込タブの押下");
-  await waitUntil(
-    win,
-    `(() => {
-      const area = document.querySelector('.ci-import__paste');
-      if (area === null) return false;
-      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
-      setter.call(area, '000100 IDENTIFICATION DIVISION.\\n000200 PROGRAM-ID. SYK001.');
-      area.dispatchEvent(new Event('input', { bubbles: true }));
-      return true;
-    })()`,
-    "本文の貼り付け",
-  );
-  await waitUntil(
-    win,
-    `(() => {
-      const field = document.querySelector('#ci-import-col-from');
-      if (field === null) return false;
-      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-      setter.call(field, '8');
-      field.dispatchEvent(new Event('input', { bubbles: true }));
-      return true;
-    })()`,
-    "開始桁の指定",
-  );
-  const shown = await waitUntil(
-    win,
-    `(() => {
-      const texts = [...document.querySelectorAll('.ci-import-preview__text')].map((e) => e.textContent);
-      const ruler = document.querySelector('.ci-import-preview__ruler');
-      if (texts.length !== 2 || ruler === null) return null;
-      return texts[0] === 'IDENTIFICATION DIVISION.' && ruler.textContent.includes('1234567890')
-        ? texts.length
-        : null;
-    })()`,
-    "取込プレビューの表示",
-  );
-  record("端末取込が桁を切り出してプレビューへ並べる", shown === 2, `プレビュー ${shown} 行`);
-}
-
-/** console のエラーと CSP 拒否(検査8)。 */
+/** 検査10: console のエラーと CSP 拒否。 */
 function checkConsole() {
   record(
     "console にエラーと CSP 拒否が出ない",
@@ -468,7 +272,7 @@ function checkConsole() {
 }
 
 /**
- * ページ拡大でも横スクロールが出ないことを確かめる。シェルへ CSS ピクセルの幅の下限を
+ * 検査9: ページ拡大でも横スクロールが出ないことを確かめる。シェルへ CSS ピクセルの幅の下限を
  * 無条件に敷くと、拡大でビューポートが縮んだときだけ横スクロールが出て、各ペインの縦スクロールと
  * 合わせて縦横 2 方向のスクロールになる(WCAG 1.4.10 の Reflow に反する)。
  */
@@ -538,15 +342,13 @@ async function main() {
 
   try {
     await win.loadFile(RENDERER_HTML);
-    await checkTabs(win);
-    await runAnalysis(win);
+    await checkShell(win);
+    await checkAssetTree(win);
+    await checkSourceTab(win);
+    await checkEditing(win);
+    await checkFindings(win);
     await checkGraph(win);
-    await checkViewer(win);
-    await checkFindingsSplit(win);
-    await checkDiff(win);
-    await checkReport(win);
-    await checkSettings(win);
-    await checkImport(win);
+    await checkRules(win);
     await checkZoomReflow(win);
     checkConsole();
   } catch (error) {

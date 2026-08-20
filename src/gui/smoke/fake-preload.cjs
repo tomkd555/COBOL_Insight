@@ -13,6 +13,10 @@ const LINT_SARIF = "C:\\smoke\\lint.sarif";
 const SQL_SARIF = "C:\\smoke\\sql-advise.sarif";
 const CALLGRAPH_JSON = "C:\\smoke\\callgraph.json";
 const USER_RULES_PATH = "C:\\smoke\\data\\user-rules.json";
+const RULE_CONFIG_PATH = "C:\\smoke\\data\\rules-config.json";
+
+/** グラフ層のノード ID の下限。engine は資産の ID と混ざらないようこの帯を使う。 */
+const GRAPH_ID_BASE = 1_000_000_000_000;
 
 /**
  * ルール表と説明の描画を確かめるための最小のカタログ。組み込み2件と利用者定義1件を置く。
@@ -66,6 +70,12 @@ const RULES = [
     goodExample: "",
   },
 ];
+
+/**
+ * ルールの有効・無効。engine は rules-config.json を読んで enabled を決めるため、偽 preload でも
+ * 書いた内容がそのまま次の listRules へ効くようにする(切替が往復することを smoke が見る)。
+ */
+let ruleConfig = { version: 1, disabledRules: [] };
 
 /** 利用者定義ルールの定義ファイルの中身。上の U001 に対応する。 */
 const USER_RULE = {
@@ -143,7 +153,7 @@ const GENERATED_JAVA = [
 
 const INVENTORY = [
   { id: 1, path: "bms/SYKMAP1.bms", name: "SYKMAP1.bms", type: "BMS", codepage: "windows-31j", byteSize: 1140, findingCount: 0 },
-  { id: 2, path: "cobol/SYK001.cbl", name: "SYK001.cbl", type: "PROGRAM", codepage: "windows-31j", byteSize: 4200, findingCount: 0 },
+  { id: 2, path: "cobol/SYK001.cbl", name: "SYK001.cbl", type: "PROGRAM", codepage: "windows-31j", byteSize: 4200, findingCount: 1 },
   { id: 3, path: "cobol/SYK002.cbl", name: "SYK002.cbl", type: "PROGRAM", codepage: "windows-31j", byteSize: 3800, findingCount: 1 },
   { id: 4, path: "copybook/SYKCPY1.cpy", name: "SYKCPY1.cpy", type: "COPYBOOK", codepage: "windows-31j", byteSize: 640, findingCount: 0 },
   { id: 5, path: "jcl/SYKD010.jcl", name: "SYKD010.jcl", type: "JCL", codepage: "windows-31j", byteSize: 900, findingCount: 0 },
@@ -151,32 +161,44 @@ const INVENTORY = [
 
 const FINDINGS = [
   { ruleId: "R004", level: "warning", message: "ON SIZE ERROR 句が無い。", file: "cobol/SYK001.cbl", startLine: 10, startColumn: 12 },
-  { ruleId: "R017", level: "error", message: "FILE STATUS の検査が無い。", file: "cobol/SYK002.cbl", startLine: 24, startColumn: 12 },
+  { ruleId: "R001", level: "error", message: "WK-ORDER-ID が未初期化のまま参照されている。", file: "cobol/SYK002.cbl", startLine: 24, startColumn: 12 },
 ];
 
 const SQL_ADVICE = [
   { ruleId: "S001", level: "warning", message: "SELECT * を列指定へ改める。", file: "cobol/SYK001.cbl", startLine: 10, startColumn: 12 },
 ];
 
-const CALLGRAPH = {
+/**
+ * 走査済みプロジェクトファイルから読む呼出関係。ジョブ→ステップ→プログラム→段落まで辿れる形に
+ * し、段落は FALLTHROUGH・PERFORM・GOTO の3種の流れを持たせる。実行順は seq が決める。
+ */
+const GRAPH = {
   nodes: [
-    { id: "job:SYKD010", kind: "JOB", label: "SYKD010", attributes: {} },
-    { id: "step:SYKD010.STEP010", kind: "STEP", label: "STEP010", attributes: {} },
-    { id: "program:SYK001", kind: "PROGRAM", label: "SYK001", attributes: {} },
-    { id: "program:SYK002", kind: "PROGRAM", label: "SYK002", attributes: {} },
-    { id: "dataset:SYKT.D250718.ORDER.DAILY", kind: "DATASET", label: "SYKT.D250718.ORDER.DAILY", attributes: {} },
-    { id: "db2:SYKDB.ZAIKOM", kind: "DB2_TABLE", label: "SYKDB.ZAIKOM", attributes: {} },
-    { id: "unresolved:WS-PROG-NAME", kind: "UNRESOLVED", label: "WS-PROG-NAME", attributes: { variable: "WS-PROG-NAME" } },
-    { id: "transaction:SYK8", kind: "TRANSACTION", label: "SYK8", attributes: {} },
+    { id: 2, type: "PROGRAM", label: "SYK001" },
+    { id: 3, type: "PROGRAM", label: "SYK002" },
+    { id: GRAPH_ID_BASE + 1, type: "JOB", label: "SYKD010" },
+    { id: GRAPH_ID_BASE + 2, type: "STEP", label: "STEP010" },
+    { id: GRAPH_ID_BASE + 3, type: "STEP", label: "STEP020" },
+    { id: GRAPH_ID_BASE + 4, type: "DATASET", label: "SYKT.D250718.ORDER.DAILY" },
   ],
   edges: [
-    { from: "job:SYKD010", to: "step:SYKD010.STEP010", kind: "EXECUTION", resolution: "CONSTANT" },
-    { from: "step:SYKD010.STEP010", to: "program:SYK001", kind: "EXECUTION", resolution: "CONSTANT" },
-    { from: "step:SYKD010.STEP010", to: "dataset:SYKT.D250718.ORDER.DAILY", kind: "REFERENCE", resolution: "CONSTANT" },
-    { from: "program:SYK001", to: "program:SYK002", kind: "CALL", resolution: "CONSTANT" },
-    { from: "program:SYK001", to: "db2:SYKDB.ZAIKOM", kind: "REFERENCE", resolution: "CONSTANT" },
-    { from: "program:SYK002", to: "unresolved:WS-PROG-NAME", kind: "CALL", resolution: "UNRESOLVED" },
-    { from: "transaction:SYK8", to: "program:SYK002", kind: "TRANSACTION_TRANSITION", resolution: "DATAFLOW" },
+    { from: GRAPH_ID_BASE + 1, to: GRAPH_ID_BASE + 2, kind: "EXECUTION", resolution: "CONSTANT", seq: 1, line: 20 },
+    { from: GRAPH_ID_BASE + 1, to: GRAPH_ID_BASE + 3, kind: "EXECUTION", resolution: "CONSTANT", seq: 2, line: 30 },
+    { from: GRAPH_ID_BASE + 2, to: 2, kind: "EXECUTION", resolution: "CONSTANT", seq: 1, line: 20 },
+    { from: GRAPH_ID_BASE + 3, to: 3, kind: "EXECUTION", resolution: "CONSTANT", seq: 1, line: 30 },
+    { from: GRAPH_ID_BASE + 2, to: GRAPH_ID_BASE + 4, kind: "REFERENCE", resolution: "CONSTANT", seq: 0, line: null },
+    { from: 2, to: 3, kind: "CALL", resolution: "CONSTANT", seq: 1, line: 11 },
+  ],
+  paragraphs: [
+    { id: 21, programSourceId: 2, name: "MAIN-PROC", startLine: 8, endLine: 9 },
+    { id: 22, programSourceId: 2, name: "READ-ORDER", startLine: 10, endLine: 10 },
+    { id: 23, programSourceId: 2, name: "ERROR-EXIT", startLine: 11, endLine: 11 },
+  ],
+  paragraphEdges: [
+    { programSourceId: 2, from: 21, to: 22, toName: "READ-ORDER", kind: "PERFORM", line: 9, seq: 1 },
+    { programSourceId: 2, from: 21, to: 23, toName: "ERROR-EXIT", kind: "GOTO", line: 9, seq: 2 },
+    { programSourceId: 2, from: 21, to: 22, toName: "READ-ORDER", kind: "FALLTHROUGH", line: null, seq: 3 },
+    { programSourceId: 2, from: 22, to: 23, toName: "ERROR-EXIT", kind: "FALLTHROUGH", line: null, seq: 1 },
   ],
 };
 
@@ -235,7 +257,7 @@ const api = {
           ...(request.htmlFile === undefined ? {} : { html: request.htmlFile }),
           ...(request.textFile === undefined ? {} : { text: request.textFile }),
         },
-        { assets: 5, findings: 2, sqlAdvice: 1, callEdges: 7, analysisErrors: 0 },
+        { assets: 5, findings: 2, sqlAdvice: 1, callEdges: 6, analysisErrors: 0 },
       ),
     ),
   runTranspile: () => Promise.resolve(engineResult("translate", { outDir: "C:\\smoke\\transpile" })),
@@ -255,7 +277,9 @@ const api = {
         },
       ),
     ),
+  cancelRun: () => Promise.resolve(undefined),
   selectInputFolder: () => Promise.resolve("C:\\smoke\\assets"),
+  checkDirectoryExists: () => Promise.resolve(true),
   getOutputPaths: () =>
     Promise.resolve({
       db: DB_PATH,
@@ -263,13 +287,26 @@ const api = {
       sqlAdviseSarif: SQL_SARIF,
       copyExpansion: "C:\\smoke\\data\\cobol-insight-copy-expansion.json",
       userRules: USER_RULES_PATH,
+      ruleConfig: RULE_CONFIG_PATH,
     }),
-  listRules: () => Promise.resolve({ rules: RULES, userRuleErrors: [] }),
+  listRules: () =>
+    Promise.resolve({
+      rules: RULES.map((rule) => ({
+        ...rule,
+        enabled: !ruleConfig.disabledRules.includes(rule.id),
+      })),
+      userRuleErrors: [],
+      ruleConfigWarnings: [],
+    }),
   readUserRules: () => Promise.resolve({ version: 1, rules: [USER_RULE] }),
   writeUserRules: () => Promise.resolve(undefined),
+  readRuleConfig: () => Promise.resolve(ruleConfig),
+  writeRuleConfig: (_path, file) => {
+    ruleConfig = file;
+    return Promise.resolve(undefined);
+  },
   readSettings: () =>
     Promise.resolve({
-      disabledRules: [],
       severityThreshold: "warning",
       defaultEncoding: "手動: Shift_JIS",
       copybookPaths: [],
@@ -277,7 +314,7 @@ const api = {
     }),
   writeSettings: () => Promise.resolve(undefined),
   readSarif: (path) => Promise.resolve(path === SQL_SARIF ? SQL_ADVICE : FINDINGS),
-  readCallgraphJson: () => Promise.resolve(CALLGRAPH),
+  readGraph: () => Promise.resolve(GRAPH),
   readFixResult: (request) =>
     Promise.resolve({
       relPath: request.relPath,
@@ -298,6 +335,18 @@ const api = {
       unsupported: false,
     });
   },
+  /** 書き戻しは行わず、engine が返す要約だけを模す(原本にも engine にも触れない)。 */
+  saveSource: (request) =>
+    Promise.resolve({
+      written: true,
+      path: `C:/smoke/assets/${request.path}`,
+      changedLineFrom: 1,
+      changedLineTo: 1,
+      reparseErrors: [],
+      error: "",
+      exitCode: 0,
+    }),
+  readCopyExpansion: () => Promise.resolve({ programs: [] }),
   readTranspileArtifacts: () =>
     Promise.resolve({
       files: [
