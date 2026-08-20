@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import { EditorTabs } from "./EditorTabs";
 import { EmptyState } from "../components/EmptyState";
+import { FixTab } from "../tabs/FixTab";
 import { SourceTab } from "../tabs/SourceTab";
 import { StubTab } from "../tabs/StubTab";
 import { useWorkbench, useWorkbenchDispatch, type WorkbenchTab } from "../state/workbenchStore";
@@ -11,11 +12,16 @@ export interface EditorAreaProps {
 }
 
 function tabContent(tab: WorkbenchTab, onCursor: EditorAreaProps["onCursor"]): ReactElement {
-  if (tab.kind === "source" && tab.path !== null) {
-    return <SourceTab path={tab.path} line={tab.line} onCursor={onCursor} />;
-  }
   if (tab.kind === "source") {
-    return <StubTab kind="fix" title={tab.title} />;
+    // path を持たない資産のタブは作られない(sourceTab が必ず持たせる)。
+    return tab.path === null ? (
+      <EmptyState title="資産を特定できません" description="タブを閉じて、開き直してください。" />
+    ) : (
+      <SourceTab path={tab.path} line={tab.line} onCursor={onCursor} />
+    );
+  }
+  if (tab.kind === "fix") {
+    return <FixTab />;
   }
   return <StubTab kind={tab.kind} title={tab.title} />;
 }

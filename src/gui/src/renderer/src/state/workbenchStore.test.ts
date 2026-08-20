@@ -3,7 +3,9 @@ import {
   BOTTOM_PANEL_LIMITS,
   SIDE_PANEL_LIMITS,
   activeTabOf,
+  draftOf,
   initialWorkbenchState,
+  isTabDirty,
   singletonTab,
   sourceTab,
   workbenchReducer,
@@ -90,9 +92,9 @@ describe("タブを閉じる", () => {
     expect(workbenchReducer(opened, { type: "CLOSE_TAB", id: "settings" })).toBe(opened);
   });
 
-  it("閉じたタブの未保存の印を残さない", () => {
-    const dirty = workbenchReducer(opened, { type: "SET_DIRTY", id: A.id, dirty: true });
-    expect(workbenchReducer(dirty, { type: "CLOSE_TAB", id: A.id }).dirtyTabIds).toEqual([]);
+  it("閉じたタブの編集後の本文を残さない", () => {
+    const edited = workbenchReducer(opened, { type: "SET_DRAFT", id: A.id, text: "編集後" });
+    expect(workbenchReducer(edited, { type: "CLOSE_TAB", id: A.id }).drafts).toEqual({});
   });
 });
 
@@ -122,18 +124,30 @@ describe("タブを選ぶ", () => {
   });
 });
 
-describe("未保存の印", () => {
-  it("立てて外せる", () => {
-    const set = apply({ type: "OPEN_TAB", tab: A }, { type: "SET_DIRTY", id: A.id, dirty: true });
-    expect(set.dirtyTabIds).toEqual([A.id]);
-    expect(workbenchReducer(set, { type: "SET_DIRTY", id: A.id, dirty: false }).dirtyTabIds).toEqual(
-      [],
-    );
+describe("編集後の本文", () => {
+  it("持たせて外せる。持っているあいだが未保存である", () => {
+    const set = apply({ type: "OPEN_TAB", tab: A }, { type: "SET_DRAFT", id: A.id, text: "編集後" });
+    expect(draftOf(set, A.id)).toBe("編集後");
+    expect(isTabDirty(set, A.id)).toBe(true);
+    const cleared = workbenchReducer(set, { type: "SET_DRAFT", id: A.id, text: null });
+    expect(cleared.drafts).toEqual({});
+    expect(isTabDirty(cleared, A.id)).toBe(false);
   });
 
-  it("同じ状態を重ねても増やさない", () => {
-    const set = apply({ type: "OPEN_TAB", tab: A }, { type: "SET_DIRTY", id: A.id, dirty: true });
-    expect(workbenchReducer(set, { type: "SET_DIRTY", id: A.id, dirty: true })).toBe(set);
+  it("同じ本文を重ねても状態は変わらない", () => {
+    const set = apply({ type: "OPEN_TAB", tab: A }, { type: "SET_DRAFT", id: A.id, text: "編集後" });
+    expect(workbenchReducer(set, { type: "SET_DRAFT", id: A.id, text: "編集後" })).toBe(set);
+  });
+
+  it("タブごとに別の本文を持つ", () => {
+    const set = apply(
+      { type: "OPEN_TAB", tab: A },
+      { type: "OPEN_TAB", tab: B },
+      { type: "SET_DRAFT", id: A.id, text: "A の編集" },
+      { type: "SET_DRAFT", id: B.id, text: "B の編集" },
+    );
+    expect(draftOf(set, A.id)).toBe("A の編集");
+    expect(draftOf(set, B.id)).toBe("B の編集");
   });
 });
 

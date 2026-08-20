@@ -33,8 +33,13 @@ export function FindingsTable({ onOpen }: FindingsTableProps): ReactElement {
   const [filter, setFilter] = useState<FindingFilter>(initialFindingFilter);
 
   const merged = useMemo(
-    () => mergeFindings(artifactItems(project.findings), artifactItems(project.sqlAdvice)),
-    [project.findings, project.sqlAdvice],
+    () =>
+      mergeFindings(
+        artifactItems(project.findings),
+        artifactItems(project.sqlAdvice),
+        project.saveFindings,
+      ),
+    [project.findings, project.sqlAdvice, project.saveFindings],
   );
   const counts = useMemo(
     () => severityCounts(merged, project.catalog),

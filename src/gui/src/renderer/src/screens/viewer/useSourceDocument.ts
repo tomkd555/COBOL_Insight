@@ -27,12 +27,15 @@ function messageOf(error: unknown): string {
  * @param inputDir 資産フォルダ。null は未確定。
  * @param path 資産の相対パス。空文字は未選択。
  * @param codepage 復号に使う文字コード。null は main の判定に委ねる。
+ * @param reloadKey 読み直しの合図。値を変えるたびに同じ資産をもう一度読む(書き戻しの後に、
+ *   engine が整えた原本の姿を画面へ戻すために使う)。
  */
 export function useSourceDocument(
   enabled: boolean,
   inputDir: string | null,
   path: string,
   codepage: string | null,
+  reloadKey: number = 0,
 ): DocumentState {
   const [document, setDocument] = useState<DocumentState>(IDLE);
 
@@ -54,7 +57,7 @@ export function useSourceDocument(
     return () => {
       current = false;
     };
-  }, [enabled, inputDir, path, codepage]);
+  }, [enabled, inputDir, path, codepage, reloadKey]);
 
   return document;
 }

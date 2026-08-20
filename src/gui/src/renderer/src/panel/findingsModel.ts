@@ -10,13 +10,16 @@ import type { SarifFinding } from "../../../shared/engine-api";
 import { ruleOf, type RuleCatalogIndex } from "../data/ruleCatalog";
 import { visibleSeverities, type Severity } from "../components/severity";
 
-/** 指摘の出所。lint の検出と sql-lint の検出を1つの表で区別する。 */
-export type FindingSource = "lint" | "sql";
+/**
+ * 指摘の出所。lint の検出・sql-lint の検出・書き戻し時の再パース検証を1つの表で区別する。
+ */
+export type FindingSource = "lint" | "sql" | "save";
 
 /** 出所の表示名。 */
 export const SOURCE_LABELS: Readonly<Record<FindingSource, string>> = {
   lint: "指摘",
   sql: "SQL",
+  save: "保存時の検証",
 };
 
 /** ルール・資産・出所の選択で「すべて」を表す値。 */
@@ -62,14 +65,16 @@ export const initialFindingFilter: FindingFilter = {
   text: "",
 };
 
-/** lint と sql-lint の検出結果を1つの並びへまとめる。 */
+/** lint・sql-lint・保存時の検証の結果を1つの並びへまとめる。 */
 export function mergeFindings(
   lint: readonly SarifFinding[],
   sql: readonly SarifFinding[],
+  save: readonly SarifFinding[] = [],
 ): PanelFinding[] {
   return [
     ...lint.map<PanelFinding>((finding) => ({ finding, source: "lint" })),
     ...sql.map<PanelFinding>((finding) => ({ finding, source: "sql" })),
+    ...save.map<PanelFinding>((finding) => ({ finding, source: "save" })),
   ];
 }
 
@@ -105,6 +110,7 @@ export const SOURCE_OPTIONS: readonly FilterOption[] = [
   { value: ALL, label: "出所: すべて" },
   { value: "lint", label: "出所: 指摘" },
   { value: "sql", label: "出所: SQL" },
+  { value: "save", label: "出所: 保存時の検証" },
 ];
 
 /** 重大度ごとの件数(絞り込み前の全件を対象にする)。 */

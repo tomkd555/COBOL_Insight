@@ -16,10 +16,10 @@ import type {
 } from "../../../../shared/engine-api";
 import { parseFixSummary } from "../../../../shared/fixSummary";
 import { ruleOf, type RuleCatalogIndex } from "../../data/ruleCatalog";
-import type { AnalysisMode } from "../../state/projectStore";
+import type { AnalysisMode, FixDecision } from "../../state/projectStore";
 
-/** 修正案の判定。未判定はキー不在で表す。 */
-export type FixDecision = "adopted" | "rejected";
+/** 修正案の判定。採否は利用者の判断であり、置き場所は projectStore である。 */
+export type { FixDecision };
 
 /** 修正案を生成できるルール ID。engine の FixProducer 実装と一致させる。 */
 export const FIX_RULE_IDS: readonly string[] = ["R004", "R017", "R018", "R021"];

@@ -2,17 +2,19 @@ import type { ReactElement } from "react";
 import { EmptyState } from "../components/EmptyState";
 import type { TabKind } from "../state/workbenchStore";
 
+/** 中身をまだ移していないタブの種類。 */
+export type StubKind = Exclude<TabKind, "source" | "fix">;
+
 /** 中身をまだ移していないタブの案内。 */
-const PENDING: Readonly<Record<Exclude<TabKind, "source">, string>> = {
+const PENDING: Readonly<Record<StubKind, string>> = {
   graph: "ジョブから段落までの呼出関係を、実行順の一覧と図で示す面です。",
   rules: "組み込みと利用者定義のルールを一覧し、有効・無効を切り替える面です。",
   report: "解析の結果を HTML またはテキストで書き出す面です。",
   settings: "コピー句探索パス・既定の文字コード・重大度しきい値を決める面です。",
-  fix: "ルールが出す修正案を、原本との差分で確かめて書き出す面です。",
 };
 
 export interface StubTabProps {
-  kind: Exclude<TabKind, "source">;
+  kind: StubKind;
   title: string;
 }
 

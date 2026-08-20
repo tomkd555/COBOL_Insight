@@ -35,18 +35,30 @@ export interface FakeViewZone {
   marginDomNode: HTMLElement;
 }
 
+/** 付いたマーカー1件(保存時の再パース検証)。 */
+export interface FakeMarker {
+  startLineNumber: number;
+  message: string;
+  severity: number;
+}
+
 /** 偽エディタ1台の観測結果。 */
 export interface FakeEditor {
   language: string;
   ariaLabel: string;
   rulers: number[];
   glyphMargin: boolean;
+  /** 編集できる面か(readOnly の裏返し)。 */
+  editable: boolean;
   value: string;
   decorations: FakeDecoration[];
   zones: FakeViewZone[];
+  markers: FakeMarker[];
   revealed: number[];
   disposed: boolean;
   cursorHandler: ((event: { position: { lineNumber: number } }) => void) | null;
+  /** 本文を書き換える。試験から利用者の入力を模す入口である。 */
+  type: (value: string) => void;
 }
 
 /** 生成したエディタの記録先。テストごとに作り直す。 */
@@ -61,6 +73,7 @@ interface FakeCreateOptions {
   rulers?: number[];
   ariaLabel?: string;
   glyphMargin?: boolean;
+  readOnly?: boolean;
 }
 
 /** ビューゾーンの操作口。 */
@@ -80,7 +93,13 @@ export interface MonacoFake {
     EditorOption: { fontInfo: string };
     defineTheme: () => void;
     create: (container: HTMLElement, options: FakeCreateOptions) => unknown;
+    setModelMarkers: (model: FakeModel, owner: string, markers: FakeMarker[]) => void;
   };
+}
+
+/** エディタが持つモデル。マーカーの付け先としてだけ使う。 */
+interface FakeModel {
+  editor: FakeEditor;
 }
 
 /** 生成したエディタを store へ記録する偽 Monaco を組む。 */
@@ -95,25 +114,46 @@ export function createMonacoFake(store: MonacoFakeStore): MonacoFake {
       // 実測寸法の取得に使う列挙(monaco.editor.EditorOption)。値は本物と同じである必要がない。
       EditorOption: { fontInfo: "fontInfo" },
       defineTheme: () => undefined,
+      setModelMarkers: (model: FakeModel, _owner: string, markers: FakeMarker[]) => {
+        model.editor.markers = markers;
+      },
       create: (_container: HTMLElement, options: FakeCreateOptions) => {
+        let contentHandler: (() => void) | null = null;
         const editor: FakeEditor = {
           language: options.language ?? "",
           ariaLabel: options.ariaLabel ?? "",
           rulers: options.rulers ?? [],
           glyphMargin: options.glyphMargin ?? false,
+          editable: options.readOnly !== true,
           value: options.value ?? "",
           decorations: [],
           zones: [],
+          markers: [],
           revealed: [],
           disposed: false,
           cursorHandler: null,
+          type: (value: string) => {
+            editor.value = value;
+            contentHandler?.();
+          },
         };
         store.editors.push(editor);
+        const model: FakeModel = { editor };
         let nextZoneId = 0;
         return {
           getValue: () => editor.value,
+          getModel: () => model,
           setValue: (value: string) => {
             editor.value = value;
+            contentHandler?.();
+          },
+          onDidChangeModelContent: (handler: () => void) => {
+            contentHandler = handler;
+            return {
+              dispose: () => {
+                contentHandler = null;
+              },
+            };
           },
           createDecorationsCollection: (initial: FakeDecoration[]) => {
             editor.decorations = initial;

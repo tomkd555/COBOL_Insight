@@ -31,7 +31,6 @@ import {
   selectGeneratedFile,
   toDocument,
   transpileOutDir,
-  viewerFileOptions,
 } from "./viewerModel";
 import { SAMPLE_INVENTORY } from "../../data/__fixtures__/samples";
 import { FIXTURE_CATALOG } from "../../data/__fixtures__/catalog";
@@ -162,19 +161,8 @@ describe("identificationRanges(識別欄 73〜80桁)", () => {
   });
 });
 
-describe("viewerFileOptions・isTranspileTarget(表示対象の資産)", () => {
-  it("資産一覧の相対パスをそのまま選択肢にする", () => {
-    expect(viewerFileOptions(SAMPLE_INVENTORY).map((option) => option.value)).toEqual([
-      "bms/SYKMAP1.bms",
-      "cobol/SYK001.cbl",
-      "cobol/SYK002.cbl",
-      "cobol/SYKENC1.cbl",
-      "copybook/SYKCPY1.cpy",
-      "jcl/SYKD010.jcl",
-    ]);
-  });
-
-  it("逐語対訳の対象は COBOL 本体(NODE.type=PROGRAM)に限る", () => {
+describe("isTranspileTarget(逐語対訳の対象)", () => {
+  it("対象は COBOL 本体(NODE.type=PROGRAM)に限る", () => {
     const program = SAMPLE_INVENTORY.find((item) => item.path === "cobol/SYK001.cbl");
     const copybook = SAMPLE_INVENTORY.find((item) => item.path === "copybook/SYKCPY1.cpy");
     expect(isTranspileTarget(program ?? null)).toBe(true);

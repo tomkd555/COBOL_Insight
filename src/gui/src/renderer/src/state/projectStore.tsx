@@ -21,6 +21,7 @@ import type {
 } from "../../../shared/engine-api";
 import { EMPTY_RULE_CATALOG, buildRuleCatalog, type RuleCatalogIndex } from "../data/ruleCatalog";
 import type { RuleCatalogEntry } from "../../../shared/engine-api";
+import type { FixState } from "../screens/diff/diffModel";
 import type { ScanDiscovery } from "../services/scanSummary";
 
 /** 解析のライフサイクル。画面はこの値で空・実行中・結果・失敗の4状態を描き分ける。 */
@@ -37,6 +38,9 @@ export type ArtifactState<T> =
   | { readonly status: "none" }
   | { readonly status: "ready"; readonly items: readonly T[] }
   | { readonly status: "error"; readonly message: string };
+
+/** 修正案の採否。未判定はキー不在で表す。 */
+export type FixDecision = "adopted" | "rejected";
 
 /** 実行ログの1行。下部パネルの実行ログがそのまま並べる。 */
 export interface RunLogEntry {
@@ -62,6 +66,13 @@ export interface ProjectState {
   readonly scanDiscovery: ScanDiscovery | null;
   readonly findings: ArtifactState<SarifFinding>;
   readonly sqlAdvice: ArtifactState<SarifFinding>;
+  /** 書き戻しのたびに engine が返した再パース検証の誤り。指摘の表へ出所を分けて載せる。 */
+  readonly saveFindings: readonly SarifFinding[];
+
+  /** 修正案の取得状態。タブを閉じても保ち、開き直すたびに engine を起こし直さない。 */
+  readonly fix: FixState;
+  /** 修正案の採否。engine は選んで書き出せないため、人の判断の記録として保つ。 */
+  readonly fixDecisions: Readonly<Record<string, FixDecision>>;
 
   /** ルール一覧の索引。名前・カテゴリ・説明の供給源は engine である。 */
   readonly catalog: RuleCatalogIndex;
@@ -85,6 +96,9 @@ export const initialProjectState: ProjectState = {
   scanDiscovery: null,
   findings: { status: "none" },
   sqlAdvice: { status: "none" },
+  saveFindings: [],
+  fix: { status: "idle" },
+  fixDecisions: {},
   catalog: EMPTY_RULE_CATALOG,
   userRules: [],
   userRuleErrors: [],
@@ -104,6 +118,9 @@ export type ProjectAction =
     }
   | { type: "SET_FINDINGS"; result: ArtifactState<SarifFinding> }
   | { type: "SET_SQL_ADVICE"; result: ArtifactState<SarifFinding> }
+  | { type: "SET_SAVE_FINDINGS"; path: string; findings: readonly SarifFinding[] }
+  | { type: "SET_FIX"; fix: FixState }
+  | { type: "SET_FIX_DECISIONS"; decisions: Readonly<Record<string, FixDecision>> }
   | { type: "FINISH_RUN"; failed: boolean }
   | { type: "CANCEL_RUN" }
   | { type: "SET_CATALOG"; entries: readonly RuleCatalogEntry[]; userRuleErrors: readonly string[] }
@@ -139,6 +156,8 @@ export function projectReducer(state: ProjectState, action: ProjectAction): Proj
         scanDiscovery: null,
         findings: { status: "none" },
         sqlAdvice: { status: "none" },
+        saveFindings: [],
+        fix: { status: "idle" },
         runLog: appendLog(state.runLog, "解析を開始しました。", false),
       };
 
@@ -185,6 +204,22 @@ export function projectReducer(state: ProjectState, action: ProjectAction): Proj
           action.result.status === "error",
         ),
       };
+
+    case "SET_SAVE_FINDINGS":
+      // 同じ資産を保存し直したら、前回の検証結果は残さない。
+      return {
+        ...state,
+        saveFindings: [
+          ...state.saveFindings.filter((finding) => finding.file !== action.path),
+          ...action.findings,
+        ],
+      };
+
+    case "SET_FIX":
+      return { ...state, fix: action.fix };
+
+    case "SET_FIX_DECISIONS":
+      return { ...state, fixDecisions: { ...action.decisions } };
 
     case "FINISH_RUN":
       return { ...state, mode: action.failed ? "error" : "results" };

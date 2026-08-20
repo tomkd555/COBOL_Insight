@@ -416,6 +416,26 @@ export interface EditorDecoration {
   };
 }
 
+/** Monaco のマーカー1件(IMarkerData の部分集合)。誤りのある行を波線と一覧で示す。 */
+export interface EditorMarker {
+  startLineNumber: number;
+  startColumn: number;
+  endLineNumber: number;
+  endColumn: number;
+  message: string;
+  /** monaco.MarkerSeverity の値。 */
+  severity: number;
+}
+
+/**
+ * monaco.MarkerSeverity.Error の値。列挙を引くには Monaco の読み込みが要り、マーカーを組む側を
+ * 純関数として試験できなくなるため、値をここに置く。
+ */
+export const MARKER_SEVERITY_ERROR = 8;
+
+/** マーカーの所有者。同じ資産に別の由来のマーカーを付けても取り違えないための名前である。 */
+export const SAVE_MARKER_OWNER = "cobol-insight-save";
+
 /** 装飾の入力。指摘行・強調行・注記行・ジャンプ先の行・識別欄の範囲を渡す。 */
 export interface DecorationInput {
   readonly linkedLines: readonly number[];
@@ -540,17 +560,6 @@ export const COLUMN_MARKS: readonly ColumnMark[] = [
   { name: "body-end", column: 73, anchor: "end", label: "72" },
   { name: "identification", column: 73, anchor: "start", label: "73-80 識別欄" },
 ];
-
-/** ファイル選択の選択肢。 */
-export interface ViewerFileOption {
-  readonly value: string;
-  readonly label: string;
-}
-
-/** 資産一覧をファイル選択の選択肢へ写す。並びは資産一覧(相対パス昇順)をそのまま保つ。 */
-export function viewerFileOptions(inventory: readonly AssetInventoryItem[]): ViewerFileOption[] {
-  return inventory.map((item) => ({ value: item.path, label: item.path }));
-}
 
 /** 逐語対訳の対象か。対訳は COBOL 本体(NODE.type=PROGRAM)に対してのみ生成される。 */
 export function isTranspileTarget(item: AssetInventoryItem | null): boolean {

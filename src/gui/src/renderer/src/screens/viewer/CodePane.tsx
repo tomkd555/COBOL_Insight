@@ -4,8 +4,10 @@ import { monacoEditor } from "../../vendor/monacoEditor";
 import { registerGeneratedLanguages } from "../../vendor/monacoLanguages";
 import { COBOL_INSIGHT_THEME, registerCobolLanguage } from "./cobolMonarch";
 import {
+  SAVE_MARKER_OWNER,
   buildLineDecorations,
   metricsEqual,
+  type EditorMarker,
   type EditorMetrics,
   type ExpansionZone,
   type FindingLine,
@@ -17,6 +19,9 @@ const NO_FINDINGS: readonly FindingLine[] = [];
 
 /** 未指定のときに使う空の差し込み。 */
 const NO_EXPANSIONS: readonly ExpansionZone[] = [];
+
+/** 未指定のときに使う空のマーカー。 */
+const NO_MARKERS: readonly EditorMarker[] = [];
 
 export interface CodePaneProps {
   /** 表示に使う monaco の言語 ID(COBOL 固定形式・python・java)。 */
@@ -39,6 +44,13 @@ export interface CodePaneProps {
   findings?: readonly FindingLine[];
   /** COPY 文の位置へ差し込む展開。原本の行の間へ置き、行番号の並びは変えない。 */
   expansions?: readonly ExpansionZone[];
+  /** 誤りのある行へ付けるマーカー(保存時の再パース検証)。 */
+  markers?: readonly EditorMarker[];
+  /**
+   * 本文が変わったときに呼ぶ。渡した面だけが編集でき、渡さない面は読み取り専用になる
+   * (逐語対訳の生成物は engine の成果物であり、書き換えの対象ではない)。
+   */
+  onChange?: (text: string) => void;
   /** グリフ余白を出すか。指摘の記号を置くペインで真にする。 */
   glyphMargin?: boolean;
   /** 桁見出しをそろえるための実測寸法。値が変わったときだけ呼ぶ。 */
@@ -99,7 +111,8 @@ function expansionMarginNode(zone: ExpansionZone): HTMLElement {
 }
 
 /**
- * Monaco による読み取り専用のコード表示面。vs のソースはローカル同梱で、CDN は参照しない。
+ * Monaco によるコードの面。vs のソースはローカル同梱で、CDN は参照しない。
+ * onChange を受け取った面は編集でき、受け取らない面は読み取り専用である。
  * 表示内容の決定(指摘行・強調行・注記行・識別欄の範囲・COPY 展開の中身)は viewerModel の純関数に
  * 委ね、ここが持つのはエディタの生成と破棄、本文の差し替え、装飾と差し込みの適用、カーソル行と
  * 実測寸法の通知だけである。
@@ -118,9 +131,11 @@ export function CodePane({
   identification,
   findings,
   expansions,
+  markers,
   glyphMargin,
   onMetrics,
   onCursorLine,
+  onChange,
   ariaLabel,
 }: CodePaneProps): ReactElement {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -130,6 +145,9 @@ export function CodePane({
   textRef.current = text;
   const cursorRef = useRef(onCursorLine);
   cursorRef.current = onCursorLine;
+  const changeRef = useRef(onChange);
+  changeRef.current = onChange;
+  const editable = onChange !== undefined;
   const rulersRef = useRef(rulers);
   rulersRef.current = rulers;
   const metricsRef = useRef(onMetrics);
@@ -163,9 +181,9 @@ export function CodePane({
       language: languageId,
       theme: COBOL_INSIGHT_THEME,
       // readOnly は編集の反映を止め、domReadOnly は入力欄(textarea)自体を読み取り専用にする。
-      // 表示専用の面なので両方を指定する。
-      readOnly: true,
-      domReadOnly: true,
+      // 表示専用の面では両方を立てる。
+      readOnly: !editable,
+      domReadOnly: !editable,
       automaticLayout: true,
       minimap: { enabled: false },
       fontFamily: "'BIZ UDGothic','MS Gothic',monospace",
@@ -190,6 +208,9 @@ export function CodePane({
     const subscription = editor.onDidChangeCursorPosition((event) => {
       cursorRef.current(event.position.lineNumber, event.position.column);
     });
+    const contentSubscription = editor.onDidChangeModelContent(() => {
+      changeRef.current?.(editor.getValue());
+    });
     // 桁見出しの位置は Monaco の実測に従う。ガター幅・字送りは配置時に、水平位置はスクロールで変わる。
     const publishMetrics = (): void => {
       const notify = metricsRef.current;
@@ -213,6 +234,7 @@ export function CodePane({
     const scrollSubscription = editor.onDidScrollChange(publishMetrics);
     return () => {
       subscription.dispose();
+      contentSubscription.dispose();
       layoutSubscription.dispose();
       scrollSubscription.dispose();
       lastMetrics.current = null;
@@ -220,7 +242,7 @@ export function CodePane({
       editorRef.current = null;
       editor.dispose();
     };
-  }, [languageId, ariaLabel, glyphMargin]);
+  }, [languageId, ariaLabel, glyphMargin, editable]);
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -278,6 +300,19 @@ export function CodePane({
   useEffect(() => {
     collectionRef.current?.set(decorations);
   }, [decorations]);
+
+  /*
+   * 誤りのある行のマーカー。行の波線と、Monaco 自身が持つ誤りの並びへ載る。本文を差し替えると
+   * モデルごと入れ替わるため、本文も依存に含めて付け直す。
+   */
+  useEffect(() => {
+    const editor = editorRef.current;
+    const model = editor?.getModel() ?? null;
+    if (model === null) {
+      return;
+    }
+    monacoEditor().editor.setModelMarkers(model, SAVE_MARKER_OWNER, [...(markers ?? NO_MARKERS)]);
+  }, [markers, text, languageId, ariaLabel, glyphMargin, editable]);
 
   useEffect(() => {
     if (focusLine !== null) {

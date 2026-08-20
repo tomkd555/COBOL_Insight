@@ -57,8 +57,11 @@ export interface WorkbenchState {
   readonly bottomVisible: boolean;
   readonly bottomHeight: number;
   readonly bottomView: BottomView;
-  /** 本文を書き換えたまま保存していないタブの ID。 */
-  readonly dirtyTabIds: readonly string[];
+  /**
+   * 保存していない編集後の本文(タブの ID → 全文)。選んでいないタブは描かないため、本文の面が
+   * 持つと切り替えのたびに編集が消える。未保存の印もこの有無がそのまま表す。
+   */
+  readonly drafts: Readonly<Record<string, string>>;
   /**
    * 寸法の操作を終えた回数。ドラッグは1画素ごとに寸法を変えるため、その全部を保存すると1回の
    * ドラッグで数十回の書き込みが走る。保存はこの回数の変化だけを合図に行う。
@@ -81,14 +84,19 @@ export const initialWorkbenchState: WorkbenchState = {
   bottomVisible: true,
   bottomHeight: BOTTOM_PANEL_LIMITS.initial,
   bottomView: "findings",
-  dirtyTabIds: [],
+  drafts: {},
   sizeCommitCount: 0,
 };
+
+/** 資産1件のタブの識別子。本文の面と、編集後の本文を引くときに使う。 */
+export function sourceTabId(path: string): string {
+  return `source:${path}`;
+}
 
 /** 資産1件を開くタブ。同じ資産は1枚だけ開く。 */
 export function sourceTab(path: string, line: number | null = null): WorkbenchTab {
   const name = path.split("/").pop() ?? path;
-  return { id: `source:${path}`, kind: "source", title: name, path, line };
+  return { id: sourceTabId(path), kind: "source", title: name, path, line };
 }
 
 /** 種類ごとに1枚だけ開くタブ。 */
@@ -101,7 +109,7 @@ export type WorkbenchAction =
   | { type: "CLOSE_TAB"; id: string }
   | { type: "ACTIVATE_TAB"; id: string }
   | { type: "STEP_TAB"; step: 1 | -1 }
-  | { type: "SET_DIRTY"; id: string; dirty: boolean }
+  | { type: "SET_DRAFT"; id: string; text: string | null }
   | { type: "TOGGLE_SIDE" }
   | { type: "SHOW_SIDE"; view: SideView }
   | { type: "SET_SIDE_WIDTH"; width: number }
@@ -115,6 +123,16 @@ export type WorkbenchAction =
  * タブを閉じた後に選ぶタブ。閉じたタブの次を選び、末尾を閉じたときは手前を選ぶ。
  * 1枚も残らなければ null を返す。
  */
+/** 1件の編集後の本文を落とした集合を返す。 */
+function withoutDraft(
+  drafts: Readonly<Record<string, string>>,
+  id: string,
+): Record<string, string> {
+  const next = { ...drafts };
+  delete next[id];
+  return next;
+}
+
 function nextActiveId(
   tabs: readonly WorkbenchTab[],
   closedIndex: number,
@@ -157,7 +175,7 @@ export function workbenchReducer(state: WorkbenchState, action: WorkbenchAction)
         ...state,
         tabs: state.tabs.filter((tab) => tab.id !== action.id),
         activeTabId: nextActiveId(state.tabs, index, state.activeTabId, action.id),
-        dirtyTabIds: state.dirtyTabIds.filter((id) => id !== action.id),
+        drafts: withoutDraft(state.drafts, action.id),
       };
     }
 
@@ -176,17 +194,16 @@ export function workbenchReducer(state: WorkbenchState, action: WorkbenchAction)
       return { ...state, activeTabId: state.tabs[next].id };
     }
 
-    case "SET_DIRTY": {
-      const has = state.dirtyTabIds.includes(action.id);
-      if (action.dirty === has) {
-        return state;
+    case "SET_DRAFT": {
+      const current = state.drafts[action.id];
+      if (action.text === null) {
+        return current === undefined
+          ? state
+          : { ...state, drafts: withoutDraft(state.drafts, action.id) };
       }
-      return {
-        ...state,
-        dirtyTabIds: action.dirty
-          ? [...state.dirtyTabIds, action.id]
-          : state.dirtyTabIds.filter((id) => id !== action.id),
-      };
+      return current === action.text
+        ? state
+        : { ...state, drafts: { ...state.drafts, [action.id]: action.text } };
     }
 
     case "TOGGLE_SIDE":
@@ -268,4 +285,14 @@ export function useWorkbenchDispatch(): Dispatch<WorkbenchAction> {
 /** 選択中のタブ。1枚も開いていなければ null。 */
 export function activeTabOf(state: WorkbenchState): WorkbenchTab | null {
   return state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
+}
+
+/** そのタブの編集後の本文。編集していなければ null。 */
+export function draftOf(state: WorkbenchState, id: string): string | null {
+  return state.drafts[id] ?? null;
+}
+
+/** そのタブが未保存の編集を抱えているか。 */
+export function isTabDirty(state: WorkbenchState, id: string): boolean {
+  return state.drafts[id] !== undefined;
 }

@@ -1,5 +1,11 @@
 import { useRef, type KeyboardEvent, type ReactElement } from "react";
-import { useWorkbench, useWorkbenchDispatch, type WorkbenchTab } from "../state/workbenchStore";
+import {
+  isTabDirty,
+  useWorkbench,
+  useWorkbenchDispatch,
+  type WorkbenchTab,
+} from "../state/workbenchStore";
+import { confirmClose } from "./closeGuard";
 
 /** 矢印キーによる移動量(1=次、-1=前)。Home・End は端へ移す。 */
 const STEP_KEYS: Readonly<Record<string, number>> = {
@@ -59,7 +65,7 @@ export function EditorTabs(): ReactElement {
     >
       {tabs.map((tab) => {
         const selected = tab.id === activeTabId;
-        const dirty = workbench.dirtyTabIds.includes(tab.id);
+        const dirty = isTabDirty(workbench, tab.id);
         return (
           <div
             key={tab.id}
@@ -80,7 +86,11 @@ export function EditorTabs(): ReactElement {
             }}
           >
             {dirty ? (
-              <span className="ci-tab__dirty" aria-hidden="true">
+              <span
+                className="ci-tab__dirty"
+                data-testid={`dirty-${tab.id}`}
+                aria-hidden="true"
+              >
                 ●
               </span>
             ) : null}
@@ -92,7 +102,10 @@ export function EditorTabs(): ReactElement {
               tabIndex={-1}
               onClick={(event) => {
                 event.stopPropagation();
-                dispatch({ type: "CLOSE_TAB", id: tab.id });
+                // 未保存の編集はタブを閉じると失われる。破棄してよいかを先に問う。
+                if (confirmClose(dirty)) {
+                  dispatch({ type: "CLOSE_TAB", id: tab.id });
+                }
               }}
             >
               ×

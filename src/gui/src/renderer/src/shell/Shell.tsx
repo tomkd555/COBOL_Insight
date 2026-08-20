@@ -5,6 +5,7 @@ import { StatusBar } from "./StatusBar";
 import { ActivityBar } from "./ActivityBar";
 import { EditorArea } from "./EditorArea";
 import { shortcutOf } from "./shortcuts";
+import { confirmClose } from "./closeGuard";
 import { Toast } from "../components/Toast";
 import { SplitHandle } from "../components/SplitHandle";
 import { SidePanel } from "../sidebar/SidePanel";
@@ -20,6 +21,7 @@ import {
   BOTTOM_PANEL_LIMITS,
   SIDE_PANEL_LIMITS,
   activeTabOf,
+  isTabDirty,
   sourceTab,
   useWorkbench,
   useWorkbenchDispatch,
@@ -175,16 +177,18 @@ export function Shell(): ReactElement {
         case "previousTab":
           workbenchDispatch({ type: "STEP_TAB", step: -1 });
           break;
-        case "closeTab":
-          if (workbench.activeTabId !== null) {
-            workbenchDispatch({ type: "CLOSE_TAB", id: workbench.activeTabId });
+        case "closeTab": {
+          const id = workbench.activeTabId;
+          if (id !== null && confirmClose(isTabDirty(workbench, id))) {
+            workbenchDispatch({ type: "CLOSE_TAB", id });
           }
           break;
+        }
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [workbenchDispatch, workbench.activeTabId]);
+  }, [workbenchDispatch, workbench]);
 
   // 本文を閉じたらカーソル位置も消す。前のタブの位置がステータスバーへ残らないようにする。
   useEffect(() => {
