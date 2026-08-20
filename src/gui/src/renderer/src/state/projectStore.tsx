@@ -16,12 +16,14 @@ import {
 } from "react";
 import type {
   AssetInventoryItem,
+  GraphData,
   SarifFinding,
   UserRuleDefinition,
 } from "../../../shared/engine-api";
 import { EMPTY_RULE_CATALOG, buildRuleCatalog, type RuleCatalogIndex } from "../data/ruleCatalog";
 import type { RuleCatalogEntry } from "../../../shared/engine-api";
 import type { FixState } from "../screens/diff/diffModel";
+import { INITIAL_GRAPH_VIEW, type GraphViewState } from "../tabs/graphView";
 import type { ScanDiscovery } from "../services/scanSummary";
 
 /** 解析のライフサイクル。画面はこの値で空・実行中・結果・失敗の4状態を描き分ける。 */
@@ -41,6 +43,16 @@ export type ArtifactState<T> =
 
 /** 修正案の採否。未判定はキー不在で表す。 */
 export type FixDecision = "adopted" | "rejected";
+
+/**
+ * 呼出関係グラフの取得状態。走査済みプロジェクトファイルから読むため、タブを開き直すたびに
+ * 読み直さないようここで保つ。
+ */
+export type GraphState =
+  | { readonly status: "idle" }
+  | { readonly status: "loading" }
+  | { readonly status: "ready"; readonly data: GraphData }
+  | { readonly status: "error"; readonly message: string };
 
 /** 実行ログの1行。下部パネルの実行ログがそのまま並べる。 */
 export interface RunLogEntry {
@@ -74,11 +86,18 @@ export interface ProjectState {
   /** 修正案の採否。engine は選んで書き出せないため、人の判断の記録として保つ。 */
   readonly fixDecisions: Readonly<Record<string, FixDecision>>;
 
+  /** 呼出関係グラフ(プログラム間の層と段落の層)。 */
+  readonly graph: GraphState;
+  /** 呼出関係タブの見え方(種別フィルタ・展開・選択)。タブを閉じても保つ。 */
+  readonly graphView: GraphViewState;
+
   /** ルール一覧の索引。名前・カテゴリ・説明の供給源は engine である。 */
   readonly catalog: RuleCatalogIndex;
   readonly userRules: readonly UserRuleDefinition[];
   /** engine が返した利用者定義ルールの定義の誤り。 */
   readonly userRuleErrors: readonly string[];
+  /** engine が返したルール設定ファイルの注意。 */
+  readonly ruleConfigWarnings: readonly string[];
 
   /** 資産(相対パス)ごとの文字コード手動指定。次の解析で codepageOverrides として渡す。 */
   readonly codepageOverrides: Readonly<Record<string, string>>;
@@ -99,9 +118,12 @@ export const initialProjectState: ProjectState = {
   saveFindings: [],
   fix: { status: "idle" },
   fixDecisions: {},
+  graph: { status: "idle" },
+  graphView: INITIAL_GRAPH_VIEW,
   catalog: EMPTY_RULE_CATALOG,
   userRules: [],
   userRuleErrors: [],
+  ruleConfigWarnings: [],
   codepageOverrides: {},
   runLog: [],
 };
@@ -121,9 +143,16 @@ export type ProjectAction =
   | { type: "SET_SAVE_FINDINGS"; path: string; findings: readonly SarifFinding[] }
   | { type: "SET_FIX"; fix: FixState }
   | { type: "SET_FIX_DECISIONS"; decisions: Readonly<Record<string, FixDecision>> }
+  | { type: "SET_GRAPH"; graph: GraphState }
+  | { type: "SET_GRAPH_VIEW"; view: GraphViewState }
   | { type: "FINISH_RUN"; failed: boolean }
   | { type: "CANCEL_RUN" }
-  | { type: "SET_CATALOG"; entries: readonly RuleCatalogEntry[]; userRuleErrors: readonly string[] }
+  | {
+      type: "SET_CATALOG";
+      entries: readonly RuleCatalogEntry[];
+      userRuleErrors: readonly string[];
+      ruleConfigWarnings: readonly string[];
+    }
   | { type: "SET_USER_RULES"; rules: readonly UserRuleDefinition[] }
   | { type: "SET_CODEPAGE"; path: string; charset: string }
   | { type: "LOG"; text: string; failed?: boolean };
@@ -158,6 +187,7 @@ export function projectReducer(state: ProjectState, action: ProjectAction): Proj
         sqlAdvice: { status: "none" },
         saveFindings: [],
         fix: { status: "idle" },
+        graph: { status: "idle" },
         runLog: appendLog(state.runLog, "解析を開始しました。", false),
       };
 
@@ -218,6 +248,12 @@ export function projectReducer(state: ProjectState, action: ProjectAction): Proj
     case "SET_FIX":
       return { ...state, fix: action.fix };
 
+    case "SET_GRAPH":
+      return { ...state, graph: action.graph };
+
+    case "SET_GRAPH_VIEW":
+      return { ...state, graphView: action.view };
+
     case "SET_FIX_DECISIONS":
       return { ...state, fixDecisions: { ...action.decisions } };
 
@@ -236,6 +272,7 @@ export function projectReducer(state: ProjectState, action: ProjectAction): Proj
         ...state,
         catalog: buildRuleCatalog(action.entries),
         userRuleErrors: [...action.userRuleErrors],
+        ruleConfigWarnings: [...action.ruleConfigWarnings],
       };
 
     case "SET_USER_RULES":

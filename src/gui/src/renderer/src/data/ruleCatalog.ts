@@ -27,6 +27,8 @@ export interface RuleInfo {
   readonly hasFix: boolean;
   /** 組み込みか、利用者が定義したものか。 */
   readonly source: "builtin" | "user";
+  /** 検出に効いているか。engine が設定ファイルを読んで決めた値であり、画面は控えを持たない。 */
+  readonly enabled: boolean;
   /** 何を検出するか。 */
   readonly summary: string;
   /** なぜ問題か。 */
@@ -74,6 +76,7 @@ export function buildRuleCatalog(entries: readonly RuleCatalogEntry[]): RuleCata
       severity: SEVERITY_BY_ENGINE_NAME[entry.severity] ?? "medium",
       hasFix: entry.hasFix,
       source: entry.source,
+      enabled: entry.enabled,
       summary: entry.summary,
       rationale: entry.rationale,
       detection: entry.detection,
@@ -109,6 +112,7 @@ function fallbackRule(id: string): RuleInfo {
     severity: "high",
     hasFix: false,
     source: "builtin",
+    enabled: true,
     summary:
       analysisError === undefined
         ? "この ID のルールは一覧に無い。"

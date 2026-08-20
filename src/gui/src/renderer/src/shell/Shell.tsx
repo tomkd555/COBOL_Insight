@@ -103,7 +103,6 @@ export function Shell(): ReactElement {
     settings.severityThreshold,
     settings.defaultEncoding,
     settings.copybookPaths,
-    settings.disabledRules,
     sizeCommitCount,
   ]);
 

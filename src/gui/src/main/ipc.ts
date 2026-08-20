@@ -31,7 +31,6 @@ import {
 import { runEngine, type EngineProcess, type EngineSpawn } from "./engine/run";
 import { resolveEngineLaunch, type EngineLaunch } from "./engine/launch";
 import { parseSarif } from "./artifacts/sarif";
-import { parseCallgraph } from "./artifacts/callgraph";
 import { parseCopyExpansion } from "./artifacts/copyExpansion";
 import { buildFixDiff } from "./artifacts/fix";
 import { readInventory } from "./artifacts/inventory";
@@ -278,9 +277,6 @@ export function registerEngineIpc(): void {
 
   ipcMain.handle(ENGINE_CHANNELS.readSarif, async (_event, path: string) =>
     parseSarif(await readFile(path, "utf-8")),
-  );
-  ipcMain.handle(ENGINE_CHANNELS.readCallgraphJson, async (_event, path: string) =>
-    parseCallgraph(await readFile(path, "utf-8")),
   );
   ipcMain.handle(ENGINE_CHANNELS.readFixResult, async (_event, request: FixResultRequest) => {
     const [original, fixed] = await Promise.all([

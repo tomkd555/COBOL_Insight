@@ -329,31 +329,6 @@ export function buildGraphElements(data: CallGraphData, visibleIds: ReadonlySet<
   return elements;
 }
 
-/** 図と併置するノード一覧の1件。 */
-export interface GraphNodeListItem {
-  readonly id: string;
-  readonly label: string;
-  readonly kindLabel: string;
-}
-
-/**
- * ノード一覧の項目。図へ渡した要素から導くため、一覧と図は常に同じノードを指す。
- * canvas 上のノードはキーボードで選べないため、この一覧が図と等価な操作口になる。
- */
-export function nodeListItems(elements: readonly GraphElement[]): GraphNodeListItem[] {
-  const items: GraphNodeListItem[] = [];
-  for (const element of elements) {
-    if (element.group === "nodes") {
-      items.push({
-        id: element.data.id,
-        label: element.data.label,
-        kindLabel: element.data.kindLabel,
-      });
-    }
-  }
-  return items;
-}
-
 /**
  * Cytoscape のスタイル定義。基底のノード様式に続けて種別ごとの形・配色、エッジ種別ごとの色と
  * 矢頭形状、破線、選択強調を重ねる。値はデザイントークンと同じ色を用いるが、Cytoscape は
@@ -655,23 +630,6 @@ function sourceNameCandidate(node: CallGraphNode): string | null {
 function baseName(fileName: string): string {
   const dot = fileName.lastIndexOf(".");
   return dot <= 0 ? fileName : fileName.slice(0, dot);
-}
-
-/**
- * call-graph の終了コードを利用者へ示す文。非ゼロは部分的な失敗であってグラフ本体は書かれるため、
- * 図を隠さず警告として添える(0=成功 / 1=警告あり / 2=エラーあり)。
- */
-export function graphExitBanner(exitCode: number): string | null {
-  if (exitCode === 0) {
-    return null;
-  }
-  if (exitCode === 1) {
-    return "呼出関係の構築で警告のあった資産がある。未解決の呼出は「未解決」ノードとして図に含めている。";
-  }
-  return (
-    "呼出関係の構築で解析エラーのあった資産がある。" +
-    "構文解析に失敗した資産は呼出関係が分からないまま「解析不能」ノードとして図に含めている。"
-  );
 }
 
 /** 解析不能ノードの件数。構文解析に失敗した資産の数を表す。 */

@@ -12,7 +12,7 @@ export interface ReportFormProps {
   /** 出力先フォルダ。engine の --html / --text の親フォルダになる。 */
   outDir: string;
   onOutDirChange: (value: string) => void;
-  /** 無効化したルール数(report へ --disable-rule として渡す件数)。 */
+  /** 無効にしたルール数。 */
   disabledRuleCount: number;
   onWrite: () => void;
   /** レポートの生成中はボタンを押させない。 */
@@ -61,17 +61,17 @@ export function ReportForm({
           ))}
         </div>
         <p className="ci-report-form__note">
-          解析エンジンは1回の実行で HTML とテキストの両方を書き出す。ここでの選択は表示の切替である。
+          解析エンジンは1回の実行で HTML とテキストの両方を書き出します。ここでの選択は表示の切替です。
         </p>
       </div>
 
       <div className="ci-report-form__field">
         <p className="ci-report-form__label">出力内容</p>
         <p className="ci-report-form__note">
-          {"呼出関係サマリ・指摘一覧・SQL指摘を1つの文書へ束ねる。章は選べず、常に全章を出力する。"}
+          {"呼出関係のまとめ・指摘一覧・SQL指摘を1つの文書へ束ねます。章は選べず、常にすべてを書き出します。"}
           {disabledRuleCount === 0
             ? ""
-            : `設定で無効化した ${disabledRuleCount} 件のルールは検出から除く。`}
+            : `無効にした ${disabledRuleCount} 件のルールは検出から除きます。`}
         </p>
       </div>
 
@@ -89,10 +89,10 @@ export function ReportForm({
       </div>
 
       <Button variant="primary" disabled={busy} onClick={onWrite}>
-        {busy ? "レポートを生成している…" : "レポートを書き出す"}
+        {busy ? "レポートを生成しています…" : "レポートを書き出す"}
       </Button>
       <p className="ci-report-form__note">
-        レポートはローカルへ保存する。ネットワーク送信は行わない。
+        レポートは端末へ保存します。ネットワークへは送りません。
       </p>
     </div>
   );

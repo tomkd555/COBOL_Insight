@@ -5,14 +5,13 @@
 import type { Dispatch } from "react";
 import type { AppSettings } from "../../../shared/appSettings";
 import type { ProjectAction } from "../state/projectStore";
-import {
-  toAppSettings,
-  toRuleConfig,
-  type SettingsAction,
-  type SettingsState,
-} from "../state/settingsStore";
+import { toAppSettings, type SettingsAction, type SettingsState } from "../state/settingsStore";
 
-/** ルール一覧と利用者定義ルールを engine から取り込む。起動時と、定義を保存した直後に呼ぶ。 */
+/**
+ * ルール一覧と利用者定義ルールを engine から取り込む。起動時、定義を保存した直後、および
+ * 有効・無効を切り替えた直後に呼ぶ。各ルールが検出に効くかどうかは、engine が
+ * rules-config.json を読んで返す enabled が唯一の答えである。
+ */
 export async function loadRuleCatalog(dispatch: Dispatch<ProjectAction>): Promise<void> {
   const paths = await window.cobolInsight.getOutputPaths();
   const [catalog, userRules] = await Promise.all([
@@ -23,17 +22,18 @@ export async function loadRuleCatalog(dispatch: Dispatch<ProjectAction>): Promis
     window.cobolInsight.readUserRules(paths.userRules),
   ]);
   dispatch({ type: "SET_USER_RULES", rules: userRules.rules });
-  dispatch({ type: "SET_CATALOG", entries: catalog.rules, userRuleErrors: catalog.userRuleErrors });
+  dispatch({
+    type: "SET_CATALOG",
+    entries: catalog.rules,
+    userRuleErrors: catalog.userRuleErrors,
+    ruleConfigWarnings: catalog.ruleConfigWarnings,
+  });
 }
 
 /** 保存してある設定を読む。起動時に1回だけ呼ぶ。 */
 export async function restoreSettings(dispatch: Dispatch<SettingsAction>): Promise<AppSettings> {
-  const paths = await window.cobolInsight.getOutputPaths();
-  const [settings, ruleConfig] = await Promise.all([
-    window.cobolInsight.readSettings(),
-    window.cobolInsight.readRuleConfig(paths.ruleConfig),
-  ]);
-  dispatch({ type: "RESTORE", settings, disabledRules: ruleConfig.disabledRules });
+  const settings = await window.cobolInsight.readSettings();
+  dispatch({ type: "RESTORE", settings });
   return settings;
 }
 
@@ -42,9 +42,5 @@ export async function saveSettings(
   state: SettingsState,
   paneSizes: Readonly<Record<string, number>>,
 ): Promise<void> {
-  const paths = await window.cobolInsight.getOutputPaths();
-  await Promise.all([
-    window.cobolInsight.writeSettings(toAppSettings(state, paneSizes)),
-    window.cobolInsight.writeRuleConfig(paths.ruleConfig, toRuleConfig(state)),
-  ]);
+  await window.cobolInsight.writeSettings(toAppSettings(state, paneSizes));
 }

@@ -10,6 +10,7 @@ const ENTRY = {
   phase: "DATA_FLOW",
   hasFix: false,
   source: "builtin",
+  enabled: true,
   summary: "受信項目の桁数が送信項目より小さい MOVE を検出する。",
   rationale: "上位桁が失われる。",
   detection: "PICTURE を解決して桁を比べる。",
@@ -24,6 +25,22 @@ describe("parseRuleCatalog", () => {
     expect(catalog.rules).toHaveLength(1);
     expect(catalog.rules[0]).toEqual(ENTRY);
     expect(catalog.userRuleErrors).toEqual([]);
+    expect(catalog.ruleConfigWarnings).toEqual([]);
+  });
+
+  it("無効にしたルールを enabled: false のまま受け取る", () => {
+    const catalog = parseRuleCatalog({ rules: [{ ...ENTRY, enabled: false }] });
+    expect(catalog.rules[0].enabled).toBe(false);
+  });
+
+  it("設定ファイルの注意を併せて返す", () => {
+    const catalog = parseRuleCatalog({
+      rules: [],
+      ruleConfigWarnings: ["rules-config.json: 知らないルール ID である R999"],
+    });
+    expect(catalog.ruleConfigWarnings).toEqual([
+      "rules-config.json: 知らないルール ID である R999",
+    ]);
   });
 
   it("利用者定義ルールの定義の誤りを併せて返す", () => {
@@ -45,6 +62,7 @@ describe("parseRuleCatalog", () => {
       phase: "SYNTAX",
       hasFix: false,
       source: "builtin",
+      enabled: true,
       summary: "",
       rationale: "",
       detection: "",

@@ -161,6 +161,8 @@ export interface RuleCatalogEntry {
   hasFix: boolean;
   /** 組み込みか、利用者が定義したものか。 */
   source: "builtin" | "user";
+  /** 設定ファイル(--rule-config)を踏まえて、このルールが検出に効くか。 */
+  enabled: boolean;
   /** 何を検出するか。 */
   summary: string;
   /** なぜ問題か。 */
@@ -179,6 +181,8 @@ export interface RuleCatalogEntry {
 export interface RuleCatalog {
   rules: RuleCatalogEntry[];
   userRuleErrors: string[];
+  /** 設定ファイルの読取で engine が出した注意(知らないルール ID など)。 */
+  ruleConfigWarnings: string[];
 }
 
 /** 利用者定義ルール1件。定義ファイル(user-rules.json)の rules 要素と同じ形である。 */
@@ -226,7 +230,12 @@ export interface SarifFinding {
   startColumn: number;
 }
 
-/** 呼出関係グラフのノード(CallGraph.toJson の nodes 要素)。 */
+/*
+ * 呼出関係「図」のノードと辺。engine の CallGraph.toJson と同じ形であり、画面は GraphData
+ * (走査済みプロジェクトファイルから読む形)をこの形へ組み替えて Cytoscape へ渡す。
+ */
+
+/** 呼出関係図のノード。 */
 export interface CallGraphNode {
   id: string;
   /** NodeKind(JOB/STEP/PROGRAM/PARAGRAPH/DATASET/DB2_TABLE/UNRESOLVED/EXTERNAL_UTILITY/TRANSACTION/BMS_MAP)。 */
@@ -235,7 +244,7 @@ export interface CallGraphNode {
   attributes: Record<string, string>;
 }
 
-/** 呼出関係グラフのエッジ(CallGraph.toJson の edges 要素)。 */
+/** 呼出関係図の辺。 */
 export interface CallGraphEdge {
   from: string;
   to: string;
@@ -586,7 +595,6 @@ export interface CobolInsightApi {
   /** engine の成果物を書く位置(絶対パス)。解析実行のたびに引数へ指定する。 */
   getOutputPaths(): Promise<EngineOutputPaths>;
   readSarif(path: string): Promise<SarifFinding[]>;
-  readCallgraphJson(path: string): Promise<CallGraphData>;
   readFixResult(request: FixResultRequest): Promise<FixDiff>;
   readReportHtml(path: string): Promise<string>;
   readReportText(path: string): Promise<string>;
@@ -633,7 +641,6 @@ export const ENGINE_CHANNELS = {
   checkDirectoryExists: "fs:check-directory-exists",
   getOutputPaths: "fs:get-output-paths",
   readSarif: "artifact:read-sarif",
-  readCallgraphJson: "artifact:read-callgraph-json",
   readFixResult: "artifact:read-fix-result",
   readReportHtml: "artifact:read-report-html",
   readReportText: "artifact:read-report-text",

@@ -24,18 +24,18 @@ function renderList(overrides: Partial<Parameters<typeof CopybookPathList>[0]> =
 describe("CopybookPathList の実在確認の表示", () => {
   it("存在確認がまだ済んでいないパスには警告を出さない", () => {
     renderList({ existence: {} });
-    expect(screen.queryByText(/見つからない/)).toBeNull();
+    expect(screen.queryByText(/見つかりません/)).toBeNull();
   });
 
   it("実在しないと判定したパスの行に記号とテキストで警告を出す", () => {
     renderList({ existence: { "C:\\資産\\copybook": true, "C:\\無い\\パス": false } });
-    const warning = screen.getByText(/見つからない/);
+    const warning = screen.getByText(/見つかりません/);
     expect(warning.textContent).toMatch(/⚠/);
   });
 
   it("実在すると判定したパスの行には警告を出さない", () => {
     renderList({ existence: { "C:\\資産\\copybook": true, "C:\\無い\\パス": true } });
-    expect(screen.queryByText(/見つからない/)).toBeNull();
+    expect(screen.queryByText(/見つかりません/)).toBeNull();
   });
 
   it("入力欄の近くに追加時の実在確認の警告を出す", () => {

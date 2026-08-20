@@ -1,15 +1,15 @@
 /*
- * 呼出関係図(call-graph)のスタイル。厳格 BEM で命名し、値は :root トークンを参照する。
- * design/COBOL Insight.dc.html の scGraph の配置・寸法にそろえる。
- * 図そのものは Cytoscape が canvas へ描くため、CSS は枠・ツールバー・詳細ペイン・凡例を担う。
+ * 呼出関係タブのスタイル。厳格 BEM で命名し、値は :root トークンを参照する。
+ * 図そのものは Cytoscape が canvas へ描くため、CSS は枠・ツールバー・実行順の一覧・
+ * ノード情報のペイン・凡例を担う。
  */
 
-/* 画面全体: 左(図) + 分割ハンドル + 右(ノード情報と凡例) の2カラム。右は畳める。 */
+/* タブ全体: 左(実行順の一覧と図) + 分割ハンドル + 右(ノード情報と凡例) の2カラム。右は畳める。 */
 .ci-graph {
-  position: absolute;
-  inset: 0;
+  flex: 1;
   display: flex;
   min-height: 0;
+  min-width: 0;
 }
 .ci-graph__main {
   flex: 1;
@@ -58,13 +58,14 @@
   border-radius: var(--ci-radius-sm);
   color: var(--ci-caution);
 }
+/* 図の書き出し先の知らせ。警告ではないため地色を敷かず、ツールバーの直下へ1行で置く。 */
 .ci-graph__notice {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  flex: none;
+  margin: 0;
+  padding: var(--ci-space-2) var(--ci-space-4);
   font-size: var(--ci-fs-sm);
   color: var(--ci-text-muted);
+  word-break: break-all;
 }
 
 /* 図の領域: 左にノード一覧(キーボード操作口)、右に Cytoscape の描画面 */
@@ -84,12 +85,12 @@
 }
 
 /*
- * --- 図と等価なノード一覧(canvas のノードはキーボードで選べないため併置する) ---
- * 幅は GraphScreen が分割ハンドルの現在値から与える。ノード名の長さで必要な幅が変わり、固定だと
- * 長い名前が縦へ伸びる。上限は「図の領域 − 図へ残す最小」で、その最小(--ci-opposite-min)も
- * GraphScreen が SPLIT_PANES から流す。
+ * --- 実行順の一覧(図と併置する。canvas のノードはキーボードで選べないため操作口を兼ねる) ---
+ * 幅は呼出関係タブが分割ハンドルの現在値から与える。ジョブ名・段落名の長さで必要な幅が変わり、
+ * 固定だと長い名前が縦へ伸びる。上限は「図の領域 − 図へ残す最小」で、その最小
+ * (--ci-opposite-min)もタブ側が流す。
  */
-.ci-graph__nodes {
+.ci-trace {
   width: var(--ci-graph-nodes-w);
   max-width: calc(100% - var(--ci-opposite-min));
   flex: none;
@@ -99,7 +100,7 @@
   background: var(--ci-panel);
   border-right: 1px solid var(--ci-border);
 }
-.ci-graph__nodes-title {
+.ci-trace__title {
   margin: 0;
   padding: 7px 10px 5px;
   font-size: var(--ci-fs-xs);
@@ -108,50 +109,85 @@
   border-bottom: 1px solid var(--ci-border-soft);
   flex: none;
 }
-.ci-graph__nodes-list {
-  margin: 0;
-  padding: var(--ci-space-1);
-  list-style: none;
+.ci-trace__tree {
   overflow: auto;
   flex: 1;
   min-height: 0;
+  padding: var(--ci-space-1) 0;
 }
-/* 左端の 3px は選択の帯の場所である。選択の有無で字下げが動かないよう全項目に等しく取る。 */
-.ci-graph__node {
+/* 左端の 3px は選択の帯の場所である。選択の有無で字下げが動かないよう全行に等しく取る。 */
+.ci-trace__row {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
-  padding: 3px 6px;
-  border: 1px solid transparent;
-  border-left-width: 3px;
-  border-radius: var(--ci-radius-sm);
+  align-items: baseline;
+  gap: var(--ci-space-1);
+  padding-block: 2px;
+  padding-inline-end: var(--ci-space-2);
+  border-left: 3px solid transparent;
   cursor: pointer;
 }
-.ci-graph__node:hover {
+.ci-trace__row:hover {
   background: var(--ci-surface-alt);
 }
-.ci-graph__node:focus-visible {
+.ci-trace__row:focus-visible {
+  outline: 2px solid var(--ci-focus-ring);
+  outline-offset: -2px;
+}
+.ci-trace__row--selected {
+  background: var(--ci-select-tint);
+  border-left-color: var(--ci-select-bar);
+}
+/* 開閉の三角。行の選択とは別の操作なので、押せる幅を確保する。 */
+.ci-trace__marker {
+  flex: none;
+  width: 14px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ci-text-secondary);
+  font-size: var(--ci-fs-xs);
+  line-height: 1.4;
+  cursor: pointer;
+}
+.ci-trace__marker:disabled {
+  cursor: default;
+}
+.ci-trace__marker:focus-visible {
   outline: 2px solid var(--ci-focus-ring);
   outline-offset: 1px;
 }
-/* 押下中。即時の変化でモーションは伴わない。 */
-.ci-graph__node:active {
-  transform: translateY(1px);
+/* 節の種類。ジョブ・段落・PERFORM の別を色ではなく語で示す。 */
+.ci-trace__kind {
+  flex: none;
+  font-size: var(--ci-fs-tag);
+  color: var(--ci-text-inverse);
+  background: var(--ci-text-subtle);
+  border-radius: var(--ci-radius-badge);
+  padding: 0 var(--ci-space-1);
 }
-.ci-graph__node--selected {
-  background: var(--ci-select-tint);
-  border-color: var(--ci-select-border);
-  border-left-color: var(--ci-select-bar);
+.ci-trace__row--job .ci-trace__kind,
+.ci-trace__row--step .ci-trace__kind,
+.ci-trace__row--program .ci-trace__kind {
+  background: var(--ci-accent);
 }
-.ci-graph__node-label {
+.ci-trace__row--goto .ci-trace__kind,
+.ci-trace__row--unresolved .ci-trace__kind {
+  background: var(--ci-caution);
+}
+.ci-trace__label {
   font-family: var(--ci-font-code);
   font-size: var(--ci-fs-sm);
   color: var(--ci-text);
   word-break: break-all;
 }
-.ci-graph__node-kind {
+.ci-trace__line {
+  flex: none;
+  font-family: var(--ci-font-code);
   font-size: var(--ci-fs-note);
   color: var(--ci-text-subtle);
+}
+.ci-trace__note {
+  font-size: var(--ci-fs-note);
+  color: var(--ci-caution);
 }
 
 /*

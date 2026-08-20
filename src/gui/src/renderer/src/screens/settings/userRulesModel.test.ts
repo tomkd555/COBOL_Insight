@@ -95,7 +95,7 @@ describe("testUserRulePattern", () => {
 describe("testResultLabel", () => {
   it("走査した行数と一致件数を示す", () => {
     const result = testUserRulePattern(draftOf({}), fixed(" ", "    GOBACK."));
-    expect(testResultLabel(result)).toBe("1 行を走査し、1 件が一致した。");
+    expect(testResultLabel(result)).toBe("1 行を走査し、1 件が一致しました。");
   });
 
   it("本文が無いときは使い方を示す", () => {
@@ -104,7 +104,7 @@ describe("testResultLabel", () => {
 
   it("解釈できない正規表現の理由を示す", () => {
     const result = testUserRulePattern(draftOf({ pattern: "A(" }), "text");
-    expect(testResultLabel(result)).toContain("正規表現を解釈できない");
+    expect(testResultLabel(result)).toContain("正規表現を解釈できませんでした");
   });
 });
 

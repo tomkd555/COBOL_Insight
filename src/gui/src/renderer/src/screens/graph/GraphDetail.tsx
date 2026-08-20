@@ -39,8 +39,8 @@ export function GraphDetail({
       <h3 className="ci-graph-detail__title">ノード情報</h3>
       {detail === null ? (
         <p className="ci-graph-detail__empty">
-          ノードを選択すると詳細を表示する。選択したノードの「隣接を展開」で、そのノードに
-          つながるノードを表示に加える。
+          ノードを選ぶと、その情報をここへ表示します。「隣接を展開」を押すと、そのノードに
+          つながるノードを図へ加えます。
         </p>
       ) : (
         <div className="ci-graph-detail__body">
@@ -79,7 +79,7 @@ export function GraphDetail({
               ) : (
                 <>
                   <p className="ci-graph-detail__note">
-                    同名の資産が複数ある。開く資産を相対パスで選ぶ。
+                    同名の資産が複数あります。開く資産を相対パスで選んでください。
                   </p>
                   {sources.map((path) => (
                     <Button key={path} variant="primary" onClick={() => onOpenSource(path)}>
@@ -98,7 +98,7 @@ export function GraphDetail({
                 {expanded ? "隣接を畳む" : `隣接を展開${detail.hiddenNeighborCount > 0 ? `（未表示 ${detail.hiddenNeighborCount}）` : ""}`}
               </Button>
             ) : (
-              <p className="ci-graph-detail__note">このノードに隣接はない。</p>
+              <p className="ci-graph-detail__note">このノードに隣接はありません。</p>
             )}
           </div>
         </div>

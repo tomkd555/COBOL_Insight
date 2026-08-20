@@ -22,7 +22,7 @@ export interface GraphCanvasProps {
  * 差し替え、選択強調、ノード選択の通知だけである。
  *
  * canvas 上のノードはマウス(tap)でしか選べないため、キーボードからの選択は併置した
- * GraphNodeList が担う(図と同じノードを一覧として提示する)。
+ * 実行順の一覧(TraceTree)が担う。
  */
 export function GraphCanvas({ elements, selectedId, onSelectNode }: GraphCanvasProps): ReactElement {
   const containerRef = useRef<HTMLDivElement | null>(null);

@@ -3,9 +3,9 @@
  * 利用者定義の U から始まるもの)の有効・無効、コピー句探索パスの並び替え、既定の文字コード、
  * 表示する重大度のしきい値を扱う。
  *
- * ルールのメタ情報は engine が返す一覧を単一の正とし、ここでは絞り込みとカテゴリ別のまとめだけを行う。
- * 件数と並びを一覧へ都度問い合わせるのは、利用者定義ルールの増減で総数が変わるためである。
- * 無効化したルールは engine が読む設定ファイルへ渡す ID の集合として保つ。
+ * ルールのメタ情報も、各ルールが検出に効くかどうか(enabled)も engine が返す一覧を単一の正とし、
+ * ここでは絞り込み・カテゴリ別のまとめ・設定ファイルの組み立てだけを行う。件数と並びを一覧へ都度
+ * 問い合わせるのは、利用者定義ルールの増減で総数が変わるためである。
  */
 
 import {
@@ -15,6 +15,7 @@ import {
   type Severity,
 } from "../../components/severity";
 import { ruleCount, ruleOf, type RuleCatalogIndex, type RuleInfo } from "../../data/ruleCatalog";
+import { RULE_CONFIG_VERSION, type RuleConfigFile } from "../../../../shared/engine-api";
 import { MANUAL_ENCODING_OPTIONS } from "../../data/encodings";
 import type { AnalysisMode } from "../../state/projectStore";
 
@@ -40,112 +41,122 @@ export const ENGINE_LAUNCH_INFO: readonly EngineLaunchEntry[] = [
  */
 export const ENCODING_OPTIONS: readonly string[] = MANUAL_ENCODING_OPTIONS;
 
-/** 一覧の1行。ルールのメタ情報に、現在の有効・無効を添える。 */
-export interface RuleRow extends RuleInfo {
-  /** 無効化されているか。 */
-  readonly disabled: boolean;
-}
+/** ルールの出所の絞り込み。 */
+export type RuleSourceFilter = "all" | "builtin" | "user";
 
 /** カテゴリ別のまとめ1件。 */
 export interface RuleGroup {
   readonly category: string;
-  readonly rows: readonly RuleRow[];
+  readonly rows: readonly RuleInfo[];
 }
 
+/** 一覧の絞り込み条件。 */
+export interface RuleFilter {
+  /** ルール ID・名称・カテゴリへ当てる検索語。 */
+  readonly search: string;
+  readonly source: RuleSourceFilter;
+  /** 選んだカテゴリ。空文字はすべてのカテゴリ。 */
+  readonly category: string;
+}
+
+/** 絞り込みの初期値。 */
+export const ALL_RULES: RuleFilter = { search: "", source: "all", category: "" };
+
 /**
- * 検索語をルール ID・名称・カテゴリへ当てて絞り込み、カテゴリ別にまとめる。カタログの定義順では
- * 同じカテゴリが離れた位置に現れる(例: データフローは R001・R002 と R025)ため、カテゴリ単位で
- * 束ねて見出しを1つにする。カテゴリの並びは最初に現れた位置の順、各カテゴリ内は ID の定義順である。
+ * 絞り込んだうえでカテゴリ別にまとめる。カタログの定義順では同じカテゴリが離れた位置に現れる
+ * (例: データフローは R001・R002 と R025)ため、カテゴリ単位で束ねて見出しを1つにする。
+ * カテゴリの並びは最初に現れた位置の順、各カテゴリ内は ID の定義順である。
  */
-export function buildRuleGroups(
-  catalog: RuleCatalogIndex,
-  search: string,
-  disabled: Readonly<Record<string, boolean>>,
-): RuleGroup[] {
-  const query = search.trim().toLowerCase();
-  const byCategory = new Map<string, RuleRow[]>();
+export function buildRuleGroups(catalog: RuleCatalogIndex, filter: RuleFilter): RuleGroup[] {
+  const query = filter.search.trim().toLowerCase();
+  const byCategory = new Map<string, RuleInfo[]>();
   for (const id of catalog.order) {
     const rule = ruleOf(catalog, id);
     if (query !== "" && !`${rule.id}${rule.name}${rule.category}`.toLowerCase().includes(query)) {
       continue;
     }
+    if (filter.source !== "all" && rule.source !== filter.source) {
+      continue;
+    }
+    if (filter.category !== "" && rule.category !== filter.category) {
+      continue;
+    }
     const rows = byCategory.get(rule.category);
-    const row: RuleRow = { ...rule, disabled: disabled[id] === true };
     if (rows === undefined) {
-      byCategory.set(rule.category, [row]);
+      byCategory.set(rule.category, [rule]);
     } else {
-      rows.push(row);
+      rows.push(rule);
     }
   }
   return [...byCategory].map(([category, rows]) => ({ category, rows }));
 }
 
-/** 絞り込み結果に現れるルール ID。全選択・全解除の対象になる。 */
+/** 絞り込み結果に現れるルール ID。一括操作の対象になる。 */
 export function groupedRuleIds(groups: readonly RuleGroup[]): string[] {
   return groups.flatMap((group) => group.rows.map((row) => row.id));
 }
 
-/** 有効なルール数。カタログにない ID は数に含めない。 */
-export function enabledRuleCount(
-  catalog: RuleCatalogIndex,
-  disabled: Readonly<Record<string, boolean>>,
-): number {
-  return ruleCount(catalog) - disabledRuleIds(catalog, disabled).length;
-}
-
-/** 無効化したルール ID。一覧の定義順で返し、engine が読む設定ファイルへ渡す。 */
-export function disabledRuleIds(
-  catalog: RuleCatalogIndex,
-  disabled: Readonly<Record<string, boolean>>,
-): string[] {
-  return catalog.order.filter((id) => disabled[id] === true);
-}
-
-/** 1件の有効・無効を反転した新しい集合を返す。 */
-export function toggleRule(
-  disabled: Readonly<Record<string, boolean>>,
-  id: string,
-): Record<string, boolean> {
-  const next: Record<string, boolean> = { ...disabled };
-  if (next[id] === true) {
-    delete next[id];
-  } else {
-    next[id] = true;
-  }
-  return next;
-}
-
-/** 指定した ID 群を一括で有効・無効にした新しい集合を返す。 */
-export function setRulesEnabled(
-  disabled: Readonly<Record<string, boolean>>,
-  ids: readonly string[],
-  enabled: boolean,
-): Record<string, boolean> {
-  const next: Record<string, boolean> = { ...disabled };
-  for (const id of ids) {
-    if (enabled) {
-      delete next[id];
-    } else {
-      next[id] = true;
+/** 絞り込みの選択肢にするカテゴリ。engine が返した並びで、重複を除く。 */
+export function ruleCategories(catalog: RuleCatalogIndex): string[] {
+  const categories: string[] = [];
+  for (const id of catalog.order) {
+    const category = ruleOf(catalog, id).category;
+    if (!categories.includes(category)) {
+      categories.push(category);
     }
   }
-  return next;
+  return categories;
+}
+
+/** 無効にしてあるルール ID。engine が返した並びで返す。 */
+export function disabledRuleIds(catalog: RuleCatalogIndex): string[] {
+  return catalog.order.filter((id) => !ruleOf(catalog, id).enabled);
+}
+
+/** 有効なルール数。 */
+export function enabledRuleCount(catalog: RuleCatalogIndex): number {
+  return ruleCount(catalog) - disabledRuleIds(catalog).length;
+}
+
+/**
+ * 指定した ID を一括で有効・無効にした、engine へ書き渡す設定を組む。engine が返した enabled を
+ * 起点にするため、画面が別に無効の写しを持たなくてよい。
+ */
+export function ruleConfigWith(
+  catalog: RuleCatalogIndex,
+  ids: readonly string[],
+  enabled: boolean,
+): RuleConfigFile {
+  const disabled = new Set(disabledRuleIds(catalog));
+  for (const id of ids) {
+    if (enabled) {
+      disabled.delete(id);
+    } else {
+      disabled.add(id);
+    }
+  }
+  return { version: RULE_CONFIG_VERSION, disabledRules: [...disabled].sort() };
+}
+
+/** 1件の有効・無効を反転した設定を組む。 */
+export function ruleConfigToggling(catalog: RuleCatalogIndex, id: string): RuleConfigFile {
+  return ruleConfigWith(catalog, [id], !ruleOf(catalog, id).enabled);
 }
 
 /** 一覧見出しの件数表示。 */
-export function ruleCountLabel(
-  catalog: RuleCatalogIndex,
-  disabled: Readonly<Record<string, boolean>>,
-): string {
-  return `有効 ${enabledRuleCount(catalog, disabled)} / ${ruleCount(catalog)}`;
+export function ruleCountLabel(catalog: RuleCatalogIndex): string {
+  return `有効 ${enabledRuleCount(catalog)} / ${ruleCount(catalog)}`;
 }
 
-/** 絞り込み結果の件数表示。検索語が無いときは null。 */
-export function filterCountLabel(search: string, groups: readonly RuleGroup[]): string | null {
-  if (search.trim() === "") {
+/** 絞り込み結果の件数表示。絞り込んでいないときは null。 */
+export function filterCountLabel(
+  filter: RuleFilter,
+  groups: readonly RuleGroup[],
+): string | null {
+  if (filter.search.trim() === "" && filter.source === "all" && filter.category === "") {
     return null;
   }
-  return `検索に一致: ${groupedRuleIds(groups).length} 件`;
+  return `絞り込みに一致: ${groupedRuleIds(groups).length} 件`;
 }
 
 /** しきい値の説明文(design sevThNote)。 */

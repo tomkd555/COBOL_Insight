@@ -59,7 +59,7 @@ export function UserRuleForm({
       }}
     >
       <h5 className="ci-user-rule-form__title">
-        {isNew ? "利用者定義ルールを追加する" : `${draft.id} を編集する`}
+        {isNew ? "利用者定義ルールの追加" : `${draft.id} の編集`}
       </h5>
 
       <div className="ci-user-rule-form__grid">
@@ -130,16 +130,16 @@ export function UserRuleForm({
         />
       </label>
       <p className="ci-settings__note">
-        1 行ずつ当てる。既定では注記行を除き、8〜72 桁の範囲だけを見る。
-        この場でのお試しは画面上の簡易判定であり、解析実行時の判定は解析エンジンが行うため、
-        後方参照や先読みの細部でこの試験結果と異なることがある。
+        1 行ずつ当てます。既定では注記行を除き、8〜72 桁の範囲だけを見ます。
+        この場での試しは画面での簡易な判定であり、解析のときの判定は解析エンジンが行うため、
+        後方参照や先読みの細部でこの結果と食い違うことがあります。
       </p>
 
       <label className="ci-field">
         除外する正規表現（任意）
         <TextInput
           value={draft.excludePattern}
-          placeholder="同じ行がこれにも一致する場合は検出しない"
+          placeholder="同じ行がこれにも一致するときは検出しません"
           disabled={disabled}
           onChange={(event) => onChange({ excludePattern: event.target.value })}
         />
@@ -176,9 +176,9 @@ export function UserRuleForm({
         />
       </label>
       <p className="ci-settings__note">
-        メッセージに <code>{"${match}"}</code> と書くと、一致した文字列へ置き換わる。
-        例えば「不正な値: <code>{"${match}"}</code>」と書き、正規表現が <code>ABC123</code> に一致すると、
-        指摘には「不正な値: ABC123」と表示される。
+        メッセージに <code>{"${match}"}</code> と書くと、一致した文字列へ置き換わります。
+        「不正な値: <code>{"${match}"}</code>」と書いて正規表現が <code>ABC123</code> に一致すると、
+        指摘は「不正な値: ABC123」になります。
       </p>
 
       <label className="ci-field">
@@ -207,7 +207,7 @@ export function UserRuleForm({
         <textarea
           className="ci-user-rule-form__textarea"
           rows={5}
-          placeholder="COBOL の数行を貼り付けると、どの行が指摘になるかを示す。"
+          placeholder="COBOL の数行を貼り付けると、どの行が指摘になるかを示します"
           value={sample}
           onChange={(event) => setSample(event.target.value)}
         />
@@ -239,7 +239,7 @@ export function UserRuleForm({
 
       <div className="ci-user-rule-form__actions">
         <Button type="submit" disabled={disabled || errors.length > 0}>
-          {isNew ? "追加する" : "保存する"}
+          {isNew ? "追加" : "保存"}
         </Button>
         <Button type="button" onClick={onCancel} disabled={disabled}>
           取り消す

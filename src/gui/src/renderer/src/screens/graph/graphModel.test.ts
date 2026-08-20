@@ -11,7 +11,6 @@ import {
   buildGraphElements,
   edgeKindStyle,
   graphArtifactPaths,
-  graphExitBanner,
   graphCoreOptions,
   graphLayoutOptions,
   graphRootIds,
@@ -433,21 +432,6 @@ describe("ソースへのジャンプ先", () => {
       "cobol-old/SYK001.cbl",
       "cobol/SYK001.cbl",
     ]);
-  });
-});
-
-describe("終了コードの提示", () => {
-  it("成功(0)では警告を出さない", () => {
-    expect(graphExitBanner(0)).toBeNull();
-  });
-
-  it("警告あり(1)・エラーあり(2)は図を隠さず、起きたことを内部の終了コードに触れずに示す", () => {
-    expect(graphExitBanner(1)).toContain("警告");
-    expect(graphExitBanner(1)).not.toContain("終了コード");
-    expect(graphExitBanner(2)).not.toContain("終了コード");
-    expect(graphExitBanner(2)).toContain("解析エラー");
-    // 解析エラーの資産は図から消えるのではなく「解析不能」ノードとして現れることを伝える。
-    expect(graphExitBanner(2)).toContain("解析不能");
   });
 });
 

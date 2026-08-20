@@ -2,8 +2,11 @@ import type { ReactElement } from "react";
 import { EditorTabs } from "./EditorTabs";
 import { EmptyState } from "../components/EmptyState";
 import { FixTab } from "../tabs/FixTab";
+import { GraphTab } from "../tabs/GraphTab";
+import { ReportTab } from "../tabs/ReportTab";
+import { RulesTab } from "../tabs/RulesTab";
+import { SettingsTab } from "../tabs/SettingsTab";
 import { SourceTab } from "../tabs/SourceTab";
-import { StubTab } from "../tabs/StubTab";
 import { useWorkbench, useWorkbenchDispatch, type WorkbenchTab } from "../state/workbenchStore";
 
 export interface EditorAreaProps {
@@ -12,18 +15,28 @@ export interface EditorAreaProps {
 }
 
 function tabContent(tab: WorkbenchTab, onCursor: EditorAreaProps["onCursor"]): ReactElement {
-  if (tab.kind === "source") {
-    // path を持たない資産のタブは作られない(sourceTab が必ず持たせる)。
-    return tab.path === null ? (
-      <EmptyState title="資産を特定できません" description="タブを閉じて、開き直してください。" />
-    ) : (
-      <SourceTab path={tab.path} line={tab.line} onCursor={onCursor} />
-    );
+  switch (tab.kind) {
+    case "source":
+      // path を持たない資産のタブは作られない(sourceTab が必ず持たせる)。
+      return tab.path === null ? (
+        <EmptyState
+          title="資産を特定できません"
+          description="タブを閉じて、開き直してください。"
+        />
+      ) : (
+        <SourceTab path={tab.path} line={tab.line} onCursor={onCursor} />
+      );
+    case "fix":
+      return <FixTab />;
+    case "graph":
+      return <GraphTab />;
+    case "rules":
+      return <RulesTab />;
+    case "report":
+      return <ReportTab />;
+    case "settings":
+      return <SettingsTab />;
   }
-  if (tab.kind === "fix") {
-    return <FixTab />;
-  }
-  return <StubTab kind={tab.kind} title={tab.title} />;
 }
 
 /**

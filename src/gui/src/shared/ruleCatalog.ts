@@ -22,6 +22,7 @@ export function parseRuleCatalog(summary: Record<string, unknown> | null): RuleC
   return {
     rules,
     userRuleErrors: asArray(summary["userRuleErrors"]).map((error) => String(error)),
+    ruleConfigWarnings: asArray(summary["ruleConfigWarnings"]).map((warning) => String(warning)),
   };
 }
 
@@ -38,6 +39,8 @@ function toEntry(value: unknown): RuleCatalogEntry | null {
     phase: asString(prop(value, "phase")) ?? "SYNTAX",
     hasFix: prop(value, "hasFix") === true,
     source: prop(value, "source") === "user" ? "user" : "builtin",
+    // 欄が無いのは engine が古い場合であり、そのときルールはすべて効いている。
+    enabled: prop(value, "enabled") !== false,
     summary: asString(prop(value, "summary")) ?? "",
     rationale: asString(prop(value, "rationale")) ?? "",
     detection: asString(prop(value, "detection")) ?? "",
