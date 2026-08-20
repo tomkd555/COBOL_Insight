@@ -357,11 +357,9 @@ export function appReducer(state: AppState, action: Action): AppState {
     case "RESTORE_SETTINGS": {
       // 保存側は語彙を検査せず型だけを整えて返す。選択肢の一覧は画面が持つため、
       // 知らない重大度・文字コードはここで捨てて現在の値を残す。
+      // 無効にしたルールはここには来ない。engine も読む rules-config.json を唯一の置き場所とし、
+      // 復元は SET_RULES_ENABLED が別に受け持つ。
       const settings = action.settings;
-      const disabled: Record<string, boolean> = {};
-      for (const id of settings.disabledRules) {
-        disabled[id] = true;
-      }
       const threshold = SEVERITY_ORDER.find((value) => value === settings.severityThreshold);
       const encoding = MANUAL_ENCODING_OPTIONS.includes(settings.defaultEncoding)
         ? settings.defaultEncoding
@@ -369,7 +367,6 @@ export function appReducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         settingsLoaded: true,
-        rulesDisabled: disabled,
         severityThreshold: threshold ?? state.severityThreshold,
         defaultEncoding: encoding,
         project: { ...state.project, copybookPaths: [...settings.copybookPaths] },

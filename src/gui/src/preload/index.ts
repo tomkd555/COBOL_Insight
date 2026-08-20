@@ -10,7 +10,9 @@ import {
   type ImportSourceRequest,
   type LintRequest,
   type ReportRequest,
+  type RuleConfigFile,
   type RulesRequest,
+  type SaveSourceRequest,
   type ScanRequest,
   type SourceTextRequest,
   type SqlAdviseRequest,
@@ -58,6 +60,9 @@ const api: CobolInsightApi = {
     ipcRenderer.invoke(ENGINE_CHANNELS.readAssetInventory, dbPath),
   readSourceText: (request: SourceTextRequest) =>
     ipcRenderer.invoke(ENGINE_CHANNELS.readSourceText, request),
+  saveSource: (request: SaveSourceRequest) =>
+    ipcRenderer.invoke(ENGINE_CHANNELS.saveSource, request),
+  readGraph: (dbPath: string) => ipcRenderer.invoke(ENGINE_CHANNELS.readGraph, dbPath),
   readTranspileArtifacts: (request: TranspileArtifactsRequest) =>
     ipcRenderer.invoke(ENGINE_CHANNELS.readTranspileArtifacts, request),
   readCopyExpansion: (path: string) => ipcRenderer.invoke(ENGINE_CHANNELS.readCopyExpansion, path),
@@ -67,6 +72,9 @@ const api: CobolInsightApi = {
   readUserRules: (path: string) => ipcRenderer.invoke(ENGINE_CHANNELS.readUserRules, path),
   writeUserRules: (path: string, file: UserRulesFile) =>
     ipcRenderer.invoke(ENGINE_CHANNELS.writeUserRules, path, file),
+  readRuleConfig: (path: string) => ipcRenderer.invoke(ENGINE_CHANNELS.readRuleConfig, path),
+  writeRuleConfig: (path: string, file: RuleConfigFile) =>
+    ipcRenderer.invoke(ENGINE_CHANNELS.writeRuleConfig, path, file),
   readSettings: () => ipcRenderer.invoke(ENGINE_CHANNELS.readSettings),
   writeSettings: (settings: AppSettings) =>
     ipcRenderer.invoke(ENGINE_CHANNELS.writeSettings, settings),

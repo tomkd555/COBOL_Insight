@@ -1,6 +1,6 @@
 import { app, dialog, ipcMain } from "electron";
 import { spawn } from "node:child_process";
-import { access, mkdir, readdir, readFile, realpath, stat, writeFile } from "node:fs/promises";
+import { access, mkdir, readdir, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import initSqlJs, { type Database, type SqlJsStatic } from "sql.js";
@@ -17,7 +17,9 @@ import {
   type ImportSourceRequest,
   type LintRequest,
   type ReportRequest,
+  type RuleConfigFile,
   type RulesRequest,
+  type SaveSourceRequest,
   type ScanRequest,
   type SourceTextRequest,
   type SqlAdviseRequest,
@@ -33,7 +35,16 @@ import { parseCallgraph } from "./artifacts/callgraph";
 import { parseCopyExpansion } from "./artifacts/copyExpansion";
 import { buildFixDiff } from "./artifacts/fix";
 import { readInventory } from "./artifacts/inventory";
+import { readGraph } from "./artifacts/graph";
 import { readSourceText, type SourceFileSystem } from "./artifacts/sourceText";
+import { saveSource, type SaveFileSystem } from "./artifacts/saveSource";
+import {
+  RULE_CONFIG_FILE_NAME,
+  migrateDisabledRules,
+  readRuleConfig,
+  writeRuleConfig,
+  type RuleConfigFileSystem,
+} from "./artifacts/ruleConfig";
 import { importSource, type ImportFileSystem } from "./artifacts/importSource";
 import { readGeneratedFiles, readLineMap, type GeneratedFileSystem } from "./artifacts/transpile";
 import { parseRuleCatalog } from "../shared/ruleCatalog";
@@ -78,7 +89,13 @@ function outputPaths(): EngineOutputPaths {
     copyExpansion: join(dir, COPY_EXPANSION_FILE_NAME),
     // 解析成果物ではなく利用者が作る設定であるが、engine へ渡す位置を1か所に定めるため併せて持つ。
     userRules: join(dir, "user-rules.json"),
+    ruleConfig: join(dir, RULE_CONFIG_FILE_NAME),
   };
+}
+
+/** 編集後の本文を engine の save へ渡すための一時ファイル。保存のたびに書き、終われば消す。 */
+function editedTempPath(): string {
+  return join(app.getPath("userData"), "cobol-insight-edited.tmp");
 }
 
 /** engine 起動対象を現在の実行環境から解決する。 */
@@ -164,11 +181,18 @@ const sourceFileSystem: SourceFileSystem = {
   realPath: (absPath) => realpath(absPath),
 };
 
+/** 書き戻しに使う fs 束ね。境界判定のため実体パスの解決も渡す。 */
+const saveFileSystem: SaveFileSystem = {
+  realPath: (absPath) => realpath(absPath),
+  writeText: (absPath, text) => writeFile(absPath, text, "utf-8"),
+  remove: (absPath) => rm(absPath, { force: true }),
+};
+
 /**
- * 利用者定義ルールの定義ファイルと画面の設定の読み書きに使う fs 束ね。書き先はいずれも
- * userData 配下であり、パスは main が決める(renderer から任意のパスは受けない)。
+ * 利用者定義ルールの定義ファイル・ルールの有効無効の設定・画面の設定の読み書きに使う fs 束ね。
+ * 書き先はいずれも userData 配下であり、パスは main が決める(renderer から任意のパスは受けない)。
  */
-const userDataFileSystem: UserRuleFileSystem & SettingsFileSystem = {
+const userDataFileSystem: UserRuleFileSystem & SettingsFileSystem & RuleConfigFileSystem = {
   readText: (path) => readFile(path, "utf-8"),
   writeText: (path, text) => writeFile(path, text, "utf-8"),
   exists: (path) => access(path).then(() => true, () => false),
@@ -177,6 +201,15 @@ const userDataFileSystem: UserRuleFileSystem & SettingsFileSystem = {
 /** 画面の設定の保存先。userData 直下に置き、engine は触らない。 */
 function settingsPath(): string {
   return join(app.getPath("userData"), SETTINGS_FILE_NAME);
+}
+
+/**
+ * 旧版が settings.json へ書いていた無効ルールを rules-config.json へ移す。起動のたびに呼ぶが、
+ * 設定ファイルが既にあれば何もしない。失敗しても起動を止めない(移せなければ、利用者が
+ * ルール一覧で無効にし直せる)。
+ */
+export async function migrateRuleConfig(): Promise<void> {
+  await migrateDisabledRules(userDataFileSystem, settingsPath(), outputPaths().ruleConfig);
 }
 
 /** コピー句探索パスの実在確認に使う fs 束ね。 */
@@ -270,6 +303,22 @@ export function registerEngineIpc(): void {
     readSourceText(sourceFileSystem, request),
   );
 
+  ipcMain.handle(ENGINE_CHANNELS.saveSource, (_event, request: SaveSourceRequest) =>
+    saveSource(
+      {
+        fs: saveFileSystem,
+        tempFile: editedTempPath(),
+        dbPath: outputPaths().db,
+        run: (saveRequest) => invoke({ subcommand: "save", request: saveRequest }),
+      },
+      request,
+    ),
+  );
+
+  ipcMain.handle(ENGINE_CHANNELS.readGraph, (_event, dbPath: string) =>
+    withDatabase(dbPath, readGraph),
+  );
+
   ipcMain.handle(
     ENGINE_CHANNELS.readTranspileArtifacts,
     async (_event, request: TranspileArtifactsRequest): Promise<TranspileArtifacts> => {
@@ -302,6 +351,17 @@ export function registerEngineIpc(): void {
     ENGINE_CHANNELS.writeUserRules,
     async (_event, path: string, file: UserRulesFile) => {
       await writeUserRules(userDataFileSystem, path, file);
+    },
+  );
+
+  ipcMain.handle(ENGINE_CHANNELS.readRuleConfig, (_event, path: string) =>
+    readRuleConfig(userDataFileSystem, path),
+  );
+
+  ipcMain.handle(
+    ENGINE_CHANNELS.writeRuleConfig,
+    async (_event, path: string, file: RuleConfigFile) => {
+      await writeRuleConfig(userDataFileSystem, path, file);
     },
   );
 

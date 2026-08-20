@@ -621,17 +621,15 @@ describe("appReducer", () => {
 
   describe("RESTORE_SETTINGS(保存した設定の復元)", () => {
     const saved = {
-      disabledRules: ["R004", "U001"],
       severityThreshold: "medium",
       defaultEncoding: MANUAL_ENCODING_OPTIONS[1],
       copybookPaths: ["C:\\copy", "C:\\copy2"],
       paneSizes: {},
     };
 
-    it("保存した4項目を戻し、復元済みの印を立てる", () => {
+    it("保存した3項目を戻し、復元済みの印を立てる", () => {
       const next = appReducer(initialState, { type: "RESTORE_SETTINGS", settings: saved });
       expect(next.settingsLoaded).toBe(true);
-      expect(next.rulesDisabled).toEqual({ R004: true, U001: true });
       expect(next.severityThreshold).toBe("medium");
       expect(next.defaultEncoding).toBe(MANUAL_ENCODING_OPTIONS[1]);
       expect(next.project.copybookPaths).toEqual(["C:\\copy", "C:\\copy2"]);
@@ -641,7 +639,6 @@ describe("appReducer", () => {
       const next = appReducer(initialState, {
         type: "RESTORE_SETTINGS",
         settings: {
-          disabledRules: [],
           severityThreshold: "",
           defaultEncoding: "",
           copybookPaths: [],
@@ -649,7 +646,6 @@ describe("appReducer", () => {
         },
       });
       expect(next.settingsLoaded).toBe(true);
-      expect(next.rulesDisabled).toEqual({});
       expect(next.severityThreshold).toBe(initialState.severityThreshold);
       expect(next.defaultEncoding).toBe(initialState.defaultEncoding);
     });
@@ -658,7 +654,6 @@ describe("appReducer", () => {
       const next = appReducer(initialState, {
         type: "RESTORE_SETTINGS",
         settings: {
-          disabledRules: [],
           severityThreshold: "critical",
           defaultEncoding: "手動: 存在しない文字コード",
           copybookPaths: [],

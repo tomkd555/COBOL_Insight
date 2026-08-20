@@ -42,7 +42,7 @@ export function buildEngineArgs(invocation: EngineInvocation): string[] {
         "lint",
         ...common(r),
         ...opt("--sarif", r.sarifFile),
-        ...repeated("--disable-rule", r.disabledRules),
+        ...opt("--rule-config", r.ruleConfigFile),
         ...opt("--user-rules", r.userRulesFile),
       ];
     }
@@ -52,7 +52,7 @@ export function buildEngineArgs(invocation: EngineInvocation): string[] {
         "sql-lint",
         ...common(r),
         ...opt("--sarif", r.sarifFile),
-        ...repeated("--disable-rule", r.disabledRules),
+        ...opt("--rule-config", r.ruleConfigFile),
       ];
     }
     case "report": {
@@ -63,13 +63,33 @@ export function buildEngineArgs(invocation: EngineInvocation): string[] {
         ...opt("--db", r.db),
         ...opt("--html", r.htmlFile),
         ...opt("--text", r.textFile),
-        ...repeated("--disable-rule", r.disabledRules),
+        ...opt("--rule-config", r.ruleConfigFile),
         ...opt("--user-rules", r.userRulesFile),
       ];
     }
     case "rules": {
       // 資産フォルダを取らないため common を挟まない。出力は常に JSON とし、画面が読む形へ揃える。
-      return ["rules", "--json", ...opt("--user-rules", invocation.request.userRulesFile)];
+      const r = invocation.request;
+      return [
+        "rules",
+        "--json",
+        ...opt("--user-rules", r.userRulesFile),
+        ...opt("--rule-config", r.ruleConfigFile),
+      ];
+    }
+    case "save": {
+      // 資産フォルダの位置引数を取らず、書き戻す原本を --file で直に受ける唯一のサブコマンドである。
+      const r = invocation.request;
+      return [
+        "save",
+        "--file",
+        r.file,
+        "--edited",
+        r.editedFile,
+        ...opt("--codepage", r.codepage),
+        ...repeated("--copybook-path", r.copybookPaths),
+        ...opt("--db", r.db),
+      ];
     }
     case "translate": {
       const r = invocation.request;
@@ -98,6 +118,10 @@ export function buildEngineArgs(invocation: EngineInvocation): string[] {
  * renderer はここで返るパスを起点に成果物ファイルを読む。
  */
 export function collectRequestedOutputs(invocation: EngineInvocation): EngineOutputs {
+  // save は原本を書き戻すだけで成果物ファイルを作らない(--db は読むためだけに渡す)。
+  if (invocation.subcommand === "save") {
+    return {};
+  }
   const r = invocation.request;
   const outputs: EngineOutputs = {};
   if (invocation.subcommand === "scan") {

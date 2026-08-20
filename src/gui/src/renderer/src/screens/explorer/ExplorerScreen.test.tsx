@@ -55,6 +55,8 @@ const OUTPUT_PATHS = {
   lintSarif: "C:\\data\\cobol-insight.sarif",
   sqlAdviseSarif: "C:\\data\\cobol-insight-sql.sarif",
   copyExpansion: "C:\\data\\cobol-insight-copy-expansion.json",
+  userRules: "C:\\data\\user-rules.json",
+  ruleConfig: "C:\\data\\rules-config.json",
 };
 
 beforeEach(() => {
@@ -200,7 +202,10 @@ describe("ExplorerScreen(資産一覧 container)", () => {
     expect(readAssetInventory).toHaveBeenCalledWith("proj.db");
     await waitFor(() => expect(runSqlLint).toHaveBeenCalledTimes(1));
     expect(runLint).toHaveBeenCalledTimes(1);
-    expect(runLint.mock.calls[0][0]).toMatchObject({ inputDir: SELECTED_DIR, disabledRules: [] });
+    expect(runLint.mock.calls[0][0]).toMatchObject({
+      inputDir: SELECTED_DIR,
+      ruleConfigFile: OUTPUT_PATHS.ruleConfig,
+    });
     expect(readSarif).toHaveBeenCalledWith("lint.sarif");
     expect(readSarif).toHaveBeenCalledWith("sql.sarif");
 
@@ -404,7 +409,9 @@ describe("ExplorerScreen(資産一覧 container)", () => {
     renderExplorer();
     await importFolder();
     await waitFor(() =>
-      expect(screen.getByRole("alert")).toHaveTextContent("解析結果の保存先を解析エンジンから受け取れなかった"),
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "解析結果の保存先を解析エンジンから受け取れませんでした",
+      ),
     );
     expect(readAssetInventory).not.toHaveBeenCalled();
   });
@@ -474,14 +481,6 @@ describe("ExplorerScreen(資産一覧 container)", () => {
     await importAndRun();
     await waitFor(() => expect(screen.getByRole("button", { name: /SYK001\.cbl/ })).toBeInTheDocument());
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
-  });
-
-  it("設定で無効化したルールを lint と sql-lint の両方へ渡す", async () => {
-    renderExplorer(seedState({ rulesDisabled: { S001: true, R009: true } }));
-    await importAndRun();
-    await waitFor(() => expect(runSqlLint).toHaveBeenCalledTimes(1));
-    expect(runLint.mock.calls[0][0].disabledRules).toEqual(["R009", "S001"]);
-    expect(runSqlLint.mock.calls[0][0].disabledRules).toEqual(["R009", "S001"]);
   });
 
   it("既定の文字コードは検出に失敗した資産の選択欄とプレビューの初期値になる", async () => {

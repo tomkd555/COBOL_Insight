@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactElement } from "react";
-import { SPLIT_PANES, type AssetTypeFilter } from "../../state/appState";
+import { SPLIT_PANES, type AssetTypeFilter, type RunStage } from "../../state/appState";
 import { useAppState, useAppDispatch } from "../../state/AppStateContext";
 import { deriveRunBanner, deriveScanNotice, type ScanNoticeSection } from "../../state/status";
-import { readScanDiscovery } from "./scanSummary";
+import { messageOf, runAnalysis, type AnalysisStage } from "../../services/analysis";
 import { EmptyState } from "../../components/EmptyState";
 import { RunningIndicator } from "../../components/RunningIndicator";
 import { SplitHandle } from "../../components/SplitHandle";
@@ -11,7 +11,6 @@ import { ExplorerToolbar } from "./ExplorerToolbar";
 import { AssetList } from "./AssetList";
 import { AssetDetail } from "./AssetDetail";
 import { toSourcePreview, type SourcePreview } from "./sourcePreview";
-import { disabledRuleIds as disabledRules } from "../settings/settingsModel";
 import {
   buildAssetGroups,
   countFindingsByFile,
@@ -29,10 +28,8 @@ const EMPTY_STATE = {
   note: "文字コードは自動判定（Shift_JIS / UTF-8）または推定（EBCDIC CP930/939）。",
 } as const;
 
-/** 例外・非 Error 値から表示用の文言を取り出す。 */
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
+/** 解析の段を、実行中インジケータが示す番号へ対応づける。 */
+const STAGE_NUMBER: Record<AnalysisStage, RunStage> = { scan: 1, lint: 2, sqlLint: 3 };
 
 /**
  * 資産エクスプローラー(scan)。上部ツールバー(インポート/名前フィルタ/種別チップ/解析実行)、
@@ -132,97 +129,31 @@ export function ExplorerScreen(): ReactElement {
     await onRun(selected);
   }
 
-  /** scan を起動し、SQLite から資産一覧を読む。失敗を呼び出し側へ真偽で返す。 */
-  async function runScanStage(inputDir: string): Promise<boolean> {
-    try {
-      const paths = await window.cobolInsight.getOutputPaths();
-      const result = await window.cobolInsight.runScan({
-        inputDir,
-        db: paths.db,
-        copyExpansion: paths.copyExpansion,
-        copybookPaths: state.project.copybookPaths,
-        codepageOverrides: toCodepageOverrides(state.encodingSel),
-      });
-      const db = result.outputs.db;
-      if (db === undefined) {
-        // 保存先が分からなければ資産一覧を読めない。0 件として黙って通すと、解析できたのか
-        // 対象が無いのかを利用者が区別できなくなる。
-        throw new Error("解析結果の保存先を解析エンジンから受け取れなかった。");
-      }
-      const inventory = await window.cobolInsight.readAssetInventory(db);
-      dispatch({
-        type: "SET_INVENTORY",
-        result: { status: "ready", items: inventory },
-        dbPath: db,
-        discovery: readScanDiscovery(result.summary),
-      });
-      // 非ゼロ終了は構文解析の失敗を含む部分的成功であり、一覧は利用できる。
-      return result.exitCode !== 0;
-    } catch (error) {
-      dispatch({ type: "SET_INVENTORY", result: { status: "error", message: messageOf(error) } });
-      return true;
-    }
-  }
-
-  /** lint を起動し、SARIF から指摘を読む。 */
-  async function runLintStage(inputDir: string): Promise<boolean> {
-    try {
-      const paths = await window.cobolInsight.getOutputPaths();
-      const result = await window.cobolInsight.runLint({
-        inputDir,
-        sarifFile: paths.lintSarif,
-        copybookPaths: state.project.copybookPaths,
-        disabledRules: disabledRules(state.rulesDisabled),
-      });
-      const sarif = result.outputs.sarif;
-      if (sarif === undefined) {
-        throw new Error("指摘の検出の結果が出力されなかった。");
-      }
-      const findings = await window.cobolInsight.readSarif(sarif);
-      dispatch({ type: "SET_FINDINGS", result: { status: "ready", items: findings } });
-      return false;
-    } catch (error) {
-      dispatch({ type: "SET_FINDINGS", result: { status: "error", message: messageOf(error) } });
-      return true;
-    }
-  }
-
-  /** sql-lint を起動し、SARIF から SQL 指摘を読む。 */
-  async function runSqlLintStage(inputDir: string): Promise<boolean> {
-    try {
-      const paths = await window.cobolInsight.getOutputPaths();
-      const result = await window.cobolInsight.runSqlLint({
-        inputDir,
-        sarifFile: paths.sqlAdviseSarif,
-        copybookPaths: state.project.copybookPaths,
-        // S001〜S006 も設定で無効化できるため、sql-lint へも --disable-rule を渡す。
-        disabledRules: disabledRules(state.rulesDisabled),
-      });
-      const sarif = result.outputs.sarif;
-      if (sarif === undefined) {
-        throw new Error("SQL指摘の結果が出力されなかった。");
-      }
-      const advice = await window.cobolInsight.readSarif(sarif);
-      dispatch({ type: "SET_SQL_ADVICE", result: { status: "ready", items: advice } });
-      return false;
-    } catch (error) {
-      dispatch({ type: "SET_SQL_ADVICE", result: { status: "error", message: messageOf(error) } });
-      return true;
-    }
-  }
-
   /**
-   * 解析の単一の起点。scan → lint → sql-lint の順に起動し、段の進行を SET_RUN_STAGE で
-   * 実行中インジケータへ伝える(START_RUN が第1段から始める)。
+   * 解析の起点。手順そのものは services/analysis が持ち、この画面は段の進行と結果を
+   * AppState へ流し込むだけである。
    */
   async function onRun(dir: string): Promise<void> {
     dispatch({ type: "START_RUN" });
-    const scanFailed = await runScanStage(dir);
-    dispatch({ type: "SET_RUN_STAGE", stage: 2 });
-    const lintFailed = await runLintStage(dir);
-    dispatch({ type: "SET_RUN_STAGE", stage: 3 });
-    const sqlFailed = await runSqlLintStage(dir);
-    const failed = scanFailed || lintFailed || sqlFailed;
+    const failed = await runAnalysis(
+      {
+        inputDir: dir,
+        copybookPaths: state.project.copybookPaths,
+        codepageOverrides: toCodepageOverrides(state.encodingSel),
+      },
+      {
+        onStage: (stage) => dispatch({ type: "SET_RUN_STAGE", stage: STAGE_NUMBER[stage] }),
+        onInventory: (result, dbPath, discovery) =>
+          dispatch({
+            type: "SET_INVENTORY",
+            result,
+            ...(dbPath === null ? {} : { dbPath }),
+            ...(discovery === null ? {} : { discovery }),
+          }),
+        onFindings: (result) => dispatch({ type: "SET_FINDINGS", result }),
+        onSqlAdvice: (result) => dispatch({ type: "SET_SQL_ADVICE", result }),
+      },
+    );
     dispatch({
       type: "FINISH_RUN",
       failed,

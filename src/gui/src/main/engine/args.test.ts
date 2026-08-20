@@ -88,13 +88,13 @@ describe("buildEngineArgs", () => {
     ]);
   });
 
-  it("lint は --db を持たず、--sarif と --disable-rule を組み立てる", () => {
+  it("lint は --db を持たず、--sarif と --rule-config を組み立てる", () => {
     const inv: EngineInvocation = {
       subcommand: "lint",
       request: {
         inputDir: "assets",
         sarifFile: "out/lint.sarif",
-        disabledRules: ["R008", "R029"],
+        ruleConfigFile: "data/rules-config.json",
       },
     };
     expect(buildEngineArgs(inv)).toEqual([
@@ -102,10 +102,8 @@ describe("buildEngineArgs", () => {
       "assets",
       "--sarif",
       "out/lint.sarif",
-      "--disable-rule",
-      "R008",
-      "--disable-rule",
-      "R029",
+      "--rule-config",
+      "data/rules-config.json",
     ]);
   });
 

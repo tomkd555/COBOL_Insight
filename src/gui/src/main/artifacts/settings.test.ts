@@ -4,7 +4,6 @@ import type { SettingsFileSystem } from "./settings";
 import { readSettings, writeSettings } from "./settings";
 
 const SETTINGS: AppSettings = {
-  disabledRules: ["R004"],
   severityThreshold: "medium",
   defaultEncoding: "手動: Shift_JIS",
   copybookPaths: ["C:\\資産\\copybook"],
@@ -65,8 +64,10 @@ describe("writeSettings", () => {
     const fs = fakeFs({});
     await writeSettings(fs, "settings.json", {
       ...SETTINGS,
-      disabledRules: ["R004", 7 as never],
+      copybookPaths: ["C:\\資産\\copybook", 7 as never],
     });
-    expect(JSON.parse(fs.files["settings.json"]).settings.disabledRules).toEqual(["R004"]);
+    expect(JSON.parse(fs.files["settings.json"]).settings.copybookPaths).toEqual([
+      "C:\\資産\\copybook",
+    ]);
   });
 });

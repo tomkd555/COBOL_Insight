@@ -16,6 +16,8 @@ const INPUT_DIR = "C:\\資産\\SYK";
 const DB_PATH = "C:\\proj\\cobol-insight.db";
 const HTML_PATH = "C:\\proj\\cobol-insight-report.html";
 const TEXT_PATH = "C:\\proj\\cobol-insight-report.txt";
+/** main が userData 基準で決めるルール設定ファイルの位置。 */
+const RULE_CONFIG_PATH = "C:\\data\\rules-config.json";
 
 let runReport: ReturnType<typeof vi.fn>;
 let readReportHtml: ReturnType<typeof vi.fn>;
@@ -26,6 +28,7 @@ beforeEach(() => {
   readReportHtml = vi.fn().mockResolvedValue(SAMPLE_REPORT_HTML);
   readReportText = vi.fn().mockResolvedValue(SAMPLE_REPORT_TEXT);
   window.cobolInsight = {
+    getOutputPaths: vi.fn().mockResolvedValue({ ruleConfig: RULE_CONFIG_PATH }),
     runReport,
     readReportHtml,
     readReportText,
@@ -132,16 +135,15 @@ describe("ReportScreen の書き出し", () => {
       db: DB_PATH,
       htmlFile: HTML_PATH,
       textFile: TEXT_PATH,
-      disabledRules: [],
+      ruleConfigFile: RULE_CONFIG_PATH,
     });
   });
 
-  it("設定で無効化したルールを --disable-rule として渡す", async () => {
+  it("ルールの有効・無効は設定ファイルで渡し、無効にした件数を画面へ示す", async () => {
     renderReport(analyzedState({ rulesDisabled: { R009: true, R025: false, R002: true } }));
     await writeAndWait();
     const request = runReport.mock.calls[0][0] as ReportRequest;
-    // 渡す順序はルールカタログの定義順であり、無効にした操作の順ではない。
-    expect(request.disabledRules).toEqual(["R002", "R009"]);
+    expect(request.ruleConfigFile).toBe(RULE_CONFIG_PATH);
     expect(screen.getByText(/無効化した 2 件のルールは検出から除く/)).toBeInTheDocument();
   });
 

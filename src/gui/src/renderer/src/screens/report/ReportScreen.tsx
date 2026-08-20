@@ -60,13 +60,15 @@ export function ReportScreen(): ReactElement {
     const paths = reportArtifactPaths(dbPath, outDir);
     setReport({ status: "loading" });
     try {
+      // ルールの有効・無効は engine が読む設定ファイルが決める。位置は main が userData 基準で決める。
+      const outputPaths = await window.cobolInsight.getOutputPaths();
       const result = await window.cobolInsight.runReport({
         inputDir,
         copybookPaths,
         db: paths.db,
         htmlFile: paths.html,
         textFile: paths.text,
-        disabledRules,
+        ruleConfigFile: outputPaths.ruleConfig,
       });
       const [html, text] = await Promise.all([
         window.cobolInsight.readReportHtml(paths.html),
