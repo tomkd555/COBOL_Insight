@@ -77,7 +77,7 @@ beforeEach(() => {
 describe("runAnalysis", () => {
   it("走査・指摘の検出・SQL指摘の検出を順に走らせ、段ごとの結果を済んだ端から渡す", async () => {
     const handlers = recorder();
-    const failed = await runAnalysis(REQUEST, handlers);
+    const outcome = await runAnalysis(REQUEST, handlers);
 
     expect(handlers.log).toEqual([
       "stage:scan",
@@ -87,7 +87,7 @@ describe("runAnalysis", () => {
       "stage:sqlLint",
       "sqlAdvice:ready",
     ]);
-    expect(failed).toBe(false);
+    expect(outcome).toBe("completed");
   });
 
   it("資産フォルダ・コピー句探索パス・出力先を engine の引数へ渡す", async () => {
@@ -124,7 +124,7 @@ describe("runAnalysis", () => {
     runScan.mockRejectedValue(new Error("解析エンジンを起動できない"));
     const handlers = recorder();
 
-    const failed = await runAnalysis(REQUEST, handlers);
+    const outcome = await runAnalysis(REQUEST, handlers);
 
     expect(handlers.log).toEqual([
       "stage:scan",
@@ -134,7 +134,7 @@ describe("runAnalysis", () => {
       "stage:sqlLint",
       "sqlAdvice:ready",
     ]);
-    expect(failed).toBe(true);
+    expect(outcome).toBe("failed");
   });
 
   /** 保存先が分からなければ資産一覧を読めない。0 件として黙って通さない。 */
@@ -142,11 +142,11 @@ describe("runAnalysis", () => {
     runScan.mockResolvedValue(engineResult({ outputs: {} }));
     const handlers = recorder();
 
-    const failed = await runAnalysis(REQUEST, handlers);
+    const outcome = await runAnalysis(REQUEST, handlers);
 
     expect(handlers.log).toContain("inventory:error");
     expect(readAssetInventory).not.toHaveBeenCalled();
-    expect(failed).toBe(true);
+    expect(outcome).toBe("failed");
   });
 
   /** 非ゼロ終了は構文解析に失敗した資産がある状態であり、一覧そのものは使える。 */
@@ -154,17 +154,17 @@ describe("runAnalysis", () => {
     runScan.mockResolvedValue(engineResult({ exitCode: 2, outputs: { db: "proj.db" } }));
     const handlers = recorder();
 
-    const failed = await runAnalysis(REQUEST, handlers);
+    const outcome = await runAnalysis(REQUEST, handlers);
 
     expect(handlers.log).toContain("inventory:ready");
-    expect(failed).toBe(true);
+    expect(outcome).toBe("failed");
   });
 
   it("指摘の検出に失敗しても SQL指摘の検出を走らせる", async () => {
     runLint.mockRejectedValue(new Error("SARIF を書けない"));
     const handlers = recorder();
 
-    const failed = await runAnalysis(REQUEST, handlers);
+    const outcome = await runAnalysis(REQUEST, handlers);
 
     expect(handlers.log).toEqual([
       "stage:scan",
@@ -174,6 +174,56 @@ describe("runAnalysis", () => {
       "stage:sqlLint",
       "sqlAdvice:ready",
     ]);
-    expect(failed).toBe(true);
+    expect(outcome).toBe("failed");
+  });
+});
+
+describe("runAnalysis の取り消し", () => {
+  /** 止めた後に engine を起こし直すと、取り消したはずの解析が続く。 */
+  it("第1段の後に取り消すと、第2段を起こさず、済んだ分だけを残す", async () => {
+    const handlers = recorder();
+    let cancelled = false;
+    runScan.mockImplementation(() => {
+      cancelled = true;
+      return Promise.resolve(engineResult({ outputs: { db: "proj.db" } }));
+    });
+
+    const outcome = await runAnalysis(REQUEST, handlers, () => cancelled);
+
+    expect(outcome).toBe("cancelled");
+    expect(runLint).not.toHaveBeenCalled();
+    expect(runSqlLint).not.toHaveBeenCalled();
+    // 殺した子プロセスの成果物を新しい結果として読まない。
+    expect(readAssetInventory).not.toHaveBeenCalled();
+    expect(handlers.log).toEqual(["stage:scan"]);
+  });
+
+  /** 子プロセスを殺された起動は終了コードが負になる。engine 自身は負を返さない。 */
+  it("殺された子プロセスは失敗ではなく取り消しとして扱う", async () => {
+    const handlers = recorder();
+    runScan.mockResolvedValue(engineResult({ exitCode: -1, outputs: { db: "proj.db" } }));
+
+    const outcome = await runAnalysis(REQUEST, handlers, () => false);
+
+    expect(outcome).toBe("cancelled");
+    expect(handlers.log).toEqual(["stage:scan"]);
+    expect(runLint).not.toHaveBeenCalled();
+  });
+
+  it("第2段の後に取り消すと、SQL指摘の検出を起こさない", async () => {
+    const handlers = recorder();
+    let cancelled = false;
+    runLint.mockImplementation(() => {
+      cancelled = true;
+      return Promise.resolve(
+        engineResult({ subcommand: "lint", outputs: { sarif: "lint.sarif" } }),
+      );
+    });
+
+    const outcome = await runAnalysis(REQUEST, handlers, () => cancelled);
+
+    expect(outcome).toBe("cancelled");
+    expect(runSqlLint).not.toHaveBeenCalled();
+    expect(handlers.log).toEqual(["stage:scan", "inventory:ready", "stage:lint"]);
   });
 });

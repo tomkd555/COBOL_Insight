@@ -1,5 +1,17 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactElement } from "react";
-import type { LineMapEntry, TranspileGeneratedFile } from "../../../shared/engine-api";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactElement,
+} from "react";
+import type {
+  AssetInventoryItem,
+  LineMapEntry,
+  TranspileGeneratedFile,
+} from "../../../shared/engine-api";
 import { Button } from "../components/Button";
 import { EmptyState } from "../components/EmptyState";
 import { SplitHandle } from "../components/SplitHandle";
@@ -38,6 +50,7 @@ import {
   type SourceLang,
 } from "../screens/viewer/viewerModel";
 import { messageOf } from "../services/analysis";
+import { MANUAL_ENCODING_OPTIONS, charsetOf } from "../data/encodings";
 import { artifactItems, useProject, useProjectDispatch } from "../state/projectStore";
 import { useSettings } from "../state/settingsStore";
 import {
@@ -56,6 +69,10 @@ const NO_LINES: readonly number[] = [];
 const NO_ZONES: readonly ExpansionZone[] = [];
 const NO_FILES: readonly TranspileGeneratedFile[] = [];
 const NO_LINE_MAP: readonly LineMapEntry[] = [];
+
+/** 文字コードを engine の判定へ委ねる選択肢。手動指定の語彙は設定の画面と同じものを使う。 */
+const AUTO_CODEPAGE = "自動";
+const CODEPAGE_OPTIONS: readonly string[] = [AUTO_CODEPAGE, ...MANUAL_ENCODING_OPTIONS];
 
 /** 対訳ペインの寸法。min はペインが役目を果たす最小、oppositeMin は原本へ必ず残す最小である。 */
 const TRANSLATION_LIMITS = { initial: 460, min: 320, oppositeMin: 520 } as const;
@@ -89,6 +106,15 @@ export function SourceTab({ path, line, onCursor }: SourceTabProps): ReactElemen
     () => inventory.find((candidate) => candidate.path === path) ?? null,
     [inventory, path],
   );
+  /**
+   * 直前まで分かっていたこの資産の情報。解析を始めると資産一覧はいったん空になるため、そこで
+   * 文字コードを見失うと本文を読み直す羽目になり、編集中の面が読み込み中の表示へ差し替わる。
+   */
+  const lastItem = useRef<AssetInventoryItem | null>(null);
+  if (item !== null) {
+    lastItem.current = item;
+  }
+  const known = item ?? lastItem.current;
 
   const [reloadKey, setReloadKey] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -107,11 +133,27 @@ export function SourceTab({ path, line, onCursor }: SourceTabProps): ReactElemen
   /** 相互ハイライトの起点。反対側のペインだけをスクロールするために持つ。 */
   const [origin, setOrigin] = useState<"cobol" | "generated" | "note" | null>(null);
 
-  const document = useSourceDocument(true, project.inputDir, path, item?.codepage ?? null, reloadKey);
+  /**
+   * 選択欄に出す文字コード。手動指定があればそれ、無ければ判定に委ねる。判定できなかった資産では
+   * 設定の既定値を初期値にする(設定の画面がそう約束している)。判定できている資産を既定値で
+   * 塗り替えることはしない。
+   */
+  const detectedCodepage = known?.codepage ?? null;
+  const codepageChoice =
+    project.codepageOverrides[path] ??
+    (detectedCodepage === null ? settings.defaultEncoding : AUTO_CODEPAGE);
+  /** 選んだ文字コード。自動のときは null になり、判定の値で読む。 */
+  const chosenCharset = charsetOf(codepageChoice);
+  const codepage = chosenCharset ?? detectedCodepage;
+
+  const document = useSourceDocument(true, project.inputDir, path, codepage, reloadKey);
   const documentText = document.status === "ready" ? document.text : "";
   const draft = draftOf(workbench, tabId);
   const text = draft ?? documentText;
   const dirty = draft !== null;
+  /** いま画面にある編集後の本文。保存の間に打った文字を、保存の完了で捨てないために持つ。 */
+  const draftRef = useRef<string | null>(draft);
+  draftRef.current = draft;
 
   const sourceCodepage =
     document.status === "ready" ? sourceCodepageOf(document.codepage) : "UTF-8";
@@ -141,7 +183,7 @@ export function SourceTab({ path, line, onCursor }: SourceTabProps): ReactElemen
     [project.saveFindings, path],
   );
 
-  const transpileTarget = isTranspileTarget(item);
+  const transpileTarget = isTranspileTarget(known);
   const { state: transpile, regenerate } = useTranspile(
     translationOpen && transpileTarget,
     project.inputDir,
@@ -180,7 +222,7 @@ export function SourceTab({ path, line, onCursor }: SourceTabProps): ReactElemen
     copyStatements,
     inventory,
     settings.copybookPaths,
-    item?.codepage ?? null,
+    codepage,
   );
   const expansionZones = useMemo(
     () =>
@@ -197,7 +239,9 @@ export function SourceTab({ path, line, onCursor }: SourceTabProps): ReactElemen
 
   const save = useCallback(async (): Promise<void> => {
     const inputDir = project.inputDir;
-    if (draft === null || inputDir === null || saving) {
+    // 書き戻すのは、この時点の本文である。保存の間に打った文字は次の保存の対象になる。
+    const snapshot = draft;
+    if (snapshot === null || inputDir === null || saving) {
       return;
     }
     setSaving(true);
@@ -205,10 +249,13 @@ export function SourceTab({ path, line, onCursor }: SourceTabProps): ReactElemen
       const result = await window.cobolInsight.saveSource({
         inputDir,
         path,
-        editedText: draft,
+        editedText: snapshot,
         copybookPaths: [...settings.copybookPaths],
+        // 画面が選んでいる文字コードを渡す。自動のときは渡さず、engine が走査時の記録と
+        // 自動判別で決める。
+        ...(chosenCharset === null ? {} : { codepage: chosenCharset }),
       });
-      const outcome = saveOutcomeOf(path, item?.type ?? "UNKNOWN", result);
+      const outcome = saveOutcomeOf(path, known?.type ?? "UNKNOWN", result);
       projectDispatch({
         type: "LOG",
         text: outcome.message,
@@ -221,10 +268,13 @@ export function SourceTab({ path, line, onCursor }: SourceTabProps): ReactElemen
       }
       setSaveError(null);
       projectDispatch({ type: "SET_SAVE_FINDINGS", path, findings: outcome.diagnostics });
-      workbenchDispatch({ type: "SET_DRAFT", id: tabId, text: null });
-      workbenchDispatch({ type: "SAVED", path, at: Date.now() });
-      // engine が原本の改行様式や桁へそろえた結果を、画面の本文へ戻す。
-      setReloadKey((count) => count + 1);
+      // 保存の間に打った文字は捨てない。書き戻した本文のままのときだけ未保存の印を外し、engine が
+      // 原本の改行様式や桁へそろえた結果を画面の本文へ戻す。続きを打っていたら、その編集を残す。
+      if (draftRef.current === snapshot) {
+        workbenchDispatch({ type: "SET_DRAFT", id: tabId, text: null });
+        workbenchDispatch({ type: "SAVED", path, at: Date.now() });
+        setReloadKey((count) => count + 1);
+      }
     } catch (error) {
       const message = `${path} を保存できませんでした。${messageOf(error)} もう一度保存してください。`;
       setSaveError(message);
@@ -232,7 +282,7 @@ export function SourceTab({ path, line, onCursor }: SourceTabProps): ReactElemen
     } finally {
       setSaving(false);
     }
-  }, [draft, saving, project.inputDir, path, item, settings.copybookPaths, projectDispatch, workbenchDispatch, tabId]);
+  }, [draft, saving, project.inputDir, path, known, chosenCharset, settings.copybookPaths, projectDispatch, workbenchDispatch, tabId]);
 
   // Ctrl+S で書き戻す。選んでいるタブだけが描かれるため、対象は常にこの資産である。
   useEffect(() => {
@@ -308,6 +358,23 @@ export function SourceTab({ path, line, onCursor }: SourceTabProps): ReactElemen
         <span className="ci-source__state" role="status">
           {dirty ? "未保存の変更があります" : "保存済みです"}
         </span>
+        <label className="ci-source__codepage">
+          文字コード
+          <select
+            className="ci-source__codepage-select"
+            aria-label="文字コード"
+            value={codepageChoice}
+            onChange={(event) =>
+              projectDispatch({ type: "SET_CODEPAGE", path, charset: event.target.value })
+            }
+          >
+            {CODEPAGE_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </label>
         {copyStatements.length === 0 ? null : (
           <Button
             aria-expanded={copybookOpen}
@@ -325,7 +392,7 @@ export function SourceTab({ path, line, onCursor }: SourceTabProps): ReactElemen
         </Button>
         <span className="ci-viewer__pane-spacer" />
         <span className="ci-viewer__pane-meta">
-          {`文字コード: ${document.codepage} ｜ この資産の指摘: ${findingCount} 件`}
+          {`${document.codepage} で表示 ｜ この資産の指摘: ${findingCount} 件`}
         </span>
       </div>
 

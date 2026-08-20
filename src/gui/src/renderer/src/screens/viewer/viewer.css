@@ -28,6 +28,16 @@
   color: var(--ci-text-muted);
 }
 
+/* 文字コードの手動指定。操作の帯の中で、選択欄をラベルの右へ並べる。 */
+.ci-source__codepage {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-1);
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-muted);
+}
+
+.ci-source__codepage-select,
 .ci-viewer__gen-select {
   font-size: var(--ci-fs-sm);
   padding: var(--ci-space-1) var(--ci-space-2);
@@ -36,6 +46,11 @@
   font-family: var(--ci-font-code);
   background: var(--ci-panel);
   color: var(--ci-text);
+}
+.ci-source__codepage-select:focus-visible,
+.ci-viewer__gen-select:focus-visible {
+  outline: 2px solid var(--ci-focus-ring);
+  outline-offset: 2px;
 }
 /* 左右2ペイン(境界の分割ハンドルで対訳ペインの幅を変える。原本ペインは残りを取る) */
 .ci-viewer__panes {

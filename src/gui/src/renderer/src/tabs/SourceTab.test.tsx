@@ -227,6 +227,42 @@ describe("本文を編集して書き戻す", () => {
     expect(within(table).queryByText("保存時の検証")).toBeNull();
   });
 
+  /** 保存は数秒かかる。その間の打鍵を、保存の完了で捨てない。 */
+  it("保存の間に打った文字を残し、本文を読み直さない", async () => {
+    let finishSave: ((result: SaveResult) => void) | null = null;
+    const saveSource = vi
+      .fn()
+      .mockImplementation(
+        () =>
+          new Promise<SaveResult>((resolve) => {
+            finishSave = resolve;
+          }),
+      );
+    const readSourceText = vi.fn().mockResolvedValue(SOURCE);
+    stubApi({ saveSource, readSourceText });
+    renderShell();
+    const editor = await editorReady();
+    type(editor, "保存する本文\n");
+
+    fireEvent.keyDown(window, { key: "s", ctrlKey: true });
+    await waitFor(() => expect(saveSource).toHaveBeenCalledTimes(1));
+    expect(saveSource.mock.calls[0][0].editedText).toBe("保存する本文\n");
+
+    // 書き戻しの最中に続きを打つ。
+    type(editor, "保存する本文\n保存中の追記\n");
+    act(() => {
+      finishSave?.(saveResult());
+    });
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "保存" })).toBeEnabled());
+    expect(screen.getByTestId(`dirty-${sourceTabId(COBOL_PATH)}`)).toBeInTheDocument();
+    expect(monacoStore.editors[monacoStore.editors.length - 1].value).toBe(
+      "保存する本文\n保存中の追記\n",
+    );
+    // 読み直すと、engine が整えた本文で新しい打鍵を上書きしてしまう。
+    expect(readSourceText).toHaveBeenCalledTimes(1);
+  });
+
   it("書き戻せなかったときは編集を保ち、理由を示す", async () => {
     stubApi({
       saveSource: vi.fn().mockResolvedValue(
@@ -246,6 +282,85 @@ describe("本文を編集して書き戻す", () => {
     expect(alert).toHaveTextContent("もう一度保存してください");
     expect(screen.getByTestId(`dirty-${sourceTabId(COBOL_PATH)}`)).toBeInTheDocument();
     expect(screen.getByText("未保存の変更があります")).toBeInTheDocument();
+  });
+});
+
+describe("文字コードの指定", () => {
+  /** 判定は engine が持つ。既定値で塗り替えると、判定できている資産まで読み替えてしまう。 */
+  it("判定があれば、その文字コードで読む", async () => {
+    const readSourceText = vi.fn().mockResolvedValue(SOURCE);
+    stubApi({ readSourceText });
+    renderShell();
+    await editorReady();
+
+    expect(readSourceText.mock.calls[0][0].codepage).toBe("windows-31j");
+    expect(screen.getByRole("combobox", { name: "文字コード" })).toHaveValue("自動");
+  });
+
+  it("判定が無い資産は、設定の既定の文字コードで読む", async () => {
+    const readSourceText = vi.fn().mockResolvedValue(SOURCE);
+    stubApi({ readSourceText });
+    // SYKENC1.cbl は復号に失敗した資産であり、codepage を持たない。
+    renderShell("cobol/SYKENC1.cbl");
+    await editorReady();
+
+    expect(readSourceText.mock.calls[0][0].codepage).toBe("Shift_JIS");
+    // 設定の画面が「選択欄の初期値に使う」と約束している。
+    expect(screen.getByRole("combobox", { name: "文字コード" })).toHaveValue("手動: Shift_JIS");
+  });
+
+  it("手動指定は判定より優先し、その場で本文を読み直す", async () => {
+    const readSourceText = vi.fn().mockResolvedValue(SOURCE);
+    const saveSource = vi.fn().mockResolvedValue(saveResult());
+    stubApi({ readSourceText, saveSource });
+    renderShell();
+    await editorReady();
+
+    fireEvent.change(screen.getByRole("combobox", { name: "文字コード" }), {
+      target: { value: "手動: UTF-8" },
+    });
+
+    await waitFor(() => expect(readSourceText).toHaveBeenCalledTimes(2));
+    expect(readSourceText.mock.calls[1][0].codepage).toBe("UTF-8");
+
+    // 書き戻しにも同じ指定を渡す。渡さないと engine は走査時の判定で符号化する。
+    type(await editorReady(), "編集後の本文\n");
+    fireEvent.keyDown(window, { key: "s", ctrlKey: true });
+    await waitFor(() => expect(saveSource).toHaveBeenCalledTimes(1));
+    expect(saveSource.mock.calls[0][0].codepage).toBe("UTF-8");
+  });
+});
+
+describe("解析中の本文の面", () => {
+  /** 走査を始めると資産一覧はいったん空になる。そこで本文の面まで畳むと、編集中の面が消える。 */
+  it("再解析の最中も編集中の面を保つ", async () => {
+    const readSourceText = vi.fn().mockResolvedValue(SOURCE);
+    stubApi({
+      readSourceText,
+      getOutputPaths: vi.fn().mockResolvedValue({
+        db: "C:\\out\\cobol-insight.db",
+        lintSarif: "C:\\out\\lint.sarif",
+        sqlAdviseSarif: "C:\\out\\sql.sarif",
+        copyExpansion: "C:\\out\\copy.json",
+        userRules: "C:\\out\\user-rules.json",
+        ruleConfig: "C:\\out\\rules-config.json",
+      }),
+      // 走査を終わらせない。第1段の最中の画面を見る。
+      runScan: vi.fn().mockReturnValue(new Promise(() => undefined)),
+    });
+    renderShell();
+    const editor = await editorReady();
+    type(editor, "編集中の本文\n");
+
+    fireEvent.click(screen.getByTestId("reanalyze"));
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "解析をキャンセル" })).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(`${COBOL_PATH} を読み込んでいます。`)).toBeNull();
+    expect(monacoStore.editors[monacoStore.editors.length - 1].value).toBe("編集中の本文\n");
+    expect(monacoStore.editors[monacoStore.editors.length - 1].disposed).toBe(false);
+    expect(readSourceText).toHaveBeenCalledTimes(1);
   });
 });
 

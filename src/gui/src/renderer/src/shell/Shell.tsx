@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactElement } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactElement } from "react";
 import { TitleBar } from "./TitleBar";
 import { ProgressBar } from "./ProgressBar";
 import { StatusBar } from "./StatusBar";
@@ -57,6 +57,11 @@ export function Shell(): ReactElement {
   const [toast, setToast] = useState<string | null>(null);
   const [cursor, setCursor] = useState<CursorPosition | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  /**
+   * 走らせている解析が取り消されたか。解析の段は非同期に進むため、状態の更新を待たずに
+   * 読める場所へ持つ。
+   */
+  const cancelled = useRef(false);
 
   const running = project.mode === "running";
   const activeTab = activeTabOf(workbench);
@@ -110,12 +115,13 @@ export function Shell(): ReactElement {
   const analyze = useCallback(
     async (inputDir: string): Promise<void> => {
       projectDispatch({ type: "START_RUN" });
+      cancelled.current = false;
       const overrides: Record<string, string> = {};
       for (const [path, selection] of Object.entries(project.codepageOverrides)) {
         const charset = charsetOf(selection);
         if (charset !== null) overrides[path] = charset;
       }
-      const failed = await runAnalysis(
+      const outcome = await runAnalysis(
         { inputDir, copybookPaths: [...settings.copybookPaths], codepageOverrides: overrides },
         {
           onStage: (stage) => {
@@ -130,7 +136,13 @@ export function Shell(): ReactElement {
           onFindings: (result) => projectDispatch({ type: "SET_FINDINGS", result }),
           onSqlAdvice: (result) => projectDispatch({ type: "SET_SQL_ADVICE", result }),
         },
+        () => cancelled.current,
       );
+      // 取り消したときの画面は、取り消し操作の側が既に整えている。後から結末で上書きしない。
+      if (outcome === "cancelled") {
+        return;
+      }
+      const failed = outcome === "failed";
       projectDispatch({ type: "FINISH_RUN", failed });
       setToast(failed ? "解析の一部が失敗しました。" : "解析が完了しました。");
     },
@@ -205,6 +217,8 @@ export function Shell(): ReactElement {
           running
             ? () => {
                 // 画面の待機状態を解くだけでは engine が走り続け、次の起動と二重に動く。
+                // 印を先に立てる。実行中の子プロセスを止めても、次の段はここを見て止まる。
+                cancelled.current = true;
                 void window.cobolInsight.cancelRun();
                 projectDispatch({ type: "CANCEL_RUN" });
               }
