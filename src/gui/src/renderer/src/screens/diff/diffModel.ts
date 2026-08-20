@@ -15,8 +15,11 @@ import type {
   SarifFinding,
 } from "../../../../shared/engine-api";
 import { parseFixSummary } from "../../../../shared/fixSummary";
-import { ruleOf } from "../../data/ruleCatalog";
-import type { FixDecision, ScreenMode } from "../../state/appState";
+import { ruleOf, type RuleCatalogIndex } from "../../data/ruleCatalog";
+import type { AnalysisMode, FixDecision } from "../../state/projectStore";
+
+/** 修正案の判定。採否は利用者の判断であり、置き場所は projectStore である。 */
+export type { FixDecision };
 
 /** 修正案を生成できるルール ID。engine の FixProducer 実装と一致させる。 */
 export const FIX_RULE_IDS: readonly string[] = ["R004", "R017", "R018", "R021"];
@@ -108,6 +111,7 @@ export const readFixSummary = parseFixSummary;
  * 一覧から落とさない。
  */
 export function buildFixCandidates(
+  catalog: RuleCatalogIndex,
   summary: FixSummaryInfo,
   findings: readonly SarifFinding[],
 ): FixCandidate[] {
@@ -127,18 +131,22 @@ export function buildFixCandidates(
       name: fileNameOf(relPath),
       copybook: importers !== undefined,
       importers: importers ?? [],
-      findings: fixFindingsOf(relPath, findings),
+      findings: fixFindingsOf(catalog, relPath, findings),
     };
   });
 }
 
 /** 修正案の対象となった指摘だけを、そのファイル分だけ行の昇順で取り出す。 */
-function fixFindingsOf(relPath: string, findings: readonly SarifFinding[]): FixFinding[] {
+function fixFindingsOf(
+  catalog: RuleCatalogIndex,
+  relPath: string,
+  findings: readonly SarifFinding[],
+): FixFinding[] {
   return findings
     .filter((finding) => finding.file === relPath && FIX_RULE_IDS.includes(finding.ruleId))
     .map((finding) => ({
       ruleId: finding.ruleId,
-      ruleName: ruleOf(finding.ruleId).name,
+      ruleName: ruleOf(catalog, finding.ruleId).name,
       line: finding.startLine,
       message: finding.message,
     }))
@@ -151,23 +159,23 @@ export function fixRuleIdLabel(separator: string = "・"): string {
 }
 
 /** 修正案を持つルールを「ID（名称）」の形で列挙し、読点でつなぐ。 */
-export function fixRuleDescriptionLabel(): string {
-  return FIX_RULE_IDS.map((id) => `${id}（${ruleOf(id).name}）`).join("・");
+export function fixRuleDescriptionLabel(catalog: RuleCatalogIndex): string {
+  return FIX_RULE_IDS.map((id) => `${id}（${ruleOf(catalog, id).name}）`).join("・");
 }
 
-/** 一覧見出しの件数表示。修正案を持つルールを併記する。 */
+/** 一覧見出しの件数表示。 */
 export function fixCountLabel(candidates: readonly FixCandidate[]): string {
-  return `${candidates.length} 件（${fixRuleIdLabel(" / ")}）`;
+  return `${candidates.length} 件`;
 }
 
 /** カードと詳細見出しに出すルールの要約。指摘が取れていないときはファイル名だけを示す。 */
-export function candidateRuleSummary(candidate: FixCandidate): string {
+export function candidateRuleSummary(catalog: RuleCatalogIndex, candidate: FixCandidate): string {
   const ids = [...new Set(candidate.findings.map((finding) => finding.ruleId))];
   if (ids.length === 0) {
     return "修正案";
   }
   if (ids.length === 1) {
-    return `${ids[0]} ${ruleOf(ids[0]).name}`;
+    return `${ids[0]} ${ruleOf(catalog, ids[0]).name}`;
   }
   return `${ids.join("・")}（${ids.length} ルール）`;
 }
@@ -290,7 +298,7 @@ export function reparseWarning(reparseFailures: number | null): string | null {
   if (reparseFailures === null || reparseFailures === 0) {
     return null;
   }
-  return `修正後ソースの再構文解析で ${reparseFailures} 件が検証に失敗した。失敗した修正は内容を確認のうえ棄却するか、手動で修正する。`;
+  return `修正後ソースの再構文解析で ${reparseFailures} 件が検証に失敗しました。失敗した修正は内容を確かめて棄却するか、手作業で直してください。`;
 }
 
 /** 解析段の失敗(復号・構文解析)を示す警告文。失敗が無ければ null。 */
@@ -298,7 +306,7 @@ export function analysisWarning(summary: FixSummaryInfo): string | null {
   if (summary.analysisErrors === 0) {
     return null;
   }
-  return `解析で ${summary.analysisErrors} 件のエラーがある。修正案は解析できた資産の範囲で生成している。`;
+  return `解析で ${summary.analysisErrors} 件のエラーがあります。修正案は解析できた資産の範囲で生成しています。`;
 }
 
 /**
@@ -322,7 +330,7 @@ export function applyCaution(counts: DecisionCounts): string | null {
   if (counts.rejected === 0) {
     return null;
   }
-  return `棄却した ${counts.rejected} 件も書き出しに含まれる。書き出しは修正案を選べないため、取り込む際に判定を確認する。`;
+  return `棄却した ${counts.rejected} 件も書き出しに含まれます。書き出しでは修正案を選べないため、取り込むときに判定を確かめてください。`;
 }
 
 /** 書き出し後の結果文言。 */
@@ -330,15 +338,15 @@ export function applyNotice(outcome: FixApplyOutcome): string {
   const held =
     outcome.copybookFixes.length === 0
       ? ""
-      : ` コピー句 ${outcome.copybookFixes.length} 件は原本を書き換えないため提示に留めている。`;
+      : ` コピー句 ${outcome.copybookFixes.length} 件は原本を書き換えないため提示に留めています。`;
   const failed =
     outcome.reparseFailures === 0 ? "" : ` 再構文解析の失敗 ${outcome.reparseFailures} 件。`;
-  return `${outcome.outDir} へ ${outcome.written.length} 件を書き出した（原本は変更していない）。${held}${failed}`;
+  return `${outcome.outDir} へ ${outcome.written.length} 件を書き出しました（原本は変更していません）。${held}${failed}`;
 }
 
 /** diff 画面の4状態を、解析ライフサイクルと fix の取得状態から導く。 */
 export function deriveDiffView(
-  mode: ScreenMode,
+  mode: AnalysisMode,
   inputDir: string | null,
   fix: FixState,
 ): DiffView {

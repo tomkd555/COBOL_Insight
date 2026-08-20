@@ -19,7 +19,8 @@ export type EngineSubcommand =
   | "translate"
   | "fix-preview"
   | "fix-apply"
-  | "rules";
+  | "rules"
+  | "save";
 
 /** 全解析コマンドが共有する入力・コピー句探索パス・コードページ手動指定。 */
 export interface EngineCommonOptions {
@@ -49,8 +50,8 @@ export interface CallgraphRequest extends EngineCommonOptions {
 export interface LintRequest extends EngineCommonOptions {
   /** SARIF 2.1.0 出力ファイル(--sarif)。 */
   sarifFile?: string;
-  /** 無効化するルールID(--disable-rule、繰り返し指定)。 */
-  disabledRules?: string[];
+  /** ルールの有効・無効を記した設定ファイル(--rule-config)。 */
+  ruleConfigFile?: string;
   /** 利用者定義ルールの定義ファイル(--user-rules)。 */
   userRulesFile?: string;
 }
@@ -62,7 +63,7 @@ export interface ReportRequest extends EngineCommonOptions {
   db?: string;
   htmlFile?: string;
   textFile?: string;
-  disabledRules?: string[];
+  ruleConfigFile?: string;
   userRulesFile?: string;
 }
 
@@ -70,6 +71,25 @@ export interface ReportRequest extends EngineCommonOptions {
 export interface RulesRequest {
   /** 一覧へ併せて載せる利用者定義ルールの定義ファイル(--user-rules)。 */
   userRulesFile?: string;
+  /** 各ルールの enabled を決める設定ファイル(--rule-config)。 */
+  ruleConfigFile?: string;
+}
+
+/**
+ * save サブコマンドの起動。資産フォルダの位置引数を取らず、書き戻す原本を --file で直に受ける。
+ * 編集後の全文は UTF-8 のファイルで渡す(Node は Shift_JIS・EBCDIC へ符号化できないため)。
+ */
+export interface SaveRequest {
+  /** 書き戻す原本の絶対パス(--file)。 */
+  file: string;
+  /** 編集後の全文を収めた UTF-8 テキストファイル(--edited)。 */
+  editedFile: string;
+  /** 原本のコードページ手動指定(--codepage)。省略時は engine が DB の記録と自動判別に委ねる。 */
+  codepage?: string;
+  /** 再パース検証で用いるコピー句探索パス(--copybook-path)。 */
+  copybookPaths?: string[];
+  /** 走査時に記録したコードページを引くプロジェクトファイル(--db)。 */
+  db?: string;
 }
 
 export interface TranspileRequest extends EngineCommonOptions {
@@ -96,7 +116,8 @@ export type EngineInvocation =
   | { subcommand: "translate"; request: TranspileRequest }
   | { subcommand: "fix-preview"; request: FixPreviewRequest }
   | { subcommand: "fix-apply"; request: FixApplyRequest }
-  | { subcommand: "rules"; request: RulesRequest };
+  | { subcommand: "rules"; request: RulesRequest }
+  | { subcommand: "save"; request: SaveRequest };
 
 /** 起動で生成した成果物ファイルの解決済みパス。renderer はここを起点に成果物を読む。 */
 export interface EngineOutputs {
@@ -140,6 +161,8 @@ export interface RuleCatalogEntry {
   hasFix: boolean;
   /** 組み込みか、利用者が定義したものか。 */
   source: "builtin" | "user";
+  /** 設定ファイル(--rule-config)を踏まえて、このルールが検出に効くか。 */
+  enabled: boolean;
   /** 何を検出するか。 */
   summary: string;
   /** なぜ問題か。 */
@@ -158,6 +181,8 @@ export interface RuleCatalogEntry {
 export interface RuleCatalog {
   rules: RuleCatalogEntry[];
   userRuleErrors: string[];
+  /** 設定ファイルの読取で engine が出した注意(知らないルール ID など)。 */
+  ruleConfigWarnings: string[];
 }
 
 /** 利用者定義ルール1件。定義ファイル(user-rules.json)の rules 要素と同じ形である。 */
@@ -205,7 +230,12 @@ export interface SarifFinding {
   startColumn: number;
 }
 
-/** 呼出関係グラフのノード(CallGraph.toJson の nodes 要素)。 */
+/*
+ * 呼出関係「図」のノードと辺。engine の CallGraph.toJson と同じ形であり、画面は GraphData
+ * (走査済みプロジェクトファイルから読む形)をこの形へ組み替えて Cytoscape へ渡す。
+ */
+
+/** 呼出関係図のノード。 */
 export interface CallGraphNode {
   id: string;
   /** NodeKind(JOB/STEP/PROGRAM/PARAGRAPH/DATASET/DB2_TABLE/UNRESOLVED/EXTERNAL_UTILITY/TRANSACTION/BMS_MAP)。 */
@@ -214,7 +244,7 @@ export interface CallGraphNode {
   attributes: Record<string, string>;
 }
 
-/** 呼出関係グラフのエッジ(CallGraph.toJson の edges 要素)。 */
+/** 呼出関係図の辺。 */
 export interface CallGraphEdge {
   from: string;
   to: string;
@@ -282,8 +312,8 @@ export interface AssetInventoryItem {
  */
 export interface SourceTextRequest {
   /**
-   * 境界検査の基準ディレクトリ。AppState の project.inputDir、またはコピー句の探索では
-   * project.copybookPaths の1件を渡す。main は symlink を解決した実体パスで配下判定を行う。
+   * 境界検査の基準ディレクトリ。projectStore の inputDir、またはコピー句の探索では
+   * settingsStore の copybookPaths の1件を渡す。main は symlink を解決した実体パスで配下判定を行う。
    */
   inputDir: string;
   /** 読むファイル。inputDir からの相対パス、または inputDir 配下の絶対パス。 */
@@ -303,6 +333,118 @@ export interface SourceTextResult {
   truncated: boolean;
   /** EBCDIC(CP930/CP939)またはコードページ不明で復号しなかったか。 */
   unsupported: boolean;
+}
+
+/**
+ * 画面で編集した本文を原本へ書き戻す要求。path は inputDir 配下に限る(境界外の書込は main が拒む)。
+ * 編集後の全文は文字列で渡し、UTF-8 の一時ファイルへ落として engine の save へ引き渡すのは main である。
+ */
+export interface SaveSourceRequest {
+  /** 境界検査の基準ディレクトリ。SourceTextRequest.inputDir と同じ意味を持つ。 */
+  inputDir: string;
+  /** 書き戻す原本。inputDir からの相対パス、または inputDir 配下の絶対パス。 */
+  path: string;
+  /** 編集後の全文。行の区切りは LF でよい(engine が原本の改行様式へそろえる)。 */
+  editedText: string;
+  /** 原本のコードページ手動指定。省略時は engine がプロジェクトファイルの記録と自動判別に委ねる。 */
+  codepage?: string;
+  /** 再パース検証で用いるコピー句探索パス。 */
+  copybookPaths?: string[];
+}
+
+/** 再パース検証が返した誤り1件。 */
+export interface SaveReparseError {
+  line: number;
+  message: string;
+}
+
+/**
+ * save の要約 JSON をそのまま取り込んだ結果。
+ *
+ * exitCode は 0 が「書き戻し済み、または変更なし」、1 が「書き戻したが再パースで問題あり」
+ * (書き戻しは取り消さない)、2 が「書き戻していない」である。コピー句・JCL・BMS は単体で
+ * 構文解析できないため必ず 1 で返る。画面はこれらの種別で reparseErrors を示さない。
+ */
+export interface SaveResult {
+  written: boolean;
+  /** 書き戻した原本の絶対パス(区切りは / )。 */
+  path: string;
+  changedLineFrom: number;
+  /** 変更した原本側の最終行(両端を含む)。挿入だけのときは changedLineFrom - 1 になる。 */
+  changedLineTo: number;
+  reparseErrors: SaveReparseError[];
+  /** 書き戻せなかった理由。無いときは空文字。 */
+  error: string;
+  exitCode: number;
+}
+
+/**
+ * ルールの有効・無効の設定ファイル(rules-config.json)の中身。engine の --rule-config が読む形と
+ * 同じであり、画面が書いて engine が読む。
+ */
+export interface RuleConfigFile {
+  /** engine が受理する版数。 */
+  version: number;
+  /** 無効にするルール ID。 */
+  disabledRules: string[];
+}
+
+/** engine が受理する設定ファイルの版数。engine はこれ以外の版数を誤りとして扱う。 */
+export const RULE_CONFIG_VERSION = 1;
+
+/** 呼出関係グラフのノード1件(NODE 表)。 */
+export interface GraphNode {
+  id: number;
+  /** NODE.type(JOB/STEP/PROGRAM/JCL/COPYBOOK/BMS/DATASET/DB2_TABLE ほか)。 */
+  type: string;
+  label: string;
+}
+
+/** 呼出関係グラフの辺1本(CALL_EDGE 表)。 */
+export interface GraphEdge {
+  from: number;
+  to: number;
+  /** EdgeKind(CALL/EXECUTION/REFERENCE/TRANSACTION_TRANSITION/MAP_REFERENCE)。 */
+  kind: string;
+  /** Resolution(CONSTANT/DATAFLOW/UNRESOLVED)。記録が無ければ null。 */
+  resolution: string | null;
+  /** 同じ起点の中での実行順(1 起点)。順序を決められない辺は 0。 */
+  seq: number;
+  /** 呼出元の行。分からなければ null。 */
+  line: number | null;
+}
+
+/** プログラム1本の段落(PARAGRAPH 表を PROGRAM 経由で資産へ結び付けたもの)。 */
+export interface GraphParagraph {
+  id: number;
+  /** 段落を含むプログラムの SOURCE.id。 */
+  programSourceId: number;
+  name: string;
+  startLine: number;
+  endLine: number;
+}
+
+/** 段落から段落への流れ1本(PARAGRAPH_EDGE 表)。 */
+export interface GraphParagraphEdge {
+  programSourceId: number;
+  from: number;
+  /** 解決できた行き先の PARAGRAPH.id。名前だけで解決できなければ null。 */
+  to: number | null;
+  /** 行き先の段落名(未解決のときも名前は残る)。 */
+  toName: string;
+  /** PERFORM(戻る呼出)・GOTO(戻らない飛び越し)・FALLTHROUGH(次の段落へ落ちる)。 */
+  kind: string;
+  line: number | null;
+  /** 同じ起点の中での出現順(1 起点)。 */
+  seq: number;
+}
+
+/** 呼出関係タブが要するグラフ一式。プログラム間の層と、プログラム内の段落の層を併せて返す。 */
+export interface GraphData {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  paragraphs: GraphParagraph[];
+  paragraphEdges: GraphParagraphEdge[];
 }
 
 /** translate 成果物の読取要求。outDir は translate の --out、cobolRelPath は SOURCE.path と同形。 */
@@ -397,9 +539,11 @@ export interface CopyExpansionData {
 export interface ImportSourceRequest {
   /** 取込先の資産フォルダ。 */
   inputDir: string;
-  /** 資産の種別。保存先のフォルダと拡張子を決める。 */
+  /** 資産の種別。コピー句だけが拡張子の補完を受ける。 */
   kind: ImportAssetKind;
-  /** ファイル名。種別の拡張子で終わっていなければ補う。 */
+  /** 資産フォルダからの相対パスで示す保存先。空文字は資産フォルダの直下を表す。 */
+  destDir: string;
+  /** ファイル名。コピー句で .cpy で終わっていなければ補う。 */
   fileName: string;
   /** 保存する本文の各行。 */
   lines: string[];
@@ -410,7 +554,7 @@ export interface ImportSourceRequest {
 /** 取込の結果。exists は同名のファイルがあり、上書きの許可を得ていないことを表す。 */
 export interface ImportSourceResult {
   status: "written" | "exists";
-  /** 資産フォルダからの相対パス(例: cobol/SYK001.cbl)。 */
+  /** 資産フォルダからの相対パス(例: SYK001.cbl)。 */
   relPath: string;
   /** 書き込んだ行数。exists のときは0。 */
   lineCount: number;
@@ -428,6 +572,8 @@ export interface EngineOutputPaths {
   readonly copyExpansion: string;
   /** 利用者定義ルールの定義ファイル。engine の成果物ではなく、画面が書いて engine が読む。 */
   readonly userRules: string;
+  /** ルールの有効・無効の設定ファイル。userRules と同じく画面が書いて engine が読む。 */
+  readonly ruleConfig: string;
 }
 
 /** renderer へ contextBridge で公開する API の型。window.cobolInsight として参照する。 */
@@ -449,12 +595,15 @@ export interface CobolInsightApi {
   /** engine の成果物を書く位置(絶対パス)。解析実行のたびに引数へ指定する。 */
   getOutputPaths(): Promise<EngineOutputPaths>;
   readSarif(path: string): Promise<SarifFinding[]>;
-  readCallgraphJson(path: string): Promise<CallGraphData>;
   readFixResult(request: FixResultRequest): Promise<FixDiff>;
   readReportHtml(path: string): Promise<string>;
   readReportText(path: string): Promise<string>;
   readAssetInventory(dbPath: string): Promise<AssetInventoryItem[]>;
   readSourceText(request: SourceTextRequest): Promise<SourceTextResult>;
+  /** 画面で編集した本文を、原本のコードページのまま原本へ書き戻す。 */
+  saveSource(request: SaveSourceRequest): Promise<SaveResult>;
+  /** 呼出関係グラフと段落の流れを、走査済みプロジェクトファイルから読む。 */
+  readGraph(dbPath: string): Promise<GraphData>;
   readTranspileArtifacts(request: TranspileArtifactsRequest): Promise<TranspileArtifacts>;
   /** scan が書いた COPY 展開の対応表を読む。 */
   readCopyExpansion(path: string): Promise<CopyExpansionData>;
@@ -466,6 +615,10 @@ export interface CobolInsightApi {
   readUserRules(path: string): Promise<UserRulesFile>;
   /** 利用者定義ルールの定義ファイルを書く。 */
   writeUserRules(path: string, file: UserRulesFile): Promise<void>;
+  /** ルールの有効・無効の設定ファイルを読む。未作成なら空の設定を返す。 */
+  readRuleConfig(path: string): Promise<RuleConfigFile>;
+  /** ルールの有効・無効の設定ファイルを書く。 */
+  writeRuleConfig(path: string, file: RuleConfigFile): Promise<void>;
   /** 保存してある画面の設定を読む。未保存なら空の設定を返す。 */
   readSettings(): Promise<AppSettings>;
   /** 画面の設定を保存する。保存先は main が userData 直下に決める。 */
@@ -488,18 +641,21 @@ export const ENGINE_CHANNELS = {
   checkDirectoryExists: "fs:check-directory-exists",
   getOutputPaths: "fs:get-output-paths",
   readSarif: "artifact:read-sarif",
-  readCallgraphJson: "artifact:read-callgraph-json",
   readFixResult: "artifact:read-fix-result",
   readReportHtml: "artifact:read-report-html",
   readReportText: "artifact:read-report-text",
   readAssetInventory: "artifact:read-asset-inventory",
   readSourceText: "artifact:read-source-text",
+  saveSource: "engine:save-source",
+  readGraph: "artifact:read-graph",
   readTranspileArtifacts: "artifact:read-transpile-artifacts",
   readCopyExpansion: "artifact:read-copy-expansion",
   importSource: "asset:import-source",
   listRules: "engine:list-rules",
   readUserRules: "rules:read-definitions",
   writeUserRules: "rules:write-definitions",
+  readRuleConfig: "rules:read-config",
+  writeRuleConfig: "rules:write-config",
   readSettings: "settings:read",
   writeSettings: "settings:write",
 } as const;

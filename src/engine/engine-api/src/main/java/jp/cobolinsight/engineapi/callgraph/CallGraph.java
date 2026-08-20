@@ -59,7 +59,10 @@ public final class CallGraph {
         return edges;
     }
 
-    /** JSON表現。attributes が空のノードでは attributes キー自体を出さない。 */
+    /**
+     * JSON表現。attributes が空のノードでは attributes キー自体を出さない。辺の seq・line も
+     * 分かっている辺にだけ出す(順序不明は seq を、行不明は line を欠いた形になる)。
+     */
     public String toJson() {
         JsonWriter w = new JsonWriter();
         w.beginObject().name("nodes").beginArray();
@@ -83,8 +86,14 @@ public final class CallGraph {
                     .name("from").value(edge.fromId())
                     .name("to").value(edge.toId())
                     .name("kind").value(edge.kind().name())
-                    .name("resolution").value(edge.resolution().name())
-                    .endObject();
+                    .name("resolution").value(edge.resolution().name());
+            if (edge.seq() > 0) {
+                w.name("seq").value(edge.seq());
+            }
+            if (edge.line() != null) {
+                w.name("line").value(edge.line());
+            }
+            w.endObject();
         }
         w.endArray().endObject();
         return w.toString();

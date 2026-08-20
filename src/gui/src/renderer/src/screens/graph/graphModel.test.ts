@@ -1,8 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { CallGraphData } from "../../../../shared/engine-api";
-import { initialState } from "../../state/appState";
 import { SAMPLE_GRAPH, SAMPLE_GRAPH_WITH_UNANALYZABLE } from "./fixtures";
-import { SAMPLE_INVENTORY } from "../explorer/fixtures";
+import { SAMPLE_INVENTORY } from "../../data/__fixtures__/samples";
 import type { AnyNodeKind, GraphEdgeElement, GraphNodeElement } from "./graphModel";
 import {
   DEFAULT_DB_FILE,
@@ -12,7 +11,6 @@ import {
   buildGraphElements,
   edgeKindStyle,
   graphArtifactPaths,
-  graphExitBanner,
   graphCoreOptions,
   graphLayoutOptions,
   graphRootIds,
@@ -29,8 +27,20 @@ import {
   visibleNodeIds,
 } from "./graphModel";
 
-/** 既定のノード種別フィルタ(全種別を表示)。解析不能は AppState の graphTypes に無いため、ここで加える。 */
-const ALL_KINDS: Record<AnyNodeKind, boolean> = { ...initialState.graphTypes, UNANALYZABLE: true };
+/** 既定のノード種別フィルタ(全種別を表示)。解析不能は graphView.kinds に無いため、ここで加える。 */
+const ALL_KINDS: Record<AnyNodeKind, boolean> = {
+  JOB: true,
+  STEP: true,
+  PROGRAM: true,
+  PARAGRAPH: true,
+  DATASET: true,
+  DB2_TABLE: true,
+  UNRESOLVED: true,
+  EXTERNAL_UTILITY: true,
+  TRANSACTION: true,
+  BMS_MAP: true,
+  UNANALYZABLE: true,
+};
 
 function visible(expanded: Record<string, boolean>, kinds = ALL_KINDS): string[] {
   return [...visibleNodeIds(SAMPLE_GRAPH, { expanded, kinds })].sort();
@@ -422,21 +432,6 @@ describe("ソースへのジャンプ先", () => {
       "cobol-old/SYK001.cbl",
       "cobol/SYK001.cbl",
     ]);
-  });
-});
-
-describe("終了コードの提示", () => {
-  it("成功(0)では警告を出さない", () => {
-    expect(graphExitBanner(0)).toBeNull();
-  });
-
-  it("警告あり(1)・エラーあり(2)は図を隠さず、起きたことを内部の終了コードに触れずに示す", () => {
-    expect(graphExitBanner(1)).toContain("警告");
-    expect(graphExitBanner(1)).not.toContain("終了コード");
-    expect(graphExitBanner(2)).not.toContain("終了コード");
-    expect(graphExitBanner(2)).toContain("解析エラー");
-    // 解析エラーの資産は図から消えるのではなく「解析不能」ノードとして現れることを伝える。
-    expect(graphExitBanner(2)).toContain("解析不能");
   });
 });
 

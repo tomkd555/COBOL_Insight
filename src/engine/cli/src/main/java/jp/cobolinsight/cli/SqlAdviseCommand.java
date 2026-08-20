@@ -1,8 +1,10 @@
 package jp.cobolinsight.cli;
 
+import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
+import picocli.CommandLine.Spec;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -11,7 +13,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -41,22 +42,17 @@ public final class SqlAdviseCommand implements Callable<Integer> {
             description = "ファイル単位のコードページ手動指定(相対パスまたはファイル名=コードページ)。自動判別に優先する")
     Map<String, String> codepageOverrides = new LinkedHashMap<>();
 
-    @Option(names = "--disable-rule", paramLabel = "RULE_ID",
-            description = "無効化するルールID(繰り返し指定可)")
-    List<String> disabledRules = new ArrayList<>();
+    @Option(names = "--rule-config", paramLabel = "FILE",
+            description = "ルールの有効・無効を書いた設定ファイル(JSON)")
+    Path ruleConfigFile;
+
+    @Spec
+    CommandLine.Model.CommandSpec spec;
 
     @Override
     public Integer call() {
-        List<Path> searchPaths = new ArrayList<>(copybookPaths);
-        if (searchPaths.isEmpty()) {
-            for (String name : List.of("copybook", "copy")) {
-                Path candidate = inputDir.resolve(name);
-                if (Files.isDirectory(candidate)) {
-                    searchPaths.add(candidate);
-                }
-            }
-        }
-        Set<String> disabled = new LinkedHashSet<>(disabledRules);
+        List<Path> searchPaths = CommonScanOptions.resolveCopybookPaths(inputDir, copybookPaths);
+        Set<String> disabled = RuleConfig.resolveDisabled(spec, ruleConfigFile);
         SqlAdviseRunner.Result result = SqlAdviseRunner.run(
                 new SqlAdviseRunner.Options(inputDir, searchPaths, codepageOverrides, disabled));
         try {

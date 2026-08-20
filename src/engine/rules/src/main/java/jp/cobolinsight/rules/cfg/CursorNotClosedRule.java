@@ -40,12 +40,12 @@ public final class CursorNotClosedRule implements Rule {
     @Override
     public RuleDoc doc() {
         return RuleDoc.named("SQLカーソルのCLOSE漏れ", "SQL")
-                .summary("DECLARE して OPEN したが CLOSE していないカーソルを検出する。")
+                .summary("DECLARE して OPEN したが CLOSE していないカーソルを検出します。")
                 .rationale("接続資源とロックを保持し続けるため、"
-                        + "同時実行数の多い環境で資源の枯渇と待ちを招く。")
+                        + "同時実行数の多い環境で資源の枯渇と待ちを招きます。")
                 .detection("EXEC SQL の DECLARE CURSOR・OPEN・CLOSE をカーソル名で突き合わせ、"
-                        + "OPEN があり CLOSE の無いものを検出する。")
-                .remedy("処理の終わりと異常時の経路の双方で CLOSE を実行する。")
+                        + "OPEN があり CLOSE の無いものを検出します。")
+                .remedy("処理の終わりと異常時の経路の双方で CLOSE を実行します。")
                 .example("""
                         EXEC SQL OPEN CUR-CUST END-EXEC.
                         PERFORM FETCH-LOOP UNTIL WS-EOF = "Y".

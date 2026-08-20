@@ -1,5 +1,6 @@
 import type { UserRulesFile } from "../../shared/engine-api";
 import { emptyUserRules, normalizeUserRulesFile } from "../../shared/userRules";
+import { readJsonFile, type JsonFileSystem } from "./jsonFile";
 
 /**
  * 利用者定義ルールの定義ファイル(user-rules.json)の読み書き。engine の UserRuleLoader が読む
@@ -7,25 +8,17 @@ import { emptyUserRules, normalizeUserRulesFile } from "../../shared/userRules";
  */
 
 /** 定義ファイルの読み書きに使う fs の束ね。テストでは差し替える。 */
-export interface UserRuleFileSystem {
-  readText(path: string): Promise<string>;
-  writeText(path: string, text: string): Promise<void>;
-  exists(path: string): Promise<boolean>;
-}
+export type UserRuleFileSystem = JsonFileSystem;
 
-/** 定義ファイルを読む。未作成のときは空の定義を返す(利用者がまだ1件も作っていない状態)。 */
+/**
+ * 定義ファイルを読む。未作成・空・壊れているのいずれでも空の定義を返す
+ * ({@link readJsonFile})。壊れた定義そのものは、engine がルール一覧で誤りとして示す。
+ */
 export async function readUserRules(
   fs: UserRuleFileSystem,
   path: string,
 ): Promise<UserRulesFile> {
-  if (!(await fs.exists(path))) {
-    return emptyUserRules();
-  }
-  const text = await fs.readText(path);
-  if (text.trim() === "") {
-    return emptyUserRules();
-  }
-  return normalizeUserRulesFile(JSON.parse(text));
+  return readJsonFile(fs, path, normalizeUserRulesFile, emptyUserRules);
 }
 
 /** 定義ファイルを書く。人が読んで直せるよう字下げして書き、末尾に改行を置く。 */

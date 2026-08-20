@@ -19,11 +19,12 @@ import {
   type TranspileLanguage,
 } from "../../../../shared/engine-api";
 import { SEVERITY_META, SEVERITY_ORDER, type Severity } from "../../components/severity";
-import { ruleOf } from "../../data/ruleCatalog";
-import { SCREENS, type ScreenId } from "../../shell/screens";
-import type { SourceLang } from "../../state/appState";
+import { ruleOf, type RuleCatalogIndex } from "../../data/ruleCatalog";
 import { charIndexAfterBytes, type SourceCodepage } from "./columns";
 import type { CopyStatement } from "./copybookLookup";
+
+/** 逐語対訳の生成言語の選択。 */
+export type SourceLang = "py" | "java";
 
 /** 本体(8〜72桁)の終端桁。識別欄はこの次の桁から始まる。 */
 export const BODY_LAST_COLUMN = 72;
@@ -253,9 +254,9 @@ export function buildExpansionZones(input: ExpansionZoneInput): ExpansionZone[] 
     if (expansion === undefined) {
       zones.push({
         afterLine: statement.line,
-        title: `COPY ${statement.name} ― 展開データが無い`,
-        note: "入れ子の COPY と暗黙のコピー句(SQLCA)は展開の対象外である。",
-        ariaLabel: `${statement.line} 行の COPY ${statement.name} は展開データが無い`,
+        title: `COPY ${statement.name} ― 展開データがありません`,
+        note: "入れ子の COPY と暗黙のコピー句(SQLCA)は展開の対象外です。",
+        ariaLabel: `${statement.line} 行の COPY ${statement.name} は展開データがありません`,
         lines: [],
       });
       continue;
@@ -266,8 +267,8 @@ export function buildExpansionZones(input: ExpansionZoneInput): ExpansionZone[] 
       title: `COPY ${expansion.copybookName} の展開 ― ${expansion.copybookPath}（${expansion.lines.length} 行）`,
       note:
         original === undefined
-          ? "REPLACING 適用後。一連番号欄・識別欄と注記行は前処理で空になるため、注記行は空のまま示す。"
-          : "REPLACING 適用後。一連番号欄・識別欄は前処理で空になり、注記行は原本から補う。",
+          ? "REPLACING 適用後。一連番号欄・識別欄と注記行は前処理で空になるため、注記行は空のまま示します。"
+          : "REPLACING 適用後。一連番号欄・識別欄は前処理で空になり、注記行は原本から補います。",
       ariaLabel: `${statement.line} 行の COPY ${expansion.copybookName} の展開 ${expansion.lines.length} 行`,
       lines: expansion.lines.map((line) =>
         toZoneLine(line.copybookLine, line.text, original, input.codepage),
@@ -283,19 +284,19 @@ export function copyExpansionSummary(
   state: CopyExpansionState,
 ): string {
   if (state.status === "loading") {
-    return "コピー句の展開を読み込んでいる…";
+    return "コピー句の展開を読み込んでいます…";
   }
   if (state.status === "error") {
-    return `コピー句の展開を取得できない（${state.message}）。解析を実行し直すと対応表を作り直す。`;
+    return `コピー句の展開を取得できませんでした（${state.message}）。解析を実行し直すと対応表を作り直します。`;
   }
   if (state.status === "idle") {
-    return `COPY 文 ${statements.length} 件 ― 展開すると取り込んだ行を COPY 文の位置へ差し込む`;
+    return `COPY 文 ${statements.length} 件`;
   }
   const lines = new Set(state.expansions.map((expansion) => expansion.copyStatementLine));
   const expanded = statements.filter((statement) => lines.has(statement.line)).length;
   const missing = statements.length - expanded;
   const head = `COPY 文 ${statements.length} 件のうち ${expanded} 件を展開中`;
-  return missing === 0 ? head : `${head}（${missing} 件は展開データが無い）`;
+  return missing === 0 ? head : `${head}（${missing} 件は展開データがありません）`;
 }
 
 /** 1行に載る指摘1件。重大度と名称は SARIF の level ではなくルールカタログから引く。 */
@@ -327,6 +328,7 @@ function compareEntries(left: FindingEntry, right: FindingEntry): number {
 
 /** 表示中のファイルに属する指摘を行番号ごとにまとめ、行番号昇順で返す。 */
 export function findingLinesOf(
+  catalog: RuleCatalogIndex,
   findings: readonly SarifFinding[],
   file: string,
 ): FindingLine[] {
@@ -335,7 +337,7 @@ export function findingLinesOf(
     if (finding.file !== file) {
       continue;
     }
-    const rule = ruleOf(finding.ruleId);
+    const rule = ruleOf(catalog, finding.ruleId);
     const entries = byLine.get(finding.startLine) ?? [];
     entries.push({
       ruleId: finding.ruleId,
@@ -413,6 +415,26 @@ export interface EditorDecoration {
     after?: { content: string; inlineClassName: string };
   };
 }
+
+/** Monaco のマーカー1件(IMarkerData の部分集合)。誤りのある行を波線と一覧で示す。 */
+export interface EditorMarker {
+  startLineNumber: number;
+  startColumn: number;
+  endLineNumber: number;
+  endColumn: number;
+  message: string;
+  /** monaco.MarkerSeverity の値。 */
+  severity: number;
+}
+
+/**
+ * monaco.MarkerSeverity.Error の値。列挙を引くには Monaco の読み込みが要り、マーカーを組む側を
+ * 純関数として試験できなくなるため、値をここに置く。
+ */
+export const MARKER_SEVERITY_ERROR = 8;
+
+/** マーカーの所有者。同じ資産に別の由来のマーカーを付けても取り違えないための名前である。 */
+export const SAVE_MARKER_OWNER = "cobol-insight-save";
 
 /** 装飾の入力。指摘行・強調行・注記行・ジャンプ先の行・識別欄の範囲を渡す。 */
 export interface DecorationInput {
@@ -539,31 +561,9 @@ export const COLUMN_MARKS: readonly ColumnMark[] = [
   { name: "identification", column: 73, anchor: "start", label: "73-80 識別欄" },
 ];
 
-/** ファイル選択の選択肢。 */
-export interface ViewerFileOption {
-  readonly value: string;
-  readonly label: string;
-}
-
-/** 資産一覧をファイル選択の選択肢へ写す。並びは資産一覧(相対パス昇順)をそのまま保つ。 */
-export function viewerFileOptions(inventory: readonly AssetInventoryItem[]): ViewerFileOption[] {
-  return inventory.map((item) => ({ value: item.path, label: item.path }));
-}
-
 /** 逐語対訳の対象か。対訳は COBOL 本体(NODE.type=PROGRAM)に対してのみ生成される。 */
 export function isTranspileTarget(item: AssetInventoryItem | null): boolean {
   return item !== null && item.type === "PROGRAM";
-}
-
-/**
- * ジャンプ元の画面。JUMP が組んだ文言(「〈画面名〉 から …」)の先頭にある画面名から引く。
- * 戻り導線のためだけに用い、該当が無ければ戻り先を出さない。
- */
-export function originScreen(sourceFrom: string | null): ScreenId | null {
-  if (sourceFrom === null) {
-    return null;
-  }
-  return SCREENS.find((screen) => sourceFrom.startsWith(screen.label))?.id ?? null;
 }
 
 /**
@@ -575,7 +575,7 @@ export function linkSummary(
   generatedLines: readonly number[],
 ): string {
   if (cobolLines.length === 0 && generatedLines.length === 0) {
-    return "カーソル行に対応する行はない（逐語対訳の対応表に無い行）";
+    return "カーソル行に対応する行はありません";
   }
   return `対応行を強調中 ― COBOL ${cobolLines.length} 行 ↔ 生成 ${generatedLines.length} 行`;
 }

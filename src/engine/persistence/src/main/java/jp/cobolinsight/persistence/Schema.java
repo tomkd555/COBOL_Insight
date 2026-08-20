@@ -1,10 +1,10 @@
 package jp.cobolinsight.persistence;
 
-/** 解析結果を保持する12表のDDL。 */
+/** 解析結果を保持する13表のDDL。 */
 final class Schema {
 
     /** データベースファイルの user_version へ記録するスキーマの版数。 */
-    static final int VERSION = 2;
+    static final int VERSION = 3;
 
     static final String[] CREATE_STATEMENTS = {
             """
@@ -76,6 +76,20 @@ final class Schema {
             """,
             "CREATE INDEX idx_paragraph_program ON PARAGRAPH(program_id)",
             """
+            CREATE TABLE PARAGRAPH_EDGE (
+                id INTEGER PRIMARY KEY,
+                program_source_id INTEGER NOT NULL REFERENCES SOURCE(id) ON DELETE CASCADE,
+                from_paragraph INTEGER NOT NULL REFERENCES PARAGRAPH(id) ON DELETE CASCADE,
+                to_paragraph INTEGER REFERENCES PARAGRAPH(id) ON DELETE CASCADE,
+                to_name TEXT NOT NULL,
+                kind TEXT NOT NULL CHECK (kind IN ('PERFORM','GOTO','FALLTHROUGH')),
+                line INTEGER,
+                seq INTEGER NOT NULL
+            )
+            """,
+            "CREATE INDEX idx_paragraph_edge_program ON PARAGRAPH_EDGE(program_source_id)",
+            "CREATE INDEX idx_paragraph_edge_from ON PARAGRAPH_EDGE(from_paragraph)",
+            """
             CREATE TABLE NODE (
                 id INTEGER PRIMARY KEY,
                 type TEXT NOT NULL,
@@ -89,7 +103,9 @@ final class Schema {
                 to_node INTEGER NOT NULL REFERENCES NODE(id) ON DELETE CASCADE,
                 kind TEXT NOT NULL,
                 resolution TEXT,
-                host_var TEXT
+                host_var TEXT,
+                seq INTEGER NOT NULL DEFAULT 0,
+                line INTEGER
             )
             """,
             "CREATE INDEX idx_call_edge_from ON CALL_EDGE(from_node)",
@@ -145,6 +161,7 @@ final class Schema {
             "DROP TABLE IF EXISTS FINDING",
             "DROP TABLE IF EXISTS CALL_EDGE",
             "DROP TABLE IF EXISTS NODE",
+            "DROP TABLE IF EXISTS PARAGRAPH_EDGE",
             "DROP TABLE IF EXISTS PARAGRAPH",
             "DROP TABLE IF EXISTS PROGRAM",
             "DROP TABLE IF EXISTS BMS_FIELD",

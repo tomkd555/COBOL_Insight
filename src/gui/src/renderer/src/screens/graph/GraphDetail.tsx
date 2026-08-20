@@ -38,10 +38,7 @@ export function GraphDetail({
     <aside className="ci-graph-detail" aria-label="ノード情報と凡例">
       <h3 className="ci-graph-detail__title">ノード情報</h3>
       {detail === null ? (
-        <p className="ci-graph-detail__empty">
-          ノードを選択すると詳細を表示する。選択したノードの「隣接を展開」で、そのノードに
-          つながるノードを表示に加える。
-        </p>
+        <p className="ci-graph-detail__empty">ノードを選んでください。</p>
       ) : (
         <div className="ci-graph-detail__body">
           <div>
@@ -79,7 +76,7 @@ export function GraphDetail({
               ) : (
                 <>
                   <p className="ci-graph-detail__note">
-                    同名の資産が複数ある。開く資産を相対パスで選ぶ。
+                    同名の資産が複数あります。開く資産を相対パスで選んでください。
                   </p>
                   {sources.map((path) => (
                     <Button key={path} variant="primary" onClick={() => onOpenSource(path)}>
@@ -98,7 +95,7 @@ export function GraphDetail({
                 {expanded ? "隣接を畳む" : `隣接を展開${detail.hiddenNeighborCount > 0 ? `（未表示 ${detail.hiddenNeighborCount}）` : ""}`}
               </Button>
             ) : (
-              <p className="ci-graph-detail__note">このノードに隣接はない。</p>
+              <p className="ci-graph-detail__note">このノードに隣接はありません。</p>
             )}
           </div>
         </div>
@@ -119,9 +116,7 @@ function EdgeList({ title, edges, direction }: EdgeListProps): ReactElement {
   return (
     <section className="ci-graph-detail__edges">
       <h3 className="ci-graph-detail__edges-title">{`${title}（${edges.length}）`}</h3>
-      {edges.length === 0 ? (
-        <p className="ci-graph-detail__note">なし</p>
-      ) : (
+      {edges.length === 0 ? null : (
         <ul>
           {edges.map((edge) => (
             <li key={`${direction}${edge.peerId}${edge.kindLabel}${edge.resolutionLabel}`}>

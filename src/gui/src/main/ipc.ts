@@ -1,6 +1,7 @@
 import { app, dialog, ipcMain } from "electron";
 import { spawn } from "node:child_process";
-import { access, mkdir, readdir, readFile, realpath, stat, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { access, mkdir, readdir, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import initSqlJs, { type Database, type SqlJsStatic } from "sql.js";
@@ -17,7 +18,9 @@ import {
   type ImportSourceRequest,
   type LintRequest,
   type ReportRequest,
+  type RuleConfigFile,
   type RulesRequest,
+  type SaveSourceRequest,
   type ScanRequest,
   type SourceTextRequest,
   type SqlAdviseRequest,
@@ -26,14 +29,27 @@ import {
   type TranspileRequest,
   type UserRulesFile,
 } from "../shared/engine-api";
-import { runEngine, type EngineProcess, type EngineSpawn } from "./engine/run";
+import {
+  runEngine,
+  type EngineProcess,
+  type EngineSpawn,
+  type RunEngineDeps,
+} from "./engine/run";
 import { resolveEngineLaunch, type EngineLaunch } from "./engine/launch";
 import { parseSarif } from "./artifacts/sarif";
-import { parseCallgraph } from "./artifacts/callgraph";
 import { parseCopyExpansion } from "./artifacts/copyExpansion";
 import { buildFixDiff } from "./artifacts/fix";
 import { readInventory } from "./artifacts/inventory";
+import { readGraph } from "./artifacts/graph";
 import { readSourceText, type SourceFileSystem } from "./artifacts/sourceText";
+import { saveSource, type SaveFileSystem } from "./artifacts/saveSource";
+import {
+  RULE_CONFIG_FILE_NAME,
+  migrateDisabledRules,
+  readRuleConfig,
+  writeRuleConfig,
+  type RuleConfigFileSystem,
+} from "./artifacts/ruleConfig";
 import { importSource, type ImportFileSystem } from "./artifacts/importSource";
 import { readGeneratedFiles, readLineMap, type GeneratedFileSystem } from "./artifacts/transpile";
 import { parseRuleCatalog } from "../shared/ruleCatalog";
@@ -78,7 +94,16 @@ function outputPaths(): EngineOutputPaths {
     copyExpansion: join(dir, COPY_EXPANSION_FILE_NAME),
     // 解析成果物ではなく利用者が作る設定であるが、engine へ渡す位置を1か所に定めるため併せて持つ。
     userRules: join(dir, "user-rules.json"),
+    ruleConfig: join(dir, RULE_CONFIG_FILE_NAME),
   };
+}
+
+/**
+ * 編集後の本文を engine の save へ渡すための一時ファイル。保存のたびに別名を作り、終われば消す。
+ * 名前を固定すると、保存が重なったときに後の保存が前の本文を上書きしてしまう。
+ */
+function editedTempPath(): string {
+  return join(app.getPath("userData"), `cobol-insight-edited-${randomUUID()}.tmp`);
 }
 
 /** engine 起動対象を現在の実行環境から解決する。 */
@@ -94,18 +119,22 @@ function currentLaunch(): EngineLaunch {
 
 /**
  * 実行中の engine。同時に走るのは1つであり、キャンセルとアプリ終了時の後始末で参照する。
- * 起動が終われば null へ戻す。
+ * 起動が終われば null へ戻す。書き戻し(save)はここへ登録せず、キャンセルの対象にしない。
  */
 let runningEngine: EngineProcess | null = null;
 
+/**
+ * 起動に共通の依存。出力先は引数で絶対指定するが、engine 側に既定値の経路が残った場合に備え、
+ * 作業ディレクトリも書込可能な保存先へ向けておく。
+ */
+function engineDeps(): RunEngineDeps {
+  return { spawn: engineSpawn, env: process.env, cwd: app.getPath("userData") };
+}
+
 function invoke(invocation: EngineInvocation): Promise<EngineResult> {
   let started: EngineProcess | null = null;
-  const deps = {
-    spawn: engineSpawn,
-    env: process.env,
-    // 出力先は引数で絶対指定するが、engine 側に既定値の経路が残った場合に備え、作業ディレクトリも
-    // 書込可能な保存先へ向けておく。
-    cwd: app.getPath("userData"),
+  const deps: RunEngineDeps = {
+    ...engineDeps(),
     onStart: (child: EngineProcess): void => {
       started = child;
       runningEngine = child;
@@ -116,6 +145,30 @@ function invoke(invocation: EngineInvocation): Promise<EngineResult> {
       runningEngine = null;
     }
   });
+}
+
+/**
+ * キャンセルの受け皿へ登録しない起動。キャンセルは解析(走査・検出)を止める操作であり、
+ * 書き戻しの途中で子プロセスを殺すと、原本へ半端な本文が残る。
+ */
+function invokeUninterrupted(invocation: EngineInvocation): Promise<EngineResult> {
+  return runEngine(engineDeps(), currentLaunch(), invocation);
+}
+
+/**
+ * 保存を1件ずつ順に走らせる。engine の save は原本を読んで書き戻すため、保存が重なると後の
+ * 起動が前の書き戻しを見ないまま原本を読み、片方の編集が消える。
+ */
+let savePending: Promise<unknown> = Promise.resolve();
+
+function queueSave<T>(task: () => Promise<T>): Promise<T> {
+  // 前の保存が失敗しても列は進める(失敗した保存の結果は、その保存の呼び手だけが受ける)。
+  const next = savePending.then(task, task);
+  savePending = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  return next;
 }
 
 /**
@@ -164,11 +217,18 @@ const sourceFileSystem: SourceFileSystem = {
   realPath: (absPath) => realpath(absPath),
 };
 
+/** 書き戻しに使う fs 束ね。境界判定のため実体パスの解決も渡す。 */
+const saveFileSystem: SaveFileSystem = {
+  realPath: (absPath) => realpath(absPath),
+  writeText: (absPath, text) => writeFile(absPath, text, "utf-8"),
+  remove: (absPath) => rm(absPath, { force: true }),
+};
+
 /**
- * 利用者定義ルールの定義ファイルと画面の設定の読み書きに使う fs 束ね。書き先はいずれも
- * userData 配下であり、パスは main が決める(renderer から任意のパスは受けない)。
+ * 利用者定義ルールの定義ファイル・ルールの有効無効の設定・画面の設定の読み書きに使う fs 束ね。
+ * 書き先はいずれも userData 配下であり、パスは main が決める(renderer から任意のパスは受けない)。
  */
-const userDataFileSystem: UserRuleFileSystem & SettingsFileSystem = {
+const userDataFileSystem: UserRuleFileSystem & SettingsFileSystem & RuleConfigFileSystem = {
   readText: (path) => readFile(path, "utf-8"),
   writeText: (path, text) => writeFile(path, text, "utf-8"),
   exists: (path) => access(path).then(() => true, () => false),
@@ -177,6 +237,15 @@ const userDataFileSystem: UserRuleFileSystem & SettingsFileSystem = {
 /** 画面の設定の保存先。userData 直下に置き、engine は触らない。 */
 function settingsPath(): string {
   return join(app.getPath("userData"), SETTINGS_FILE_NAME);
+}
+
+/**
+ * 旧版が settings.json へ書いていた無効ルールを rules-config.json へ移す。起動のたびに呼ぶが、
+ * 設定ファイルが既にあれば何もしない。失敗しても起動を止めない(移せなければ、利用者が
+ * ルール一覧で無効にし直せる)。
+ */
+export async function migrateRuleConfig(): Promise<void> {
+  await migrateDisabledRules(userDataFileSystem, settingsPath(), outputPaths().ruleConfig);
 }
 
 /** コピー句探索パスの実在確認に使う fs 束ね。 */
@@ -246,9 +315,6 @@ export function registerEngineIpc(): void {
   ipcMain.handle(ENGINE_CHANNELS.readSarif, async (_event, path: string) =>
     parseSarif(await readFile(path, "utf-8")),
   );
-  ipcMain.handle(ENGINE_CHANNELS.readCallgraphJson, async (_event, path: string) =>
-    parseCallgraph(await readFile(path, "utf-8")),
-  );
   ipcMain.handle(ENGINE_CHANNELS.readFixResult, async (_event, request: FixResultRequest) => {
     const [original, fixed] = await Promise.all([
       readFile(request.originalPath, "utf-8"),
@@ -268,6 +334,25 @@ export function registerEngineIpc(): void {
 
   ipcMain.handle(ENGINE_CHANNELS.readSourceText, (_event, request: SourceTextRequest) =>
     readSourceText(sourceFileSystem, request),
+  );
+
+  ipcMain.handle(ENGINE_CHANNELS.saveSource, (_event, request: SaveSourceRequest) =>
+    queueSave(() =>
+      saveSource(
+        {
+          fs: saveFileSystem,
+          tempFile: editedTempPath,
+          dbPath: outputPaths().db,
+          run: (saveRequest) =>
+            invokeUninterrupted({ subcommand: "save", request: saveRequest }),
+        },
+        request,
+      ),
+    ),
+  );
+
+  ipcMain.handle(ENGINE_CHANNELS.readGraph, (_event, dbPath: string) =>
+    withDatabase(dbPath, readGraph),
   );
 
   ipcMain.handle(
@@ -302,6 +387,17 @@ export function registerEngineIpc(): void {
     ENGINE_CHANNELS.writeUserRules,
     async (_event, path: string, file: UserRulesFile) => {
       await writeUserRules(userDataFileSystem, path, file);
+    },
+  );
+
+  ipcMain.handle(ENGINE_CHANNELS.readRuleConfig, (_event, path: string) =>
+    readRuleConfig(userDataFileSystem, path),
+  );
+
+  ipcMain.handle(
+    ENGINE_CHANNELS.writeRuleConfig,
+    async (_event, path: string, file: RuleConfigFile) => {
+      await writeRuleConfig(userDataFileSystem, path, file);
     },
   );
 

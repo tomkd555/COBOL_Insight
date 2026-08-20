@@ -62,7 +62,7 @@ class UserRuleLoaderTest {
         String detection = parse(ONE_RULE).rules().get(0).doc().detection();
         assertTrue(detection.contains("COBOL"), detection);
         assertTrue(detection.contains("ACCEPT"), detection);
-        assertTrue(detection.contains("大小を区別しない"), detection);
+        assertTrue(detection.contains("大小を区別しません"), detection);
     }
 
     @Test

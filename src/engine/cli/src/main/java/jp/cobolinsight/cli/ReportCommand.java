@@ -1,8 +1,10 @@
 package jp.cobolinsight.cli;
 
+import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
+import picocli.CommandLine.Spec;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -11,7 +13,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -50,18 +51,21 @@ public final class ReportCommand implements Callable<Integer> {
             description = "ファイル単位のコードページ手動指定(相対パスまたはファイル名=コードページ)。自動判別に優先する")
     Map<String, String> codepageOverrides = new LinkedHashMap<>();
 
-    @Option(names = "--disable-rule", paramLabel = "RULE_ID",
-            description = "無効化するルールID(繰り返し指定可)")
-    List<String> disabledRules = new ArrayList<>();
+    @Option(names = "--rule-config", paramLabel = "FILE",
+            description = "ルールの有効・無効を書いた設定ファイル(JSON)")
+    Path ruleConfigFile;
 
     @Option(names = "--user-rules", paramLabel = "FILE",
             description = "利用者定義ルールの定義ファイル(JSON)。無い場合は組み込みルールだけを実行する")
     Path userRulesFile;
 
+    @Spec
+    CommandLine.Model.CommandSpec spec;
+
     @Override
     public Integer call() {
         List<Path> searchPaths = CommonScanOptions.resolveCopybookPaths(inputDir, copybookPaths);
-        Set<String> disabled = new LinkedHashSet<>(disabledRules);
+        Set<String> disabled = RuleConfig.resolveDisabled(spec, ruleConfigFile);
         ReportRunner.Result result = ReportRunner.run(new ReportRunner.Options(inputDir,
                 databaseFile, searchPaths, codepageOverrides, disabled, userRulesFile));
         try {

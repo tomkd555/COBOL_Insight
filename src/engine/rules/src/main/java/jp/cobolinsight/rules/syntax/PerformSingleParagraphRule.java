@@ -34,13 +34,13 @@ public final class PerformSingleParagraphRule implements Rule {
     @Override
     public RuleDoc doc() {
         return RuleDoc.named("PERFORM単独段落名の直接指定", "制御フロー")
-                .summary("THRU 句で終端を明示せず、単一の段落名だけを指定した PERFORM 文を検出する。")
+                .summary("THRU 句で終端を明示せず、単一の段落名だけを指定した PERFORM 文を検出します。")
                 .rationale("処理の追加で段落を分けたとき、範囲の終端が書かれていないため、"
-                        + "呼出側の直し漏れで新しい段落が実行されない。")
-                .detection("遷移先が段落の PERFORM 文のうち THRU 句を持たないものを検出する。"
+                        + "呼出側の直し漏れで新しい段落が実行されません。")
+                .detection("遷移先が段落の PERFORM 文のうち THRU 句を持たないものを検出します。"
                         + "セクションを対象とする PERFORM とインライン PERFORM は対象外とし、"
-                        + "段落とセクションの双方に同じ名前がある場合は判定を保留する。")
-                .remedy("PERFORM ... THRU ...-EXIT の形にし、範囲の終端を EXIT 段落で明示する。")
+                        + "段落とセクションの双方に同じ名前がある場合は判定を保留します。")
+                .remedy("PERFORM ... THRU ...-EXIT の形にし、範囲の終端を EXIT 段落で明示します。")
                 .example("""
                         PERFORM CALC-TAX.
                         """, """

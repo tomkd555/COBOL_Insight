@@ -30,12 +30,12 @@ public final class RedefinesMismatchRule implements Rule {
     public RuleDoc doc() {
         return RuleDoc.named("REDEFINESによる項目長・境界の不一致", "データ定義")
                 .summary("REDEFINES で再定義した項目群の総バイト長が、"
-                        + "元項目より大きい構成を検出する。")
-                .rationale("再定義側への書き込みが元項目の領域を越え、隣接する項目を壊す。")
+                        + "元項目より大きい構成を検出します。")
+                .rationale("再定義側への書き込みが元項目の領域を越え、隣接する項目を壊します。")
                 .detection("PICTURE・USAGE・OCCURS と配下の集団項目からバイト長を積算し、"
-                        + "再定義側が元項目を超えるものを検出する。"
-                        + "いずれかの長さを解決できない対は判定しない。")
-                .remedy("再定義側の長さを元項目以内に収めるか、元項目を必要な長さまで広げる。")
+                        + "再定義側が元項目を超えるものを検出します。"
+                        + "いずれかの長さを解決できない対は判定しません。")
+                .remedy("再定義側の長さを元項目以内に収めるか、元項目を必要な長さまで広げます。")
                 .example("""
                         01  WS-AREA      PIC X(10).
                         01  WS-AREA-R    REDEFINES WS-AREA.

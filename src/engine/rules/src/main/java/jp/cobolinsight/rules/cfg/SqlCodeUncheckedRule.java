@@ -49,14 +49,14 @@ public final class SqlCodeUncheckedRule implements Rule {
     public RuleDoc doc() {
         return RuleDoc.named("SQLCODE/SQLSTATE未検査", "例外処理")
                 .summary("INSERT・UPDATE・DELETE の後、次の EXEC SQL までに"
-                        + "SQLCODE・SQLSTATE を検査しない箇所を検出する。")
+                        + "SQLCODE・SQLSTATE を検査しない箇所を検出します。")
                 .rationale("更新の失敗を検知せずに後続が進み、"
-                        + "更新されたつもりのデータで処理を続けてしまう。")
+                        + "更新されたつもりのデータで処理を続けてしまいます。")
                 .detection("データ変更 DML の実行後、次の EXEC SQL に達するまでの前方経路で"
-                        + "SQLCODE・SQLSTATE を条件参照しないものを検出する。境界を次の EXEC SQL と"
-                        + "するのは、SQLCODE が次の SQL で上書きされるためである。"
-                        + "SELECT INTO・FETCH は対象外とする。")
-                .remedy("DML の直後に SQLCODE を判定し、0 以外を異常として処理する。")
+                        + "SQLCODE・SQLSTATE を条件参照しないものを検出します。境界を次の EXEC SQL と"
+                        + "するのは、SQLCODE が次の SQL で上書きされるためです。"
+                        + "SELECT INTO・FETCH は対象外とします。")
+                .remedy("DML の直後に SQLCODE を判定し、0 以外を異常として処理します。")
                 .example("""
                         EXEC SQL UPDATE CUSTOMER SET NAME = :WS-NAME
                                  WHERE ID = :WS-ID END-EXEC.

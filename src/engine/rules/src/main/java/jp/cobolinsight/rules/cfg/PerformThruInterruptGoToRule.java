@@ -33,13 +33,13 @@ public final class PerformThruInterruptGoToRule implements Rule {
     public RuleDoc doc() {
         return RuleDoc.named("PERFORM THRUの範囲不整合", "制御フロー")
                 .summary("PERFORM THRU の実行範囲へ、入口段落を経由せず"
-                        + "外から GO TO で直接飛び込む箇所を検出する。")
+                        + "外から GO TO で直接飛び込む箇所を検出します。")
                 .rationale("入口段落が担う初期化を飛ばして途中から実行されるため、"
-                        + "初期化前の値のまま処理が進む。")
+                        + "初期化前の値のまま処理が進みます。")
                 .detection("PERFORM ... THRU の範囲に含まれる段落のうち、入口段落以外へ、"
-                        + "範囲外の段落から GO TO で分岐するものを検出する。")
+                        + "範囲外の段落から GO TO で分岐するものを検出します。")
                 .remedy("範囲の入口段落から入るようにするか、"
-                        + "飛び込み先の処理を別の段落へ分けて PERFORM で呼ぶ。")
+                        + "飛び込み先の処理を別の段落へ分けて PERFORM で呼びます。")
                 .example("""
                         GO TO CALC-STEP2.
                         CALC-START.

@@ -26,12 +26,12 @@ public final class NonSargablePredicateRule implements Rule {
     @Override
     public RuleDoc doc() {
         return RuleDoc.named("非SARGableな述語の検出", "性能")
-                .summary("左辺が列を式で包む述語や、先頭が % の LIKE を指摘する。")
+                .summary("左辺が列を式で包む述語や、先頭が % の LIKE を指摘します。")
                 .rationale("索引による絞り込みができず全表走査になるため、"
-                        + "処理時間が表の件数に比例して伸びる。")
+                        + "処理時間が表の件数に比例して伸びます。")
                 .detection("sql-frontend が算出した nonSargablePredicates から判定し、"
-                        + "該当箇所は原データ名へ復元したテキストで示す。")
-                .remedy("列を式で包まない形へ書き換える。前方一致で足りる検索は先頭の % を外す。")
+                        + "該当箇所は原データ名へ復元したテキストで示します。")
+                .remedy("列を式で包まない形へ書き換えます。前方一致で足りる検索は先頭の % を外します。")
                 .example("""
                         WHERE CUST_NAME LIKE '%商事'
                         """, """

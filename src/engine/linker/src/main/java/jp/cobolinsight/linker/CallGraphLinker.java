@@ -30,6 +30,7 @@ import jp.cobolinsight.engineapi.sql.SqlStatementModel;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -116,7 +117,7 @@ public final class CallGraphLinker {
                 .thenComparingInt(f -> f.location().column())
                 .thenComparing(Finding::ruleId)
                 .thenComparing(Finding::message));
-        return new LinkResult(new CallGraph(nodes.values(), edges), findings,
+        return new LinkResult(new CallGraph(nodes.values(), numberBySourceOrder(edges)), findings,
                 dynamicCallVariables);
     }
 
@@ -133,9 +134,10 @@ public final class CallGraphLinker {
                 }
                 String stepNodeId = STEP_ID_PREFIX + job.jobName() + "." + step.name();
                 putNode(new CallGraphNode(stepNodeId, NodeKind.STEP, step.name()));
-                addEdge(jobNodeId, stepNodeId, EdgeKind.EXECUTION, Resolution.CONSTANT);
+                addEdge(jobNodeId, stepNodeId, EdgeKind.EXECUTION, Resolution.CONSTANT,
+                        step.position().line());
                 addEdge(stepNodeId, executionTargetNode(step.target()), EdgeKind.EXECUTION,
-                        Resolution.CONSTANT);
+                        Resolution.CONSTANT, step.position().line());
                 for (JclDdStatement dd : step.ddStatements()) {
                     if (LIBRARY_DD_NAMES.contains(dd.ddName().toUpperCase(Locale.ROOT))) {
                         continue;
@@ -143,7 +145,7 @@ public final class CallGraphLinker {
                     dd.datasetName().ifPresent(dsn -> {
                         putNode(new CallGraphNode(DATASET_ID_PREFIX + dsn, NodeKind.DATASET, dsn));
                         addEdge(stepNodeId, DATASET_ID_PREFIX + dsn, EdgeKind.REFERENCE,
-                                Resolution.CONSTANT);
+                                Resolution.CONSTANT, dd.position().line());
                     });
                 }
             }
@@ -185,7 +187,7 @@ public final class CallGraphLinker {
             for (CallRelation call : model.calls()) {
                 if (call.kind() == CallKind.STATIC) {
                     addEdge(callerId, ensureProgramNode(call.target().toUpperCase(Locale.ROOT)),
-                            EdgeKind.CALL, Resolution.CONSTANT);
+                            EdgeKind.CALL, Resolution.CONSTANT, call.range().start().line());
                     continue;
                 }
                 String variable = call.target();
@@ -195,17 +197,17 @@ public final class CallGraphLinker {
                     String unresolvedId = UNRESOLVED_ID_PREFIX + model.programId() + "." + variable;
                     putNode(new CallGraphNode(unresolvedId, NodeKind.UNRESOLVED, variable,
                             Map.of("variable", variable)));
-                    addEdge(callerId, unresolvedId, EdgeKind.CALL, Resolution.UNRESOLVED);
+                    addEdge(callerId, unresolvedId, EdgeKind.CALL, Resolution.UNRESOLVED,
+                            call.range().start().line());
                     findings.add(Finding.of(DYNAMIC_CALL_UNRESOLVED_RULE_ID, FindingLevel.NOTE,
                             "動的CALL(変数 " + variable + ")の呼出先を定数伝播で解決できない(未解決)",
                             call.range().start()));
                     continue;
                 }
                 for (String candidate : candidates) {
-                    CallGraphEdge edge = new CallGraphEdge(callerId,
+                    CallGraphEdge edge = addEdge(callerId,
                             ensureProgramNode(candidate.toUpperCase(Locale.ROOT)), EdgeKind.CALL,
-                            Resolution.CONSTANT);
-                    addEdge(edge);
+                            Resolution.CONSTANT, call.range().start().line());
                     dynamicCallVariables.computeIfAbsent(edge, k -> new TreeSet<>())
                             .add(variable);
                     findings.add(Finding.of(DYNAMIC_CALL_RESOLVED_RULE_ID, FindingLevel.NOTE,
@@ -307,7 +309,8 @@ public final class CallGraphLinker {
                                     : resolveCicsOperand(target, dataNames, constantsByVariable)) {
                                 addEdge(callerId,
                                         ensureProgramNode(resolved.toUpperCase(Locale.ROOT)),
-                                        EdgeKind.TRANSACTION_TRANSITION, Resolution.CONSTANT);
+                                        EdgeKind.TRANSACTION_TRANSITION, Resolution.CONSTANT,
+                                        block.range().start().line());
                             }
                         }
                     }
@@ -319,7 +322,7 @@ public final class CallGraphLinker {
                                 String id = TRANSACTION_ID_PREFIX + transId;
                                 putNode(new CallGraphNode(id, NodeKind.TRANSACTION, transId));
                                 addEdge(callerId, id, EdgeKind.TRANSACTION_TRANSITION,
-                                        Resolution.CONSTANT);
+                                        Resolution.CONSTANT, block.range().start().line());
                                 transactionRanges.putIfAbsent(transId, block.range());
                             }
                         }
@@ -331,7 +334,8 @@ public final class CallGraphLinker {
                             String qualified = mapset != null ? mapset + "." + map : map;
                             String id = BMS_MAP_ID_PREFIX + qualified;
                             putNode(new CallGraphNode(id, NodeKind.BMS_MAP, qualified));
-                            addEdge(callerId, id, EdgeKind.MAP_REFERENCE, Resolution.CONSTANT);
+                            addEdge(callerId, id, EdgeKind.MAP_REFERENCE, Resolution.CONSTANT,
+                                    block.range().start().line());
                         }
                     }
                     case SQL -> {
@@ -370,7 +374,7 @@ public final class CallGraphLinker {
                     putNode(new CallGraphNode(DB2_TABLE_ID_PREFIX + table, NodeKind.DB2_TABLE,
                             table));
                     addEdge(callerId, DB2_TABLE_ID_PREFIX + table, EdgeKind.REFERENCE,
-                            Resolution.CONSTANT);
+                            Resolution.CONSTANT, statement.range().start().line());
                 }
             }
         }
@@ -382,11 +386,48 @@ public final class CallGraphLinker {
         nodes.putIfAbsent(node.id(), node);
     }
 
-    private void addEdge(String fromId, String toId, EdgeKind kind, Resolution resolution) {
-        addEdge(new CallGraphEdge(fromId, toId, kind, resolution));
+    private CallGraphEdge addEdge(String fromId, String toId, EdgeKind kind,
+            Resolution resolution) {
+        return addEdge(fromId, toId, kind, resolution, null);
     }
 
-    private void addEdge(CallGraphEdge edge) {
+    /**
+     * 辺を1本足し、その辺を返す。seq は {@link #numberBySourceOrder} が最後にまとめて振るため、
+     * ここでは 0 のままとする。既出の辺は1本へ畳み、行は最初の出現のものを残す。
+     */
+    private CallGraphEdge addEdge(String fromId, String toId, EdgeKind kind, Resolution resolution,
+            Integer line) {
+        CallGraphEdge edge = new CallGraphEdge(fromId, toId, kind, resolution, 0, line);
         edges.add(edge);
+        return edge;
+    }
+
+    /**
+     * 呼出元ノードごとに、原本の順序(呼出箇所の行の昇順、行の分からない辺はその後ろ)で seq を
+     * 1から振り直す。辺を足す処理は JCL・CALL・EXEC CICS・Db2表と分かれており、足した順のままでは
+     * 同じ呼出元の辺が原本の順に並ばない(CICS の XCTL が、後の行の CALL より後ろに来る)。
+     *
+     * <p>行の並び(集合の反復順)は足した順のまま変えない。永続化はその順で行IDを振る。
+     */
+    private static Set<CallGraphEdge> numberBySourceOrder(Set<CallGraphEdge> edges) {
+        Map<String, List<CallGraphEdge>> byFrom = new LinkedHashMap<>();
+        for (CallGraphEdge edge : edges) {
+            byFrom.computeIfAbsent(edge.fromId(), k -> new ArrayList<>()).add(edge);
+        }
+        Map<CallGraphEdge, Integer> seqByEdge = new HashMap<>();
+        for (List<CallGraphEdge> group : byFrom.values()) {
+            group.sort(Comparator.comparing(CallGraphEdge::line,
+                    Comparator.nullsLast(Comparator.naturalOrder())));
+            int seq = 0;
+            for (CallGraphEdge edge : group) {
+                seqByEdge.put(edge, ++seq);
+            }
+        }
+        Set<CallGraphEdge> numbered = new LinkedHashSet<>();
+        for (CallGraphEdge edge : edges) {
+            numbered.add(new CallGraphEdge(edge.fromId(), edge.toId(), edge.kind(),
+                    edge.resolution(), seqByEdge.get(edge), edge.line()));
+        }
+        return numbered;
     }
 }

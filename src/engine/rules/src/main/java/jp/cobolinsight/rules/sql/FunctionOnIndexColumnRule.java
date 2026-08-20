@@ -26,12 +26,12 @@ public final class FunctionOnIndexColumnRule implements Rule {
     @Override
     public RuleDoc doc() {
         return RuleDoc.named("インデックス列への関数適用の検出", "性能")
-                .summary("WHERE 句・JOIN 条件で、列を関数や CAST で包んだ述語を指摘する。")
+                .summary("WHERE 句・JOIN 条件で、列を関数や CAST で包んだ述語を指摘します。")
                 .rationale("列の値そのものと索引を突き合わせられなくなり、"
-                        + "索引を使えず全表走査へ落ちる。")
+                        + "索引を使えず全表走査へ落ちます。")
                 .detection("sql-frontend が算出した functionOnColumnPredicates から、"
-                        + "片側が列を引数とする関数呼出しまたは CAST であるものを指摘する。")
-                .remedy("関数を列側から外し、比較する値の側で変換する。")
+                        + "片側が列を引数とする関数呼出しまたは CAST であるものを指摘します。")
+                .remedy("関数を列側から外し、比較する値の側で変換します。")
                 .example("""
                         WHERE SUBSTR(CUST_ID, 1, 3) = '100'
                         """, """

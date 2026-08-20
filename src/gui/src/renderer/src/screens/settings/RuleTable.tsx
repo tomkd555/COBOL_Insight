@@ -15,9 +15,9 @@ export interface RuleTableProps {
 }
 
 /**
- * 検出ルールの一覧(design scSet のルール表)。カテゴリ別の見出しの下に、ルールごとの有効・無効の
- * トグル・ID・名称・修正案の有無・重大度を並べる。トグルは switch ロールのボタンとし、
- * 状態を aria-checked で表す(色だけに依存しない)。
+ * 検出ルールの一覧。カテゴリ別の見出しの下に、ルールごとの有効・無効のトグル・ID・名称・
+ * 出所・修正案の有無・重大度を並べる。トグルは switch ロールのボタンとし、状態を aria-checked
+ * で表す(色だけに依存しない)。有効・無効は engine が返した値であり、この表は控えを持たない。
  *
  * 行ごとに説明を開ける。ルール名だけでは何を検出するのか分からないため、engine が持つ
  * 検出条件・理由・対処・例をその場で読めるようにする。
@@ -31,9 +31,7 @@ export function RuleTable({
 }: RuleTableProps): ReactElement {
   if (groups.length === 0) {
     return (
-      <p className="ci-rules__no-hit">
-        検索に一致するルールがない。ルール ID・名称・カテゴリで探せる。
-      </p>
+      <p className="ci-rules__no-hit">絞り込みに一致するルールはありません。</p>
     );
   }
   return (
@@ -46,10 +44,11 @@ export function RuleTable({
               <div className="ci-rules__row">
                 <button
                   type="button"
-                  className={row.disabled ? "ci-switch" : "ci-switch ci-switch--on"}
+                  className={row.enabled ? "ci-switch ci-switch--on" : "ci-switch"}
                   role="switch"
-                  aria-checked={!row.disabled}
+                  aria-checked={row.enabled}
                   aria-label={`${row.id} ${row.name}`}
+                  data-testid={`rule-switch-${row.id}`}
                   disabled={disabled}
                   onClick={() => onToggle(row.id)}
                 >
@@ -57,15 +56,15 @@ export function RuleTable({
                 </button>
                 <span className="ci-rules__id">{row.id}</span>
                 <span
-                  className={row.disabled ? "ci-rules__name ci-rules__name--off" : "ci-rules__name"}
+                  className={row.enabled ? "ci-rules__name" : "ci-rules__name ci-rules__name--off"}
                 >
                   {row.name}
                   {/* 無効であることを色以外でも示す。読み上げは同じ行の switch が担うため隠す。 */}
-                  {row.disabled ? (
+                  {row.enabled ? null : (
                     <span className="ci-rules__off-mark" aria-hidden="true">
                       （無効）
                     </span>
-                  ) : null}
+                  )}
                 </span>
                 {row.source === "user" ? (
                   <span className="ci-rules__user-badge">利用者定義</span>

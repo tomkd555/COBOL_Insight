@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { Button } from "../../components/Button";
 import { TextInput } from "../../components/TextInput";
-import type { ReportFormat } from "../../state/appState";
+import type { ReportFormat } from "./reportModel";
 
 /** 出力形式の選択肢。engine は1回の実行で両形式を書くため、これは表示の切替である。 */
 const FORMATS: readonly ReportFormat[] = ["HTML", "テキスト"];
@@ -12,7 +12,7 @@ export interface ReportFormProps {
   /** 出力先フォルダ。engine の --html / --text の親フォルダになる。 */
   outDir: string;
   onOutDirChange: (value: string) => void;
-  /** 無効化したルール数(report へ --disable-rule として渡す件数)。 */
+  /** 無効にしたルール数。 */
   disabledRuleCount: number;
   onWrite: () => void;
   /** レポートの生成中はボタンを押させない。 */
@@ -60,18 +60,15 @@ export function ReportForm({
             </Button>
           ))}
         </div>
-        <p className="ci-report-form__note">
-          解析エンジンは1回の実行で HTML とテキストの両方を書き出す。ここでの選択は表示の切替である。
-        </p>
       </div>
 
       <div className="ci-report-form__field">
         <p className="ci-report-form__label">出力内容</p>
         <p className="ci-report-form__note">
-          {"呼出関係サマリ・指摘一覧・SQL指摘を1つの文書へ束ねる。章は選べず、常に全章を出力する。"}
+          {"呼出関係のまとめ・指摘一覧・SQL指摘を1つの文書へ束ねます。"}
           {disabledRuleCount === 0
             ? ""
-            : `設定で無効化した ${disabledRuleCount} 件のルールは検出から除く。`}
+            : `無効にした ${disabledRuleCount} 件のルールは検出から除きます。`}
         </p>
       </div>
 
@@ -89,11 +86,8 @@ export function ReportForm({
       </div>
 
       <Button variant="primary" disabled={busy} onClick={onWrite}>
-        {busy ? "レポートを生成している…" : "レポートを書き出す"}
+        {busy ? "レポートを生成しています…" : "レポートを書き出す"}
       </Button>
-      <p className="ci-report-form__note">
-        レポートはローカルへ保存する。ネットワーク送信は行わない。
-      </p>
     </div>
   );
 }

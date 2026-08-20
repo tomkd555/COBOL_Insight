@@ -39,9 +39,9 @@ public final class UserRuleLoader {
     private static final String DEFAULT_CATEGORY = "利用者定義";
 
     private static final String DEFAULT_RATIONALE =
-            "利用者が定義したルールである。定義に理由が書かれていない。";
+            "利用者が定義したルールです。定義に理由が書かれていません。";
 
-    private static final String DEFAULT_REMEDY = "定義した検査の意図に沿って該当箇所を直す。";
+    private static final String DEFAULT_REMEDY = "定義した検査の意図に沿って該当箇所を直します。";
 
     /** 読み込みの結果。誤りのあった定義は rules に含めず、理由を errors に持つ。 */
     public record LoadResult(List<Rule> rules, List<String> errors) {
@@ -140,7 +140,7 @@ public final class UserRuleLoader {
                 : compile(excludeText, ignoreCase, "excludePattern");
         RuleDoc doc = RuleDoc.named(name, category)
                 .summary(optionalString(object, "summary",
-                        "正規表現「" + patternText + "」に一致する行を検出する。"))
+                        "正規表現「" + patternText + "」に一致する行を検出します。"))
                 .rationale(optionalString(object, "rationale", DEFAULT_RATIONALE))
                 .detection(describeDetection(targets, patternText, ignoreCase, wholeLine,
                         excludeText))
@@ -160,17 +160,17 @@ public final class UserRuleLoader {
         StringBuilder out = new StringBuilder();
         out.append("対象は ")
                 .append(targets.stream().map(Enum::name).collect(Collectors.joining("・")))
-                .append(" の各行である。正規表現「").append(pattern)
-                .append("」に一致する行を検出する(")
-                .append(ignoreCase ? "大小を区別しない" : "大小を区別する")
+                .append(" の各行です。正規表現「").append(pattern)
+                .append("」に一致する行を検出します(")
+                .append(ignoreCase ? "大小を区別しません" : "大小を区別します")
                 .append(")。");
         if (wholeLine) {
-            out.append("行全体を対象とし、注記行も走査する。");
+            out.append("行全体を対象とし、注記行も走査します。");
         } else {
-            out.append("COBOL 本体とコピー句では注記行を除き、8〜72桁の範囲を対象とする。");
+            out.append("COBOL 本体とコピー句では注記行を除き、8〜72桁の範囲を対象とします。");
         }
         if (!exclude.isEmpty()) {
-            out.append("同じ行が正規表現「").append(exclude).append("」にも一致する場合は除く。");
+            out.append("同じ行が正規表現「").append(exclude).append("」にも一致する場合は除きます。");
         }
         return out.toString();
     }

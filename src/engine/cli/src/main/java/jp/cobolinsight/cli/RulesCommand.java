@@ -1,8 +1,10 @@
 package jp.cobolinsight.cli;
 
 import jp.cobolinsight.engineapi.pipeline.ExitCodes;
+import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
+import picocli.CommandLine.Spec;
 
 import java.nio.file.Path;
 import java.util.concurrent.Callable;
@@ -19,6 +21,13 @@ public final class RulesCommand implements Callable<Integer> {
             description = "利用者定義ルールの定義ファイル(JSON)。一覧へ併せて載せる")
     Path userRulesFile;
 
+    @Option(names = "--rule-config", paramLabel = "FILE",
+            description = "ルールの有効・無効を書いた設定ファイル(JSON)。各ルールの有効・無効へ反映する")
+    Path ruleConfigFile;
+
+    @Spec
+    CommandLine.Model.CommandSpec spec;
+
     @Option(names = "--json", description = "JSONで出力する(GUIが読む形式)")
     boolean json;
 
@@ -28,7 +37,8 @@ public final class RulesCommand implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        RulesRunner.Result result = RulesRunner.run(new RulesRunner.Options(userRulesFile, ruleId));
+        RulesRunner.Result result = RulesRunner.run(new RulesRunner.Options(userRulesFile, ruleId,
+                RuleConfig.resolveDisabled(spec, ruleConfigFile)));
         if (result.detail() && result.rules().isEmpty()) {
             System.err.println("該当するルールが無い: " + ruleId);
             return ExitCodes.ERRORS;

@@ -1,16 +1,20 @@
 import { useRef, type KeyboardEvent, type ReactElement } from "react";
 import { nextRovingIndex } from "../../components/rovingList";
-import type { FixDecision } from "../../state/appState";
+import type { RuleCatalogIndex } from "../../data/ruleCatalog";
+import type { FixDecision } from "./diffModel";
 import {
   candidateLocation,
   candidateRuleSummary,
   decisionLabel,
   decisionModifier,
   fixCountLabel,
+  fixRuleIdLabel,
   type FixCandidate,
 } from "./diffModel";
 
 export interface FixListProps {
+  /** ルール名を引く索引。 */
+  catalog: RuleCatalogIndex;
   candidates: readonly FixCandidate[];
   /** 選択中の修正案の相対パス。 */
   selected: string | null;
@@ -25,7 +29,13 @@ export interface FixListProps {
  * 単一選択の一覧(role=listbox / role=option)として表し、roving tabindex で焦点を選択中の項目へ
  * 集約する。矢印キーで選択を移し(端では反対の端へ回す)、Home・End で端へ移す。
  */
-export function FixList({ candidates, selected, decisions, onSelect }: FixListProps): ReactElement {
+export function FixList({
+  catalog,
+  candidates,
+  selected,
+  decisions,
+  onSelect,
+}: FixListProps): ReactElement {
   const listRef = useRef<HTMLUListElement>(null);
   const selectedIndex = candidates.findIndex((candidate) => candidate.relPath === selected);
   const activeIndex = selectedIndex < 0 ? 0 : selectedIndex;
@@ -72,7 +82,7 @@ export function FixList({ candidates, selected, decisions, onSelect }: FixListPr
               onClick={() => onSelect(candidate.relPath)}
             >
               <span className="ci-fix-card__head">
-                <span className="ci-fix-card__rule">{candidateRuleSummary(candidate)}</span>
+                <span className="ci-fix-card__rule">{candidateRuleSummary(catalog, candidate)}</span>
                 {candidate.copybook ? (
                   <span className="ci-fix-card__badge ci-fix-card__badge--copybook">コピー句</span>
                 ) : null}
@@ -87,9 +97,7 @@ export function FixList({ candidates, selected, decisions, onSelect }: FixListPr
           );
         })}
       </ul>
-      <p className="ci-fix-list__note">
-        原本は変更しない。「適用（書き出し）」は出力先へ相対パス構造を保って書き出す。採用・棄却は常に人の判断である。
-      </p>
+      <p className="ci-fix-list__note">{`修正案を生成できるルール: ${fixRuleIdLabel(" / ")}`}</p>
     </div>
   );
 }

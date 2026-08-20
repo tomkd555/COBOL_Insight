@@ -1,21 +1,20 @@
 /*
- * ソースビューア(translate 統合)のスタイル。厳格 BEM で命名し、値は :root トークンを参照する。
- * design/COBOL Insight.dc.html の scSrc の配置・寸法にそろえる。
- * コードの本体は Monaco が自前の DOM を描くため、CSS は枠・ツールバー・欄の見出し・注記一覧と、
+ * 資産のタブ(原本と逐語対訳)のスタイル。厳格 BEM で命名し、値は :root トークンを参照する。
+ * コードの本体は Monaco が自前の DOM を描くため、CSS は枠・操作の帯・欄の見出し・注記一覧と、
  * Monaco の行へ付ける装飾クラス・コピー句展開のビューゾーンを担う。
  */
 
-.ci-viewer {
-  position: absolute;
-  inset: 0;
+/* 資産1件のタブ。上に操作、下に原本と逐語対訳のペインを置く。 */
+.ci-source {
+  flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
   background: var(--ci-panel);
 }
 
-/* 上部ツールバー: ファイル選択・ジャンプ元・凡例 */
-.ci-viewer__toolbar {
+/* 保存・コピー句の展開・逐語対訳の切替を並べる操作の帯 */
+.ci-source__toolbar {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -24,11 +23,21 @@
   flex: none;
   flex-wrap: wrap;
 }
-.ci-viewer__file-label {
+.ci-source__state {
   font-size: var(--ci-fs-xs);
   color: var(--ci-text-muted);
 }
-.ci-viewer__file-select,
+
+/* 文字コードの手動指定。操作の帯の中で、選択欄をラベルの右へ並べる。 */
+.ci-source__codepage {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-1);
+  font-size: var(--ci-fs-xs);
+  color: var(--ci-text-muted);
+}
+
+.ci-source__codepage-select,
 .ci-viewer__gen-select {
   font-size: var(--ci-fs-sm);
   padding: var(--ci-space-1) var(--ci-space-2);
@@ -38,113 +47,11 @@
   background: var(--ci-panel);
   color: var(--ci-text);
 }
-.ci-viewer__from {
-  display: flex;
-  align-items: center;
-  gap: var(--ci-space-2);
-  font-size: var(--ci-fs-xs);
-  background: var(--ci-select-tint);
-  color: var(--ci-accent-strong);
-  border: 1px solid var(--ci-info-border);
-  border-radius: var(--ci-radius-pill);
-  padding: 2px 10px;
-}
-.ci-viewer__spacer {
-  flex: 1;
-}
-/*
- * 凡例。畳んだ状態を既定とし、開いた分はツールバーの下へ重ねて落とす。ツールバーの流れの中で
- * 開くと8項目が折り返して2行になり、そのぶんコード面の高さが減る。
- */
-.ci-viewer__legend-box {
-  position: relative;
-  flex: none;
-}
-.ci-viewer__legend-summary {
-  font-size: var(--ci-fs-xs);
-  color: var(--ci-text-muted);
-  cursor: pointer;
-  padding: 2px var(--ci-space-2);
-  border: 1px solid var(--ci-border-strong);
-  border-radius: var(--ci-radius-sm);
-  list-style-position: inside;
-}
-.ci-viewer__legend-summary:focus-visible {
+.ci-source__codepage-select:focus-visible,
+.ci-viewer__gen-select:focus-visible {
   outline: 2px solid var(--ci-focus-ring);
   outline-offset: 2px;
 }
-/* 項目が多く1行に収まらないため、右へ寄せたうえで折り返す。 */
-.ci-viewer__legend {
-  position: absolute;
-  top: calc(100% + var(--ci-space-1));
-  right: 0;
-  z-index: 2;
-  width: max-content;
-  max-width: 90vw;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  column-gap: 10px;
-  row-gap: 2px;
-  margin: 0;
-  padding: var(--ci-space-2);
-  list-style: none;
-  font-size: var(--ci-fs-xs);
-  color: var(--ci-text-muted);
-  background: var(--ci-panel);
-  border: 1px solid var(--ci-border);
-  border-radius: var(--ci-radius-md);
-  box-shadow: var(--ci-shadow-sm);
-}
-.ci-viewer__legend-heading {
-  color: var(--ci-text-subtle);
-  padding-left: var(--ci-space-2);
-  border-left: 1px solid var(--ci-border-soft);
-}
-.ci-viewer__sev {
-  line-height: 1;
-}
-.ci-viewer__sev--high {
-  color: var(--ci-sev-high);
-}
-.ci-viewer__sev--medium {
-  color: var(--ci-sev-medium);
-}
-.ci-viewer__sev--low {
-  color: var(--ci-sev-low);
-}
-.ci-viewer__sev--warning {
-  color: var(--ci-sev-warning);
-}
-.ci-viewer__legend-item {
-  display: flex;
-  align-items: center;
-  gap: var(--ci-space-1);
-}
-.ci-viewer__swatch {
-  display: inline-block;
-  width: 11px;
-  height: 11px;
-  border-radius: 2px;
-}
-.ci-viewer__swatch--linked {
-  background: var(--ci-line-linked-bg);
-  border: 1px solid var(--ci-line-linked-border);
-}
-.ci-viewer__swatch--focus {
-  background: var(--ci-line-focus-bg);
-  border: 1px solid var(--ci-select-border);
-}
-.ci-viewer__swatch--noted {
-  background: var(--ci-caution-bg);
-  border: 1px solid var(--ci-caution-border);
-}
-.ci-viewer__swatch--identification {
-  background: var(--ci-surface-alt);
-  border: 1px dashed var(--ci-border-strong);
-}
-
 /* 左右2ペイン(境界の分割ハンドルで対訳ペインの幅を変える。原本ペインは残りを取る) */
 .ci-viewer__panes {
   flex: 1;
@@ -164,9 +71,9 @@
   overflow: hidden;
 }
 /*
- * 対訳ペインは幅を持ち、原本ペインへ固定形式 80 桁ぶんの幅を残す。幅は ViewerScreen が与える。
- * 上限は「ペインの容れ物 − 原本へ残す最小」で、その最小(--ci-opposite-min)も ViewerScreen が
- * SPLIT_PANES から流す。ページ拡大で容れ物が縮んだときに原本を潰さないための歯止めである。
+ * 対訳ペインは幅を持ち、原本ペインへ固定形式 80 桁ぶんの幅を残す。幅は資産のタブが与える。
+ * 上限は「ペインの容れ物 − 原本へ残す最小」で、その最小(--ci-opposite-min)もタブが流す。
+ * ページ拡大で容れ物が縮んだときに原本を潰さないための歯止めである。
  */
 .ci-viewer__pane--translation {
   flex: none;
@@ -223,15 +130,15 @@
 
 /*
  * 固定形式の欄の見出し(1-6 一連番号欄 / 7 標識 / 8-72 本体 / 73-80 識別欄)。
- * ラベルは桁境界へ絶対位置で置き、左位置は ViewerScreen が Monaco の実測寸法から与える。
+ * ラベルは桁境界へ絶対位置で置き、左位置は 資産のタブが Monaco の実測寸法から与える。
  * 区画を固定幅で組むと、行番号ガターの幅と字送りが変わるたびに桁位置とずれる。
  */
 .ci-viewer__columns {
   position: relative;
-  height: 15px;
+  height: 17px;
   font-family: var(--ci-font-code);
-  font-size: var(--ci-fs-ruler);
-  line-height: 15px;
+  font-size: var(--ci-fs-xs);
+  line-height: 17px;
   color: var(--ci-text-subtle);
   background: var(--ci-surface-soft);
   border-bottom: 1px solid var(--ci-border-soft);
@@ -467,9 +374,4 @@
 }
 .ci-code__expansion-lineno {
   padding-right: var(--ci-space-2);
-}
-
-/* ソースペインの見出しに置くコピー句展開の切替 */
-.ci-viewer__copy-toggle {
-  font-size: var(--ci-fs-xs);
 }

@@ -36,6 +36,7 @@ function request(overrides: Partial<ImportSourceRequest> = {}): ImportSourceRequ
   return {
     inputDir: INPUT_DIR,
     kind: "cobol",
+    destDir: "",
     fileName: "SYK001",
     lines: ["       IDENTIFICATION DIVISION.", "       PROGRAM-ID. SYK001."],
     overwrite: false,
@@ -44,49 +45,54 @@ function request(overrides: Partial<ImportSourceRequest> = {}): ImportSourceRequ
 }
 
 describe("importSource(取込の書出)", () => {
-  it("種別のフォルダへ CRLF 区切りの UTF-8 テキストとして書き出す", async () => {
+  it("保存先の既定は資産フォルダの直下であり、CRLF 区切りの UTF-8 テキストとして書き出す", async () => {
     const fs = fakeFs();
     const result = await importSource(fs, request());
-    const target = resolve(INPUT_DIR, "cobol/SYK001.cbl");
-    expect(result).toEqual({ status: "written", relPath: "cobol/SYK001.cbl", lineCount: 2 });
+    const target = resolve(INPUT_DIR, "SYK001");
+    expect(result).toEqual({ status: "written", relPath: "SYK001", lineCount: 2 });
     expect(fs.written.get(target)).toBe(
       "       IDENTIFICATION DIVISION.\r\n       PROGRAM-ID. SYK001.\r\n",
     );
   });
 
-  it("保存先のフォルダが無ければ作る", async () => {
+  it("指定した相対パスの下へ置き、無ければフォルダを作る", async () => {
     const fs = fakeFs();
-    await importSource(fs, request());
-    expect(fs.madeDirs).toEqual([resolve(INPUT_DIR, "cobol")]);
+    const result = await importSource(fs, request({ destDir: "src/cobol" }));
+    expect(result.relPath).toBe("src/cobol/SYK001");
+    expect(fs.madeDirs).toEqual([resolve(INPUT_DIR, "src/cobol")]);
   });
 
   it("同名のファイルがあり上書きの許可が無ければ、書かずに exists を返す", async () => {
-    const fs = fakeFs([resolve(INPUT_DIR, "cobol/SYK001.cbl")]);
+    const fs = fakeFs([resolve(INPUT_DIR, "SYK001")]);
     const result = await importSource(fs, request());
-    expect(result).toEqual({ status: "exists", relPath: "cobol/SYK001.cbl", lineCount: 0 });
+    expect(result).toEqual({ status: "exists", relPath: "SYK001", lineCount: 0 });
     expect(fs.written.size).toBe(0);
   });
 
   it("上書きの許可があれば同名のファイルへ書く", async () => {
-    const fs = fakeFs([resolve(INPUT_DIR, "cobol/SYK001.cbl")]);
+    const fs = fakeFs([resolve(INPUT_DIR, "SYK001")]);
     const result = await importSource(fs, request({ overwrite: true }));
     expect(result.status).toBe("written");
     expect(fs.written.size).toBe(1);
   });
 
-  it("種別ごとにフォルダと拡張子を変える", async () => {
+  it("拡張子を補うのはコピー句だけである", async () => {
     const fs = fakeFs();
     const jcl = await importSource(fs, request({ kind: "jcl", fileName: "SYKJOB1" }));
-    expect(jcl.relPath).toBe("jcl/SYKJOB1.jcl");
+    expect(jcl.relPath).toBe("SYKJOB1");
     const copybook = await importSource(fs, request({ kind: "copybook", fileName: "SYKCPY1" }));
-    expect(copybook.relPath).toBe("copy/SYKCPY1.cpy");
+    expect(copybook.relPath).toBe("SYKCPY1.cpy");
   });
 
   it("資産フォルダの外へ抜けるファイル名を拒む", async () => {
     const fs = fakeFs();
-    await expect(importSource(fs, request({ fileName: "../SYK001" }))).rejects.toThrow(
-      /ファイル名/,
-    );
+    await expect(importSource(fs, request({ fileName: "../SYK001" }))).rejects.toThrow(/保存先/);
+    expect(fs.written.size).toBe(0);
+  });
+
+  it("資産フォルダの外へ抜ける保存先を拒む", async () => {
+    const fs = fakeFs();
+    await expect(importSource(fs, request({ destDir: "../外" }))).rejects.toThrow(/保存先/);
     expect(fs.written.size).toBe(0);
   });
 
@@ -98,15 +104,17 @@ describe("importSource(取込の書出)", () => {
 
   it("保存先のフォルダが接合で資産フォルダの外を指すときは書かない", async () => {
     const fs = fakeFs([], { [resolve(INPUT_DIR, "cobol")]: resolve("D:/outside") });
-    await expect(importSource(fs, request())).rejects.toThrow(/資産フォルダの外/);
+    await expect(importSource(fs, request({ destDir: "cobol" }))).rejects.toThrow(
+      /資産フォルダの外/,
+    );
     expect(fs.written.size).toBe(0);
   });
 
   it("接合を解いた実体パスが資産フォルダ配下であれば、その実体パスへ書く", async () => {
     const real = resolve(INPUT_DIR, "実体/cobol");
     const fs = fakeFs([], { [resolve(INPUT_DIR, "cobol")]: real });
-    const result = await importSource(fs, request());
+    const result = await importSource(fs, request({ destDir: "cobol" }));
     expect(result.status).toBe("written");
-    expect([...fs.written.keys()]).toEqual([resolve(real, "SYK001.cbl")]);
+    expect([...fs.written.keys()]).toEqual([resolve(real, "SYK001")]);
   });
 });

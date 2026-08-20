@@ -92,9 +92,12 @@ class SqlAdviseCommandTest {
     void disabledRuleSuppressesItsFindings() throws IOException {
         Path dir = assets("curoff", CURSOR.replace("CURDECL", "CUROFF"));
         Path sarif = tempDir.resolve("curoff.sarif");
+        Path config = tempDir.resolve("sql-rule-config.json");
+        Files.writeString(config, "{\"version\": 1, \"disabledRules\": [\"S004\"]}",
+                StandardCharsets.UTF_8);
 
         new CommandLine(new Main()).execute("sql-lint", dir.toString(),
-                "--sarif", sarif.toString(), "--disable-rule", "S004");
+                "--sarif", sarif.toString(), "--rule-config", config.toString());
 
         String json = Files.readString(sarif, StandardCharsets.UTF_8);
         assertTrue(!json.contains("\"ruleId\":\"S004\""),

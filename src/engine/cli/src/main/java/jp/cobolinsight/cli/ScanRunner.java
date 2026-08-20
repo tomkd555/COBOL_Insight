@@ -16,15 +16,22 @@ import jp.cobolinsight.engineapi.json.JsonWriter;
 import jp.cobolinsight.engineapi.pipeline.AnalysisServices;
 import jp.cobolinsight.engineapi.pipeline.ExitCodes;
 import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
+import jp.cobolinsight.engineapi.semantic.CompoundStatement;
 import jp.cobolinsight.engineapi.semantic.EmbeddedBlock;
 import jp.cobolinsight.engineapi.semantic.EmbeddedBlockKind;
+import jp.cobolinsight.engineapi.semantic.GoToStatement;
+import jp.cobolinsight.engineapi.semantic.PerformRelation;
 import jp.cobolinsight.engineapi.semantic.Procedure;
+import jp.cobolinsight.engineapi.semantic.SimpleStatement;
+import jp.cobolinsight.engineapi.semantic.Statement;
+import jp.cobolinsight.engineapi.semantic.StatementBlock;
 import jp.cobolinsight.engineapi.source.AssetKind;
 import jp.cobolinsight.engineapi.source.CopyExpansionEntry;
 import jp.cobolinsight.engineapi.source.CopyInlineExpansion;
 import jp.cobolinsight.engineapi.source.DecodedSource;
 import jp.cobolinsight.engineapi.source.ExpandedCopyLine;
 import jp.cobolinsight.engineapi.source.SourcePosition;
+import jp.cobolinsight.engineapi.source.SourceRange;
 import jp.cobolinsight.engineapi.spi.CharsetProvider;
 import jp.cobolinsight.engineapi.spi.CobolParser;
 import jp.cobolinsight.engineapi.spi.JclParser;
@@ -35,6 +42,7 @@ import jp.cobolinsight.engineapi.callgraph.CallGraph;
 import jp.cobolinsight.engineapi.callgraph.CallGraphEdge;
 import jp.cobolinsight.engineapi.callgraph.CallGraphNode;
 import jp.cobolinsight.engineapi.callgraph.NodeKind;
+import jp.cobolinsight.dataflow.CfgBuilder;
 import jp.cobolinsight.linker.CallGraphLinker;
 import jp.cobolinsight.linker.LinkResult;
 import jp.cobolinsight.linker.LinkerInput;
@@ -48,6 +56,7 @@ import jp.cobolinsight.persistence.model.CallEdgeRecord;
 import jp.cobolinsight.persistence.model.EncodingInfoRecord;
 import jp.cobolinsight.persistence.model.FindingRecord;
 import jp.cobolinsight.persistence.model.NodeRecord;
+import jp.cobolinsight.persistence.model.ParagraphEdgeRecord;
 import jp.cobolinsight.persistence.model.ParagraphRecord;
 import jp.cobolinsight.persistence.model.ProgramRecord;
 import jp.cobolinsight.persistence.model.SourceRecord;
@@ -79,7 +88,10 @@ import java.util.TreeSet;
  */
 public final class ScanRunner {
 
-    /** 子表(PARAGRAPH・FINDING・SQL_STMT・CALL_EDGE・BMS_MAPSET)の行ID導出の刻み幅。 */
+    /**
+     * 子表(PARAGRAPH・PARAGRAPH_EDGE・FINDING・SQL_STMT・CALL_EDGE・BMS_MAPSET)の
+     * 行ID導出の刻み幅。
+     */
     private static final long ID_STRIDE = 1_000_000L;
     /**
      * 呼出関係グラフ層(ソース非対応ノード・グラフ辺・linker由来finding)のID下限。
@@ -422,8 +434,8 @@ public final class ScanRunner {
     }
 
     /**
-     * JCL の INCLUDE メンバを探す位置。従来構成では INPUT_DIR/jcl と一致するが、再帰探索で
-     * 拾った JCL はその位置に無いため、当該ファイルの親ディレクトリを使う。
+     * JCL の INCLUDE メンバを探す位置。当該 JCL の親ディレクトリだけを見る。走査はフォルダ名に
+     * 依存せず資産をどこからでも拾うため、置き場所を決め打ちできない。
      */
     private static List<Path> jclSearchPaths(ScanFile file) {
         Path parent = file.absPath().getParent();
@@ -531,13 +543,109 @@ public final class ScanRunner {
             upsertNode(new NodeRecord(id, SourceKind.COBOL.nodeType, model.programId()));
             dao.insertProgram(new ProgramRecord(id, id, model.programId()));
             long paragraphSeq = 0;
+            List<Long> paragraphIds = new ArrayList<>();
+            Map<String, Long> paragraphIdByName = new LinkedHashMap<>();
             for (Procedure procedure : model.procedures()) {
-                dao.insertParagraph(new ParagraphRecord(id * ID_STRIDE + (++paragraphSeq), id,
-                        procedure.name(), procedure.range().start().line(),
-                        procedure.range().end().line()));
+                long paragraphId = id * ID_STRIDE + (++paragraphSeq);
+                dao.insertParagraph(new ParagraphRecord(paragraphId, id, procedure.name(),
+                        procedure.range().start().line(), procedure.range().end().line()));
+                paragraphIds.add(paragraphId);
+                // 同名の段落は先に定義したものを飛び先とする(CFG構築の解決と揃える)
+                paragraphIdByName.putIfAbsent(procedure.name().toUpperCase(Locale.ROOT),
+                        paragraphId);
             }
+            persistParagraphEdges(id, model, paragraphIds, paragraphIdByName);
             persistSqlStatements(id, file.relPath(), model);
             persistCopyEdges(id, model, copybookIdByFileName);
+        }
+    }
+
+    /** 段落から段落への流れ1本。line は PERFORM文・GO TO文の行、流下では null とする。 */
+    private record ParagraphFlow(String kind, String toName, Integer line) {
+    }
+
+    /**
+     * 段落間の流れの永続化。段落の定義順に、その段落が持つ PERFORM文・GO TO文を行の順で並べ、
+     * 末尾へ次の段落への流下を足して PARAGRAPH_EDGE へ書く。PERFORM ... THRU は入口段落への
+     * 1本だけを張る(THRU の終端までは流下の辺で辿れる)。飛び先の名前に対応する段落が無い辺は
+     * 飛び先IDを欠いたまま名前だけを残す。
+     *
+     * <p>PERFORM文の帰属は文の範囲で決める。段落名で照合すると、同名の段落が複数ある資産で
+     * 片方の PERFORM がもう片方の段落にも付く。
+     */
+    private void persistParagraphEdges(long sourceId, CobolSemanticModel model,
+            List<Long> paragraphIds, Map<String, Long> paragraphIdByName) {
+        List<Procedure> procedures = model.procedures();
+        long edgeId = 0;
+        for (int i = 0; i < procedures.size(); i++) {
+            Procedure procedure = procedures.get(i);
+            Set<SourceRange> performRanges = new LinkedHashSet<>();
+            collectPerformRanges(procedure.statements(), performRanges);
+            List<ParagraphFlow> flows = new ArrayList<>();
+            for (PerformRelation perform : model.performs()) {
+                if (performRanges.contains(perform.range())) {
+                    flows.add(new ParagraphFlow("PERFORM", perform.targetProcedure(),
+                            perform.range().start().line()));
+                }
+            }
+            collectGoTo(procedure.statements(), flows);
+            flows.sort((a, b) -> Integer.compare(a.line(), b.line()));
+            if (i + 1 < procedures.size() && fallsThrough(procedure)) {
+                flows.add(new ParagraphFlow("FALLTHROUGH", procedures.get(i + 1).name(), null));
+            }
+            int seq = 0;
+            for (ParagraphFlow flow : flows) {
+                dao.insertParagraphEdge(new ParagraphEdgeRecord(sourceId * ID_STRIDE + (++edgeId),
+                        sourceId, paragraphIds.get(i),
+                        paragraphIdByName.get(flow.toName().toUpperCase(Locale.ROOT)),
+                        flow.toName(), flow.kind(), flow.line(), ++seq));
+            }
+        }
+    }
+
+    /**
+     * 段落の末尾から次の段落へ流下するか。無条件の GO TO・STOP RUN・GOBACK・EXIT PROGRAM で
+     * 終わる段落は、そこで実行が移るため流下しない。判定は {@link CfgBuilder} の終端判定と揃える。
+     */
+    private static boolean fallsThrough(Procedure procedure) {
+        List<Statement> statements = procedure.statements();
+        if (statements.isEmpty()) {
+            return true;
+        }
+        Statement last = statements.get(statements.size() - 1);
+        if (last instanceof GoToStatement goTo) {
+            // DEPENDING ON(複数飛び先)は、どの飛び先にも当たらないとき流下する。
+            return goTo.targets().size() > 1 || goTo.dependingOn().isPresent();
+        }
+        return !(last instanceof SimpleStatement simple && CfgBuilder.isTerminator(simple));
+    }
+
+    /** PERFORM文の範囲を、IF・EVALUATE などの内側も含めて集める。 */
+    private static void collectPerformRanges(List<Statement> statements, Set<SourceRange> ranges) {
+        for (Statement statement : statements) {
+            if (statement instanceof CompoundStatement compound) {
+                for (StatementBlock block : compound.blocks()) {
+                    collectPerformRanges(block.statements(), ranges);
+                }
+            } else if (statement instanceof SimpleStatement simple
+                    && "PERFORM".equalsIgnoreCase(simple.verb())) {
+                ranges.add(simple.range());
+            }
+        }
+    }
+
+    /** GO TO文を、IF・EVALUATE などの内側も含めて出現順に集める。 */
+    private static void collectGoTo(List<Statement> statements, List<ParagraphFlow> flows) {
+        for (Statement statement : statements) {
+            if (statement instanceof CompoundStatement compound) {
+                for (StatementBlock block : compound.blocks()) {
+                    collectGoTo(block.statements(), flows);
+                }
+            } else if (statement instanceof GoToStatement goTo) {
+                for (String target : goTo.targets()) {
+                    flows.add(new ParagraphFlow("GOTO", target, goTo.range().start().line()));
+                }
+            }
         }
     }
 
@@ -852,6 +960,10 @@ public final class ScanRunner {
     /**
      * ノード永続化: ソース非対応ノードへ {@link #GRAPH_ID_BASE} からの連番をノードID昇順で
      * 採番して保存し、全グラフノードの数値IDの対応表を返す。
+     *
+     * <p>解析不能ノードは NODE.id=SOURCE.id 規約の既存行を使い回すため、種別だけを
+     * UNANALYZABLE へ直す。走査が先に付けた種別(PROGRAM など)のままでは、解析できた資産と
+     * 見分けが付かない。
      */
     private Map<String, Long> persistGraphNodes(List<CallGraphNode> nodes,
             Map<String, Long> sourceBackedByGraphNodeId) {
@@ -861,6 +973,9 @@ public final class ScanRunner {
             Long sourceBacked = sourceBackedByGraphNodeId.get(node.id());
             if (sourceBacked != null) {
                 numericByGraphNodeId.put(node.id(), sourceBacked);
+                if (node.kind() == NodeKind.UNANALYZABLE) {
+                    upsertNode(new NodeRecord(sourceBacked, node.kind().name(), node.label()));
+                }
             } else {
                 numericByGraphNodeId.put(node.id(), nodeId);
                 dao.insertNode(new NodeRecord(nodeId, node.kind().name(), node.label()));
@@ -870,7 +985,10 @@ public final class ScanRunner {
         return numericByGraphNodeId;
     }
 
-    /** 辺永続化: グラフの全辺を辺順の連番IDで保存する。動的CALL辺は指定変数名(辞書順)を持つ。 */
+    /**
+     * 辺永続化: グラフの全辺を辺順の連番IDで保存する。動的CALL辺は指定変数名(辞書順)を持つ。
+     * 行の並びは辺順のままとし、原本の順序(JCLのステップ順・文の出現順)は seq が担う。
+     */
     private void persistGraphEdges(LinkResult result, Map<String, Long> numericByGraphNodeId) {
         long edgeId = GRAPH_ID_BASE;
         for (CallGraphEdge edge : result.graph().edges()) {
@@ -878,7 +996,8 @@ public final class ScanRunner {
             dao.insertCallEdge(new CallEdgeRecord(edgeId++,
                     numericByGraphNodeId.get(edge.fromId()), numericByGraphNodeId.get(edge.toId()),
                     edge.kind().name(), edge.resolution().name(),
-                    variables == null ? null : String.join(",", variables)));
+                    variables == null ? null : String.join(",", variables),
+                    edge.seq(), edge.line()));
         }
     }
 

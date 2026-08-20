@@ -26,12 +26,12 @@ public final class OptimizeForMissingRule implements Rule {
     @Override
     public RuleDoc doc() {
         return RuleDoc.named("OPTIMIZE FOR句によるアクセスパス最適化の検討", "性能")
-                .summary("OPTIMIZE FOR n ROWS 句を持たないカーソル宣言を指摘する。")
+                .summary("OPTIMIZE FOR n ROWS 句を持たないカーソル宣言を指摘します。")
                 .rationale("全件取得を前提としたアクセスパスが選ばれ、"
-                        + "先頭の数件だけを使う用途では応答が遅くなる。")
-                .detection("DECLARE CURSOR に OPTIMIZE FOR 句があるかどうかだけを見る。"
-                        + "全件を読み切るカーソルでは対処は不要になる。")
-                .remedy("少件数だけを取り出すカーソルへ OPTIMIZE FOR n ROWS を付ける。")
+                        + "先頭の数件だけを使う用途では応答が遅くなります。")
+                .detection("DECLARE CURSOR に OPTIMIZE FOR 句があるかどうかだけを見ます。"
+                        + "全件を読み切るカーソルでは対処は不要になります。")
+                .remedy("少件数だけを取り出すカーソルへ OPTIMIZE FOR n ROWS を付けます。")
                 .example("""
                         DECLARE CUR-CUST CURSOR FOR
                             SELECT ID FROM CUSTOMER

@@ -1,0 +1,151 @@
+/*
+ * 製品固有の派生トークン。色・字・間隔・角丸・影・動きの原値は theme.css(tokens.json から生成)
+ * だけが持ち、ここはその上に製品の意味づけを重ねる層である。値は theme.css の変数から導き、
+ * 導けないものだけを実値で置いて理由を添える。
+ */
+
+:root {
+  /* ---- 重大度(色 + 記号の二重符号化。記号は components/severity.ts が持つ) ---- */
+  --ci-sev-high: var(--color-destructive);
+  --ci-sev-low: var(--color-primary);
+  --ci-sev-warning: var(--color-muted-foreground);
+  /* 中は accent(琥珀)の系統だが、accent そのものは白地で本文に使えない明度である。
+     同じ色相で本文に耐える明度を実値で置く(白地で 4.5:1 を満たす)。 */
+  --ci-sev-medium: oklch(52% 0.115 70);
+
+  /* 指摘のある行に敷く淡い地色。各重大度色を面の色へ 12% 混ぜて導く。 */
+  --ci-sev-high-tint: color-mix(in oklch, var(--ci-sev-high) 12%, var(--color-surface));
+  --ci-sev-medium-tint: color-mix(in oklch, var(--ci-sev-medium) 12%, var(--color-surface));
+  --ci-sev-low-tint: color-mix(in oklch, var(--ci-sev-low) 12%, var(--color-surface));
+  --ci-sev-warning-tint: color-mix(in oklch, var(--ci-sev-warning) 12%, var(--color-surface));
+
+  /* ---- 資産種別バッジ ---- */
+  /* 種別は順序を持たない区分であり、theme.css の意味色(primary/destructive/accent)へ割り当てると
+     重大度と読み違える。区分としてだけ働く色相を等間隔に取り、明度と彩度をそろえて実値で置く。 */
+  --ci-type-cobol: oklch(45% 0.105 150);
+  --ci-type-copybook: oklch(45% 0.105 80);
+  --ci-type-jcl: oklch(45% 0.105 250);
+  --ci-type-bms: oklch(45% 0.105 30);
+  --ci-type-other: oklch(45% 0.105 310);
+  --ci-type-tint: 14%;
+
+  /* ---- ステータスバー ---- */
+  --ci-statusbar-bg: var(--color-primary);
+  --ci-statusbar-text: var(--color-primary-foreground);
+  --ci-statusbar-hover-bg: color-mix(in oklch, var(--color-primary-foreground) 18%, transparent);
+
+  /* ---- コード面の行装飾 ---- */
+  /* 相互ハイライトとジャンプ先は Monaco の行の背景であり、重大度・選択のどれとも別物として
+     読めなければならない。面の色へ accent と primary を薄く混ぜて導く。 */
+  --ci-line-linked-bg: color-mix(in oklch, var(--color-accent) 26%, var(--color-surface));
+  --ci-line-linked-border: color-mix(in oklch, var(--color-accent) 55%, var(--color-surface));
+  --ci-line-focus-bg: color-mix(in oklch, var(--color-primary) 20%, var(--color-surface));
+  /* 一連番号欄・識別欄。本体より一段沈めて桁の区切りを示す。 */
+  --ci-surface-column: var(--color-muted);
+  --ci-code-font: "BIZ UDGothic", "MS Gothic", monospace;
+
+  /* ---- シェルの固定寸法 ---- */
+  --ci-titlebar-h: 34px;
+  --ci-activitybar-w: 44px;
+  --ci-statusbar-h: 24px;
+  --ci-progress-h: 4px;
+  --ci-tabstrip-h: 32px;
+  --ci-split-w: 6px;
+  --ci-split-grip-w: 2px;
+  --ci-split-grip-h: 28px;
+  /* シェルの想定最小幅。main が開くウィンドウの最小幅と同じ値である。 */
+  --ci-min-width: 1120px;
+
+  /* ---- フォーカスリング ---- */
+  --ci-focus-ring: var(--color-primary);
+
+  /*
+   * ---- 面・線・文字の別名 ----
+   * 呼出関係図・逐語対訳・修正案・レポート・ルールの各部品が参照する名前である。
+   * 値はすべて theme.css の変数から導く。字の大きさだけは実値で置く: コード面と
+   * 表・バッジは 1px 刻みで詰めた大きさが要り、比率 1.2 の段階では刻みが粗すぎる。
+   */
+  --ci-bg: var(--color-background);
+  --ci-panel: var(--color-surface);
+  --ci-surface-alt: var(--color-muted);
+  --ci-surface-header: var(--color-muted);
+  --ci-surface-soft: color-mix(in oklch, var(--color-muted) 45%, var(--color-surface));
+
+  --ci-accent: var(--color-primary);
+  --ci-accent-hover: color-mix(in oklch, var(--color-primary) 88%, white);
+  --ci-accent-strong: color-mix(in oklch, var(--color-primary) 78%, black);
+  --ci-select-tint: color-mix(in oklch, var(--color-primary) 12%, var(--color-surface));
+  --ci-select-tint-soft: color-mix(in oklch, var(--color-primary) 7%, var(--color-surface));
+  --ci-select-border: color-mix(in oklch, var(--color-primary) 45%, var(--color-surface));
+  --ci-select-bar: var(--color-primary);
+  --ci-info-bg: var(--ci-select-tint-soft);
+  --ci-info-border: color-mix(in oklch, var(--color-primary) 28%, var(--color-surface));
+  --ci-info-text: var(--ci-accent-strong);
+
+  --ci-border: var(--color-border);
+  --ci-border-strong: color-mix(in oklch, var(--color-border) 80%, var(--color-foreground));
+  --ci-border-soft: color-mix(in oklch, var(--color-border) 55%, var(--color-surface));
+  --ci-border-hover: var(--color-muted-foreground);
+  --ci-invalid-border: var(--ci-sev-high);
+
+  --ci-text: var(--color-foreground);
+  --ci-text-secondary: var(--color-muted-foreground);
+  --ci-text-muted: var(--color-muted-foreground);
+  --ci-text-subtle: var(--color-muted-foreground);
+  --ci-text-inverse: var(--color-primary-foreground);
+  --ci-tab-text: color-mix(in oklch, var(--color-foreground) 80%, var(--color-surface));
+  --ci-text-heading: color-mix(in oklch, var(--color-foreground) 88%, var(--color-surface));
+  --ci-rule-off-text: var(--color-muted-foreground);
+
+  --ci-error-bg: var(--ci-sev-high-tint);
+  --ci-error-border: color-mix(in oklch, var(--ci-sev-high) 35%, var(--color-surface));
+  --ci-error-text: color-mix(in oklch, var(--ci-sev-high) 75%, black);
+  --ci-success: var(--ci-type-cobol);
+  --ci-caution: var(--ci-sev-medium);
+  --ci-caution-bg: var(--ci-sev-medium-tint);
+  --ci-caution-border: color-mix(in oklch, var(--ci-sev-medium) 35%, var(--color-surface));
+
+  --ci-progress-a: color-mix(in oklch, var(--color-primary) 70%, var(--color-surface));
+  --ci-progress-b: color-mix(in oklch, var(--color-primary) 35%, var(--color-surface));
+
+  --ci-toast-bg: color-mix(in oklch, var(--color-foreground) 92%, black);
+  --ci-toast-text: var(--color-background);
+  --ci-toast-close-hover-bg: color-mix(in oklch, white 15%, transparent);
+  --ci-shadow-toast: var(--shadow-lg);
+
+  --ci-copy-bg: color-mix(in oklch, var(--ci-type-cobol) 8%, var(--color-surface));
+  --ci-copy-border: color-mix(in oklch, var(--ci-type-cobol) 28%, var(--color-surface));
+  --ci-copy-title: var(--ci-type-cobol);
+  --ci-copy-text: color-mix(in oklch, var(--ci-type-cobol) 80%, black);
+  --ci-copy-meta: color-mix(in oklch, var(--ci-type-cobol) 70%, var(--color-surface));
+
+  --ci-font-ui: var(--font-body);
+  --ci-font-code: var(--ci-code-font);
+  --ci-fs-xs: 11px;
+  --ci-fs-sm: 12px;
+  --ci-fs-md: 13px;
+  --ci-fs-lg: 14px;
+  --ci-fs-base: var(--ci-fs-md);
+  --ci-fs-pane-title: 11.5px;
+  --ci-fs-detail-title: 12.5px;
+  --ci-fs-note: 10px;
+  --ci-fs-tag: 9.5px;
+
+  --ci-radius-sm: var(--radius-sm);
+  --ci-radius-md: var(--radius-md);
+  --ci-radius-lg: var(--radius-md);
+  --ci-radius-pill: var(--radius-lg);
+  --ci-radius-badge: var(--radius-lg);
+
+  --ci-space-1: var(--space-1);
+  --ci-space-2: var(--space-2);
+  --ci-space-3: var(--space-3);
+  --ci-space-4: var(--space-4);
+  --ci-space-5: var(--space-5);
+  --ci-space-6: var(--space-6);
+  --ci-space-7: var(--space-6);
+  --ci-space-8: var(--space-8);
+  --ci-space-9: var(--space-8);
+
+  --ci-shadow-sm: var(--shadow-sm);
+}

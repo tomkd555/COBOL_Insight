@@ -93,16 +93,22 @@
   outline: 2px solid var(--ci-focus-ring);
   outline-offset: 2px;
 }
+/* 絞り込みの選択欄。単独で置く選択欄より狭く、ラベルの右へ並べる。 */
+.ci-settings__select--inline {
+  width: auto;
+  min-width: 140px;
+}
 .ci-settings__bulk {
   display: flex;
   align-items: center;
   gap: var(--ci-space-2);
+  flex-wrap: wrap;
 }
 
-/* engine の起動対象と製品の版。列数は ENGINE_LAUNCH_INFO の 3 件に版の 1 件を加えた数である */
+/* 通信の有無と製品の版。列数は ENGINE_LAUNCH_INFO の 1 件に版の 1 件を加えた数である */
 .ci-settings__versions {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: var(--ci-space-2);
   margin: 0;
 }

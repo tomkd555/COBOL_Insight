@@ -31,13 +31,13 @@ public final class GoToStructureDeviationRule implements Rule {
     @Override
     public RuleDoc doc() {
         return RuleDoc.named("GO TO文による構造化フローからの逸脱", "制御フロー")
-                .summary("節(SECTION)をまたぐ GO TO を検出する。")
+                .summary("節(SECTION)をまたぐ GO TO を検出します。")
                 .rationale("節で処理を区切る構成が崩れ、"
-                        + "制御の流れを節の内側だけでは追えなくなる。")
-                .detection("GO TO を含む段落の所属節と、飛び先段落の所属節が異なるものを検出する。"
+                        + "制御の流れを節の内側だけでは追えなくなります。")
+                .detection("GO TO を含む段落の所属節と、飛び先段落の所属節が異なるものを検出します。"
                         + "同一節内の GO TO と、PERFORM THRU 範囲への割り込み(R007 が扱う)は"
-                        + "対象外とする。")
-                .remedy("節の外へ出る分岐を、PERFORM の呼び分けか条件分岐へ置き換える。")
+                        + "対象外とします。")
+                .remedy("節の外へ出る分岐を、PERFORM の呼び分けか条件分岐へ置き換えます。")
                 .example("""
                         MAIN-SEC SECTION.
                             GO TO ERROR-PARA.

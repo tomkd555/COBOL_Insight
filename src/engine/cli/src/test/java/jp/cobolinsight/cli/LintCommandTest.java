@@ -111,15 +111,49 @@ class LintCommandTest {
         assertEquals(1, exitCode, "警告あり=1であること");
     }
 
+    /** ルールの有効・無効は設定ファイルだけが決める。 */
     @Test
-    void disabledRuleSuppressesItsFindings() throws IOException {
-        Path dir = assets("warnoff", WARNING.replace("WARN1", "WARNOFF"));
+    void ruleConfigFileSuppressesItsFindings() throws IOException {
+        Path dir = assets("warncfg", WARNING.replace("WARN1", "WARNCFG"));
+        Path config = tempDir.resolve("rule-config.json");
+        Files.writeString(config, "{\"version\": 1, \"disabledRules\": [\"R008\"]}",
+                StandardCharsets.UTF_8);
 
         int exitCode = new CommandLine(new Main()).execute("lint", dir.toString(),
-                "--sarif", tempDir.resolve("warnoff.sarif").toString(),
-                "--disable-rule", "R008");
+                "--sarif", tempDir.resolve("warncfg.sarif").toString(),
+                "--rule-config", config.toString());
 
-        assertEquals(0, exitCode, "R008を無効化すると警告が消え成功(0)になること");
+        assertEquals(0, exitCode, "設定ファイルで R008 を無効化すると成功(0)になること");
+    }
+
+    /** 設定ファイルは複数件を並べられる。1件目だけを読んで打ち切らないことを固める。 */
+    @Test
+    void ruleConfigFileSuppressesEveryListedRule() throws IOException {
+        Path dir = assets("warnmany", WARNING.replace("WARN1", "WARNMANY"));
+        Path config = tempDir.resolve("rule-config-many.json");
+        Files.writeString(config, "{\"version\": 1, \"disabledRules\": [\"R001\", \"R008\"]}",
+                StandardCharsets.UTF_8);
+
+        int exitCode = new CommandLine(new Main()).execute("lint", dir.toString(),
+                "--sarif", tempDir.resolve("warnmany.sarif").toString(),
+                "--rule-config", config.toString());
+
+        assertEquals(0, exitCode, "並べた R001・R008 のいずれも無効化されること");
+    }
+
+    /**
+     * 未作成の設定ファイルは、1件も無効にしていない設定として扱う。GUI は設定の有無に
+     * かかわらず --rule-config を常に渡すため、入れたばかりの環境ではファイルがまだ無い。
+     */
+    @Test
+    void missingRuleConfigFileDisablesNothing() throws IOException {
+        Path dir = assets("cfgmiss", CLEAN.replace("CLEAN1", "CFGMISS"));
+
+        int exitCode = new CommandLine(new Main()).execute("lint", dir.toString(),
+                "--sarif", tempDir.resolve("cfgmiss.sarif").toString(),
+                "--rule-config", tempDir.resolve("absent.json").toString());
+
+        assertEquals(0, exitCode, "指摘の無い資産は、設定ファイルが無くてもそのまま通ること");
     }
 
     @Test

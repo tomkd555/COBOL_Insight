@@ -8,6 +8,7 @@ import jp.cobolinsight.persistence.model.EncodingInfoRecord;
 import jp.cobolinsight.persistence.model.FindingRecord;
 import jp.cobolinsight.persistence.model.LineMapRecord;
 import jp.cobolinsight.persistence.model.NodeRecord;
+import jp.cobolinsight.persistence.model.ParagraphEdgeRecord;
 import jp.cobolinsight.persistence.model.ParagraphRecord;
 import jp.cobolinsight.persistence.model.ProgramRecord;
 import jp.cobolinsight.persistence.model.SourceRecord;
@@ -23,7 +24,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-/** 12表の挿入・取得、呼出関係グラフの到達性問い合わせ、ソース単位の全消去を行う。 */
+/** 13表の挿入・取得、呼出関係グラフの到達性問い合わせ、ソース単位の全消去を行う。 */
 public final class PersistenceDao {
 
     private final Connection connection;
@@ -168,6 +169,39 @@ public final class PersistenceDao {
                 id);
     }
 
+    // ---- PARAGRAPH_EDGE ----
+
+    public void insertParagraphEdge(ParagraphEdgeRecord edge) {
+        update("INSERT INTO PARAGRAPH_EDGE(id, program_source_id, from_paragraph, to_paragraph, "
+                        + "to_name, kind, line, seq) VALUES (?,?,?,?,?,?,?,?)",
+                edge.id(), edge.programSourceId(), edge.fromParagraph(), edge.toParagraph(),
+                edge.toName(), edge.kind(), edge.line(), edge.seq());
+    }
+
+    /** 指定プログラムの段落間の流れを、辺のID順(=段落の定義順・出辺の順)で返す。 */
+    public List<ParagraphEdgeRecord> findParagraphEdgesByProgram(long programSourceId) {
+        return queryList(SELECT_PARAGRAPH_EDGE + " WHERE program_source_id = ? ORDER BY id",
+                PersistenceDao::mapParagraphEdge, programSourceId);
+    }
+
+    private static final String SELECT_PARAGRAPH_EDGE =
+            "SELECT id, program_source_id, from_paragraph, to_paragraph, to_name, kind, line, seq "
+                    + "FROM PARAGRAPH_EDGE";
+
+    private static ParagraphEdgeRecord mapParagraphEdge(ResultSet rs) throws SQLException {
+        long id = rs.getLong("id");
+        long programSourceId = rs.getLong("program_source_id");
+        long fromParagraph = rs.getLong("from_paragraph");
+        long toParagraph = rs.getLong("to_paragraph");
+        Long to = rs.wasNull() ? null : toParagraph;
+        String toName = rs.getString("to_name");
+        String kind = rs.getString("kind");
+        int line = rs.getInt("line");
+        Integer lineOrNull = rs.wasNull() ? null : line;
+        return new ParagraphEdgeRecord(id, programSourceId, fromParagraph, to, toName, kind,
+                lineOrNull, rs.getInt("seq"));
+    }
+
     // ---- NODE / CALL_EDGE ----
 
     public void insertNode(NodeRecord node) {
@@ -194,31 +228,33 @@ public final class PersistenceDao {
     }
 
     public void insertCallEdge(CallEdgeRecord edge) {
-        update("INSERT INTO CALL_EDGE(id, from_node, to_node, kind, resolution, host_var) "
-                        + "VALUES (?,?,?,?,?,?)",
+        update("INSERT INTO CALL_EDGE(id, from_node, to_node, kind, resolution, host_var, seq, line) "
+                        + "VALUES (?,?,?,?,?,?,?,?)",
                 edge.id(), edge.fromNode(), edge.toNode(), edge.kind(), edge.resolution(),
-                edge.hostVar());
+                edge.hostVar(), edge.seq(), edge.line());
     }
 
     public Optional<CallEdgeRecord> findCallEdge(long id) {
-        return queryOne("SELECT id, from_node, to_node, kind, resolution, host_var FROM CALL_EDGE "
-                + "WHERE id = ?", PersistenceDao::mapCallEdge, id);
+        return queryOne(SELECT_CALL_EDGE + " WHERE id = ?", PersistenceDao::mapCallEdge, id);
     }
 
     public List<CallEdgeRecord> findAllCallEdges() {
-        return queryList("SELECT id, from_node, to_node, kind, resolution, host_var FROM CALL_EDGE "
-                + "ORDER BY id", PersistenceDao::mapCallEdge);
+        return queryList(SELECT_CALL_EDGE + " ORDER BY id", PersistenceDao::mapCallEdge);
     }
 
+    /** 指定ノードの出辺。順序は辺のID順であり、原本の順序は各辺の seq が表す。 */
     public List<CallEdgeRecord> findEdgesFrom(long nodeId) {
-        return queryList("SELECT id, from_node, to_node, kind, resolution, host_var FROM CALL_EDGE "
-                + "WHERE from_node = ?", PersistenceDao::mapCallEdge, nodeId);
+        return queryList(SELECT_CALL_EDGE + " WHERE from_node = ? ORDER BY id",
+                PersistenceDao::mapCallEdge, nodeId);
     }
 
     public List<CallEdgeRecord> findEdgesTo(long nodeId) {
-        return queryList("SELECT id, from_node, to_node, kind, resolution, host_var FROM CALL_EDGE "
-                + "WHERE to_node = ?", PersistenceDao::mapCallEdge, nodeId);
+        return queryList(SELECT_CALL_EDGE + " WHERE to_node = ? ORDER BY id",
+                PersistenceDao::mapCallEdge, nodeId);
     }
+
+    private static final String SELECT_CALL_EDGE =
+            "SELECT id, from_node, to_node, kind, resolution, host_var, seq, line FROM CALL_EDGE";
 
     public void deleteCallEdgesFrom(long nodeId, String kind) {
         update("DELETE FROM CALL_EDGE WHERE from_node = ? AND kind = ?", nodeId, kind);
@@ -262,8 +298,16 @@ public final class PersistenceDao {
     }
 
     private static CallEdgeRecord mapCallEdge(ResultSet rs) throws SQLException {
-        return new CallEdgeRecord(rs.getLong("id"), rs.getLong("from_node"), rs.getLong("to_node"),
-                rs.getString("kind"), rs.getString("resolution"), rs.getString("host_var"));
+        long id = rs.getLong("id");
+        long fromNode = rs.getLong("from_node");
+        long toNode = rs.getLong("to_node");
+        String kind = rs.getString("kind");
+        String resolution = rs.getString("resolution");
+        String hostVar = rs.getString("host_var");
+        int seq = rs.getInt("seq");
+        int line = rs.getInt("line");
+        return new CallEdgeRecord(id, fromNode, toNode, kind, resolution, hostVar, seq,
+                rs.wasNull() ? null : line);
     }
 
     // ---- FINDING ----

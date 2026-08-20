@@ -29,13 +29,13 @@ public final class CursorDeclarationRule implements Rule {
     public RuleDoc doc() {
         return RuleDoc.named("カーソルの適切な宣言・後始末の確認", "性能")
                 .summary("更新を伴わないのに FOR READ ONLY・FOR FETCH ONLY の"
-                        + "いずれも指定していないカーソル宣言を指摘する。")
+                        + "いずれも指定していないカーソル宣言を指摘します。")
                 .rationale("更新可能カーソルとして扱われるため、"
-                        + "必要のない行ロックを取ってロック競合を招く。")
+                        + "必要のない行ロックを取ってロック競合を招きます。")
                 .detection("DECLARE CURSOR のうち FOR UPDATE を持たず、"
-                        + "FOR READ ONLY・FOR FETCH ONLY のいずれも持たないものを指摘する。"
-                        + "OPEN と CLOSE の突合は R019 が担う。")
-                .remedy("参照だけのカーソルへ FOR READ ONLY を付ける。")
+                        + "FOR READ ONLY・FOR FETCH ONLY のいずれも持たないものを指摘します。"
+                        + "OPEN と CLOSE の突合は R019 が担います。")
+                .remedy("参照だけのカーソルへ FOR READ ONLY を付けます。")
                 .example("""
                         EXEC SQL DECLARE CUR-CUST CURSOR FOR
                             SELECT ID, NAME FROM CUSTOMER END-EXEC.

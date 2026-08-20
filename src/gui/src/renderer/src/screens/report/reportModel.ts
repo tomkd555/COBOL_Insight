@@ -8,7 +8,10 @@
  * 指摘一覧・SQL指摘が常に含まれる。
  */
 
-import type { ReportFormat, ScreenMode } from "../../state/appState";
+import type { AnalysisMode } from "../../state/projectStore";
+
+/** レポートの出力形式。 */
+export type ReportFormat = "HTML" | "テキスト";
 
 /** --db 未指定時に engine が使う既定のプロジェクトファイル名。 */
 const DEFAULT_DB_FILE = "cobol-insight.db";
@@ -139,9 +142,9 @@ export function exitCodeWarning(exitCode: number): string | null {
     return null;
   }
   if (exitCode === 1) {
-    return "警告のある指摘を含む。レポート本体は書き出されている。";
+    return "警告のある指摘を含みます。レポート本体は書き出しています。";
   }
-  return "エラーのある指摘、または解析の失敗を含む。レポート本体は書き出されているが、対象資産の一部が解析できていない可能性がある。";
+  return "エラーのある指摘、または解析の失敗を含みます。レポート本体は書き出していますが、対象資産の一部を解析できていない可能性があります。";
 }
 
 /** 書き出し完了の通知文。engine が書いた2つのファイルのパスを示す。 */
@@ -151,7 +154,7 @@ export function writeNotice(paths: ReportPaths): string {
 
 /** レポート画面の4状態を、解析ライフサイクルとレポートの取得状態から導く。 */
 export function deriveReportView(
-  mode: ScreenMode,
+  mode: AnalysisMode,
   inputDir: string | null,
   report: ReportState,
 ): ReportView {

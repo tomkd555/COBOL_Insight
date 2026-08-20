@@ -46,12 +46,12 @@ public final class StringOverflowRule implements Rule {
     public RuleDoc doc() {
         return RuleDoc.named("STRING/UNSTRING文の受信領域あふれ", "データ移動")
                 .summary("STRING の連結結果が受信項目に収まらない、または UNSTRING の"
-                        + "送信項目が受信項目群に収まらない構成を検出する。")
+                        + "送信項目が受信項目群に収まらない構成を検出します。")
                 .rationale("収まらない分が切り捨てられ、"
-                        + "連結した文字列や分割した結果が途中で欠ける。")
+                        + "連結した文字列や分割した結果が途中で欠けます。")
                 .detection("送信側の合計長と受信側の長さをバイト長で突き合わせ、"
-                        + "超えるものを検出する。長さを解決できない項目を含む文は対象外とする。")
-                .remedy("受信項目の長さを広げるか、ON OVERFLOW 句であふれ時の処理を書く。")
+                        + "超えるものを検出します。長さを解決できない項目を含む文は対象外とします。")
+                .remedy("受信項目の長さを広げるか、ON OVERFLOW 句であふれ時の処理を書きます。")
                 .example("""
                         01  WS-OUT  PIC X(10).
                             STRING WS-A WS-B DELIMITED BY SIZE INTO WS-OUT.

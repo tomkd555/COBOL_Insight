@@ -22,9 +22,13 @@ import EditorWorker from "monaco-editor/editor/editor.worker?worker&inline";
 // 参照されるため file:// からも読める。
 import "monaco-editor/features/codicon/register";
 
-/** Monaco が Worker 生成時に参照する global。 */
+/**
+ * Monaco が Worker 生成時に参照する global。ciMonaco は実描画 smoke(smoke/render.cjs)が
+ * 本文へ打鍵するための口である。面の実体は Monaco が持ち、DOM からは辿れない。
+ */
 interface MonacoWorkerHost {
   MonacoEnvironment: monaco.Environment;
+  ciMonaco: typeof monaco;
 }
 
 let configured = false;
@@ -32,9 +36,9 @@ let configured = false;
 /** Worker 生成を配線した Monaco の API を返す。配線は1度だけ行う。 */
 export function monacoEditor(): typeof monaco {
   if (!configured) {
-    (self as unknown as MonacoWorkerHost).MonacoEnvironment = {
-      getWorker: () => new EditorWorker(),
-    };
+    const host = self as unknown as MonacoWorkerHost;
+    host.MonacoEnvironment = { getWorker: () => new EditorWorker() };
+    host.ciMonaco = monaco;
     configured = true;
   }
   return monaco;

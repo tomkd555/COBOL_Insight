@@ -22,9 +22,7 @@ export function UserRuleList({
 }: UserRuleListProps): ReactElement {
   if (rules.length === 0) {
     return (
-      <p className="ci-user-rules__empty">
-        利用者定義ルールはまだ1件もない。「ルールを追加」から、正規表現で検出する検査を作れる。
-      </p>
+      <p className="ci-user-rules__empty">利用者定義ルールはまだありません。</p>
     );
   }
   return (

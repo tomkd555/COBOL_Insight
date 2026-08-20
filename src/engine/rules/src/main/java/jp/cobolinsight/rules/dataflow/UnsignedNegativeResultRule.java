@@ -42,13 +42,13 @@ public final class UnsignedNegativeResultRule implements Rule {
     public RuleDoc doc() {
         return RuleDoc.named("符号なし前提の数値項目への負値算出", "データ移動")
                 .summary("PICTURE に S を持たない項目へ、"
-                        + "負になり得る演算結果を格納する箇所を検出する。")
+                        + "負になり得る演算結果を格納する箇所を検出します。")
                 .rationale("符号なし項目は符号を保持しないため、"
-                        + "負の結果が絶対値として格納され、以後の比較と集計が誤る。")
+                        + "負の結果が絶対値として格納され、以後の比較と集計が誤ります。")
                 .detection("SUBTRACT・COMPUTE の受信項目のうち、算術文の後続位置での区間値域が"
-                        + "負を含み得るもので、受信項目の PICTURE に S が無いものを検出する。")
-                .remedy("受信項目の PICTURE へ S を付ける。"
-                        + "負にならない前提なら、その条件を演算前に検査する。")
+                        + "負を含み得るもので、受信項目の PICTURE に S が無いものを検出します。")
+                .remedy("受信項目の PICTURE へ S を付けます。"
+                        + "負にならない前提なら、その条件を演算前に検査します。")
                 .example("""
                         01  WS-DIFF  PIC 9(5).
                             COMPUTE WS-DIFF = WS-A - WS-B.

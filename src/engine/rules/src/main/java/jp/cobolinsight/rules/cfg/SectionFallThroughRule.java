@@ -37,12 +37,12 @@ public final class SectionFallThroughRule implements Rule {
     public RuleDoc doc() {
         return RuleDoc.named("セクション末尾のEXIT文欠如によるフォールスルー", "制御フロー")
                 .summary("末尾が EXIT・終了文・無条件 GO TO のいずれでもなく、"
-                        + "次の節へ流れ落ちる節を検出する。")
+                        + "次の節へ流れ落ちる節を検出します。")
                 .rationale("PERFORM で呼ぶ設計の節が、直接実行されたときに次の節まで続けて"
-                        + "実行され、二重処理や順序の狂いを生む。")
+                        + "実行され、二重処理や順序の狂いを生みます。")
                 .detection("節の末尾が EXIT・STOP・GOBACK・EXIT PROGRAM・無条件 GO TO の"
-                        + "いずれでもないものを検出する。")
-                .remedy("節の末尾に EXIT 段落を置き、そこで処理を閉じる。")
+                        + "いずれでもないものを検出します。")
+                .remedy("節の末尾に EXIT 段落を置き、そこで処理を閉じます。")
                 .example("""
                         CALC-SEC SECTION.
                             COMPUTE WS-TAX = WS-AMT * 0.10.

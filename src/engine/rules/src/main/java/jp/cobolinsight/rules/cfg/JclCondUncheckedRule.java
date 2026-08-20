@@ -27,12 +27,12 @@ public final class JclCondUncheckedRule implements Rule {
     @Override
     public RuleDoc doc() {
         return RuleDoc.named("JCLステップ間の条件コード(COND)未検査", "JCL制御")
-                .summary("ジョブの2番目以降のステップで COND 句を持たないものを検出する。")
+                .summary("ジョブの2番目以降のステップで COND 句を持たないものを検出します。")
                 .rationale("先行ステップが異常終了しても後続が実行され、"
-                        + "不完全なデータのまま処理が進む。")
-                .detection("ジョブの2番目以降の EXEC ステップのうち、COND 句を持たないものを検出する。")
+                        + "不完全なデータのまま処理が進みます。")
+                .detection("ジョブの2番目以降の EXEC ステップのうち、COND 句を持たないものを検出します。")
                 .remedy("COND 句を付けるか、IF/THEN/ELSE で先行ステップの戻り値を"
-                        + "判定してから実行する。")
+                        + "判定してから実行します。")
                 .example("""
                         //STEP02 EXEC PGM=SYK002
                         """, """

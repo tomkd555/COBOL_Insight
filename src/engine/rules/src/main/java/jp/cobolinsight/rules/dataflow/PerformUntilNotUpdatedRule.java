@@ -57,13 +57,13 @@ public final class PerformUntilNotUpdatedRule implements Rule {
     public RuleDoc doc() {
         return RuleDoc.named("終了条件が更新されないPERFORM UNTILループ", "制御フロー")
                 .summary("終了条件に使う変数が、ループ本体のどこでも更新されない"
-                        + "PERFORM UNTIL を検出する。")
-                .rationale("条件が変わらないためループから抜けられず、処理が止まる。")
+                        + "PERFORM UNTIL を検出します。")
+                .rationale("条件が変わらないためループから抜けられず、処理が止まります。")
                 .detection("UNTIL 条件の変数が、ループ本体のどの文からも更新されず"
-                        + "本体テキストにも現れないものを検出する。88レベル条件名は親項目へ解決し、"
-                        + "SQLCODE などの特殊レジスタと VARYING の制御変数は更新済みとみなす。")
-                .remedy("ループ本体で条件変数を更新する。読み取り終端など外部の事象で終わる場合は、"
-                        + "その結果を条件変数へ反映する。")
+                        + "本体テキストにも現れないものを検出します。88レベル条件名は親項目へ解決し、"
+                        + "SQLCODE などの特殊レジスタと VARYING の制御変数は更新済みとみなします。")
+                .remedy("ループ本体で条件変数を更新します。読み取り終端など外部の事象で終わる場合は、"
+                        + "その結果を条件変数へ反映します。")
                 .example("""
                         PERFORM UNTIL WS-EOF = "Y"
                             READ CUST-FILE INTO WS-REC

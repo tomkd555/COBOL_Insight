@@ -8,25 +8,23 @@ export interface ShortcutEvent {
   readonly ctrlKey: boolean;
   readonly metaKey: boolean;
   readonly altKey: boolean;
+  readonly shiftKey: boolean;
   readonly target: EventTarget | null;
 }
+
+/** 判定の結果。該当しないキーは null。 */
+export type ShortcutCommand =
+  | "toggleSide"
+  | "toggleBottom"
+  | "nextTab"
+  | "previousTab"
+  | "closeTab";
 
 /** 文字を打ち込む要素。ここへ焦点があるときは画面全体のキー操作を働かせない。 */
 const TEXT_ENTRY_TAGS = ["INPUT", "TEXTAREA", "SELECT"];
 
 /** コードエディタ(Monaco)の根の目印。 */
 const CODE_EDITOR_SELECTOR = ".monaco-editor";
-
-/**
- * コードの最大化(Ctrl+B)か。検索欄へ文字を打っている間に横取りしないよう、入力欄・
- * 複数行入力・選択欄へ焦点があるときは働かせない。
- */
-export function isCodeFocusShortcut(event: ShortcutEvent): boolean {
-  if (!event.ctrlKey || event.metaKey || event.altKey || event.key.toLowerCase() !== "b") {
-    return false;
-  }
-  return !isTextEntry(event.target);
-}
 
 /**
  * 利用者が文字を打ち込んでいる欄か。
@@ -41,4 +39,35 @@ function isTextEntry(target: EventTarget | null): boolean {
     return false;
   }
   return target.closest(CODE_EDITOR_SELECTOR) === null;
+}
+
+/**
+ * キー操作を命令へ写し取る。Ctrl+B で側パネル、Ctrl+J で下部パネル、Ctrl+PageDown・PageUp で
+ * タブの移動、Ctrl+W でタブを閉じる。検索欄へ文字を打っている間に横取りしないよう、入力欄・
+ * 複数行入力・選択欄へ焦点があるときは働かせない。
+ */
+export function shortcutOf(event: ShortcutEvent): ShortcutCommand | null {
+  if (!event.ctrlKey || event.metaKey || event.altKey) {
+    return null;
+  }
+  if (isTextEntry(event.target)) {
+    return null;
+  }
+  switch (event.key) {
+    case "b":
+    case "B":
+      return "toggleSide";
+    case "j":
+    case "J":
+      return "toggleBottom";
+    case "w":
+    case "W":
+      return "closeTab";
+    case "PageDown":
+      return "nextTab";
+    case "PageUp":
+      return "previousTab";
+    default:
+      return null;
+  }
 }

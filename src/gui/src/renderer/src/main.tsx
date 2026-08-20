@@ -2,16 +2,18 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import "./assets/fonts.css";
-import "./styles/tokens.css";
+import "./styles/theme.css";
+import "./styles/tokens.project.css";
 import "./styles/base.css";
 import "./shell/Shell.css";
 import "./components/components.css";
-import "./screens/explorer/explorer.css";
-import "./screens/import/import.css";
-import "./screens/graph/graph.css";
-import "./screens/findings/findings.css";
+import "./sidebar/sidebar.css";
+import "./panel/panel.css";
+import "./dialogs/dialogs.css";
+// タブの中身が使う部品のスタイル。部品は screens/ に置いたまま、タブから読み込む。
 import "./screens/viewer/viewer.css";
 import "./screens/diff/diff.css";
+import "./screens/graph/graph.css";
 import "./screens/report/report.css";
 import "./screens/settings/settings.css";
 

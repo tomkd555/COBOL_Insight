@@ -40,8 +40,8 @@ export function CopybookPathList({
     <div className="ci-paths">
       {paths.length === 0 ? (
         <p className="ci-paths__empty">
-          コピー句探索パスは未設定である。未設定のとき解析エンジンは資産フォルダ配下の
-          copybook・copy を探索する。
+          コピー句探索パスはまだありません。指定しないとき、解析エンジンは資産フォルダ配下の
+          copybook・copy を探します。
         </p>
       ) : (
         <ol className="ci-paths__list">
@@ -51,7 +51,7 @@ export function CopybookPathList({
               <span className="ci-paths__path">
                 {path}
                 {existence[path] === false ? (
-                  <span className="ci-paths__missing"> ⚠ フォルダが見つからない</span>
+                  <span className="ci-paths__missing"> ⚠ フォルダが見つかりません</span>
                 ) : null}
               </span>
               <Button

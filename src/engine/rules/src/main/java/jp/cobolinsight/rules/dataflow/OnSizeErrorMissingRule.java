@@ -60,14 +60,14 @@ public final class OnSizeErrorMissingRule implements Rule {
     public RuleDoc doc() {
         return RuleDoc.named("ON SIZE ERROR句の欠如", "例外処理")
                 .summary("結果が受信項目の桁を超え得るのに ON SIZE ERROR 句を持たない"
-                        + "算術文を検出する。")
+                        + "算術文を検出します。")
                 .rationale("桁あふれが起きても検知されず、上位桁を失った値が"
-                        + "そのまま後続の計算と出力へ渡る。")
+                        + "そのまま後続の計算と出力へ渡ります。")
                 .detection("ADD・SUBTRACT・MULTIPLY・DIVIDE・COMPUTE のうち、ON SIZE ERROR 句が無く、"
                         + "区間値域解析による結果の範囲が受信項目の整数部の容量を超え得る"
-                        + "(範囲が定まらない場合を含む)ものを検出する。"
-                        + "受信項目自身を被加算に含む累算は対象外とする。")
-                .remedy("ON SIZE ERROR 句を付けて桁あふれ時の処理を書くか、受信項目の桁を広げる。")
+                        + "(範囲が定まらない場合を含む)ものを検出します。"
+                        + "受信項目自身を被加算に含む累算は対象外とします。")
+                .remedy("ON SIZE ERROR 句を付けて桁あふれ時の処理を書くか、受信項目の桁を広げます。")
                 .example("""
                         01  WS-RESULT  PIC 9(4).
                             COMPUTE WS-RESULT = WS-QTY * WS-PRICE.

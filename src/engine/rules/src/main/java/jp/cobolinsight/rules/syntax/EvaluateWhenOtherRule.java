@@ -30,12 +30,12 @@ public final class EvaluateWhenOtherRule implements Rule {
     @Override
     public RuleDoc doc() {
         return RuleDoc.named("EVALUATE文のWHEN OTHER欠如", "制御フロー")
-                .summary("WHEN OTHER 句を持たない EVALUATE 文を検出する。")
+                .summary("WHEN OTHER 句を持たない EVALUATE 文を検出します。")
                 .rationale("どの WHEN にも一致しない値が何の処理も受けずに素通りするため、"
-                        + "想定外の入力が記録も通知もされないまま無視される。")
+                        + "想定外の入力が記録も通知もされないまま無視されます。")
                 .detection("分岐の複合文のうち EVALUATE 文を対象とし、"
-                        + "ラベル OTHER のブロックを持たないものを検出する。IF 文は対象外とする。")
-                .remedy("WHEN OTHER 句を置き、想定外の値に対する処理(異常扱い・既定値の設定)を書く。")
+                        + "ラベル OTHER のブロックを持たないものを検出します。IF 文は対象外とします。")
+                .remedy("WHEN OTHER 句を置き、想定外の値に対する処理(異常扱い・既定値の設定)を書きます。")
                 .example("""
                         EVALUATE WS-KBN
                             WHEN "1" PERFORM SHINKI-SHORI

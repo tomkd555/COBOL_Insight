@@ -52,10 +52,7 @@ export function GraphLegend(): ReactElement {
           </span>
         </li>
       </ul>
-      <p className="ci-graph-legend__note">
-        エッジ種別は色と矢頭の形で示す。線種は解決根拠だけを表し、破線は動的・条件付き・未確定の
-        呼出である。未解決の動的 CALL は「可能経路」として示し、完全に解決したように見せない。
-      </p>
+      <p className="ci-graph-legend__note">破線は動的・条件付き・未確定の呼出です。</p>
     </div>
   );
 }

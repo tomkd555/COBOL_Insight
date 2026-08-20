@@ -28,6 +28,8 @@ export interface SqlRow {
   textOrNull(column: string): string | null;
   /** 整数列。NULL・非数値は fallback。 */
   int(column: string, fallback: number): number;
+  /** NULL 可の整数列(CALL_EDGE.line 等)。 */
+  intOrNull(column: string): number | null;
 }
 
 function rowReader(values: SqlCellValue[], index: Map<string, number>): SqlRow {
@@ -47,6 +49,10 @@ function rowReader(values: SqlCellValue[], index: Map<string, number>): SqlRow {
     int: (column, fallback) => {
       const value = cell(column);
       return typeof value === "number" ? value : fallback;
+    },
+    intOrNull: (column) => {
+      const value = cell(column);
+      return typeof value === "number" ? value : null;
     },
   };
 }

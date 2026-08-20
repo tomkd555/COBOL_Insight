@@ -1,6 +1,6 @@
 import { app, BrowserWindow, Menu, screen } from "electron";
 import { join } from "node:path";
-import { registerEngineIpc, stopRunningEngine } from "./ipc";
+import { migrateRuleConfig, registerEngineIpc, stopRunningEngine } from "./ipc";
 import { ensureWritable, resolvePortableUserData } from "./portable";
 import { buildWindowOptions } from "./windowOptions";
 
@@ -54,6 +54,10 @@ app.whenReady().then(() => {
     Menu.setApplicationMenu(null);
   }
   registerEngineIpc();
+  // 無効ルールの置き場所を settings.json から rules-config.json へ移す。移せなくても起動は続ける。
+  migrateRuleConfig().catch((error: unknown) => {
+    console.error("[main] ルール設定の移行に失敗した", error);
+  });
   createWindow();
 
   app.on("activate", () => {

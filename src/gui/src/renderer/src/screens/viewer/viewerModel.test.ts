@@ -28,13 +28,12 @@ import {
   isTranspileTarget,
   linkSummary,
   metricsEqual,
-  originScreen,
   selectGeneratedFile,
   toDocument,
   transpileOutDir,
-  viewerFileOptions,
 } from "./viewerModel";
-import { SAMPLE_INVENTORY } from "../explorer/fixtures";
+import { SAMPLE_INVENTORY } from "../../data/__fixtures__/samples";
+import { FIXTURE_CATALOG } from "../../data/__fixtures__/catalog";
 
 const FILES: readonly TranspileGeneratedFile[] = [
   { name: "syk001.py", language: "python", text: "print(1)\n" },
@@ -162,37 +161,13 @@ describe("identificationRanges(識別欄 73〜80桁)", () => {
   });
 });
 
-describe("viewerFileOptions・isTranspileTarget(表示対象の資産)", () => {
-  it("資産一覧の相対パスをそのまま選択肢にする", () => {
-    expect(viewerFileOptions(SAMPLE_INVENTORY).map((option) => option.value)).toEqual([
-      "bms/SYKMAP1.bms",
-      "cobol/SYK001.cbl",
-      "cobol/SYK002.cbl",
-      "cobol/SYKENC1.cbl",
-      "copybook/SYKCPY1.cpy",
-      "jcl/SYKD010.jcl",
-    ]);
-  });
-
-  it("逐語対訳の対象は COBOL 本体(NODE.type=PROGRAM)に限る", () => {
+describe("isTranspileTarget(逐語対訳の対象)", () => {
+  it("対象は COBOL 本体(NODE.type=PROGRAM)に限る", () => {
     const program = SAMPLE_INVENTORY.find((item) => item.path === "cobol/SYK001.cbl");
     const copybook = SAMPLE_INVENTORY.find((item) => item.path === "copybook/SYKCPY1.cpy");
     expect(isTranspileTarget(program ?? null)).toBe(true);
     expect(isTranspileTarget(copybook ?? null)).toBe(false);
     expect(isTranspileTarget(null)).toBe(false);
-  });
-});
-
-describe("originScreen(ジャンプ元への戻り導線)", () => {
-  it("ジャンプ文言の先頭にある画面名から遷移元を引く", () => {
-    expect(originScreen("指摘一覧 から cobol/SYK001.cbl:85 へジャンプ")).toBe("findings");
-    expect(originScreen("SQL指摘 から cobol/SYK007.cbl:84 へジャンプ")).toBe("sql");
-    expect(originScreen("呼出関係図 から cobol/SYK002.cbl を表示")).toBe("graph");
-  });
-
-  it("画面名で始まらない文言と未設定では戻り先を持たない", () => {
-    expect(originScreen("どこからか")).toBeNull();
-    expect(originScreen(null)).toBeNull();
   });
 });
 
@@ -215,7 +190,7 @@ describe("linkSummary(相互ハイライトの状態)", () => {
   it("対応が無い行はその旨を示す", () => {
     const linked = linkFromCobolLine(index, 5);
     expect(linkSummary(linked.cobolLines, linked.generatedLines)).toBe(
-      "カーソル行に対応する行はない（逐語対訳の対応表に無い行）",
+      "カーソル行に対応する行はありません",
     );
   });
 });
@@ -229,13 +204,13 @@ describe("findingLinesOf(表示中のファイルの指摘を行ごとに集約�
   ];
 
   it("表示中のファイルの指摘だけを行番号昇順にまとめる", () => {
-    expect(findingLinesOf(FINDINGS, "cobol/SYK001.cbl").map((line) => line.line)).toEqual([11, 12]);
-    expect(findingLinesOf(FINDINGS, "cobol/SYK002.cbl").map((line) => line.line)).toEqual([11]);
-    expect(findingLinesOf(FINDINGS, "cobol/SYK009.cbl")).toEqual([]);
+    expect(findingLinesOf(FIXTURE_CATALOG, FINDINGS, "cobol/SYK001.cbl").map((line) => line.line)).toEqual([11, 12]);
+    expect(findingLinesOf(FIXTURE_CATALOG, FINDINGS, "cobol/SYK002.cbl").map((line) => line.line)).toEqual([11]);
+    expect(findingLinesOf(FIXTURE_CATALOG, FINDINGS, "cobol/SYK009.cbl")).toEqual([]);
   });
 
   it("同じ行の指摘は最も重い重大度で示し、件数と内訳を持つ", () => {
-    const line = findingLinesOf(FINDINGS, "cobol/SYK001.cbl")[1];
+    const line = findingLinesOf(FIXTURE_CATALOG, FINDINGS, "cobol/SYK001.cbl")[1];
     expect(line.count).toBe(2);
     // R008 は中・R009 は警告なので、重い方の中で行を示し、内訳も重い順に並べる。
     expect(line.severity).toBe("medium");
@@ -243,7 +218,7 @@ describe("findingLinesOf(表示中のファイルの指摘を行ごとに集約�
   });
 
   it("重大度と名称はルールカタログから引く(SARIF の level ではない)", () => {
-    const line = findingLinesOf(FINDINGS, "cobol/SYK001.cbl")[0];
+    const line = findingLinesOf(FIXTURE_CATALOG, FINDINGS, "cobol/SYK001.cbl")[0];
     expect(line.entries).toEqual([
       {
         ruleId: "R001",
@@ -255,7 +230,7 @@ describe("findingLinesOf(表示中のファイルの指摘を行ごとに集約�
   });
 
   it("ホバー本文は件数・記号・重大度・ルール ID・ルール名・根拠を持つ", () => {
-    const text = findingHoverText(findingLinesOf(FINDINGS, "cobol/SYK001.cbl")[1]);
+    const text = findingHoverText(findingLinesOf(FIXTURE_CATALOG, FINDINGS, "cobol/SYK001.cbl")[1]);
     expect(text).toContain("この行の指摘 2 件");
     expect(text).toContain("◆ 中");
     expect(text).toContain("R008");
@@ -504,7 +479,7 @@ describe("buildExpansionZones(COPY 文の位置へ差し込む展開)", () => {
       text: "      * 受注レコード                                                CPY00110",
       restored: true,
     });
-    expect(zone.note).toContain("注記行は原本から補う");
+    expect(zone.note).toContain("注記行は原本から補います");
   });
 
   it("原本を読めないときは空行のまま示し、空に見える理由を添える", () => {
@@ -546,14 +521,12 @@ describe("copyExpansionSummary(展開の状態の1行表示)", () => {
     lines: [],
   };
 
-  it("閉じているあいだは件数と、展開すると何が起きるかを示す", () => {
-    expect(copyExpansionSummary(STATEMENTS, { status: "idle" })).toBe(
-      "COPY 文 2 件 ― 展開すると取り込んだ行を COPY 文の位置へ差し込む",
-    );
+  it("閉じているあいだは件数を示す", () => {
+    expect(copyExpansionSummary(STATEMENTS, { status: "idle" })).toBe("COPY 文 2 件");
   });
 
   it("読込中と取得失敗は、空表示に潰さずそれぞれの理由を示す", () => {
-    expect(copyExpansionSummary(STATEMENTS, { status: "loading" })).toContain("読み込んでいる");
+    expect(copyExpansionSummary(STATEMENTS, { status: "loading" })).toContain("読み込んでいます");
     expect(copyExpansionSummary(STATEMENTS, { status: "error", message: "ファイルが無い" })).toContain(
       "ファイルが無い",
     );
@@ -566,7 +539,7 @@ describe("copyExpansionSummary(展開の状態の1行表示)", () => {
       copybookLines: new Map<string, readonly string[]>(),
     } as const;
     expect(copyExpansionSummary(STATEMENTS, state)).toBe(
-      "COPY 文 2 件のうち 1 件を展開中（1 件は展開データが無い）",
+      "COPY 文 2 件のうち 1 件を展開中（1 件は展開データがありません）",
     );
     expect(copyExpansionSummary(STATEMENTS.slice(0, 1), state)).toBe(
       "COPY 文 1 件のうち 1 件を展開中",

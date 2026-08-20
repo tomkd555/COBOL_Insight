@@ -20,6 +20,8 @@
 .ci-fix-list {
   width: var(--ci-diff-list-w);
   max-width: calc(100% - var(--ci-opposite-min));
+  /* 下限は文字の大きさで測る。px で測ると拡大時に一覧だけが潰れて読めなくなる。 */
+  min-width: 14em;
   flex: none;
   display: flex;
   flex-direction: column;
@@ -34,6 +36,9 @@
   font-size: var(--ci-fs-sm);
   font-weight: 700;
   color: var(--ci-text-heading);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .ci-fix-list__items {
   flex: 1;
@@ -127,7 +132,8 @@
   min-width: 0;
 }
 /*
- * ツールバー。Monaco へ届くまでの段数を減らすため、折り返さず1行に収める。題目が長い場合は
+ * ツールバー。通常幅では1行に収まる。ページ拡大などで幅が足りないときは折り返す。
+ * クリップで隠すとボタンへ届かなくなるため、overflow は指定しない。題目が長い場合は
  * 省略記号で切る(全文は一覧のカードが示す)。
  */
 .ci-diff__toolbar {
@@ -135,19 +141,22 @@
   display: flex;
   align-items: center;
   gap: var(--ci-space-2);
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   padding: var(--ci-space-1) var(--ci-space-4);
   border-bottom: 1px solid var(--ci-border-soft);
-  overflow: hidden;
 }
 .ci-diff__heading {
   display: flex;
+  flex: 1 1 0;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: var(--ci-space-2);
   min-width: 0;
 }
 .ci-diff__title {
   margin: 0;
+  /* 幅が足りないときも題目が先に消えないよう下限を持つ。切り詰めは省略記号で示す */
+  min-width: 6em;
   font-size: var(--ci-fs-md);
   font-weight: 700;
   white-space: nowrap;
@@ -155,16 +164,19 @@
   text-overflow: ellipsis;
 }
 .ci-diff__subtitle {
-  flex: none;
+  flex: 0 1 auto;
   font-size: var(--ci-fs-xs);
   color: var(--ci-text-muted);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .ci-diff__spacer {
   flex: 1;
 }
 .ci-diff__modes {
   display: flex;
+  flex: none;
   gap: var(--ci-space-1);
 }
 
@@ -197,6 +209,7 @@
 
 /* 書き出し先と注意を束ねた1行。書き出しの操作そのものはツールバーの右端にある。 */
 .ci-diff__apply,
+.ci-diff__decision-note,
 .ci-diff__result {
   flex: none;
   margin: var(--ci-space-1) var(--ci-space-4) 0;
@@ -238,7 +251,8 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  /* ページ拡大でツールバーが多段になっても、差分本体が見える帯を確保する */
+  min-height: 12em;
   min-width: 0;
   margin: 0 var(--ci-space-4) var(--ci-space-2);
   border: 1px solid var(--ci-border);

@@ -36,14 +36,14 @@ public final class CicsReturnMissingRule implements Rule {
     public RuleDoc doc() {
         return RuleDoc.named("CICS RETURN文欠如による疑似会話の途絶", "制御フロー")
                 .summary("EXEC CICS RETURN TRANSID を1つも持たないまま終端に達する"
-                        + "CICS 参加プログラムを検出する。")
+                        + "CICS 参加プログラムを検出します。")
                 .rationale("制御が CICS へ戻らず、次の入力を受け付ける状態が作られないため、"
-                        + "疑似会話が途切れて端末が応答しなくなる。")
+                        + "疑似会話が途切れて端末が応答しなくなります。")
                 .detection("自プログラムに CICS ブロックを持つか、他プログラムの XCTL・LINK・START の"
                         + "遷移先であるプログラムを CICS 参加とみなし、"
-                        + "RETURN TRANSID の有無で判定する。")
+                        + "RETURN TRANSID の有無で判定します。")
                 .remedy("処理の終わりに EXEC CICS RETURN TRANSID を置き、"
-                        + "次に起動するトランザクションを指定する。")
+                        + "次に起動するトランザクションを指定します。")
                 .example("""
                         EXEC CICS SEND MAP('MAP01') MAPSET('MAPSET1') END-EXEC.
                         GOBACK.

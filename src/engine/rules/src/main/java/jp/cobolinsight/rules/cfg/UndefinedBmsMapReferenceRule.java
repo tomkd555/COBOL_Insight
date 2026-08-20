@@ -35,14 +35,14 @@ public final class UndefinedBmsMapReferenceRule implements Rule {
     public RuleDoc doc() {
         return RuleDoc.named("存在しないBMSマップ・フィールドの参照", "CICS")
                 .summary("BMS のマップ定義に無いマップセット・マップを参照する"
-                        + "EXEC CICS SEND/RECEIVE MAP を検出する。")
+                        + "EXEC CICS SEND/RECEIVE MAP を検出します。")
                 .rationale("定義の無いマップを指す送受信は実行時に失敗し、"
-                        + "画面が表示されないまま異常終了する。")
+                        + "画面が表示されないまま異常終了します。")
                 .detection("SEND MAP・RECEIVE MAP の MAP・MAPSET を BMS マップモデルと"
                         + "突き合わせ、マップセットが存在しない、"
-                        + "またはマップがそのマップセットに定義されていないものを検出する。")
+                        + "またはマップがそのマップセットに定義されていないものを検出します。")
                 .remedy("マップ名・マップセット名の綴りを BMS 定義と揃えるか、"
-                        + "不足しているマップを BMS へ定義する。")
+                        + "不足しているマップを BMS へ定義します。")
                 .example("""
                         EXEC CICS SEND MAP('MAPXX') MAPSET('MAPSET1') END-EXEC.
                         """, """

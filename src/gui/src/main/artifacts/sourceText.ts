@@ -10,12 +10,16 @@
 import { isAbsolute, relative, resolve } from "node:path";
 import type { SourceTextRequest, SourceTextResult } from "../../shared/engine-api";
 
-/** 読取と実体パス解決に要する最小のファイルシステム。main が fs/promises を束ねて渡す。 */
-export interface SourceFileSystem {
-  /** 絶対パスのファイルをバイト列として読む。 */
-  readBytes(absPath: string): Promise<Uint8Array>;
+/** 実体パスの解決だけを要する側(境界検査)の最小のファイルシステム。 */
+export interface RealPathResolver {
   /** symlink・接合を解決した実体の絶対パスを返す。存在しないパスでは例外を投げる。 */
   realPath(absPath: string): Promise<string>;
+}
+
+/** 読取と実体パス解決に要する最小のファイルシステム。main が fs/promises を束ねて渡す。 */
+export interface SourceFileSystem extends RealPathResolver {
+  /** 絶対パスのファイルをバイト列として読む。 */
+  readBytes(absPath: string): Promise<Uint8Array>;
 }
 
 /** 復号に用いる TextDecoder の encoding と、画面へ返すコードページ表示名。 */
@@ -96,20 +100,42 @@ export function decodeSourceText(
 }
 
 /**
+ * 資産フォルダ配下に限って対象ファイルの実体パスを解決する。境界外なら例外を投げる。
+ * 読取(readSourceText)と書き戻し(saveSource)の双方がこの1つの関門を通る。
+ *
+ * 許可する基準フォルダ(inputDir)は project.inputDir と project.copybookPaths のいずれかである。
+ * 境界は字面の解決だけでなく、symlink・接合を解決した実体パスでも判定する(基準フォルダの中に
+ * 外部を指す symlink を置いても抜けられない)。
+ */
+export async function resolveSourceFile(
+  fs: RealPathResolver,
+  inputDir: string,
+  path: string,
+): Promise<string> {
+  const absPath = resolveWithinInputDir(inputDir, path);
+  if (absPath === null) {
+    throw new Error(`資産フォルダの外にあるため扱えません: ${path}`);
+  }
+  const [realBase, realTarget] = await Promise.all([
+    fs.realPath(resolve(inputDir)),
+    fs.realPath(absPath),
+  ]);
+  if (resolveWithinInputDir(realBase, realTarget) === null) {
+    throw new Error(`資産フォルダの外にあるため扱えません: ${path}`);
+  }
+  return realTarget;
+}
+
+/**
  * 資産フォルダ配下のソースを読んで復号する。境界外のパスは読取前に拒み、復号非対応の
  * コードページではファイルへ触れずに unsupported を返す。
- *
- * 許可する基準フォルダ(request.inputDir)は project.inputDir と project.copybookPaths のいずれかで
- * ある。境界は字面の解決だけでなく、symlink・接合を解決した実体パスでも判定する(基準フォルダの
- * 中に外部を指す symlink を置いても抜けられない)。
  */
 export async function readSourceText(
   fs: SourceFileSystem,
   request: SourceTextRequest,
 ): Promise<SourceTextResult> {
-  const absPath = resolveWithinInputDir(request.inputDir, request.path);
-  if (absPath === null) {
-    throw new Error(`資産フォルダの外にあるため読み取れません: ${request.path}`);
+  if (resolveWithinInputDir(request.inputDir, request.path) === null) {
+    throw new Error(`資産フォルダの外にあるため扱えません: ${request.path}`);
   }
   if (resolveCodepage(request.codepage) === null) {
     return {
@@ -119,12 +145,6 @@ export async function readSourceText(
       unsupported: true,
     };
   }
-  const [realBase, realTarget] = await Promise.all([
-    fs.realPath(resolve(request.inputDir)),
-    fs.realPath(absPath),
-  ]);
-  if (resolveWithinInputDir(realBase, realTarget) === null) {
-    throw new Error(`資産フォルダの外にあるため読み取れません: ${request.path}`);
-  }
+  const realTarget = await resolveSourceFile(fs, request.inputDir, request.path);
   return decodeSourceText(await fs.readBytes(realTarget), request.codepage, request.maxLines);
 }

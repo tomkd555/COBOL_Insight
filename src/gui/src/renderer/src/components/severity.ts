@@ -29,7 +29,12 @@ export const SEVERITY_META: Record<Severity, SeverityMeta> = {
   warning: { severity: "warning", label: "推奨", symbol: "▲", colorVar: "var(--ci-sev-warning)", modifier: "warning" },
 };
 
-/** 画面表示ラベル(高/中/低/推奨)から Severity を引く対応表。ルールカタログの重大度欄が使う。 */
+/** しきい値以上の重大度(表示対象)。 */
+export function visibleSeverities(threshold: Severity): Severity[] {
+  return SEVERITY_ORDER.slice(0, SEVERITY_ORDER.indexOf(threshold) + 1);
+}
+
+/** 画面表示ラベル(高/中/低/推奨)から Severity を引く対応表。ルール一覧の重大度欄が使う。 */
 export const SEVERITY_BY_LABEL: Record<string, Severity> = {
   高: "high",
   中: "medium",

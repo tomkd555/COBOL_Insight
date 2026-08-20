@@ -4,7 +4,6 @@ import { emptyAppSettings, normalizeAppSettings } from "./appSettings";
 const SAVED = {
   version: 1,
   settings: {
-    disabledRules: ["R004", "S001"],
     severityThreshold: "medium",
     defaultEncoding: "手動: Shift_JIS",
     copybookPaths: ["C:\\資産\\copybook"],
@@ -60,8 +59,10 @@ describe("normalizeAppSettings", () => {
   });
 
   it("配列の中の文字列でない要素を落とす", () => {
-    const settings = normalizeAppSettings({ settings: { disabledRules: ["R004", 7, null] } });
-    expect(settings.disabledRules).toEqual(["R004"]);
+    const settings = normalizeAppSettings({
+      settings: { copybookPaths: ["C:\copy", 7, null] },
+    });
+    expect(settings.copybookPaths).toEqual(["C:\copy"]);
   });
 
   it("オブジェクトでない値は空として扱う", () => {

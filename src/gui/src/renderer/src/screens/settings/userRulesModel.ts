@@ -120,12 +120,12 @@ function scannableTextOf(raw: string, target: string, wholeLine: boolean): strin
 /** 試験結果の要約。件数と、走査した行数を示す。 */
 export function testResultLabel(result: PatternTestResult): string {
   if (result.error !== null) {
-    return `正規表現を解釈できない: ${result.error}`;
+    return `正規表現を解釈できませんでした: ${result.error}`;
   }
   if (result.scannedLines === 0) {
-    return "試験する本文を入力すると、どの行が指摘になるかを示す。";
+    return "";
   }
-  return `${result.scannedLines} 行を走査し、${result.matches.length} 件が一致した。`;
+  return `${result.scannedLines} 行を走査し、${result.matches.length} 件が一致しました。`;
 }
 
 /** 対象種別の表示名。engine の語彙(COBOL/COPYBOOK/BMS)を画面の呼び名へ写す。 */

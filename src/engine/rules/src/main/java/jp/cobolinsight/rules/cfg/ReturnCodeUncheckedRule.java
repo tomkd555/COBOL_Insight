@@ -37,13 +37,13 @@ public final class ReturnCodeUncheckedRule implements Rule {
     public RuleDoc doc() {
         return RuleDoc.named("呼び出し先プログラムの戻りコード(RETURN-CODE)未検査", "制御フロー")
                 .summary("RETURN-CODE を使う設計のプログラムで、"
-                        + "その検査を伴わない CALL を検出する。")
-                .rationale("呼び出し先の失敗に気付かないまま後続が進む。"
-                        + "同じプログラム内で検査している CALL と扱いが不揃いになる点も誤りの兆候である。")
+                        + "その検査を伴わない CALL を検出します。")
+                .rationale("呼び出し先の失敗に気付かないまま後続が進みます。"
+                        + "同じプログラム内で検査している CALL と扱いが不揃いになる点も誤りの兆候です。")
                 .detection("CALL の後、次の CALL または終端に達するまでの前方経路で"
-                        + "RETURN-CODE を条件参照しないものを検出する。"
-                        + "プログラム内で RETURN-CODE を1回以上参照している場合に限る。")
-                .remedy("CALL の直後に RETURN-CODE を判定し、正常値以外を異常として処理する。")
+                        + "RETURN-CODE を条件参照しないものを検出します。"
+                        + "プログラム内で RETURN-CODE を1回以上参照している場合に限ります。")
+                .remedy("CALL の直後に RETURN-CODE を判定し、正常値以外を異常として処理します。")
                 .example("""
                         CALL "SUBPGM2" USING WS-PARM.
                         MOVE WS-PARM TO WS-OUT.

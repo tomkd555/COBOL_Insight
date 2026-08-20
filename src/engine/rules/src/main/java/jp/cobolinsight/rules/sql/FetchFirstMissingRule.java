@@ -28,12 +28,12 @@ public final class FetchFirstMissingRule implements Rule {
     public RuleDoc doc() {
         return RuleDoc.named("FETCH FIRST句によるフェッチ件数制限の検討", "性能")
                 .summary("FETCH FIRST n ROWS ONLY 句を持たない"
-                        + "SELECT 文・カーソル宣言を指摘する。")
+                        + "SELECT 文・カーソル宣言を指摘します。")
                 .rationale("必要な件数が決まっている場合でも全件を取りに行き、"
-                        + "無駄な入出力と転送が生じる。")
+                        + "無駄な入出力と転送が生じます。")
                 .detection("SELECT 文・カーソル宣言に FETCH FIRST 句があるかどうかだけを見る、"
-                        + "構文一律の判定である。全件が要る問い合わせでは対処は不要になる。")
-                .remedy("取得件数が決まっている問い合わせへ FETCH FIRST n ROWS ONLY を付ける。")
+                        + "構文一律の判定です。全件が要る問い合わせでは対処は不要になります。")
+                .remedy("取得件数が決まっている問い合わせへ FETCH FIRST n ROWS ONLY を付けます。")
                 .example("""
                         SELECT ID, NAME FROM CUSTOMER ORDER BY ID
                         """, """
