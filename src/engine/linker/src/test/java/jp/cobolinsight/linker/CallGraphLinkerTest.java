@@ -189,6 +189,32 @@ class CallGraphLinkerTest {
         assertEquals(1, edge(result, "step:JOB1.STEP020", "program:PGMB").seq());
     }
 
+    /**
+     * 1つの呼出元の出辺は、辺を張る処理が分かれていても原本の行の順に番号が付くこと。CALL・
+     * EXEC CICS・Db2表参照はそれぞれ別の走査で辺を足すため、足した順のままでは前の行の
+     * EXEC CICS が後の行の CALL より後ろの番号になる。
+     */
+    @Test
+    void edgeSeqFollowsSourceLineAcrossTheSeparatePasses() {
+        CallRelation call = new CallRelation("PGMA", CallKind.STATIC, "PGMB",
+                range("PGMA.cbl", 300));
+        EmbeddedBlock xctl = new EmbeddedBlock(EmbeddedBlockKind.CICS_XCTL, "EXEC CICS XCTL",
+                Map.of("PROGRAM", "PGMC"), range("PGMA.cbl", 100));
+        SqlStatementModel select = new SqlStatementModel(SqlStatementKind.SELECT,
+                "SELECT A FROM T_ORDER", "SELECT A FROM T_ORDER", List.of(), List.of("T_ORDER"),
+                range("PGMA.cbl", 200), SqlStructureSignals.empty());
+        CobolSemanticModel caller = program("PGMA", List.of(), List.of(call), List.of(xctl));
+        LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(caller), List.of(),
+                List.of(), Map.of("PGMA", List.of(select)), Map.of()));
+
+        assertEquals(1, edge(result, "program:PGMA", "program:PGMC").seq(),
+                "100行目の EXEC CICS XCTL が1本目");
+        assertEquals(2, edge(result, "program:PGMA", "db2:T_ORDER").seq(),
+                "200行目のSQLが2本目");
+        assertEquals(3, edge(result, "program:PGMA", "program:PGMB").seq(),
+                "300行目の CALL が3本目");
+    }
+
     // ---- CALL: 静的・動的(定数伝播)・未解決 ----
 
     @Test

@@ -213,8 +213,13 @@ public final class CfgBuilder {
         return new Chain(node, ends);
     }
 
-    /** 実行を打ち切る文か。EXIT は EXIT PROGRAM のみ終端で、EXIT PARAGRAPH などは流下する。 */
-    private static boolean isTerminator(SimpleStatement statement) {
+    /**
+     * 実行を打ち切る文か。EXIT は EXIT PROGRAM のみ終端で、EXIT PARAGRAPH などは流下する。
+     *
+     * <p>段落間の流れを導く scan も同じ判定を要するため公開している。同じ COBOL の意味を
+     * 2箇所で書くと、片方だけが直った状態が起こる。
+     */
+    public static boolean isTerminator(SimpleStatement statement) {
         String verb = statement.verb();
         if ("STOP".equals(verb) || "GOBACK".equals(verb)) {
             return true;

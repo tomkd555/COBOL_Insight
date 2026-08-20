@@ -57,6 +57,52 @@ class ScanExecutionOrderTest {
             "//SYSOUT   DD   SYSOUT=*",                  // 5
             "");
 
+    /** 同名の段落を持ち、GO TO で終わる段落を含むプログラム。 */
+    private static final String DUPLICATE_NAMES = String.join("\n",
+            "       IDENTIFICATION DIVISION.",             // 1
+            "       PROGRAM-ID.  DUPPGM1.",                // 2
+            "       PROCEDURE DIVISION.",                  // 3
+            "       0000-MAIN.",                           // 4
+            "           PERFORM 8000-WORK.",               // 5
+            "           GO TO 9000-END.",                  // 6
+            "       8000-WORK.",                           // 7
+            "           DISPLAY 'W'.",                     // 8
+            "       0000-MAIN.",                           // 9
+            "           PERFORM 8000-WORK.",               // 10
+            "       9000-END.",                            // 11
+            "           GOBACK.",                          // 12
+            "");
+
+    /**
+     * PERFORM文は書かれている段落だけに付き、GO TO で終わる段落からは流下の辺を出さないこと。
+     * 段落名で PERFORM を割り当てると、同名の段落へ互いの PERFORM が混ざる。制御が移る段落から
+     * 流下の辺を出すと、通らない経路が図と影響波及に現れる。
+     */
+    @Test
+    void performBelongsToItsOwnParagraphAndGoToEndsTheFallthrough() throws IOException {
+        Path assets = tempDir.resolve("dup");
+        Files.createDirectories(assets);
+        Files.writeString(assets.resolve("DUPPGM1.cbl"), DUPLICATE_NAMES, StandardCharsets.UTF_8);
+
+        Path databaseFile = tempDir.resolve("dup.db");
+        ScanRunner.runWithGraph(new ScanRunner.Options(assets, databaseFile, List.of(), Map.of()));
+
+        try (PersistenceDatabase database = PersistenceDatabase.open(databaseFile)) {
+            PersistenceDao dao = new PersistenceDao(database.connection());
+            long programSourceId = dao.findAllSources().get(0).id();
+            List<ParagraphEdgeRecord> edges = dao.findParagraphEdgesByProgram(programSourceId);
+
+            assertEquals(List.of("PERFORM", "GOTO", "FALLTHROUGH", "PERFORM", "FALLTHROUGH"),
+                    edges.stream().map(ParagraphEdgeRecord::kind).toList(),
+                    () -> "段落間の流れ: " + edges);
+            assertEquals(java.util.Arrays.asList(5, 6, null, 10, null),
+                    edges.stream().map(ParagraphEdgeRecord::line).toList(),
+                    () -> "PERFORM は書かれている段落の行だけを持つ: " + edges);
+            assertEquals(List.of("8000-WORK", "9000-END", "0000-MAIN", "8000-WORK", "9000-END"),
+                    edges.stream().map(ParagraphEdgeRecord::toName).toList());
+        }
+    }
+
     @Test
     void stepOrderAndParagraphFlowArePersisted() throws IOException {
         Path assets = tempDir.resolve("assets");

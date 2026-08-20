@@ -30,6 +30,7 @@ import jp.cobolinsight.engineapi.sql.SqlStatementModel;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -80,8 +81,6 @@ public final class CallGraphLinker {
     private final Set<CallGraphEdge> edges = new LinkedHashSet<>();
     private final List<Finding> findings = new ArrayList<>();
     private final Map<CallGraphEdge, Set<String>> dynamicCallVariables = new HashMap<>();
-    /** 呼出元ノードIDごとの、これまでに張った出辺の本数。次の辺の seq を導く。 */
-    private final Map<String, Integer> outgoingCount = new HashMap<>();
     private final Set<String> knownPrograms = new TreeSet<>();
     /** 出現したトランザクションIDと、finding位置に使う代表範囲(最初の出現)。 */
     private final Map<String, SourceRange> transactionRanges = new TreeMap<>();
@@ -118,7 +117,7 @@ public final class CallGraphLinker {
                 .thenComparingInt(f -> f.location().column())
                 .thenComparing(Finding::ruleId)
                 .thenComparing(Finding::message));
-        return new LinkResult(new CallGraph(nodes.values(), edges), findings,
+        return new LinkResult(new CallGraph(nodes.values(), numberBySourceOrder(edges)), findings,
                 dynamicCallVariables);
     }
 
@@ -393,17 +392,42 @@ public final class CallGraphLinker {
     }
 
     /**
-     * 辺を1本足し、その辺を返す。seq は呼出元ノードごとの1起点の連番であり、この構築が原本の
-     * 順序(JCLのステップ順・文の出現順)で辺を足すことに依る。既出の辺は1本へ畳むため番号を
-     * 進めない。
+     * 辺を1本足し、その辺を返す。seq は {@link #numberBySourceOrder} が最後にまとめて振るため、
+     * ここでは 0 のままとする。既出の辺は1本へ畳み、行は最初の出現のものを残す。
      */
     private CallGraphEdge addEdge(String fromId, String toId, EdgeKind kind, Resolution resolution,
             Integer line) {
-        int seq = outgoingCount.getOrDefault(fromId, 0) + 1;
-        CallGraphEdge edge = new CallGraphEdge(fromId, toId, kind, resolution, seq, line);
-        if (edges.add(edge)) {
-            outgoingCount.put(fromId, seq);
-        }
+        CallGraphEdge edge = new CallGraphEdge(fromId, toId, kind, resolution, 0, line);
+        edges.add(edge);
         return edge;
+    }
+
+    /**
+     * 呼出元ノードごとに、原本の順序(呼出箇所の行の昇順、行の分からない辺はその後ろ)で seq を
+     * 1から振り直す。辺を足す処理は JCL・CALL・EXEC CICS・Db2表と分かれており、足した順のままでは
+     * 同じ呼出元の辺が原本の順に並ばない(CICS の XCTL が、後の行の CALL より後ろに来る)。
+     *
+     * <p>行の並び(集合の反復順)は足した順のまま変えない。永続化はその順で行IDを振る。
+     */
+    private static Set<CallGraphEdge> numberBySourceOrder(Set<CallGraphEdge> edges) {
+        Map<String, List<CallGraphEdge>> byFrom = new LinkedHashMap<>();
+        for (CallGraphEdge edge : edges) {
+            byFrom.computeIfAbsent(edge.fromId(), k -> new ArrayList<>()).add(edge);
+        }
+        Map<CallGraphEdge, Integer> seqByEdge = new HashMap<>();
+        for (List<CallGraphEdge> group : byFrom.values()) {
+            group.sort(Comparator.comparing(CallGraphEdge::line,
+                    Comparator.nullsLast(Comparator.naturalOrder())));
+            int seq = 0;
+            for (CallGraphEdge edge : group) {
+                seqByEdge.put(edge, ++seq);
+            }
+        }
+        Set<CallGraphEdge> numbered = new LinkedHashSet<>();
+        for (CallGraphEdge edge : edges) {
+            numbered.add(new CallGraphEdge(edge.fromId(), edge.toId(), edge.kind(),
+                    edge.resolution(), seqByEdge.get(edge), edge.line()));
+        }
+        return numbered;
     }
 }

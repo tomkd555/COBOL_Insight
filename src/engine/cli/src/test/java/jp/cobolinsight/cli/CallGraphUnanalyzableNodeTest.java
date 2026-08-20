@@ -3,6 +3,10 @@ package jp.cobolinsight.cli;
 import jp.cobolinsight.engineapi.callgraph.CallGraphEdge;
 import jp.cobolinsight.engineapi.callgraph.CallGraphNode;
 import jp.cobolinsight.engineapi.callgraph.NodeKind;
+import jp.cobolinsight.persistence.PersistenceDao;
+import jp.cobolinsight.persistence.PersistenceDatabase;
+import jp.cobolinsight.persistence.model.NodeRecord;
+import jp.cobolinsight.persistence.model.SourceRecord;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -12,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -40,13 +45,17 @@ class CallGraphUnanalyzableNodeTest {
     @TempDir
     Path tempDir;
 
+    private Path databaseFile() {
+        return tempDir.resolve("scan.db");
+    }
+
     private ScanRunner.Result scanFixture() throws IOException {
         Path assets = tempDir.resolve("assets");
         Files.createDirectories(assets.resolve("cobol"));
         Files.writeString(assets.resolve("cobol/GOOD.cbl"), GOOD_SOURCE, StandardCharsets.UTF_8);
         Files.writeString(assets.resolve("cobol/BROKEN.cbl"), BROKEN_SOURCE, StandardCharsets.UTF_8);
         return ScanRunner.runWithGraph(new ScanRunner.Options(assets,
-                tempDir.resolve("scan.db"), List.of(), Map.of()));
+                databaseFile(), List.of(), Map.of()));
     }
 
     private static CallGraphNode unanalyzableNode(ScanRunner.Result result) {
@@ -84,6 +93,28 @@ class CallGraphUnanalyzableNodeTest {
         }
         assertEquals(1, result.callGraph().nodes().stream()
                 .filter(n -> n.id().equals(node.id())).count(), "IDが他のノードと衝突しないこと");
+    }
+
+    /**
+     * 解析できなかった資産の NODE 行も種別 UNANALYZABLE で残ること。走査が先に付ける種別
+     * (PROGRAM)のままでは、プロジェクトファイルを読む側が解析できた資産と区別できない。
+     */
+    @Test
+    void unanalyzableNodeIsPersistedWithItsKind() throws IOException {
+        scanFixture();
+
+        try (PersistenceDatabase database = PersistenceDatabase.open(databaseFile())) {
+            PersistenceDao dao = new PersistenceDao(database.connection());
+            Map<String, Long> sourceIdByPath = dao.findAllSources().stream()
+                    .collect(Collectors.toMap(SourceRecord::path, SourceRecord::id));
+
+            NodeRecord broken = dao.findNode(sourceIdByPath.get("cobol/BROKEN.cbl")).orElseThrow();
+            assertEquals("UNANALYZABLE", broken.type(), "パースできない資産の行の種別");
+            assertEquals("BROKEN.cbl", broken.label());
+
+            NodeRecord good = dao.findNode(sourceIdByPath.get("cobol/GOOD.cbl")).orElseThrow();
+            assertEquals("PROGRAM", good.type(), "解析できた資産は PROGRAM のままであること");
+        }
     }
 
     @Test
