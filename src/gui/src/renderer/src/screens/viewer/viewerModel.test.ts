@@ -28,13 +28,13 @@ import {
   isTranspileTarget,
   linkSummary,
   metricsEqual,
-  originScreen,
   selectGeneratedFile,
   toDocument,
   transpileOutDir,
   viewerFileOptions,
 } from "./viewerModel";
-import { SAMPLE_INVENTORY } from "../explorer/fixtures";
+import { SAMPLE_INVENTORY } from "../../data/__fixtures__/samples";
+import { FIXTURE_CATALOG } from "../../data/__fixtures__/catalog";
 
 const FILES: readonly TranspileGeneratedFile[] = [
   { name: "syk001.py", language: "python", text: "print(1)\n" },
@@ -183,19 +183,6 @@ describe("viewerFileOptions・isTranspileTarget(表示対象の資産)", () => {
   });
 });
 
-describe("originScreen(ジャンプ元への戻り導線)", () => {
-  it("ジャンプ文言の先頭にある画面名から遷移元を引く", () => {
-    expect(originScreen("指摘一覧 から cobol/SYK001.cbl:85 へジャンプ")).toBe("findings");
-    expect(originScreen("SQL指摘 から cobol/SYK007.cbl:84 へジャンプ")).toBe("sql");
-    expect(originScreen("呼出関係図 から cobol/SYK002.cbl を表示")).toBe("graph");
-  });
-
-  it("画面名で始まらない文言と未設定では戻り先を持たない", () => {
-    expect(originScreen("どこからか")).toBeNull();
-    expect(originScreen(null)).toBeNull();
-  });
-});
-
 describe("linkSummary(相互ハイライトの状態)", () => {
   const index = buildLineMapIndex(
     [
@@ -229,13 +216,13 @@ describe("findingLinesOf(表示中のファイルの指摘を行ごとに集約�
   ];
 
   it("表示中のファイルの指摘だけを行番号昇順にまとめる", () => {
-    expect(findingLinesOf(FINDINGS, "cobol/SYK001.cbl").map((line) => line.line)).toEqual([11, 12]);
-    expect(findingLinesOf(FINDINGS, "cobol/SYK002.cbl").map((line) => line.line)).toEqual([11]);
-    expect(findingLinesOf(FINDINGS, "cobol/SYK009.cbl")).toEqual([]);
+    expect(findingLinesOf(FIXTURE_CATALOG, FINDINGS, "cobol/SYK001.cbl").map((line) => line.line)).toEqual([11, 12]);
+    expect(findingLinesOf(FIXTURE_CATALOG, FINDINGS, "cobol/SYK002.cbl").map((line) => line.line)).toEqual([11]);
+    expect(findingLinesOf(FIXTURE_CATALOG, FINDINGS, "cobol/SYK009.cbl")).toEqual([]);
   });
 
   it("同じ行の指摘は最も重い重大度で示し、件数と内訳を持つ", () => {
-    const line = findingLinesOf(FINDINGS, "cobol/SYK001.cbl")[1];
+    const line = findingLinesOf(FIXTURE_CATALOG, FINDINGS, "cobol/SYK001.cbl")[1];
     expect(line.count).toBe(2);
     // R008 は中・R009 は警告なので、重い方の中で行を示し、内訳も重い順に並べる。
     expect(line.severity).toBe("medium");
@@ -243,7 +230,7 @@ describe("findingLinesOf(表示中のファイルの指摘を行ごとに集約�
   });
 
   it("重大度と名称はルールカタログから引く(SARIF の level ではない)", () => {
-    const line = findingLinesOf(FINDINGS, "cobol/SYK001.cbl")[0];
+    const line = findingLinesOf(FIXTURE_CATALOG, FINDINGS, "cobol/SYK001.cbl")[0];
     expect(line.entries).toEqual([
       {
         ruleId: "R001",
@@ -255,7 +242,7 @@ describe("findingLinesOf(表示中のファイルの指摘を行ごとに集約�
   });
 
   it("ホバー本文は件数・記号・重大度・ルール ID・ルール名・根拠を持つ", () => {
-    const text = findingHoverText(findingLinesOf(FINDINGS, "cobol/SYK001.cbl")[1]);
+    const text = findingHoverText(findingLinesOf(FIXTURE_CATALOG, FINDINGS, "cobol/SYK001.cbl")[1]);
     expect(text).toContain("この行の指摘 2 件");
     expect(text).toContain("◆ 中");
     expect(text).toContain("R008");

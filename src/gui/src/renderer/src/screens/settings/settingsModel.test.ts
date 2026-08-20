@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { ruleCount, ruleIds } from "../../data/ruleCatalog";
+import { ruleCount } from "../../data/ruleCatalog";
+import { FIXTURE_CATALOG } from "../../data/__fixtures__/catalog";
+import { visibleSeverities } from "../../components/severity";
 import {
   ENCODING_OPTIONS,
   addPath,
@@ -15,31 +17,24 @@ import {
   setRulesEnabled,
   severityThresholdNote,
   toggleRule,
-  visibleSeverities,
 } from "./settingsModel";
-import {
-  ENCODING_OPTIONS as ASSET_ENCODING_OPTIONS,
-  MANUAL_ENCODING_OPTIONS,
-} from "../explorer/assetView";
+import { MANUAL_ENCODING_OPTIONS } from "../../data/encodings";
 
-describe("ルールカタログの読み出し", () => {
+describe("ルール一覧の読み出し", () => {
   it("バグ検出 31 件と SQL 指摘 6 件の合計 37 件を扱う", () => {
-    expect(ruleCount()).toBe(37);
-    expect(ruleIds().filter((id) => id.startsWith("R"))).toHaveLength(31);
-    expect(ruleIds().filter((id) => id.startsWith("S"))).toHaveLength(6);
+    expect(ruleCount(FIXTURE_CATALOG)).toBe(37);
+    expect(FIXTURE_CATALOG.order.filter((id) => id.startsWith("R"))).toHaveLength(31);
+    expect(FIXTURE_CATALOG.order.filter((id) => id.startsWith("S"))).toHaveLength(6);
   });
 
-  it("ID はカタログの定義順(R001→R031→S001→S006)である", () => {
-    expect(ruleIds()[0]).toBe("R001");
-    expect(ruleIds()[30]).toBe("R031");
-    expect(ruleIds()[36]).toBe("S006");
+  it("ID は engine が返した順(R001→R031→S001→S006)である", () => {
+    expect(FIXTURE_CATALOG.order[0]).toBe("R001");
+    expect(FIXTURE_CATALOG.order[30]).toBe("R031");
+    expect(FIXTURE_CATALOG.order[36]).toBe("S006");
   });
 
-  it("既定の文字コードの選択肢は資産エクスプローラーの手動指定と同じ語彙である", () => {
+  it("既定の文字コードの選択肢は手動指定と同じ語彙である", () => {
     expect(ENCODING_OPTIONS).toEqual([...MANUAL_ENCODING_OPTIONS]);
-    for (const option of ENCODING_OPTIONS) {
-      expect(ASSET_ENCODING_OPTIONS).toContain(option);
-    }
   });
 
   it("選択肢はいずれも scan へ渡す charset を持ち、効果の無い選択肢を並べない", () => {
@@ -51,69 +46,69 @@ describe("ルールカタログの読み出し", () => {
 
 describe("buildRuleGroups", () => {
   it("検索語が無ければ全件をカテゴリ別にまとめる", () => {
-    const groups = buildRuleGroups("", {});
-    expect(groupedRuleIds(groups)).toHaveLength(ruleCount());
+    const groups = buildRuleGroups(FIXTURE_CATALOG, "", {});
+    expect(groupedRuleIds(groups)).toHaveLength(ruleCount(FIXTURE_CATALOG));
     expect(groups[0].category).toBe("データフロー");
     expect(groups[0].rows[0].id).toBe("R001");
   });
 
   it("同じカテゴリを連続してまとめ、重複した見出しを作らない", () => {
-    const groups = buildRuleGroups("", {});
+    const groups = buildRuleGroups(FIXTURE_CATALOG, "", {});
     const categories = groups.map((group) => group.category);
     expect(new Set(categories).size).toBe(categories.length);
   });
 
   it("ルール ID で絞り込む", () => {
-    const groups = buildRuleGroups("R017", {});
+    const groups = buildRuleGroups(FIXTURE_CATALOG, "R017", {});
     expect(groupedRuleIds(groups)).toEqual(["R017"]);
     expect(groups[0].category).toBe("例外処理");
   });
 
   it("ルール名称で絞り込む", () => {
-    expect(groupedRuleIds(buildRuleGroups("SQLCODE", {}))).toEqual(["R018"]);
+    expect(groupedRuleIds(buildRuleGroups(FIXTURE_CATALOG, "SQLCODE", {}))).toEqual(["R018"]);
   });
 
   it("カテゴリで絞り込む", () => {
-    expect(groupedRuleIds(buildRuleGroups("セキュリティ", {}))).toEqual(["R026", "R027"]);
+    expect(groupedRuleIds(buildRuleGroups(FIXTURE_CATALOG, "セキュリティ", {}))).toEqual(["R026", "R027"]);
   });
 
   it("大文字小文字と前後の空白を無視する", () => {
-    expect(groupedRuleIds(buildRuleGroups("  r017  ", {}))).toEqual(["R017"]);
+    expect(groupedRuleIds(buildRuleGroups(FIXTURE_CATALOG, "  r017  ", {}))).toEqual(["R017"]);
   });
 
   it("一致しない検索語では空になる", () => {
-    expect(buildRuleGroups("該当しない語", {})).toEqual([]);
+    expect(buildRuleGroups(FIXTURE_CATALOG, "該当しない語", {})).toEqual([]);
   });
 
   it("無効化した状態を各行へ反映する", () => {
-    const groups = buildRuleGroups("R004", { R004: true });
+    const groups = buildRuleGroups(FIXTURE_CATALOG, "R004", { R004: true });
     expect(groups[0].rows[0].disabled).toBe(true);
   });
 
   it("修正案を持つルールを行から見分けられる", () => {
-    const groups = buildRuleGroups("R004", {});
+    const groups = buildRuleGroups(FIXTURE_CATALOG, "R004", {});
     expect(groups[0].rows[0].hasFix).toBe(true);
-    expect(buildRuleGroups("R021", {})[0].rows[0].hasFix).toBe(true);
+    expect(buildRuleGroups(FIXTURE_CATALOG, "R021", {})[0].rows[0].hasFix).toBe(true);
   });
 });
 
 describe("有効・無効の集合", () => {
   it("無効化した件数を総数から引く", () => {
-    expect(enabledRuleCount({})).toBe(37);
-    expect(enabledRuleCount({ R001: true, R002: true })).toBe(35);
+    expect(enabledRuleCount(FIXTURE_CATALOG, {})).toBe(37);
+    expect(enabledRuleCount(FIXTURE_CATALOG, { R001: true, R002: true })).toBe(35);
   });
 
   it("false は無効として数えない", () => {
-    expect(enabledRuleCount({ R001: false })).toBe(37);
+    expect(enabledRuleCount(FIXTURE_CATALOG, { R001: false })).toBe(37);
   });
 
-  it("カタログにない ID は数に含めない", () => {
-    expect(enabledRuleCount({ R999: true })).toBe(37);
-    expect(disabledRuleIds({ R999: true })).toEqual([]);
+  it("一覧にない ID は数に含めない", () => {
+    expect(enabledRuleCount(FIXTURE_CATALOG, { R999: true })).toBe(37);
+    expect(disabledRuleIds(FIXTURE_CATALOG, { R999: true })).toEqual([]);
   });
 
-  it("無効化した ID をカタログの定義順で返す", () => {
-    expect(disabledRuleIds({ S001: true, R004: true })).toEqual(["R004", "S001"]);
+  it("無効化した ID を engine が返した順で返す", () => {
+    expect(disabledRuleIds(FIXTURE_CATALOG, { S001: true, R004: true })).toEqual(["R004", "S001"]);
   });
 
   it("1件の反転は元の集合を変えない", () => {
@@ -132,7 +127,7 @@ describe("有効・無効の集合", () => {
   });
 
   it("絞り込み結果だけを一括操作の対象にできる", () => {
-    const groups = buildRuleGroups("セキュリティ", {});
+    const groups = buildRuleGroups(FIXTURE_CATALOG, "セキュリティ", {});
     expect(setRulesEnabled({}, groupedRuleIds(groups), false)).toEqual({
       R026: true,
       R027: true,
@@ -140,13 +135,13 @@ describe("有効・無効の集合", () => {
   });
 
   it("件数の見出しを組む", () => {
-    expect(ruleCountLabel({})).toBe("有効 37 / 37");
-    expect(ruleCountLabel({ R001: true })).toBe("有効 36 / 37");
+    expect(ruleCountLabel(FIXTURE_CATALOG, {})).toBe("有効 37 / 37");
+    expect(ruleCountLabel(FIXTURE_CATALOG, { R001: true })).toBe("有効 36 / 37");
   });
 
   it("絞り込み件数は検索語があるときだけ示す", () => {
-    expect(filterCountLabel("", buildRuleGroups("", {}))).toBeNull();
-    expect(filterCountLabel("R01", buildRuleGroups("R01", {}))).toBe("検索に一致: 10 件");
+    expect(filterCountLabel("", buildRuleGroups(FIXTURE_CATALOG, "", {}))).toBeNull();
+    expect(filterCountLabel("R01", buildRuleGroups(FIXTURE_CATALOG, "R01", {}))).toBe("検索に一致: 10 件");
   });
 });
 

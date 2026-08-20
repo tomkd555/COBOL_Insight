@@ -1,8 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { CallGraphData } from "../../../../shared/engine-api";
-import { initialState } from "../../state/appState";
 import { SAMPLE_GRAPH, SAMPLE_GRAPH_WITH_UNANALYZABLE } from "./fixtures";
-import { SAMPLE_INVENTORY } from "../explorer/fixtures";
+import { SAMPLE_INVENTORY } from "../../data/__fixtures__/samples";
 import type { AnyNodeKind, GraphEdgeElement, GraphNodeElement } from "./graphModel";
 import {
   DEFAULT_DB_FILE,
@@ -30,7 +29,19 @@ import {
 } from "./graphModel";
 
 /** 既定のノード種別フィルタ(全種別を表示)。解析不能は AppState の graphTypes に無いため、ここで加える。 */
-const ALL_KINDS: Record<AnyNodeKind, boolean> = { ...initialState.graphTypes, UNANALYZABLE: true };
+const ALL_KINDS: Record<AnyNodeKind, boolean> = {
+  JOB: true,
+  STEP: true,
+  PROGRAM: true,
+  PARAGRAPH: true,
+  DATASET: true,
+  DB2_TABLE: true,
+  UNRESOLVED: true,
+  EXTERNAL_UTILITY: true,
+  TRANSACTION: true,
+  BMS_MAP: true,
+  UNANALYZABLE: true,
+};
 
 function visible(expanded: Record<string, boolean>, kinds = ALL_KINDS): string[] {
   return [...visibleNodeIds(SAMPLE_GRAPH, { expanded, kinds })].sort();

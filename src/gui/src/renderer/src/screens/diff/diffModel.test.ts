@@ -29,7 +29,8 @@ import {
   SAMPLE_PREVIEW_STDOUT,
   SAMPLE_PREVIEW_SUMMARY,
 } from "./fixtures";
-import { SAMPLE_FINDINGS } from "../findings/fixtures";
+import { SAMPLE_FINDINGS } from "../../data/__fixtures__/samples";
+import { FIXTURE_CATALOG } from "../../data/__fixtures__/catalog";
 import type { FixSummaryInfo, SarifFinding } from "../../../../shared/engine-api";
 
 /** 件数だけを与える最小のサマリ。 */
@@ -38,7 +39,7 @@ function summaryOf(overrides: Partial<FixSummaryInfo> = {}): FixSummaryInfo {
 }
 
 describe("buildFixCandidates", () => {
-  const candidates = buildFixCandidates(readFixSummary(SAMPLE_PREVIEW_SUMMARY), SAMPLE_FINDINGS);
+  const candidates = buildFixCandidates(FIXTURE_CATALOG, readFixSummary(SAMPLE_PREVIEW_SUMMARY), SAMPLE_FINDINGS);
 
   it("engine が出したファイル順を保つ", () => {
     expect(candidates.map((c) => c.relPath)).toEqual([
@@ -77,7 +78,7 @@ describe("buildFixCandidates", () => {
       { ruleId: "R009", level: "warning", message: "x", file: "cobol/A.cbl", startLine: 5, startColumn: 1 },
       { ruleId: "R017", level: "error", message: "y", file: "cobol/A.cbl", startLine: 3, startColumn: 1 },
     ];
-    const built = buildFixCandidates(summaryOf({ files: ["cobol/A.cbl"] }), findings);
+    const built = buildFixCandidates(FIXTURE_CATALOG, summaryOf({ files: ["cobol/A.cbl"] }), findings);
     expect(built[0].findings.map((f) => f.ruleId)).toEqual(["R017"]);
   });
 
@@ -92,7 +93,7 @@ describe("buildFixCandidates", () => {
         startColumn: 1,
       },
     ];
-    const built = buildFixCandidates(summaryOf({ files: ["cobol/A.cbl"] }), findings);
+    const built = buildFixCandidates(FIXTURE_CATALOG, summaryOf({ files: ["cobol/A.cbl"] }), findings);
     expect(built[0].findings).toEqual([
       {
         ruleId: "R021",
@@ -101,7 +102,7 @@ describe("buildFixCandidates", () => {
         message: "EXEC CICS の実行後、RESP を検査していない。",
       },
     ]);
-    expect(candidateRuleSummary(built[0])).toBe("R021 CICS応答コード(RESP/RESP2)未検査");
+    expect(candidateRuleSummary(FIXTURE_CATALOG, built[0])).toBe("R021 CICS応答コード(RESP/RESP2)未検査");
     expect(candidateLocation(built[0])).toBe("cobol/A.cbl:40");
   });
 
@@ -110,7 +111,7 @@ describe("buildFixCandidates", () => {
       { ruleId: "R018", level: "error", message: "b", file: "cobol/A.cbl", startLine: 90, startColumn: 1 },
       { ruleId: "R004", level: "error", message: "a", file: "cobol/A.cbl", startLine: 12, startColumn: 1 },
     ];
-    const built = buildFixCandidates(summaryOf({ files: ["cobol/A.cbl"] }), findings);
+    const built = buildFixCandidates(FIXTURE_CATALOG, summaryOf({ files: ["cobol/A.cbl"] }), findings);
     expect(built[0].findings.map((f) => f.line)).toEqual([12, 90]);
   });
 
@@ -119,7 +120,7 @@ describe("buildFixCandidates", () => {
       files: ["cobol/A.cbl"],
       copybookFixes: [{ copybook: "copybook/B.cpy", importers: ["A"] }],
     });
-    expect(buildFixCandidates(summary, []).map((c) => c.relPath)).toEqual([
+    expect(buildFixCandidates(FIXTURE_CATALOG, summary, []).map((c) => c.relPath)).toEqual([
       "cobol/A.cbl",
       "copybook/B.cpy",
     ]);
@@ -127,7 +128,7 @@ describe("buildFixCandidates", () => {
 });
 
 describe("見出しの文言", () => {
-  const candidates = buildFixCandidates(readFixSummary(SAMPLE_PREVIEW_SUMMARY), SAMPLE_FINDINGS);
+  const candidates = buildFixCandidates(FIXTURE_CATALOG, readFixSummary(SAMPLE_PREVIEW_SUMMARY), SAMPLE_FINDINGS);
 
   it("件数見出しは修正案を持つルールを併記する", () => {
     expect(fixCountLabel(candidates)).toBe("3 件（R004 / R017 / R018 / R021）");
@@ -138,15 +139,15 @@ describe("見出しの文言", () => {
     expect(fixRuleIdLabel(" / ")).toBe("R004 / R017 / R018 / R021");
   });
 
-  it("ルールの説明一覧はカタログの名称を添える", () => {
-    expect(fixRuleDescriptionLabel()).toBe(
+  it("ルールの説明一覧は engine が返した名称を添える", () => {
+    expect(fixRuleDescriptionLabel(FIXTURE_CATALOG)).toBe(
       "R004（ON SIZE ERROR句の欠如）・R017（ファイル状態(FILE STATUS)未検査）・" +
         "R018（SQLCODE/SQLSTATE未検査）・R021（CICS応答コード(RESP/RESP2)未検査）",
     );
   });
 
   it("単一ルールはルール名を添える", () => {
-    expect(candidateRuleSummary(candidates[0])).toBe("R004 ON SIZE ERROR句の欠如");
+    expect(candidateRuleSummary(FIXTURE_CATALOG, candidates[0])).toBe("R004 ON SIZE ERROR句の欠如");
   });
 
   it("複数ルールはルール ID を並べて件数を添える", () => {
@@ -160,11 +161,11 @@ describe("見出しの文言", () => {
         { ruleId: "R017", ruleName: "y", line: 2, message: "" },
       ],
     };
-    expect(candidateRuleSummary(multi)).toBe("R004・R017（2 ルール）");
+    expect(candidateRuleSummary(FIXTURE_CATALOG, multi)).toBe("R004・R017（2 ルール）");
   });
 
   it("指摘が取れていないときはルール名を騙らない", () => {
-    expect(candidateRuleSummary(candidates[2])).toBe("修正案");
+    expect(candidateRuleSummary(FIXTURE_CATALOG, candidates[2])).toBe("修正案");
     expect(candidateLocation(candidates[2])).toBe("copybook/ORDREC.cpy");
   });
 
@@ -174,7 +175,7 @@ describe("見出しの文言", () => {
 });
 
 describe("採用・棄却の集合", () => {
-  const candidates = buildFixCandidates(readFixSummary(SAMPLE_PREVIEW_SUMMARY), SAMPLE_FINDINGS);
+  const candidates = buildFixCandidates(FIXTURE_CATALOG, readFixSummary(SAMPLE_PREVIEW_SUMMARY), SAMPLE_FINDINGS);
 
   it("判定の表示文言を返す", () => {
     expect(decisionLabel("adopted")).toBe("✓ 採用済");
@@ -221,7 +222,7 @@ describe("採用・棄却の集合", () => {
 });
 
 describe("resolveSelection", () => {
-  const candidates = buildFixCandidates(readFixSummary(SAMPLE_PREVIEW_SUMMARY), SAMPLE_FINDINGS);
+  const candidates = buildFixCandidates(FIXTURE_CATALOG, readFixSummary(SAMPLE_PREVIEW_SUMMARY), SAMPLE_FINDINGS);
 
   it("選択中の修正案を返す", () => {
     expect(resolveSelection(candidates, "cobol/SYK006.cbl")?.relPath).toBe("cobol/SYK006.cbl");

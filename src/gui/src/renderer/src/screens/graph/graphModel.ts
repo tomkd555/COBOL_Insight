@@ -16,7 +16,19 @@ import type {
   CallGraphEdge,
   CallGraphNode,
 } from "../../../../shared/engine-api";
-import type { GraphNodeKind } from "../../state/appState";
+
+/** engine の NodeKind(10 種)。call-graph JSON のノードの kind をそのまま用いる。 */
+export type GraphNodeKind =
+  | "JOB"
+  | "STEP"
+  | "PROGRAM"
+  | "PARAGRAPH"
+  | "DATASET"
+  | "DB2_TABLE"
+  | "UNRESOLVED"
+  | "EXTERNAL_UTILITY"
+  | "TRANSACTION"
+  | "BMS_MAP";
 
 /**
  * ノード種別。engine の NodeKind(GraphNodeKind、10 種)に、構文解析に失敗した資産を表す

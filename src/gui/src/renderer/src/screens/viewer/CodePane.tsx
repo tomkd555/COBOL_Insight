@@ -43,8 +43,8 @@ export interface CodePaneProps {
   glyphMargin?: boolean;
   /** 桁見出しをそろえるための実測寸法。値が変わったときだけ呼ぶ。 */
   onMetrics?: (metrics: EditorMetrics) => void;
-  /** カーソル行が変わったときに呼ぶ。相互ハイライトの起点になる。 */
-  onCursorLine: (line: number) => void;
+  /** カーソル位置が変わったときに呼ぶ。相互ハイライトの起点と、ステータスバーの表示に使う。 */
+  onCursorLine: (line: number, column: number) => void;
   ariaLabel: string;
 }
 
@@ -188,7 +188,7 @@ export function CodePane({
     // 作り直した直後も現在の装飾を保つ(装飾の内容が変わらない場合は下の効果が走らない)。
     collectionRef.current = editor.createDecorationsCollection(decorationsRef.current);
     const subscription = editor.onDidChangeCursorPosition((event) => {
-      cursorRef.current(event.position.lineNumber);
+      cursorRef.current(event.position.lineNumber, event.position.column);
     });
     // 桁見出しの位置は Monaco の実測に従う。ガター幅・字送りは配置時に、水平位置はスクロールで変わる。
     const publishMetrics = (): void => {

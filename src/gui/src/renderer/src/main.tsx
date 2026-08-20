@@ -2,14 +2,17 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import "./assets/fonts.css";
-import "./styles/tokens.css";
+import "./styles/theme.css";
+import "./styles/tokens.project.css";
 import "./styles/base.css";
 import "./shell/Shell.css";
 import "./components/components.css";
-import "./screens/explorer/explorer.css";
-import "./screens/import/import.css";
+import "./sidebar/sidebar.css";
+import "./panel/panel.css";
+import "./dialogs/dialogs.css";
+// 呼出関係図・逐語対訳・修正案・レポート・設定の部品は、まだタブへ移していない。
+// 移す回まで、その部品のスタイルをここで読み込んでおく。
 import "./screens/graph/graph.css";
-import "./screens/findings/findings.css";
 import "./screens/viewer/viewer.css";
 import "./screens/diff/diff.css";
 import "./screens/report/report.css";

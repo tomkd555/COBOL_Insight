@@ -19,11 +19,12 @@ import {
   type TranspileLanguage,
 } from "../../../../shared/engine-api";
 import { SEVERITY_META, SEVERITY_ORDER, type Severity } from "../../components/severity";
-import { ruleOf } from "../../data/ruleCatalog";
-import { SCREENS, type ScreenId } from "../../shell/screens";
-import type { SourceLang } from "../../state/appState";
+import { ruleOf, type RuleCatalogIndex } from "../../data/ruleCatalog";
 import { charIndexAfterBytes, type SourceCodepage } from "./columns";
 import type { CopyStatement } from "./copybookLookup";
+
+/** 逐語対訳の生成言語の選択。 */
+export type SourceLang = "py" | "java";
 
 /** 本体(8〜72桁)の終端桁。識別欄はこの次の桁から始まる。 */
 export const BODY_LAST_COLUMN = 72;
@@ -327,6 +328,7 @@ function compareEntries(left: FindingEntry, right: FindingEntry): number {
 
 /** 表示中のファイルに属する指摘を行番号ごとにまとめ、行番号昇順で返す。 */
 export function findingLinesOf(
+  catalog: RuleCatalogIndex,
   findings: readonly SarifFinding[],
   file: string,
 ): FindingLine[] {
@@ -335,7 +337,7 @@ export function findingLinesOf(
     if (finding.file !== file) {
       continue;
     }
-    const rule = ruleOf(finding.ruleId);
+    const rule = ruleOf(catalog, finding.ruleId);
     const entries = byLine.get(finding.startLine) ?? [];
     entries.push({
       ruleId: finding.ruleId,
@@ -553,17 +555,6 @@ export function viewerFileOptions(inventory: readonly AssetInventoryItem[]): Vie
 /** 逐語対訳の対象か。対訳は COBOL 本体(NODE.type=PROGRAM)に対してのみ生成される。 */
 export function isTranspileTarget(item: AssetInventoryItem | null): boolean {
   return item !== null && item.type === "PROGRAM";
-}
-
-/**
- * ジャンプ元の画面。JUMP が組んだ文言(「〈画面名〉 から …」)の先頭にある画面名から引く。
- * 戻り導線のためだけに用い、該当が無ければ戻り先を出さない。
- */
-export function originScreen(sourceFrom: string | null): ScreenId | null {
-  if (sourceFrom === null) {
-    return null;
-  }
-  return SCREENS.find((screen) => sourceFrom.startsWith(screen.label))?.id ?? null;
 }
 
 /**

@@ -9,6 +9,8 @@ export interface ChipRadioGroupProps<T extends string> {
   /** 選択中の値。 */
   value: T;
   onChange: (value: T) => void;
+  /** 値から表示名を引く。省略すると値をそのまま出す(値が表示名を兼ねる場合)。 */
+  labelOf?: (value: T) => string;
 }
 
 /** 矢印キーによる移動量(1=次、-1=前)。Home/End は端へ移す。 */
@@ -29,6 +31,7 @@ export function ChipRadioGroup<T extends string>({
   options,
   value,
   onChange,
+  labelOf,
 }: ChipRadioGroupProps<T>): ReactElement {
   const groupRef = useRef<HTMLDivElement>(null);
 
@@ -68,7 +71,7 @@ export function ChipRadioGroup<T extends string>({
       {options.map((option) => (
         <FilterChip
           key={option}
-          label={option}
+          label={labelOf === undefined ? option : labelOf(option)}
           active={option === value}
           single
           tabIndex={option === value ? 0 : -1}

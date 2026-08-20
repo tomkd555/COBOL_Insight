@@ -1,6 +1,6 @@
 import type { AssetInventoryItem, SarifFinding } from "../../../shared/engine-api";
-import type { ArtifactState, ScanDiscovery } from "../state/appState";
-import { readScanDiscovery } from "../screens/explorer/scanSummary";
+import type { ArtifactState } from "../state/projectStore";
+import { readScanDiscovery, type ScanDiscovery } from "./scanSummary";
 
 /**
  * 解析の起動そのもの。scan → lint → sql-lint を順に走らせ、成果物を読んで呼び手へ渡す。

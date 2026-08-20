@@ -530,9 +530,11 @@ export interface CopyExpansionData {
 export interface ImportSourceRequest {
   /** 取込先の資産フォルダ。 */
   inputDir: string;
-  /** 資産の種別。保存先のフォルダと拡張子を決める。 */
+  /** 資産の種別。コピー句だけが拡張子の補完を受ける。 */
   kind: ImportAssetKind;
-  /** ファイル名。種別の拡張子で終わっていなければ補う。 */
+  /** 資産フォルダからの相対パスで示す保存先。空文字は資産フォルダの直下を表す。 */
+  destDir: string;
+  /** ファイル名。コピー句で .cpy で終わっていなければ補う。 */
   fileName: string;
   /** 保存する本文の各行。 */
   lines: string[];
@@ -543,7 +545,7 @@ export interface ImportSourceRequest {
 /** 取込の結果。exists は同名のファイルがあり、上書きの許可を得ていないことを表す。 */
 export interface ImportSourceResult {
   status: "written" | "exists";
-  /** 資産フォルダからの相対パス(例: cobol/SYK001.cbl)。 */
+  /** 資産フォルダからの相対パス(例: SYK001.cbl)。 */
   relPath: string;
   /** 書き込んだ行数。exists のときは0。 */
   lineCount: number;

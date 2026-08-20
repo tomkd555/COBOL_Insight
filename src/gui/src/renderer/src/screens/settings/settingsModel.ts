@@ -3,15 +3,20 @@
  * 利用者定義の U から始まるもの)の有効・無効、コピー句探索パスの並び替え、既定の文字コード、
  * 表示する重大度のしきい値を扱う。
  *
- * ルールのメタ情報は data/ruleCatalog を単一の正とし、ここでは絞り込みとカテゴリ別のまとめだけを行う。
- * 件数と並びをカタログへ都度問い合わせるのは、利用者定義ルールの増減で総数が変わるためである。
- * 無効化したルールは engine の `--disable-rule` へ渡す ID の集合として保つ。
+ * ルールのメタ情報は engine が返す一覧を単一の正とし、ここでは絞り込みとカテゴリ別のまとめだけを行う。
+ * 件数と並びを一覧へ都度問い合わせるのは、利用者定義ルールの増減で総数が変わるためである。
+ * 無効化したルールは engine が読む設定ファイルへ渡す ID の集合として保つ。
  */
 
-import { SEVERITY_META, SEVERITY_ORDER, type Severity } from "../../components/severity";
-import { ruleCount, ruleIds, ruleOf, type RuleInfo } from "../../data/ruleCatalog";
-import { MANUAL_ENCODING_OPTIONS } from "../explorer/assetView";
-import type { ScreenMode } from "../../state/appState";
+import {
+  SEVERITY_META,
+  SEVERITY_ORDER,
+  visibleSeverities,
+  type Severity,
+} from "../../components/severity";
+import { ruleCount, ruleOf, type RuleCatalogIndex, type RuleInfo } from "../../data/ruleCatalog";
+import { MANUAL_ENCODING_OPTIONS } from "../../data/encodings";
+import type { AnalysisMode } from "../../state/projectStore";
 
 /** engine の起動対象を示す1件。 */
 export interface EngineLaunchEntry {
@@ -53,13 +58,14 @@ export interface RuleGroup {
  * 束ねて見出しを1つにする。カテゴリの並びは最初に現れた位置の順、各カテゴリ内は ID の定義順である。
  */
 export function buildRuleGroups(
+  catalog: RuleCatalogIndex,
   search: string,
   disabled: Readonly<Record<string, boolean>>,
 ): RuleGroup[] {
   const query = search.trim().toLowerCase();
   const byCategory = new Map<string, RuleRow[]>();
-  for (const id of ruleIds()) {
-    const rule = ruleOf(id);
+  for (const id of catalog.order) {
+    const rule = ruleOf(catalog, id);
     if (query !== "" && !`${rule.id}${rule.name}${rule.category}`.toLowerCase().includes(query)) {
       continue;
     }
@@ -80,13 +86,19 @@ export function groupedRuleIds(groups: readonly RuleGroup[]): string[] {
 }
 
 /** 有効なルール数。カタログにない ID は数に含めない。 */
-export function enabledRuleCount(disabled: Readonly<Record<string, boolean>>): number {
-  return ruleCount() - disabledRuleIds(disabled).length;
+export function enabledRuleCount(
+  catalog: RuleCatalogIndex,
+  disabled: Readonly<Record<string, boolean>>,
+): number {
+  return ruleCount(catalog) - disabledRuleIds(catalog, disabled).length;
 }
 
-/** 無効化したルール ID。カタログの定義順で返し、engine の `--disable-rule` へ渡す。 */
-export function disabledRuleIds(disabled: Readonly<Record<string, boolean>>): string[] {
-  return ruleIds().filter((id) => disabled[id] === true);
+/** 無効化したルール ID。一覧の定義順で返し、engine が読む設定ファイルへ渡す。 */
+export function disabledRuleIds(
+  catalog: RuleCatalogIndex,
+  disabled: Readonly<Record<string, boolean>>,
+): string[] {
+  return catalog.order.filter((id) => disabled[id] === true);
 }
 
 /** 1件の有効・無効を反転した新しい集合を返す。 */
@@ -121,8 +133,11 @@ export function setRulesEnabled(
 }
 
 /** 一覧見出しの件数表示。 */
-export function ruleCountLabel(disabled: Readonly<Record<string, boolean>>): string {
-  return `有効 ${enabledRuleCount(disabled)} / ${ruleCount()}`;
+export function ruleCountLabel(
+  catalog: RuleCatalogIndex,
+  disabled: Readonly<Record<string, boolean>>,
+): string {
+  return `有効 ${enabledRuleCount(catalog, disabled)} / ${ruleCount(catalog)}`;
 }
 
 /** 絞り込み結果の件数表示。検索語が無いときは null。 */
@@ -131,11 +146,6 @@ export function filterCountLabel(search: string, groups: readonly RuleGroup[]): 
     return null;
   }
   return `検索に一致: ${groupedRuleIds(groups).length} 件`;
-}
-
-/** しきい値以上の重大度(表示対象)。 */
-export function visibleSeverities(threshold: Severity): Severity[] {
-  return SEVERITY_ORDER.slice(0, SEVERITY_ORDER.indexOf(threshold) + 1);
 }
 
 /** しきい値の説明文(design sevThNote)。 */
@@ -188,6 +198,6 @@ export function addPath(paths: readonly string[], value: string): AddPathResult 
 }
 
 /** 解析の実行中は設定を変更できない(読み取り専用)。 */
-export function isReadOnly(mode: ScreenMode): boolean {
+export function isReadOnly(mode: AnalysisMode): boolean {
   return mode === "running";
 }

@@ -1,0 +1,232 @@
+/* ダイアログの覆いと枠、および端末取込の中身。 */
+
+.ci-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  background: color-mix(in oklch, var(--color-foreground) 45%, transparent);
+}
+.ci-modal__panel {
+  display: flex;
+  flex-direction: column;
+  width: min(1040px, 100%);
+  max-height: 100%;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+.ci-modal__head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+.ci-modal__title {
+  flex: 1;
+  margin: 0;
+  font-size: var(--ci-fs-lg);
+  font-weight: 700;
+}
+.ci-modal__close {
+  border: none;
+  background: transparent;
+  color: var(--color-muted-foreground);
+  font-size: var(--text-lg);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.ci-modal__close:hover {
+  color: var(--color-foreground);
+  background: var(--ci-surface-alt);
+}
+.ci-modal__close:focus-visible {
+  outline: 2px solid var(--ci-focus-ring);
+  outline-offset: -2px;
+}
+.ci-modal__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+/*
+ * --- 端末取込 ---
+ * 左が定型の入力、右が貼り付け欄とプレビューである。
+ */
+.ci-import {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.ci-import__form {
+  flex: 0 1 400px;
+  min-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  overflow-y: auto;
+  border-right: 1px solid var(--color-border);
+}
+.ci-import__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.ci-import__label {
+  margin: 0;
+  font-size: var(--ci-fs-pane-title);
+  color: var(--color-muted-foreground);
+}
+.ci-import__note {
+  margin: 0;
+  font-size: var(--ci-fs-xs);
+  color: var(--color-muted-foreground);
+  line-height: 1.5;
+}
+.ci-import__kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.ci-import__columns {
+  display: flex;
+  gap: var(--space-3);
+}
+.ci-import__column {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--ci-fs-sm);
+  color: var(--color-muted-foreground);
+}
+.ci-import__column .ci-input {
+  width: 72px;
+}
+.ci-import__confirm-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.ci-import__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  min-height: 0;
+  padding: var(--space-3) var(--space-4);
+}
+/*
+ * 貼り付け欄。高さは視野の高さに従わせ、下限は端末の1画面ぶんの貼り付けが見える程度、上限は
+ * プレビューを画面外へ押し出さない程度とする(利用者は手で伸ばせる)。
+ */
+.ci-import__paste {
+  flex: none;
+  height: clamp(120px, 22vh, 260px);
+  resize: vertical;
+  padding: var(--space-2);
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--ci-surface-soft);
+  color: var(--color-foreground);
+  font-family: var(--ci-code-font);
+  font-size: var(--ci-fs-sm);
+  line-height: 1.5;
+  white-space: pre;
+  overflow: auto;
+}
+
+/* --- プレビュー --- */
+.ci-import-preview {
+  /* 行番号欄の幅。桁定規の左余白と行の字下げをそろえる。 */
+  --ci-import-gutter: 3.5em;
+
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--ci-surface-soft);
+}
+.ci-import-preview__head {
+  flex: none;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--ci-border-soft);
+  background: var(--ci-surface-header);
+}
+.ci-import-preview__title {
+  margin: 0;
+  font-size: var(--ci-fs-detail-title);
+  font-weight: 700;
+  color: var(--ci-text-heading);
+}
+.ci-import-preview__note {
+  margin: var(--space-1) 0 0;
+  font-size: var(--ci-fs-xs);
+  color: var(--color-muted-foreground);
+}
+.ci-import-preview__blank {
+  margin: 0;
+  padding: var(--space-4);
+  font-size: var(--ci-fs-sm);
+  color: var(--color-muted-foreground);
+}
+.ci-import-preview__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 var(--space-3) var(--space-2);
+  font-family: var(--ci-code-font);
+  font-size: var(--ci-fs-sm);
+  line-height: 1.5;
+}
+/* 行数が多くても桁を確かめられるよう、桁定規は縦スクロールでも上端へ残す。 */
+.ci-import-preview__ruler {
+  position: sticky;
+  top: 0;
+  margin: 0;
+  padding: var(--space-2) 0 var(--space-1) var(--ci-import-gutter);
+  background: var(--ci-surface-soft);
+  color: var(--color-muted-foreground);
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.2;
+  white-space: pre;
+}
+.ci-import-preview__lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ci-import-preview__line {
+  display: flex;
+  white-space: pre;
+}
+.ci-import-preview__no {
+  flex: none;
+  box-sizing: border-box;
+  width: var(--ci-import-gutter);
+  color: var(--color-muted-foreground);
+  text-align: right;
+  padding-right: var(--space-2);
+  user-select: none;
+}
+.ci-import-preview__text {
+  margin: 0;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  white-space: pre;
+}

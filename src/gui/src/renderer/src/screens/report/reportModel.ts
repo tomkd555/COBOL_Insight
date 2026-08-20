@@ -8,7 +8,10 @@
  * 指摘一覧・SQL指摘が常に含まれる。
  */
 
-import type { ReportFormat, ScreenMode } from "../../state/appState";
+import type { AnalysisMode } from "../../state/projectStore";
+
+/** レポートの出力形式。 */
+export type ReportFormat = "HTML" | "テキスト";
 
 /** --db 未指定時に engine が使う既定のプロジェクトファイル名。 */
 const DEFAULT_DB_FILE = "cobol-insight.db";
@@ -151,7 +154,7 @@ export function writeNotice(paths: ReportPaths): string {
 
 /** レポート画面の4状態を、解析ライフサイクルとレポートの取得状態から導く。 */
 export function deriveReportView(
-  mode: ScreenMode,
+  mode: AnalysisMode,
   inputDir: string | null,
   report: ReportState,
 ): ReportView {

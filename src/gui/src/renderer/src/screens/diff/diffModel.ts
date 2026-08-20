@@ -15,8 +15,11 @@ import type {
   SarifFinding,
 } from "../../../../shared/engine-api";
 import { parseFixSummary } from "../../../../shared/fixSummary";
-import { ruleOf } from "../../data/ruleCatalog";
-import type { FixDecision, ScreenMode } from "../../state/appState";
+import { ruleOf, type RuleCatalogIndex } from "../../data/ruleCatalog";
+import type { AnalysisMode } from "../../state/projectStore";
+
+/** 修正案の判定。未判定はキー不在で表す。 */
+export type FixDecision = "adopted" | "rejected";
 
 /** 修正案を生成できるルール ID。engine の FixProducer 実装と一致させる。 */
 export const FIX_RULE_IDS: readonly string[] = ["R004", "R017", "R018", "R021"];
@@ -108,6 +111,7 @@ export const readFixSummary = parseFixSummary;
  * 一覧から落とさない。
  */
 export function buildFixCandidates(
+  catalog: RuleCatalogIndex,
   summary: FixSummaryInfo,
   findings: readonly SarifFinding[],
 ): FixCandidate[] {
@@ -127,18 +131,22 @@ export function buildFixCandidates(
       name: fileNameOf(relPath),
       copybook: importers !== undefined,
       importers: importers ?? [],
-      findings: fixFindingsOf(relPath, findings),
+      findings: fixFindingsOf(catalog, relPath, findings),
     };
   });
 }
 
 /** 修正案の対象となった指摘だけを、そのファイル分だけ行の昇順で取り出す。 */
-function fixFindingsOf(relPath: string, findings: readonly SarifFinding[]): FixFinding[] {
+function fixFindingsOf(
+  catalog: RuleCatalogIndex,
+  relPath: string,
+  findings: readonly SarifFinding[],
+): FixFinding[] {
   return findings
     .filter((finding) => finding.file === relPath && FIX_RULE_IDS.includes(finding.ruleId))
     .map((finding) => ({
       ruleId: finding.ruleId,
-      ruleName: ruleOf(finding.ruleId).name,
+      ruleName: ruleOf(catalog, finding.ruleId).name,
       line: finding.startLine,
       message: finding.message,
     }))
@@ -151,8 +159,8 @@ export function fixRuleIdLabel(separator: string = "・"): string {
 }
 
 /** 修正案を持つルールを「ID（名称）」の形で列挙し、読点でつなぐ。 */
-export function fixRuleDescriptionLabel(): string {
-  return FIX_RULE_IDS.map((id) => `${id}（${ruleOf(id).name}）`).join("・");
+export function fixRuleDescriptionLabel(catalog: RuleCatalogIndex): string {
+  return FIX_RULE_IDS.map((id) => `${id}（${ruleOf(catalog, id).name}）`).join("・");
 }
 
 /** 一覧見出しの件数表示。修正案を持つルールを併記する。 */
@@ -161,13 +169,13 @@ export function fixCountLabel(candidates: readonly FixCandidate[]): string {
 }
 
 /** カードと詳細見出しに出すルールの要約。指摘が取れていないときはファイル名だけを示す。 */
-export function candidateRuleSummary(candidate: FixCandidate): string {
+export function candidateRuleSummary(catalog: RuleCatalogIndex, candidate: FixCandidate): string {
   const ids = [...new Set(candidate.findings.map((finding) => finding.ruleId))];
   if (ids.length === 0) {
     return "修正案";
   }
   if (ids.length === 1) {
-    return `${ids[0]} ${ruleOf(ids[0]).name}`;
+    return `${ids[0]} ${ruleOf(catalog, ids[0]).name}`;
   }
   return `${ids.join("・")}（${ids.length} ルール）`;
 }
@@ -338,7 +346,7 @@ export function applyNotice(outcome: FixApplyOutcome): string {
 
 /** diff 画面の4状態を、解析ライフサイクルと fix の取得状態から導く。 */
 export function deriveDiffView(
-  mode: ScreenMode,
+  mode: AnalysisMode,
   inputDir: string | null,
   fix: FixState,
 ): DiffView {

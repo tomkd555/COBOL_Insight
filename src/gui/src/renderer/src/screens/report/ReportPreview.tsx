@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import type { ReportFormat } from "../../state/appState";
+import type { ReportFormat } from "./reportModel";
 import { REPORT_SANDBOX, reportMetrics, type ReportSummary } from "./reportModel";
 
 export interface ReportPreviewProps {

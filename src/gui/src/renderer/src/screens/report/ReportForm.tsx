@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { Button } from "../../components/Button";
 import { TextInput } from "../../components/TextInput";
-import type { ReportFormat } from "../../state/appState";
+import type { ReportFormat } from "./reportModel";
 
 /** 出力形式の選択肢。engine は1回の実行で両形式を書くため、これは表示の切替である。 */
 const FORMATS: readonly ReportFormat[] = ["HTML", "テキスト"];

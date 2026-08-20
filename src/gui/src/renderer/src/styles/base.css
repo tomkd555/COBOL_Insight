@@ -7,9 +7,9 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: var(--ci-bg);
-  color: var(--ci-text);
-  font-family: var(--ci-font-ui);
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-body);
   font-size: var(--ci-fs-base);
 }
 
@@ -30,7 +30,7 @@ body {
 }
 
 a {
-  color: var(--ci-accent);
+  color: var(--color-primary);
 }
 a:hover {
   color: var(--ci-accent-hover);
