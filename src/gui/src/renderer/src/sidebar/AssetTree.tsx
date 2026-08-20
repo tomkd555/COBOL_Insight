@@ -98,7 +98,7 @@ export function AssetTree({
               <span className={`ci-badge ci-badge--${row.type}`}>{ASSET_TYPE_LABELS[row.type]}</span>
             ) : null}
             {row.item !== null && row.item.codepage === null ? (
-              <span className="ci-tree__note" title="文字コードを判定できていません">
+              <span className="ci-tree__note">
                 {codepageLabel(null)}
               </span>
             ) : null}

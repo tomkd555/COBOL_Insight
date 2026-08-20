@@ -7,7 +7,7 @@ import { ReportTab } from "../tabs/ReportTab";
 import { RulesTab } from "../tabs/RulesTab";
 import { SettingsTab } from "../tabs/SettingsTab";
 import { SourceTab } from "../tabs/SourceTab";
-import { useWorkbench, useWorkbenchDispatch, type WorkbenchTab } from "../state/workbenchStore";
+import { useWorkbench, type WorkbenchTab } from "../state/workbenchStore";
 
 export interface EditorAreaProps {
   /** カーソル位置が変わったときに呼ぶ。ステータスバーが受け取る。 */
@@ -45,7 +45,6 @@ function tabContent(tab: WorkbenchTab, onCursor: EditorAreaProps["onCursor"]): R
  */
 export function EditorArea({ onCursor }: EditorAreaProps): ReactElement {
   const workbench = useWorkbench();
-  const dispatch = useWorkbenchDispatch();
   const active = workbench.tabs.find((tab) => tab.id === workbench.activeTabId) ?? null;
 
   return (
@@ -56,9 +55,7 @@ export function EditorArea({ onCursor }: EditorAreaProps): ReactElement {
           <EmptyState
             icon="▤"
             title="資産を開いていません"
-            description="左のエクスプローラーから資産を選ぶと、この場所に本文が出ます。"
-            actionLabel="エクスプローラーを開く"
-            onAction={() => dispatch({ type: "SHOW_SIDE", view: "explorer" })}
+            description="エクスプローラーの「フォルダを選ぶ」から始めます。"
           />
         </div>
       ) : (

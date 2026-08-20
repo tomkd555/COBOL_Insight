@@ -20,6 +20,8 @@
 .ci-fix-list {
   width: var(--ci-diff-list-w);
   max-width: calc(100% - var(--ci-opposite-min));
+  /* 下限は文字の大きさで測る。px で測ると拡大時に一覧だけが潰れて読めなくなる。 */
+  min-width: 14em;
   flex: none;
   display: flex;
   flex-direction: column;
@@ -34,6 +36,9 @@
   font-size: var(--ci-fs-sm);
   font-weight: 700;
   color: var(--ci-text-heading);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .ci-fix-list__items {
   flex: 1;
@@ -165,6 +170,7 @@
 }
 .ci-diff__modes {
   display: flex;
+  flex: none;
   gap: var(--ci-space-1);
 }
 
@@ -197,6 +203,7 @@
 
 /* 書き出し先と注意を束ねた1行。書き出しの操作そのものはツールバーの右端にある。 */
 .ci-diff__apply,
+.ci-diff__decision-note,
 .ci-diff__result {
   flex: none;
   margin: var(--ci-space-1) var(--ci-space-4) 0;

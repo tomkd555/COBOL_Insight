@@ -155,6 +155,8 @@ describe("実行順の一覧", () => {
     const job = await screen.findByTestId(`trace-job:${GRAPH_ID_BASE + 1}`);
     fireEvent.click(job);
     expect(job).toHaveAttribute("aria-selected", "true");
+    // ノード情報は既定で畳んである。図が主役のため、選んだ内容は開いてから確かめる。
+    fireEvent.click(screen.getByRole("button", { name: "ノード情報と凡例を開く" }));
     await waitFor(() => expect(screen.getByText("SYKD010", { selector: ".ci-graph-detail__name" })).toBeInTheDocument());
   });
 });

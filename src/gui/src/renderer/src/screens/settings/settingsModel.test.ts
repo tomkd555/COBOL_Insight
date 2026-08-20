@@ -18,7 +18,6 @@ import {
   ruleConfigToggling,
   ruleConfigWith,
   ruleCountLabel,
-  severityThresholdNote,
 } from "./settingsModel";
 import { MANUAL_ENCODING_OPTIONS } from "../../data/encodings";
 
@@ -207,16 +206,6 @@ describe("重大度のしきい値", () => {
     expect(visibleSeverities("high")).toEqual(["high"]);
     expect(visibleSeverities("low")).toEqual(["high", "medium", "low"]);
     expect(visibleSeverities("warning")).toEqual(["high", "medium", "low", "warning"]);
-  });
-
-  it("説明文へ対象の重大度を並べる", () => {
-    expect(severityThresholdNote("medium")).toBe(
-      "現在の設定: 「中」以上を表示（高・中 が対象）",
-    );
-  });
-
-  it("最下位のしきい値ではすべて表示である旨を添える", () => {
-    expect(severityThresholdNote("warning")).toContain("すべて表示");
   });
 });
 

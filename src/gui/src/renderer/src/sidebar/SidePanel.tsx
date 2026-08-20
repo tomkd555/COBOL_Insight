@@ -99,7 +99,7 @@ export function SidePanel({
         <EmptyState
           icon="＋"
           title="資産フォルダを選んでください"
-          description="選んだフォルダの中身を読み、内容から COBOL 本体・コピー句・JCL・BMS を見分けます。フォルダの名前や並びの決まりはありません。"
+          description="フォルダの名前や並びの決まりはありません。"
           actionLabel="フォルダを選ぶ"
           onAction={onSelectFolder}
         />
@@ -149,7 +149,7 @@ export function SidePanel({
           {rows.length === 0 ? (
             <p className="ci-side__blank">
               {items.length === 0
-                ? "まだ解析していません。「再解析」で資産を読み込みます。"
+                ? "まだ解析していません。"
                 : "絞り込みに合う資産がありません。"}
             </p>
           ) : (

@@ -246,6 +246,7 @@
   text-overflow: ellipsis;
   max-width: 40ch;
 }
+/* 帯で唯一押せる項目。読み取り専用の表示と並ぶので、触らなくても押せるとわかる下線を敷く。 */
 .ci-statusbar__button {
   border: none;
   background: transparent;
@@ -254,6 +255,8 @@
   padding: 0 var(--space-2);
   border-radius: var(--radius-sm);
   cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
 }
 .ci-statusbar__button:hover {
   background: var(--ci-statusbar-hover-bg);

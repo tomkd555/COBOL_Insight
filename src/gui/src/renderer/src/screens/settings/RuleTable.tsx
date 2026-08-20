@@ -31,9 +31,7 @@ export function RuleTable({
 }: RuleTableProps): ReactElement {
   if (groups.length === 0) {
     return (
-      <p className="ci-rules__no-hit">
-        絞り込みに一致するルールはありません。ルール ID・名称・カテゴリで探せます。
-      </p>
+      <p className="ci-rules__no-hit">絞り込みに一致するルールはありません。</p>
     );
   }
   return (

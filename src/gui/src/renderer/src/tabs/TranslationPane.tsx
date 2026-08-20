@@ -101,19 +101,17 @@ export function TranslationPane({
             ))}
           </select>
         ) : null}
-        <span className="ci-viewer__pane-spacer" />
-        <span className="ci-viewer__pane-meta">カーソル行で相互にハイライトします</span>
       </header>
       <div className="ci-viewer__pane-body">
         {!target ? (
           <EmptyState
             title="この資産は逐語対訳の対象ではありません"
-            description="逐語対訳は COBOL 本体に対して生成します。JCL・コピー句・BMS マップは対訳を持ちません。"
+            description="逐語対訳は COBOL 本体にだけ生成します。"
           />
         ) : dbPath === null ? (
           <EmptyState
             title="解析結果のプロジェクトファイルがありません"
-            description="エクスプローラーの「再解析」を実行すると、対訳の対応表を持つプロジェクトファイルができます。"
+            description="エクスプローラーの「再解析」を実行してください。"
           />
         ) : transpile.status === "loading" ? (
           <p className="ci-viewer__loading" role="status">
@@ -128,20 +126,20 @@ export function TranslationPane({
         ) : generated === null && generatedLanguages.length > 0 ? (
           <EmptyState
             title="この言語の生成物がありません"
-            description="選んだ言語の生成物がありません。もう一方の言語へ切り替えると表示できます。"
+            description="もう一方の言語へ切り替えると表示できます。"
           />
         ) : generated === null && lineMapCount > 0 ? (
           <EmptyState
             icon="！"
             title="生成物が出力先に見つかりません"
-            description={`行の対応表はありますが、対応する生成物が出力先 ${transpileOutDir(dbPath)} にありません。別の出力先で生成した対応表がプロジェクトファイルに残っています。`}
+            description={`行の対応表はありますが、対応する生成物が出力先 ${transpileOutDir(dbPath)} にありません。`}
             actionLabel="逐語対訳を作り直す"
             onAction={onRegenerate}
           />
         ) : generated === null ? (
           <EmptyState
             title="逐語対訳が生成されていません"
-            description="この資産の対訳は生成されていません。行の対応表に対応がないため、対訳を表示できません。"
+            description="行の対応表にこの資産の対応がありません。"
             actionLabel="逐語対訳を作り直す"
             onAction={onRegenerate}
           />

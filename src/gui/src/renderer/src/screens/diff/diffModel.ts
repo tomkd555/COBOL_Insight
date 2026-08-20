@@ -163,9 +163,9 @@ export function fixRuleDescriptionLabel(catalog: RuleCatalogIndex): string {
   return FIX_RULE_IDS.map((id) => `${id}（${ruleOf(catalog, id).name}）`).join("・");
 }
 
-/** 一覧見出しの件数表示。修正案を持つルールを併記する。 */
+/** 一覧見出しの件数表示。 */
 export function fixCountLabel(candidates: readonly FixCandidate[]): string {
-  return `${candidates.length} 件（${fixRuleIdLabel(" / ")}）`;
+  return `${candidates.length} 件`;
 }
 
 /** カードと詳細見出しに出すルールの要約。指摘が取れていないときはファイル名だけを示す。 */

@@ -487,7 +487,7 @@ export function graphWarning(visibleCount: number): string | null {
   }
   return (
     `表示ノードが ${visibleCount} 件で、快適に描ける目安の ${VISIBLE_NODE_WARNING_THRESHOLD} 件を超えています。` +
-    "ノード種別フィルタで種別を絞るか、展開したノードを畳んで表示数を減らしてください。全体像は SVG／PNG 出力で確認します。"
+    "ノード種別フィルタで種別を絞るか、展開したノードを畳んで表示数を減らしてください。"
   );
 }
 

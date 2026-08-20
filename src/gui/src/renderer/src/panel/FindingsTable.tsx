@@ -184,9 +184,11 @@ export function FindingsTable({ onOpen }: FindingsTableProps): ReactElement {
         </table>
         {rows.length === 0 ? (
           <p className="ci-findings__blank">
-            {merged.length === 0
-              ? "指摘はありません。解析していない場合は、エクスプローラーの「再解析」で検出します。"
-              : "絞り込みに合う指摘がありません。"}
+            {merged.length > 0
+              ? "絞り込みに合う指摘がありません。"
+              : project.inputDir === null
+                ? "資産フォルダを選ぶと、指摘をここへ並べます。"
+                : "指摘はありません。"}
           </p>
         ) : null}
       </div>

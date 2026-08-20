@@ -222,6 +222,7 @@ export function SourceTab({ path, line, onCursor }: SourceTabProps): ReactElemen
       setSaveError(null);
       projectDispatch({ type: "SET_SAVE_FINDINGS", path, findings: outcome.diagnostics });
       workbenchDispatch({ type: "SET_DRAFT", id: tabId, text: null });
+      workbenchDispatch({ type: "SAVED", path, at: Date.now() });
       // engine が原本の改行様式や桁へそろえた結果を、画面の本文へ戻す。
       setReloadKey((count) => count + 1);
     } catch (error) {
@@ -270,7 +271,7 @@ export function SourceTab({ path, line, onCursor }: SourceTabProps): ReactElemen
       <EmptyState
         icon="⚠"
         title="この文字コードは画面で表示できません"
-        description={`${path} は ${document.codepage} と判定されています。EBCDIC の資産は解析エンジンが読み取ります。画面での表示と編集はこの版では扱いません。`}
+        description={`${path} は ${document.codepage} と判定されています。EBCDIC の資産は解析エンジンが読み取ります。`}
       />
     );
   }
@@ -335,7 +336,7 @@ export function SourceTab({ path, line, onCursor }: SourceTabProps): ReactElemen
       )}
       {document.truncated ? (
         <p className="ci-editor__note">
-          先頭の一部だけを読んでいます。残りを切り落とさないため、この本文は編集できません。
+          先頭の一部だけを読んでいます。この本文は編集できません。
         </p>
       ) : null}
 

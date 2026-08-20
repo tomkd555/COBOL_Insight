@@ -290,7 +290,7 @@ export function copyExpansionSummary(
     return `コピー句の展開を取得できませんでした（${state.message}）。解析を実行し直すと対応表を作り直します。`;
   }
   if (state.status === "idle") {
-    return `COPY 文 ${statements.length} 件 ― 展開すると取り込んだ行を COPY 文の位置へ差し込みます`;
+    return `COPY 文 ${statements.length} 件`;
   }
   const lines = new Set(state.expansions.map((expansion) => expansion.copyStatementLine));
   const expanded = statements.filter((statement) => lines.has(statement.line)).length;
@@ -575,7 +575,7 @@ export function linkSummary(
   generatedLines: readonly number[],
 ): string {
   if (cobolLines.length === 0 && generatedLines.length === 0) {
-    return "カーソル行に対応する行はありません（逐語対訳の対応表に無い行）";
+    return "カーソル行に対応する行はありません";
   }
   return `対応行を強調中 ― COBOL ${cobolLines.length} 行 ↔ 生成 ${generatedLines.length} 行`;
 }

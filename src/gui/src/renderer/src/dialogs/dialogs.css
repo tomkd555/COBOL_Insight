@@ -92,11 +92,6 @@
   color: var(--color-muted-foreground);
   line-height: 1.5;
 }
-.ci-import__kinds {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-}
 .ci-import__columns {
   display: flex;
   gap: var(--space-3);
@@ -175,12 +170,6 @@
 .ci-import-preview__note {
   margin: var(--space-1) 0 0;
   font-size: var(--ci-fs-xs);
-  color: var(--color-muted-foreground);
-}
-.ci-import-preview__blank {
-  margin: 0;
-  padding: var(--space-4);
-  font-size: var(--ci-fs-sm);
   color: var(--color-muted-foreground);
 }
 .ci-import-preview__body {

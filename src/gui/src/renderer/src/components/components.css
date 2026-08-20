@@ -41,6 +41,8 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  /* ラベルは語の途中で折らない。畳むときは行ではなくチップの単位で送る。 */
+  white-space: nowrap;
   font-family: inherit;
   font-size: var(--ci-fs-xs);
   padding: 3px 10px;
@@ -80,6 +82,8 @@
 /* 単一選択のチップ群(ラジオグループ) */
 .ci-chip-group {
   display: flex;
+  /* 幅が足りないときはチップを次の行へ送る。折り返さないと後ろのチップが押し出されて届かなくなる。 */
+  flex-wrap: wrap;
   gap: var(--ci-space-1);
 }
 
@@ -261,6 +265,8 @@
 .ci-btn {
   font-family: inherit;
   font-size: var(--ci-fs-sm);
+  /* ラベルを1字ずつ縦積みにしない。狭いツールバーでは行を折らず、帯の側で切る。 */
+  white-space: nowrap;
   padding: 5px 13px;
   border-radius: var(--ci-radius-sm);
   cursor: pointer;
@@ -299,6 +305,19 @@
 .ci-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+/* 主ボタンは薄めるだけでは押せそうに見える。押せないときは塗りを外す。 */
+.ci-btn--primary:disabled {
+  background: var(--ci-surface-alt);
+  border-color: var(--ci-border);
+  color: var(--ci-text-subtle);
+  opacity: 1;
+}
+/* 入切を持つボタンの入。チップの選択中と同じ表し方に揃える。 */
+.ci-btn[aria-pressed="true"] {
+  background: var(--ci-select-tint);
+  border-color: var(--ci-select-border);
+  color: var(--ci-accent-strong);
 }
 
 /*

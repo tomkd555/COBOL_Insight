@@ -105,10 +105,10 @@
   flex-wrap: wrap;
 }
 
-/* engine の起動対象と製品の版。列数は ENGINE_LAUNCH_INFO の 3 件に版の 1 件を加えた数である */
+/* 通信の有無と製品の版。列数は ENGINE_LAUNCH_INFO の 1 件に版の 1 件を加えた数である */
 .ci-settings__versions {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: var(--ci-space-2);
   margin: 0;
 }

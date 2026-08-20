@@ -8,31 +8,23 @@
  * 問い合わせるのは、利用者定義ルールの増減で総数が変わるためである。
  */
 
-import {
-  SEVERITY_META,
-  SEVERITY_ORDER,
-  visibleSeverities,
-  type Severity,
-} from "../../components/severity";
 import { ruleCount, ruleOf, type RuleCatalogIndex, type RuleInfo } from "../../data/ruleCatalog";
 import { RULE_CONFIG_VERSION, type RuleConfigFile } from "../../../../shared/engine-api";
 import { MANUAL_ENCODING_OPTIONS } from "../../data/encodings";
 import type { AnalysisMode } from "../../state/projectStore";
 
-/** engine の起動対象を示す1件。 */
+/** 解析エンジンの実行について示す1件。 */
 export interface EngineLaunchEntry {
   readonly label: string;
   readonly value: string;
 }
 
 /**
- * engine の起動対象。main の resolveEngineLaunch が配布形態から決める規則を、利用者へ示す文言に
- * 写したものである。renderer は main のパス解決結果を受け取る経路を持たないため、規則を示す。
+ * 解析エンジンの実行のうち、利用者が知る意味のある事実。起動するファイルの場所は配布形態で
+ * 決まる内部の話であり、利用者はそれを選べないため並べない。
  */
 export const ENGINE_LAUNCH_INFO: readonly EngineLaunchEntry[] = [
-  { label: "配布時の起動対象", value: "resources\\engine\\COBOLInsight.exe（内蔵 JRE 同梱）" },
-  { label: "開発時の起動対象", value: "端末にインストール済みの Java 実行環境を使う（解析エンジンの開発用ビルドを指定）" },
-  { label: "通信", value: "なし（解析エンジンの出力とファイルだけで受け渡す）" },
+  { label: "通信", value: "なし" },
 ];
 
 /**
@@ -157,13 +149,6 @@ export function filterCountLabel(
     return null;
   }
   return `絞り込みに一致: ${groupedRuleIds(groups).length} 件`;
-}
-
-/** しきい値の説明文(design sevThNote)。 */
-export function severityThresholdNote(threshold: Severity): string {
-  const labels = visibleSeverities(threshold).map((severity) => SEVERITY_META[severity].label);
-  const all = labels.length === SEVERITY_ORDER.length ? " ― すべて表示" : "";
-  return `現在の設定: 「${SEVERITY_META[threshold].label}」以上を表示（${labels.join("・")} が対象${all}）`;
 }
 
 /** コピー句探索パスを1つ上・下へ動かした新しい並びを返す。端では動かさない。 */

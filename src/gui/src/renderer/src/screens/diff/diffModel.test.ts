@@ -130,8 +130,8 @@ describe("buildFixCandidates", () => {
 describe("見出しの文言", () => {
   const candidates = buildFixCandidates(FIXTURE_CATALOG, readFixSummary(SAMPLE_PREVIEW_SUMMARY), SAMPLE_FINDINGS);
 
-  it("件数見出しは修正案を持つルールを併記する", () => {
-    expect(fixCountLabel(candidates)).toBe("3 件（R004 / R017 / R018 / R021）");
+  it("件数見出しは件数だけを示す", () => {
+    expect(fixCountLabel(candidates)).toBe("3 件");
   });
 
   it("ルール ID の一覧は区切り文字を指定でき、FIX_RULE_IDS の増減に追随する", () => {

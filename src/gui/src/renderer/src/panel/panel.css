@@ -160,7 +160,8 @@
 .ci-table__sub {
   display: block;
   color: var(--color-muted-foreground);
-  font-size: var(--ci-fs-tag);
+  font-size: var(--ci-fs-xs);
+  line-height: 1.5;
 }
 
 /* --- 実行ログ --- */

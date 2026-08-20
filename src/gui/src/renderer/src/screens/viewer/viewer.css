@@ -120,10 +120,10 @@
  */
 .ci-viewer__columns {
   position: relative;
-  height: 15px;
+  height: 17px;
   font-family: var(--ci-font-code);
-  font-size: var(--ci-fs-ruler);
-  line-height: 15px;
+  font-size: var(--ci-fs-xs);
+  line-height: 17px;
   color: var(--ci-text-subtle);
   background: var(--ci-surface-soft);
   border-bottom: 1px solid var(--ci-border-soft);

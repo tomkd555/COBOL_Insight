@@ -116,13 +116,13 @@ function fallbackRule(id: string): RuleInfo {
     summary:
       analysisError === undefined
         ? "この ID のルールは一覧にありません。"
-        : "解析そのものが失敗したことを示す。ルールによる検出ではない。",
+        : "解析そのものが失敗したことを示します。ルールによる検出ではありません。",
     rationale: "",
     detection: "",
     remedy:
       analysisError === undefined
         ? ""
-        : "対象ファイルの文字コード指定と、コピー句の探索パスを確かめる。",
+        : "対象ファイルの文字コード指定と、コピー句の探索パスを確かめてください。",
     badExample: "",
     goodExample: "",
   };

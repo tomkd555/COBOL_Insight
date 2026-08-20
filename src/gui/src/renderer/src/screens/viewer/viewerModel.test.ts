@@ -190,7 +190,7 @@ describe("linkSummary(相互ハイライトの状態)", () => {
   it("対応が無い行はその旨を示す", () => {
     const linked = linkFromCobolLine(index, 5);
     expect(linkSummary(linked.cobolLines, linked.generatedLines)).toBe(
-      "カーソル行に対応する行はありません（逐語対訳の対応表に無い行）",
+      "カーソル行に対応する行はありません",
     );
   });
 });
@@ -521,10 +521,8 @@ describe("copyExpansionSummary(展開の状態の1行表示)", () => {
     lines: [],
   };
 
-  it("閉じているあいだは件数と、展開すると何が起きるかを示す", () => {
-    expect(copyExpansionSummary(STATEMENTS, { status: "idle" })).toBe(
-      "COPY 文 2 件 ― 展開すると取り込んだ行を COPY 文の位置へ差し込みます",
-    );
+  it("閉じているあいだは件数を示す", () => {
+    expect(copyExpansionSummary(STATEMENTS, { status: "idle" })).toBe("COPY 文 2 件");
   });
 
   it("読込中と取得失敗は、空表示に潰さずそれぞれの理由を示す", () => {

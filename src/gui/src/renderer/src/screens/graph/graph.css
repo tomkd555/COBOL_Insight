@@ -158,7 +158,7 @@
 /* 節の種類。ジョブ・段落・PERFORM の別を色ではなく語で示す。 */
 .ci-trace__kind {
   flex: none;
-  font-size: var(--ci-fs-tag);
+  font-size: var(--ci-fs-xs);
   color: var(--ci-text-inverse);
   background: var(--ci-text-subtle);
   border-radius: var(--ci-radius-badge);

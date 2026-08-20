@@ -38,10 +38,7 @@ export function GraphDetail({
     <aside className="ci-graph-detail" aria-label="ノード情報と凡例">
       <h3 className="ci-graph-detail__title">ノード情報</h3>
       {detail === null ? (
-        <p className="ci-graph-detail__empty">
-          ノードを選ぶと、その情報をここへ表示します。「隣接を展開」を押すと、そのノードに
-          つながるノードを図へ加えます。
-        </p>
+        <p className="ci-graph-detail__empty">ノードを選んでください。</p>
       ) : (
         <div className="ci-graph-detail__body">
           <div>
@@ -119,9 +116,7 @@ function EdgeList({ title, edges, direction }: EdgeListProps): ReactElement {
   return (
     <section className="ci-graph-detail__edges">
       <h3 className="ci-graph-detail__edges-title">{`${title}（${edges.length}）`}</h3>
-      {edges.length === 0 ? (
-        <p className="ci-graph-detail__note">なし</p>
-      ) : (
+      {edges.length === 0 ? null : (
         <ul>
           {edges.map((edge) => (
             <li key={`${direction}${edge.peerId}${edge.kindLabel}${edge.resolutionLabel}`}>

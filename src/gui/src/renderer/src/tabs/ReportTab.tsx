@@ -18,8 +18,8 @@ import { messageOf } from "../services/analysis";
 import { useProject, useProjectDispatch } from "../state/projectStore";
 import { useSettings } from "../state/settingsStore";
 
-/** レポートの生成中に提示する段。 */
-const REPORT_RUN_STAGES = ["資産の走査結果と、指摘・SQL指摘の再検出を1つの文書へ束ねています"];
+/** レポートの生成は engine の1回の実行で終わるため、段は示さない。 */
+const NO_STAGES: readonly string[] = [];
 
 /** 未生成のときの状態。参照を固定して効果の依存を安定させる。 */
 const IDLE_REPORT: ReportState = { status: "idle" };
@@ -94,13 +94,13 @@ export function ReportTab(): ReactElement {
     return placeholder(
       <EmptyState
         title="書き出せる解析結果がありません"
-        description="資産フォルダを解析すると、呼出関係のまとめ・指摘一覧・SQL指摘をレポートとして書き出せます。"
+        description="資産フォルダを解析すると書き出せます。"
       />,
     );
   }
   if (view.kind === "running") {
     return placeholder(
-      <RunningIndicator title="レポートを生成しています" stages={REPORT_RUN_STAGES} />,
+      <RunningIndicator title="レポートを生成しています" stages={NO_STAGES} />,
     );
   }
   if (view.kind === "no-project") {
@@ -143,10 +143,7 @@ export function ReportTab(): ReactElement {
             path={previewPath(format, report.paths)}
           />
         ) : (
-          <EmptyState
-            title="レポートはまだ書き出していません"
-            description="出力先フォルダを確かめて「レポートを書き出す」を押すと、解析エンジンが HTML とテキストを書き出し、その内容をここへ表示します。"
-          />
+          <EmptyState title="レポートはまだ書き出していません" />
         )}
       </div>
     </div>

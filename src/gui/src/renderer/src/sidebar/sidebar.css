@@ -98,7 +98,8 @@
 }
 .ci-tree__name {
   flex: 1;
-  min-width: 0;
+  /* 名前の末尾はファイルを見分ける手がかりなので、先に縮むのはバッジの側にする。 */
+  min-width: 9em;
   overflow: hidden;
   text-overflow: ellipsis;
 }

@@ -63,6 +63,11 @@ export interface WorkbenchState {
    */
   readonly drafts: Readonly<Record<string, string>>;
   /**
+   * 直近の保存(資産の相対パスと時刻)。トーストは数秒で消えるため、保存できたことを
+   * ステータスバーに残す。次の編集で消す。
+   */
+  readonly lastSave: { readonly path: string; readonly at: number } | null;
+  /**
    * 寸法の操作を終えた回数。ドラッグは1画素ごとに寸法を変えるため、その全部を保存すると1回の
    * ドラッグで数十回の書き込みが走る。保存はこの回数の変化だけを合図に行う。
    */
@@ -85,6 +90,7 @@ export const initialWorkbenchState: WorkbenchState = {
   bottomHeight: BOTTOM_PANEL_LIMITS.initial,
   bottomView: "findings",
   drafts: {},
+  lastSave: null,
   sizeCommitCount: 0,
 };
 
@@ -110,6 +116,7 @@ export type WorkbenchAction =
   | { type: "ACTIVATE_TAB"; id: string }
   | { type: "STEP_TAB"; step: 1 | -1 }
   | { type: "SET_DRAFT"; id: string; text: string | null }
+  | { type: "SAVED"; path: string; at: number }
   | { type: "TOGGLE_SIDE" }
   | { type: "SHOW_SIDE"; view: SideView }
   | { type: "SET_SIDE_WIDTH"; width: number }
@@ -203,8 +210,11 @@ export function workbenchReducer(state: WorkbenchState, action: WorkbenchAction)
       }
       return current === action.text
         ? state
-        : { ...state, drafts: { ...state.drafts, [action.id]: action.text } };
+        : { ...state, drafts: { ...state.drafts, [action.id]: action.text }, lastSave: null };
     }
+
+    case "SAVED":
+      return { ...state, lastSave: { path: action.path, at: action.at } };
 
     case "TOGGLE_SIDE":
       return { ...state, sideVisible: !state.sideVisible };

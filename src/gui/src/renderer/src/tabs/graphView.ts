@@ -23,7 +23,8 @@ export const INITIAL_GRAPH_VIEW: GraphViewState = {
   kinds: Object.fromEntries(NODE_KINDS.map((kind) => [kind, true])) as Record<AnyNodeKind, boolean>,
   expanded: {},
   selected: null,
-  detailCollapsed: false,
+  // 図が主役なので、ノード情報と凡例は畳んで開く。ツールバーの「ノード情報と凡例を開く」で出す。
+  detailCollapsed: true,
 };
 
 /** 種別1つの表示・非表示を反転する。 */

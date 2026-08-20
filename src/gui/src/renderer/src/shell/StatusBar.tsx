@@ -13,6 +13,16 @@ function countText(count: number | null, running: boolean): string {
   return running || count === null ? "―" : String(count);
 }
 
+/** 下部パネルが数えているのと同じ合計。どちらかが未取得なら合計も出さない。 */
+function totalText(findings: string, sqlAdvice: string): string {
+  return findings === "―" || sqlAdvice === "―" ? "―" : String(Number(findings) + Number(sqlAdvice));
+}
+
+/** 保存した時刻。時と分だけを出す。 */
+function savedAtText(at: number): string {
+  return new Date(at).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+}
+
 /** 解析の状態を1語で示す。 */
 function modeText(mode: string): string {
   switch (mode) {
@@ -54,6 +64,11 @@ export function StatusBar({ cursor }: StatusBarProps): ReactElement {
       </span>
       <span className="ci-statusbar__item">{modeText(project.mode)}</span>
       <span className="ci-statusbar__spacer" />
+      {workbench.lastSave !== null ? (
+        <span className="ci-statusbar__item" title={workbench.lastSave.path}>
+          最終保存 {savedAtText(workbench.lastSave.at)}
+        </span>
+      ) : null}
       {item !== null ? (
         <span className="ci-statusbar__item">{codepageLabel(item.codepage)}</span>
       ) : null}
@@ -66,9 +81,10 @@ export function StatusBar({ cursor }: StatusBarProps): ReactElement {
         type="button"
         className="ci-statusbar__button"
         aria-pressed={workbench.bottomVisible}
+        title={`コード ${findings}・SQL ${sqlAdvice}`}
         onClick={() => dispatch({ type: "TOGGLE_BOTTOM" })}
       >
-        指摘 {findings}・SQL {sqlAdvice}
+        指摘 {totalText(findings, sqlAdvice)}
       </button>
       <span className="ci-statusbar__item">資産 {assets}</span>
       <span className="ci-statusbar__item">v{project.version}</span>

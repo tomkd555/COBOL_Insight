@@ -25,15 +25,9 @@ export function ImportPreview({ lines }: ImportPreviewProps): ReactElement {
     <section className="ci-import-preview" aria-label="取込内容のプレビュー">
       <div className="ci-import-preview__head">
         <h4 className="ci-import-preview__title">取込内容のプレビュー（{lines.length} 行）</h4>
-        <p className="ci-import-preview__note">
-          7桁目が標識領域、8〜72桁が本文、73桁目以降が識別領域である。全角文字は2桁として数える。
-        </p>
+        <p className="ci-import-preview__note">全角文字は2桁として数えます。</p>
       </div>
-      {lines.length === 0 ? (
-        <p className="ci-import-preview__blank">
-          本文を貼り付けると、桁を切り出した結果をここに表示します。
-        </p>
-      ) : (
+      {lines.length === 0 ? null : (
         <div className="ci-import-preview__body">
           <pre className="ci-import-preview__ruler" aria-hidden="true">
             {`${ruler.tens}\n${ruler.ones}`}

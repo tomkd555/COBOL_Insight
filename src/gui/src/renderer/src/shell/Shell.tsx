@@ -132,7 +132,7 @@ export function Shell(): ReactElement {
         },
       );
       projectDispatch({ type: "FINISH_RUN", failed });
-      setToast(failed ? "解析の一部が失敗しました。実行ログで内容を確かめてください。" : "解析が完了しました。");
+      setToast(failed ? "解析の一部が失敗しました。" : "解析が完了しました。");
     },
     [projectDispatch, project.codepageOverrides, settings.copybookPaths],
   );

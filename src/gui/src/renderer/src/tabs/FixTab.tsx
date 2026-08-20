@@ -32,8 +32,8 @@ import { messageOf } from "../services/analysis";
 import { artifactItems, useProject, useProjectDispatch } from "../state/projectStore";
 import { useSettings } from "../state/settingsStore";
 
-/** 修正案の生成中に提示する段。engine は生成した修正後ソースを再構文解析して検証する。 */
-const FIX_RUN_STAGES = ["修正後ソースの再構文解析による妥当性の確認を含みます"];
+/** 修正案の生成は engine の1回の実行で終わるため、段は示さない。 */
+const NO_STAGES: readonly string[] = [];
 
 /** 未取得のときに使う値。参照を固定して効果の依存を安定させる。 */
 const IDLE_DIFF: DiffTextState = { status: "idle" };
@@ -139,7 +139,7 @@ export function FixTab(): ReactElement {
         status: "unified",
         lines: extractUnifiedDiff(fix.stdout, candidate.relPath),
         reason: candidate.copybook
-          ? "コピー句の修正は原本を書き換えないため、修正後ソースは書き出されません。修正案の生成が出した差分をそのまま示します。"
+          ? "コピー句の修正は原本を書き換えないため、修正後ソースは書き出されません。"
           : "修正後ソースを実体化できなかったため、修正案の生成が出した差分をそのまま示します。",
       });
       return;
@@ -212,12 +212,12 @@ export function FixTab(): ReactElement {
     return (
       <EmptyState
         title="修正案がありません"
-        description={`資産フォルダを解析すると、${fixRuleDescriptionLabel(project.catalog)}の修正案を生成します。他の指摘は検出だけで、差分は生成しません。`}
+        description={`資産フォルダを解析すると、${fixRuleDescriptionLabel(project.catalog)}の修正案を生成します。`}
       />
     );
   }
   if (view.kind === "running") {
-    return <RunningIndicator title="修正案を生成しています" stages={FIX_RUN_STAGES} />;
+    return <RunningIndicator title="修正案を生成しています" stages={NO_STAGES} />;
   }
   if (view.kind === "no-project") {
     return (
@@ -232,7 +232,7 @@ export function FixTab(): ReactElement {
       <EmptyState
         icon="！"
         title="修正案を生成できませんでした"
-        description={`${view.message} 資産フォルダとコピー句の探索パスを確かめて、もう一度試してください。`}
+        description={`${view.message} 資産フォルダとコピー句の探索パスを確かめてください。`}
         actionLabel="もう一度生成"
         onAction={() => projectDispatch({ type: "SET_FIX", fix: { status: "idle" } })}
       />
@@ -242,7 +242,7 @@ export function FixTab(): ReactElement {
     return (
       <EmptyState
         title="修正案は生成されませんでした"
-        description={`解析した資産に、${fixRuleIdLabel()} の修正案を生成できる指摘はありませんでした。他の指摘は検出だけで、差分は生成しません。`}
+        description={`解析した資産に、${fixRuleIdLabel()} の修正案を生成できる指摘はありませんでした。`}
         actionLabel="修正案を作り直す"
         onAction={() => projectDispatch({ type: "SET_FIX", fix: { status: "idle" } })}
       />
@@ -280,9 +280,9 @@ export function FixTab(): ReactElement {
       <div className="ci-diff__main">
         <div className="ci-diff__toolbar">
           <div className="ci-diff__heading">
-            <h3 className="ci-diff__title">
-              {`${candidateRuleSummary(project.catalog, candidate)} ― ${candidateLocation(candidate)}`}
-            </h3>
+            <h3 className="ci-diff__title">{candidateRuleSummary(project.catalog, candidate)}</h3>
+            {/* 位置は題目と別の要素に置く。1つにつなぐと、省略記号がファイル名の途中で切る。 */}
+            <span className="ci-diff__subtitle">{candidateLocation(candidate)}</span>
             <span className="ci-diff__subtitle">
               {`判定: 採用 ${counts.adopted} ・ 棄却 ${counts.rejected} ・ 未判定 ${counts.pending}`}
             </span>
@@ -294,19 +294,18 @@ export function FixTab(): ReactElement {
               aria-pressed={preview}
               onClick={() => setPreview(true)}
             >
-              確認
+              差分を見る
             </Button>
             <Button
               variant={preview ? "default" : "primary"}
               aria-pressed={!preview}
               onClick={() => setPreview(false)}
             >
-              書き出し
+              書き出しの準備
             </Button>
           </div>
           <Button
             aria-label="採用"
-            variant="primary"
             aria-pressed={fixDecisions[candidate.relPath] === "adopted"}
             onClick={() => decide("adopted")}
           >
@@ -325,6 +324,11 @@ export function FixTab(): ReactElement {
             </Button>
           )}
         </div>
+
+        {/* 採用・棄却の直下に置く。判定は書き出す対象を選ぶ操作ではない。 */}
+        <p className="ci-diff__decision-note" role="note">
+          原本は変更しません。採用・棄却は判断の記録で、書き出しは修正案をすべて出力先へ出します。
+        </p>
 
         {warning === null ? null : (
           <div className="ci-banner ci-banner--error" role="alert">
@@ -357,8 +361,8 @@ export function FixTab(): ReactElement {
         ) : null}
 
         <div className="ci-diff__labels">
-          <span className="ci-diff__label">修正前（原本 ― 変えません）</span>
-          <span className="ci-diff__label">修正後（解析エンジンが生成した修正後ソース）</span>
+          <span className="ci-diff__label">修正前（原本）</span>
+          <span className="ci-diff__label">修正後</span>
         </div>
         <div className="ci-diff__body">
           {diff.status === "loading" ? (

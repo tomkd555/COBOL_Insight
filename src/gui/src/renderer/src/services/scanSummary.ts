@@ -116,8 +116,7 @@ export function scanNotices(
     sections.push({
       text:
         "対象の資産が 1 件も見つかりませんでした。選んだフォルダに COBOL・コピー句・JCL・BMS の" +
-        `ソースがあるか確かめてください（対応する拡張子の例: ${RECOGNIZED_EXTENSIONS}）。` +
-        "拡張子が無くても、内容から種別を判定します。",
+        `ソースがあるか確かめてください（対応する拡張子の例: ${RECOGNIZED_EXTENSIONS}）。`,
       details: NO_DETAILS,
     });
   }

@@ -17,7 +17,7 @@ export type FindingSource = "lint" | "sql" | "save";
 
 /** 出所の表示名。 */
 export const SOURCE_LABELS: Readonly<Record<FindingSource, string>> = {
-  lint: "指摘",
+  lint: "コード",
   sql: "SQL",
   save: "保存時の検証",
 };
@@ -185,5 +185,5 @@ export function filterFindings(
 export function thresholdNote(threshold: Severity): string | null {
   return visibleSeverities(threshold).length === 4
     ? null
-    : `重大度しきい値より低い指摘は表に出していません（設定で変えられます）`;
+    : "重大度しきい値より低い指摘は表に出していません";
 }

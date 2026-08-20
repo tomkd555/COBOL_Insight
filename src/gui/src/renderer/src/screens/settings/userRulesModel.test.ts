@@ -98,8 +98,8 @@ describe("testResultLabel", () => {
     expect(testResultLabel(result)).toBe("1 行を走査し、1 件が一致しました。");
   });
 
-  it("本文が無いときは使い方を示す", () => {
-    expect(testResultLabel(testUserRulePattern(draftOf({}), ""))).toContain("試験する本文");
+  it("本文が無いときは何も示さない", () => {
+    expect(testResultLabel(testUserRulePattern(draftOf({}), ""))).toBe("");
   });
 
   it("解釈できない正規表現の理由を示す", () => {

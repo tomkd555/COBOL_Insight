@@ -32,8 +32,8 @@ import { buildTrace, flattenTrace, toCallGraphData } from "./traceModel";
 import { sourceTab, useWorkbenchDispatch } from "../state/workbenchStore";
 import type { CallGraphData } from "../../../shared/engine-api";
 
-/** グラフを読んでいる間に提示する段。 */
-const GRAPH_RUN_STAGES = ["走査で記録したジョブ・プログラム・段落の呼出関係を読み出しています"];
+/** 読み出しは1回の実行で終わるため、段は示さない。 */
+const NO_STAGES: readonly string[] = [];
 
 /** 未取得のときに用いる空グラフ。useMemo の依存を安定させるため定数で持つ。 */
 const EMPTY_GRAPH: CallGraphData = { nodes: [], edges: [] };
@@ -143,12 +143,12 @@ export function GraphTab(): ReactElement {
     return (
       <EmptyState
         title="解析結果がありません"
-        description="資産フォルダを解析すると、ジョブから段落までの呼出関係を実行順の一覧と図で示します。"
+        description="資産フォルダを解析すると表示します。"
       />
     );
   }
   if (project.mode === "running" || graph.status === "idle" || graph.status === "loading") {
-    return <RunningIndicator title="呼出関係を読み出しています" stages={GRAPH_RUN_STAGES} />;
+    return <RunningIndicator title="呼出関係を読み出しています" stages={NO_STAGES} />;
   }
   if (dbPath === null) {
     return (
@@ -163,7 +163,7 @@ export function GraphTab(): ReactElement {
       <EmptyState
         icon="！"
         title="呼出関係を読み出せませんでした"
-        description={`${graph.message} 解析結果の保存先を確かめて、もう一度読み出してください。`}
+        description={`${graph.message} 解析結果の保存先を確かめてください。`}
         actionLabel="もう一度読み出す"
         onAction={() => dispatch({ type: "SET_GRAPH", graph: { status: "idle" } })}
       />
@@ -223,10 +223,7 @@ export function GraphTab(): ReactElement {
           </div>
         )}
         {data.nodes.length === 0 ? (
-          <EmptyState
-            title="呼出関係が見つかりませんでした"
-            description="解析した資産に、ジョブ・プログラム・データセットの呼出関係はありませんでした。"
-          />
+          <EmptyState title="呼出関係が見つかりませんでした" />
         ) : (
           <div className="ci-graph__figure" style={figureStyle}>
             <TraceTree

@@ -9,7 +9,6 @@ import {
   isReadOnly,
   movePath,
   removePath,
-  severityThresholdNote,
 } from "../screens/settings/settingsModel";
 import { useProject, useProjectDispatch } from "../state/projectStore";
 import { useSettings, useSettingsDispatch } from "../state/settingsStore";
@@ -90,7 +89,7 @@ export function SettingsTab(): ReactElement {
         <h3 className="ci-settings__title">設定</h3>
         {readOnly ? (
           <div className="ci-settings__lock" role="status">
-            解析の実行中は設定を変更できません（読み取り専用）。
+            解析の実行中は設定を変更できません。
           </div>
         ) : null}
 
@@ -120,7 +119,7 @@ export function SettingsTab(): ReactElement {
         <section className="ci-settings__card">
           <h4 className="ci-settings__card-title">コピー句探索パス</h4>
           <p className="ci-settings__desc">
-            並べた順に探索します。同名のコピー句が複数あるときは、先に見つかったものを使います。
+            並べた順に探索し、先に見つかったものを使います。
           </p>
           <CopybookPathList
             paths={paths}
@@ -141,26 +140,21 @@ export function SettingsTab(): ReactElement {
         <section className="ci-settings__card">
           <h4 className="ci-settings__card-title">表示する重大度のしきい値</h4>
           <p className="ci-settings__desc">
-            選んだ重大度以上の指摘を下部パネルへ表示します。しきい値より低い重大度は一覧から外れ、
-            その重大度の絞り込みも操作できなくなります。
+            選んだ重大度以上の指摘を下部パネルへ表示します。低い重大度の絞り込みは操作できなくなります。
           </p>
           <ChipRadioGroup
             label="表示する重大度のしきい値"
             options={SEVERITY_LABELS}
             value={SEVERITY_META[settings.severityThreshold].label}
+            symbolOf={(label) => SEVERITY_META[SEVERITY_BY_LABEL[label]]}
             onChange={(label) =>
               dispatch({ type: "SET_THRESHOLD", severity: SEVERITY_BY_LABEL[label] })
             }
           />
-          <p className="ci-settings__note">{severityThresholdNote(settings.severityThreshold)}</p>
         </section>
 
         <section className="ci-settings__card">
           <h4 className="ci-settings__card-title">解析エンジンの実行</h4>
-          <p className="ci-settings__desc">
-            解析は同梱の解析エンジンが別のプログラムとして担い、結果をファイルで受け取ります。
-            ネットワーク接続は行いません。
-          </p>
           <dl className="ci-settings__versions">
             {ENGINE_LAUNCH_INFO.map((entry) => (
               <div key={entry.label} className="ci-settings__version">

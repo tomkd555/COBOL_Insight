@@ -8,6 +8,7 @@ import {
   decisionLabel,
   decisionModifier,
   fixCountLabel,
+  fixRuleIdLabel,
   type FixCandidate,
 } from "./diffModel";
 
@@ -96,9 +97,7 @@ export function FixList({
           );
         })}
       </ul>
-      <p className="ci-fix-list__note">
-        原本は変更しない。「適用（書き出し）」は出力先へ相対パス構造を保って書き出す。採用・棄却は常に人の判断である。
-      </p>
+      <p className="ci-fix-list__note">{`修正案を生成できるルール: ${fixRuleIdLabel(" / ")}`}</p>
     </div>
   );
 }

@@ -123,7 +123,7 @@ export function testResultLabel(result: PatternTestResult): string {
     return `正規表現を解釈できませんでした: ${result.error}`;
   }
   if (result.scannedLines === 0) {
-    return "試験する本文を入力すると、どの行が指摘になるかを示します。";
+    return "";
   }
   return `${result.scannedLines} 行を走査し、${result.matches.length} 件が一致しました。`;
 }

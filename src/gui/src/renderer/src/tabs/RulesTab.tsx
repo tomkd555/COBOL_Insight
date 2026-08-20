@@ -133,7 +133,7 @@ export function RulesTab(): ReactElement {
         <h3 className="ci-settings__title">ルール</h3>
         {readOnly ? (
           <div className="ci-settings__lock" role="status">
-            解析の実行中はルールを変更できません（読み取り専用）。
+            解析の実行中はルールを変更できません。
           </div>
         ) : null}
         {error === null ? null : (
@@ -251,11 +251,6 @@ export function RulesTab(): ReactElement {
               <span aria-hidden="true">＋</span> ルールを追加
             </Button>
           </div>
-          <p className="ci-settings__desc">
-            正規表現で1行ずつ検査する自前のルールを作れます。作ったルールは組み込みルールと同じく
-            解析の対象になり、上のルール表にも並びます。定義は解析エンジンが読む JSON
-            ファイルへ保存します。
-          </p>
           <UserRuleList
             rules={project.userRules}
             onEdit={(index) => setDraft({ rule: project.userRules[index], index })}

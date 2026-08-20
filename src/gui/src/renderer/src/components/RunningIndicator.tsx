@@ -36,6 +36,7 @@ export function RunningIndicator({
         <span className="ci-running__spinner" aria-hidden="true" />
         <div className="ci-running__body">
           <h3 className="ci-running__title">{title}</h3>
+          {stages.length === 0 ? null : (
           <p className="ci-running__stages">
             {stages.map((label, index) => {
               const active = activeStage === index + 1;
@@ -56,6 +57,7 @@ export function RunningIndicator({
               );
             })}
           </p>
+          )}
         </div>
       </div>
     </div>

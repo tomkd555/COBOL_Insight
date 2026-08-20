@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { Button } from "../components/Button";
+import { ChipRadioGroup } from "../components/ChipRadioGroup";
 import { TextInput } from "../components/TextInput";
-import { ASSET_KIND_SPECS, importRelPath, type ImportAssetKind } from "../../../shared/assetImport";
+import {
+  ASSET_KIND_SPECS,
+  assetKindSpec,
+  importRelPath,
+  type ImportAssetKind,
+} from "../../../shared/assetImport";
 import { messageOf } from "../services/analysis";
 import { ImportPreview } from "./ImportPreview";
 import { clipColumns } from "./importModel";
@@ -14,6 +20,9 @@ type ImportStatus =
   | { kind: "error"; message: string };
 
 const IDLE: ImportStatus = { kind: "idle" };
+
+/** 種別チップの選択肢。並びは ASSET_KIND_SPECS のとおり。 */
+const ASSET_KIND_OPTIONS: readonly ImportAssetKind[] = ASSET_KIND_SPECS.map((spec) => spec.kind);
 
 /** 桁として受ける範囲。固定形式の記録長に余裕を見た上限とする。 */
 const MIN_COLUMN = 1;
@@ -142,21 +151,16 @@ export function ImportDialog({ inputDir, onClose, onSaved }: ImportDialogProps):
               <p className="ci-import__label" id="ci-import-kind-label">
                 資産の種別
               </p>
-              <div className="ci-import__kinds" role="group" aria-labelledby="ci-import-kind-label">
-                {ASSET_KIND_SPECS.map((spec) => (
-                  <Button
-                    key={spec.kind}
-                    variant={spec.kind === kind ? "primary" : "default"}
-                    aria-pressed={spec.kind === kind}
-                    onClick={() => setKind(spec.kind)}
-                  >
-                    {spec.label}
-                  </Button>
-                ))}
-              </div>
+              {/* 側パネルの「種別で絞る」と同じ見せ方にする。主ボタンの塗りは「保存」だけに残す。 */}
+              <ChipRadioGroup
+                label="資産の種別"
+                options={ASSET_KIND_OPTIONS}
+                value={kind}
+                labelOf={(value) => assetKindSpec(value).label}
+                onChange={setKind}
+              />
               <p className="ci-import__note">
-                種別は解析の対象を決めません。解析エンジンは内容から種別を判定します。コピー句だけは
-                COPY 文から引けるよう、拡張子 .cpy を補います。
+                コピー句を選ぶと、COPY 文から引けるよう拡張子 .cpy を補います。
               </p>
             </div>
 
@@ -170,7 +174,7 @@ export function ImportDialog({ inputDir, onClose, onSaved }: ImportDialogProps):
                 value={destDir}
                 onChange={(event) => setDestDir(event.target.value)}
               />
-              <p className="ci-import__note">資産フォルダからの相対パス。空欄なら直下に置きます。</p>
+              <p className="ci-import__note">資産フォルダからの相対パス。</p>
             </div>
 
             <div className="ci-import__field">
@@ -230,9 +234,7 @@ export function ImportDialog({ inputDir, onClose, onSaved }: ImportDialogProps):
             <Button variant="primary" disabled={!canSave} onClick={() => void save(false)}>
               {saving ? "保存しています…" : "保存"}
             </Button>
-            <p className="ci-import__note">
-              保存は UTF-8 で行います。解析エンジンは保存したファイルの文字コードを自動で判別します。
-            </p>
+            <p className="ci-import__note">保存は UTF-8 で行います。</p>
           </div>
 
           <div className="ci-import__body">
