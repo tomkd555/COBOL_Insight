@@ -42,12 +42,8 @@ public final class SqlAdviseCommand implements Callable<Integer> {
             description = "ファイル単位のコードページ手動指定(相対パスまたはファイル名=コードページ)。自動判別に優先する")
     Map<String, String> codepageOverrides = new LinkedHashMap<>();
 
-    @Option(names = "--disable-rule", paramLabel = "RULE_ID",
-            description = "無効化するルールID(繰り返し指定可)")
-    List<String> disabledRules = new ArrayList<>();
-
     @Option(names = "--rule-config", paramLabel = "FILE",
-            description = "ルールの有効・無効を書いた設定ファイル(JSON)。--disable-rule の指定と併せて無効化する")
+            description = "ルールの有効・無効を書いた設定ファイル(JSON)")
     Path ruleConfigFile;
 
     @Spec
@@ -56,7 +52,7 @@ public final class SqlAdviseCommand implements Callable<Integer> {
     @Override
     public Integer call() {
         List<Path> searchPaths = CommonScanOptions.resolveCopybookPaths(inputDir, copybookPaths);
-        Set<String> disabled = RuleConfig.resolveDisabled(spec, ruleConfigFile, disabledRules);
+        Set<String> disabled = RuleConfig.resolveDisabled(spec, ruleConfigFile);
         SqlAdviseRunner.Result result = SqlAdviseRunner.run(
                 new SqlAdviseRunner.Options(inputDir, searchPaths, codepageOverrides, disabled));
         try {

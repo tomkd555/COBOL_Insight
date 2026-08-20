@@ -7,7 +7,6 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Spec;
 
 import java.nio.file.Path;
-import java.util.List;
 import java.util.concurrent.Callable;
 
 /**
@@ -39,7 +38,7 @@ public final class RulesCommand implements Callable<Integer> {
     @Override
     public Integer call() {
         RulesRunner.Result result = RulesRunner.run(new RulesRunner.Options(userRulesFile, ruleId,
-                RuleConfig.resolveDisabled(spec, ruleConfigFile, List.of())));
+                RuleConfig.resolveDisabled(spec, ruleConfigFile)));
         if (result.detail() && result.rules().isEmpty()) {
             System.err.println("該当するルールが無い: " + ruleId);
             return ExitCodes.ERRORS;

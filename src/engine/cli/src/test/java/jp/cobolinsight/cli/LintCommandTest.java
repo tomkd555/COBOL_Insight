@@ -111,18 +111,7 @@ class LintCommandTest {
         assertEquals(1, exitCode, "警告あり=1であること");
     }
 
-    @Test
-    void disabledRuleSuppressesItsFindings() throws IOException {
-        Path dir = assets("warnoff", WARNING.replace("WARN1", "WARNOFF"));
-
-        int exitCode = new CommandLine(new Main()).execute("lint", dir.toString(),
-                "--sarif", tempDir.resolve("warnoff.sarif").toString(),
-                "--disable-rule", "R008");
-
-        assertEquals(0, exitCode, "R008を無効化すると警告が消え成功(0)になること");
-    }
-
-    /** 設定ファイルは --disable-rule と同じ効き方をする。GUI とファイルで状態を揃えるためである。 */
+    /** ルールの有効・無効は設定ファイルだけが決める。 */
     @Test
     void ruleConfigFileSuppressesItsFindings() throws IOException {
         Path dir = assets("warncfg", WARNING.replace("WARN1", "WARNCFG"));
@@ -137,19 +126,19 @@ class LintCommandTest {
         assertEquals(0, exitCode, "設定ファイルで R008 を無効化すると成功(0)になること");
     }
 
-    /** 両方を指定した場合は和を取る。片方だけが効くと利用者の意図から外れる。 */
+    /** 設定ファイルは複数件を並べられる。1件目だけを読んで打ち切らないことを固める。 */
     @Test
-    void ruleConfigAndDisableRuleOptionAreUnioned() throws IOException {
-        Path dir = assets("warnboth", WARNING.replace("WARN1", "WARNBOTH"));
-        Path config = tempDir.resolve("rule-config-other.json");
-        Files.writeString(config, "{\"version\": 1, \"disabledRules\": [\"R001\"]}",
+    void ruleConfigFileSuppressesEveryListedRule() throws IOException {
+        Path dir = assets("warnmany", WARNING.replace("WARN1", "WARNMANY"));
+        Path config = tempDir.resolve("rule-config-many.json");
+        Files.writeString(config, "{\"version\": 1, \"disabledRules\": [\"R001\", \"R008\"]}",
                 StandardCharsets.UTF_8);
 
         int exitCode = new CommandLine(new Main()).execute("lint", dir.toString(),
-                "--sarif", tempDir.resolve("warnboth.sarif").toString(),
-                "--rule-config", config.toString(), "--disable-rule", "R008");
+                "--sarif", tempDir.resolve("warnmany.sarif").toString(),
+                "--rule-config", config.toString());
 
-        assertEquals(0, exitCode, "設定ファイル側と --disable-rule 側の両方が効くこと");
+        assertEquals(0, exitCode, "並べた R001・R008 のいずれも無効化されること");
     }
 
     /** 綴り違いを黙って無視すると全ルールが有効のまま流れるため、指定したファイルの不在は誤りとする。 */

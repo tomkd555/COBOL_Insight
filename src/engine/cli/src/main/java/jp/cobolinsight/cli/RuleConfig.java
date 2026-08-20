@@ -19,9 +19,8 @@ import java.util.Set;
  *
  * <pre>{"version": 1, "disabledRules": ["R001", "S002"]}</pre>
  *
- * <p>無効化の指定を engine の一箇所で読むための型である。設定ファイルと {@code --disable-rule}
- * のどちらから来ても、{@link #resolveDisabled} が和を取って各 Runner の
- * {@code disabledRuleIds} へ渡す。
+ * <p>無効化の指定を engine の一箇所で読むための型である。{@link #resolveDisabled} が読んだ結果を
+ * 各 Runner の {@code disabledRuleIds} へ渡す。
  *
  * <p>誤りは 2 段階に分ける。ファイルが無い・JSON が壊れている・版数が違う場合は、利用者が
  * 意図した設定がまるごと効かないため誤りとして止める。配列の 1 要素だけが文字列でない、
@@ -97,12 +96,8 @@ public record RuleConfig(Set<String> disabledRuleIds, List<String> warnings) {
         return new RuleConfig(ids, warnings);
     }
 
-    /**
-     * 設定ファイルと {@code --disable-rule} の和を、無効化するルールIDの集合として返す。
-     * {@code --disable-rule} を残してあるのは GUI がまだそちらを使うためである。
-     */
-    static Set<String> resolveDisabled(CommandLine.Model.CommandSpec spec, Path ruleConfigFile,
-            List<String> disabledRuleOptions) {
+    /** 設定ファイルの指定を、無効化するルールIDの集合として返す。 */
+    static Set<String> resolveDisabled(CommandLine.Model.CommandSpec spec, Path ruleConfigFile) {
         RuleConfig config;
         try {
             config = load(ruleConfigFile);
@@ -113,8 +108,6 @@ public record RuleConfig(Set<String> disabledRuleIds, List<String> warnings) {
         for (String warning : config.warnings()) {
             System.err.println("警告: ルール設定: " + warning);
         }
-        Set<String> disabled = new LinkedHashSet<>(config.disabledRuleIds());
-        disabled.addAll(disabledRuleOptions);
-        return disabled;
+        return config.disabledRuleIds();
     }
 }
