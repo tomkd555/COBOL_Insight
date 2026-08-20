@@ -8,6 +8,7 @@ import jp.cobolinsight.persistence.model.EncodingInfoRecord;
 import jp.cobolinsight.persistence.model.FindingRecord;
 import jp.cobolinsight.persistence.model.LineMapRecord;
 import jp.cobolinsight.persistence.model.NodeRecord;
+import jp.cobolinsight.persistence.model.ParagraphEdgeRecord;
 import jp.cobolinsight.persistence.model.ParagraphRecord;
 import jp.cobolinsight.persistence.model.ProgramRecord;
 import jp.cobolinsight.persistence.model.SourceRecord;
@@ -18,8 +19,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PersistenceDaoRoundTripTest {
@@ -90,8 +94,69 @@ class PersistenceDaoRoundTripTest {
         dao.insertCallEdge(edge);
 
         assertEquals(edge, dao.findCallEdge(1L).orElseThrow());
+        assertEquals(0, edge.seq(), "順序を伴わない辺のseqは0");
+        assertNull(edge.line());
         assertEquals(1, dao.findEdgesFrom(1L).size());
         assertEquals(1, dao.findEdgesTo(2L).size());
+    }
+
+    @Test
+    void callEdgeKeepsOrderAndCallSiteLine() {
+        dao.insertNode(new NodeRecord(1L, "JOB", "JOB1"));
+        dao.insertNode(new NodeRecord(2L, "STEP", "STEP010"));
+        dao.insertNode(new NodeRecord(3L, "STEP", "STEP020"));
+        CallEdgeRecord second = new CallEdgeRecord(1L, 1L, 3L, "EXECUTION", "CONSTANT", null, 2, 9);
+        CallEdgeRecord first = new CallEdgeRecord(2L, 1L, 2L, "EXECUTION", "CONSTANT", null, 1, 4);
+        dao.insertCallEdge(second);
+        dao.insertCallEdge(first);
+
+        assertEquals(second, dao.findCallEdge(1L).orElseThrow());
+        assertEquals(List.of(2, 1), dao.findEdgesFrom(1L).stream().map(CallEdgeRecord::seq).toList(),
+                "行の並びは辺のID順のままで、原本の順序はseqが持つ");
+        assertEquals(List.of(9, 4), dao.findEdgesFrom(1L).stream().map(CallEdgeRecord::line).toList());
+    }
+
+    @Test
+    void paragraphEdgeRoundTripIncludingUnresolvedTarget() {
+        dao.insertSource(new SourceRecord(1L, "/assets", "A.cbl", "IBM930", "hash-1", 10L));
+        dao.insertProgram(new ProgramRecord(1L, 1L, "PROGA"));
+        dao.insertParagraph(new ParagraphRecord(1L, 1L, "MAIN-RTN", 10, 20));
+        dao.insertParagraph(new ParagraphRecord(2L, 1L, "SUB-RTN", 21, 30));
+
+        ParagraphEdgeRecord perform =
+                new ParagraphEdgeRecord(1L, 1L, 1L, 2L, "SUB-RTN", "PERFORM", 12, 1);
+        ParagraphEdgeRecord fallthrough =
+                new ParagraphEdgeRecord(2L, 1L, 1L, 2L, "SUB-RTN", "FALLTHROUGH", null, 2);
+        // 飛び先の段落が無いGO TOは、名前だけを残して飛び先IDを持たない
+        ParagraphEdgeRecord unresolved =
+                new ParagraphEdgeRecord(3L, 1L, 2L, null, "NO-SUCH-RTN", "GOTO", 25, 1);
+        dao.insertParagraphEdge(perform);
+        dao.insertParagraphEdge(fallthrough);
+        dao.insertParagraphEdge(unresolved);
+
+        assertEquals(List.of(perform, fallthrough, unresolved),
+                dao.findParagraphEdgesByProgram(1L));
+    }
+
+    @Test
+    void paragraphEdgeRejectsUnknownKind() {
+        dao.insertSource(new SourceRecord(1L, "/assets", "A.cbl", "IBM930", "hash-1", 10L));
+        dao.insertProgram(new ProgramRecord(1L, 1L, "PROGA"));
+        dao.insertParagraph(new ParagraphRecord(1L, 1L, "MAIN-RTN", 10, 20));
+        assertThrows(PersistenceException.class, () -> dao.insertParagraphEdge(
+                new ParagraphEdgeRecord(1L, 1L, 1L, 1L, "MAIN-RTN", "CALL", 12, 1)));
+    }
+
+    @Test
+    void deletingSourceRemovesItsParagraphEdges() {
+        dao.insertSource(new SourceRecord(1L, "/assets", "A.cbl", "IBM930", "hash-1", 10L));
+        dao.insertProgram(new ProgramRecord(1L, 1L, "PROGA"));
+        dao.insertParagraph(new ParagraphRecord(1L, 1L, "MAIN-RTN", 10, 20));
+        dao.insertParagraphEdge(
+                new ParagraphEdgeRecord(1L, 1L, 1L, 1L, "MAIN-RTN", "GOTO", 12, 1));
+
+        dao.deleteSourceCascade(1L);
+        assertEquals(List.of(), dao.findParagraphEdgesByProgram(1L));
     }
 
     @Test

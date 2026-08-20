@@ -17,10 +17,11 @@ class PersistenceDatabaseTest {
 
     private static final List<String> EXPECTED_TABLES = List.of(
             "BMS_FIELD", "BMS_MAP", "BMS_MAPSET", "CALL_EDGE", "ENCODING_INFO",
-            "FINDING", "LINE_MAP", "NODE", "PARAGRAPH", "PROGRAM", "SOURCE", "SQL_STMT");
+            "FINDING", "LINE_MAP", "NODE", "PARAGRAPH", "PARAGRAPH_EDGE", "PROGRAM", "SOURCE",
+            "SQL_STMT");
 
     @Test
-    void createsAllTwelveTablesOnFirstOpen(@TempDir Path dir) throws SQLException {
+    void createsAllThirteenTablesOnFirstOpen(@TempDir Path dir) throws SQLException {
         Path dbFile = dir.resolve("insight.db");
         try (PersistenceDatabase db = PersistenceDatabase.open(dbFile)) {
             assertEquals(EXPECTED_TABLES, tableNames(db));

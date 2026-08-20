@@ -89,6 +89,13 @@ class CallGraphLinkerTest {
                 .contains(new CallGraphEdge(from, to, kind, resolution));
     }
 
+    private static CallGraphEdge edge(LinkResult result, String from, String to) {
+        return result.graph().edges().stream()
+                .filter(e -> e.fromId().equals(from) && e.toId().equals(to)).findFirst()
+                .orElseThrow(() -> new AssertionError("edge not found: " + from + " -> " + to
+                        + " in " + result.graph().toJson()));
+    }
+
     // ---- JCL: EXEC PGM=、データセット参照、外部ユーティリティ ----
 
     @Test
@@ -162,6 +169,26 @@ class CallGraphLinkerTest {
                 Resolution.CONSTANT));
     }
 
+    @Test
+    void keepsJclStepOrderAsEdgeSeqWithCallSiteLine() {
+        CobolSemanticModel first = program("PGMA", List.of(), List.of(), List.of());
+        CobolSemanticModel second = program("PGMB", List.of(), List.of(), List.of());
+        JclStep step010 = new JclStep("STEP010", JclExecKind.PGM, "PGMA", Optional.empty(),
+                List.of(), new SourcePosition("JOB1.jcl", 4, 1, -1));
+        JclStep step020 = new JclStep("STEP020", JclExecKind.PGM, "PGMB", Optional.empty(),
+                List.of(), new SourcePosition("JOB1.jcl", 9, 1, -1));
+        LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(first, second),
+                List.of(job("JOB1", List.of(step010, step020))), List.of(), Map.of(), Map.of()));
+
+        // ジョブの出辺は原本のステップ順に1から番号が付き、行はEXEC文の行を指す
+        assertEquals(1, edge(result, "job:JOB1", "step:JOB1.STEP010").seq());
+        assertEquals(4, edge(result, "job:JOB1", "step:JOB1.STEP010").line());
+        assertEquals(2, edge(result, "job:JOB1", "step:JOB1.STEP020").seq());
+        assertEquals(9, edge(result, "job:JOB1", "step:JOB1.STEP020").line());
+        // ステップからプログラムへの辺は、そのステップの1本目の出辺である
+        assertEquals(1, edge(result, "step:JOB1.STEP020", "program:PGMB").seq());
+    }
+
     // ---- CALL: 静的・動的(定数伝播)・未解決 ----
 
     @Test
@@ -191,6 +218,8 @@ class CallGraphLinkerTest {
                 .filter(e -> e.fromId().equals("program:PGMA") && e.toId().equals("program:PGMB"))
                 .count();
         assertEquals(1, count, "同一呼出先への複数CALLは1辺に正規化する");
+        assertEquals(133, edge(result, "program:PGMA", "program:PGMB").line(),
+                "畳んだ辺は最初の呼出箇所の行を持つ");
     }
 
     @Test
