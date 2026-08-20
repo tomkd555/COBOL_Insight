@@ -40,9 +40,22 @@ describe("readUserRules", () => {
     expect(file.rules[0].id).toBe("U001");
   });
 
-  it("壊れた JSON は例外にする", async () => {
+  /**
+   * 壊れた定義ファイルで IPC を落とさない。中身の誤りは、engine が同じファイルを読んだときの
+   * 注意としてルールの一覧に出る。
+   */
+  it("壊れた JSON は空の定義として扱い、例外にしない", async () => {
     const fs = fakeFs({ "user-rules.json": "{" });
-    await expect(readUserRules(fs, "user-rules.json")).rejects.toThrow();
+    await expect(readUserRules(fs, "user-rules.json")).resolves.toEqual(emptyUserRules());
+  });
+
+  it("読み取りに失敗しても空の定義を返す", async () => {
+    const fs: UserRuleFileSystem = {
+      exists: () => Promise.resolve(true),
+      readText: () => Promise.reject(new Error("EACCES")),
+      writeText: () => Promise.resolve(),
+    };
+    await expect(readUserRules(fs, "user-rules.json")).resolves.toEqual(emptyUserRules());
   });
 });
 

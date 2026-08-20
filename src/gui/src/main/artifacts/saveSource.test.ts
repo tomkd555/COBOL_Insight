@@ -14,13 +14,14 @@ function engineResult(summary: Record<string, unknown> | null, exitCode = 0): En
 
 function fakeDeps(
   run: (request: SaveRequest) => Promise<EngineResult>,
+  tempFile: () => string = () => TEMP_FILE,
 ): SaveDeps & { written: Record<string, string>; removed: string[] } {
   const written: Record<string, string> = {};
   const removed: string[] = [];
   return {
     written,
     removed,
-    tempFile: TEMP_FILE,
+    tempFile,
     dbPath: DB_PATH,
     fs: {
       // symlink の無い素の実体パスとして扱う。
@@ -126,6 +127,28 @@ describe("saveSource", () => {
     expect(result.reparseErrors).toEqual([{ line: 3, message: "構文解析に失敗した" }]);
     // 挿入だけの編集では、変更した最終行が開始行の1つ前になる。
     expect(result.changedLineTo).toBe(2);
+  });
+
+  /** 名前を固定すると、保存が重なったとき後の保存が前の本文を上書きする。 */
+  it("保存ごとに別の一時ファイルへ落とし、その1件だけを消す", async () => {
+    let count = 0;
+    const deps = fakeDeps(
+      () =>
+        Promise.resolve(
+          engineResult({ written: true, path: "p", changedLineFrom: 1, changedLineTo: 1,
+            reparseErrors: [], error: "", exitCode: 0 }),
+        ),
+      () => `${TEMP_FILE}.${(count += 1)}`,
+    );
+
+    await saveSource(deps, { inputDir: INPUT_DIR, path: "cobol/SYK001.cbl", editedText: "1件目" });
+    await saveSource(deps, { inputDir: INPUT_DIR, path: "cobol/SYK002.cbl", editedText: "2件目" });
+
+    expect(deps.written).toEqual({
+      [`${TEMP_FILE}.1`]: "1件目",
+      [`${TEMP_FILE}.2`]: "2件目",
+    });
+    expect(deps.removed).toEqual([`${TEMP_FILE}.1`, `${TEMP_FILE}.2`]);
   });
 
   it("起動が終われば一時ファイルを消す", async () => {

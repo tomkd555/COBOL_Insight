@@ -60,6 +60,36 @@ describe("writeSettings", () => {
     await expect(readSettings(fs, "settings.json")).resolves.toEqual(SETTINGS);
   });
 
+  /**
+   * 画面は disabledRules を持たない。保存のたびに落とすと、移行がまだ済んでいない環境で
+   * 無効にしたルールがどこにも残らなくなる。
+   */
+  it("旧版の disabledRules は移行が済むまで残す", async () => {
+    const fs = fakeFs({
+      "settings.json": JSON.stringify({
+        version: 1,
+        settings: { severityThreshold: "low", disabledRules: ["R004"] },
+      }),
+    });
+
+    await writeSettings(fs, "settings.json", SETTINGS);
+
+    expect(JSON.parse(fs.files["settings.json"]).settings).toMatchObject({
+      severityThreshold: "medium",
+      disabledRules: ["R004"],
+    });
+  });
+
+  it("移行が消した後は disabledRules を書き足さない", async () => {
+    const fs = fakeFs({
+      "settings.json": JSON.stringify({ version: 1, settings: { severityThreshold: "low" } }),
+    });
+
+    await writeSettings(fs, "settings.json", SETTINGS);
+
+    expect(JSON.parse(fs.files["settings.json"]).settings).not.toHaveProperty("disabledRules");
+  });
+
   it("型の合わない値を落として書く", async () => {
     const fs = fakeFs({});
     await writeSettings(fs, "settings.json", {

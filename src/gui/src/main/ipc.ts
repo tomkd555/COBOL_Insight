@@ -1,5 +1,6 @@
 import { app, dialog, ipcMain } from "electron";
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { access, mkdir, readdir, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
@@ -28,7 +29,12 @@ import {
   type TranspileRequest,
   type UserRulesFile,
 } from "../shared/engine-api";
-import { runEngine, type EngineProcess, type EngineSpawn } from "./engine/run";
+import {
+  runEngine,
+  type EngineProcess,
+  type EngineSpawn,
+  type RunEngineDeps,
+} from "./engine/run";
 import { resolveEngineLaunch, type EngineLaunch } from "./engine/launch";
 import { parseSarif } from "./artifacts/sarif";
 import { parseCopyExpansion } from "./artifacts/copyExpansion";
@@ -92,9 +98,12 @@ function outputPaths(): EngineOutputPaths {
   };
 }
 
-/** 編集後の本文を engine の save へ渡すための一時ファイル。保存のたびに書き、終われば消す。 */
+/**
+ * 編集後の本文を engine の save へ渡すための一時ファイル。保存のたびに別名を作り、終われば消す。
+ * 名前を固定すると、保存が重なったときに後の保存が前の本文を上書きしてしまう。
+ */
 function editedTempPath(): string {
-  return join(app.getPath("userData"), "cobol-insight-edited.tmp");
+  return join(app.getPath("userData"), `cobol-insight-edited-${randomUUID()}.tmp`);
 }
 
 /** engine 起動対象を現在の実行環境から解決する。 */
@@ -110,18 +119,22 @@ function currentLaunch(): EngineLaunch {
 
 /**
  * 実行中の engine。同時に走るのは1つであり、キャンセルとアプリ終了時の後始末で参照する。
- * 起動が終われば null へ戻す。
+ * 起動が終われば null へ戻す。書き戻し(save)はここへ登録せず、キャンセルの対象にしない。
  */
 let runningEngine: EngineProcess | null = null;
 
+/**
+ * 起動に共通の依存。出力先は引数で絶対指定するが、engine 側に既定値の経路が残った場合に備え、
+ * 作業ディレクトリも書込可能な保存先へ向けておく。
+ */
+function engineDeps(): RunEngineDeps {
+  return { spawn: engineSpawn, env: process.env, cwd: app.getPath("userData") };
+}
+
 function invoke(invocation: EngineInvocation): Promise<EngineResult> {
   let started: EngineProcess | null = null;
-  const deps = {
-    spawn: engineSpawn,
-    env: process.env,
-    // 出力先は引数で絶対指定するが、engine 側に既定値の経路が残った場合に備え、作業ディレクトリも
-    // 書込可能な保存先へ向けておく。
-    cwd: app.getPath("userData"),
+  const deps: RunEngineDeps = {
+    ...engineDeps(),
     onStart: (child: EngineProcess): void => {
       started = child;
       runningEngine = child;
@@ -132,6 +145,30 @@ function invoke(invocation: EngineInvocation): Promise<EngineResult> {
       runningEngine = null;
     }
   });
+}
+
+/**
+ * キャンセルの受け皿へ登録しない起動。キャンセルは解析(走査・検出)を止める操作であり、
+ * 書き戻しの途中で子プロセスを殺すと、原本へ半端な本文が残る。
+ */
+function invokeUninterrupted(invocation: EngineInvocation): Promise<EngineResult> {
+  return runEngine(engineDeps(), currentLaunch(), invocation);
+}
+
+/**
+ * 保存を1件ずつ順に走らせる。engine の save は原本を読んで書き戻すため、保存が重なると後の
+ * 起動が前の書き戻しを見ないまま原本を読み、片方の編集が消える。
+ */
+let savePending: Promise<unknown> = Promise.resolve();
+
+function queueSave<T>(task: () => Promise<T>): Promise<T> {
+  // 前の保存が失敗しても列は進める(失敗した保存の結果は、その保存の呼び手だけが受ける)。
+  const next = savePending.then(task, task);
+  savePending = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  return next;
 }
 
 /**
@@ -300,14 +337,17 @@ export function registerEngineIpc(): void {
   );
 
   ipcMain.handle(ENGINE_CHANNELS.saveSource, (_event, request: SaveSourceRequest) =>
-    saveSource(
-      {
-        fs: saveFileSystem,
-        tempFile: editedTempPath(),
-        dbPath: outputPaths().db,
-        run: (saveRequest) => invoke({ subcommand: "save", request: saveRequest }),
-      },
-      request,
+    queueSave(() =>
+      saveSource(
+        {
+          fs: saveFileSystem,
+          tempFile: editedTempPath,
+          dbPath: outputPaths().db,
+          run: (saveRequest) =>
+            invokeUninterrupted({ subcommand: "save", request: saveRequest }),
+        },
+        request,
+      ),
     ),
   );
 

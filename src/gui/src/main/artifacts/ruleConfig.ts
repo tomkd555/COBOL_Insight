@@ -1,4 +1,5 @@
 import { RULE_CONFIG_VERSION, type RuleConfigFile } from "../../shared/engine-api";
+import { readJsonFile, type JsonFileSystem } from "./jsonFile";
 
 /**
  * ルールの有効・無効の設定ファイル(rules-config.json)の読み書き。engine の --rule-config が読む形を
@@ -12,11 +13,7 @@ import { RULE_CONFIG_VERSION, type RuleConfigFile } from "../../shared/engine-ap
 export const RULE_CONFIG_FILE_NAME = "rules-config.json";
 
 /** 設定ファイルの読み書きに使う fs の束ね。テストでは差し替える。 */
-export interface RuleConfigFileSystem {
-  readText(path: string): Promise<string>;
-  writeText(path: string, text: string): Promise<void>;
-  exists(path: string): Promise<boolean>;
-}
+export type RuleConfigFileSystem = JsonFileSystem;
 
 /** 1件も無効にしていない状態。 */
 export function emptyRuleConfig(): RuleConfigFile {
@@ -47,18 +44,7 @@ export async function readRuleConfig(
   fs: RuleConfigFileSystem,
   path: string,
 ): Promise<RuleConfigFile> {
-  if (!(await fs.exists(path))) {
-    return emptyRuleConfig();
-  }
-  try {
-    const text = await fs.readText(path);
-    if (text.trim() === "") {
-      return emptyRuleConfig();
-    }
-    return normalizeRuleConfig(JSON.parse(text));
-  } catch {
-    return emptyRuleConfig();
-  }
+  return readJsonFile(fs, path, normalizeRuleConfig, emptyRuleConfig);
 }
 
 /** 設定ファイルを書く。人が読んで直せるよう字下げして書き、末尾に改行を置く。 */
@@ -76,6 +62,10 @@ export async function writeRuleConfig(
  * 無効にしたルールの置き場所は設定ファイルへ移り、engine も --rule-config だけを見る。移さないと、
  * 更新前に無効にしたルールが黙って復活する。移すのは rules-config.json がまだ無いときに限る
  * (設定ファイルが正であり、古い settings.json の値で上書きしない)。
+ *
+ * 順序を守る。settings.json から古い値を落とすのは rules-config.json を書けた後だけである。先に
+ * 落とすと、書き込みに一度しくじった時点で無効にしたルールがどこにも残らない。書けなければ古い値は
+ * settings.json に残り、次の起動でもう一度移す。
  */
 export async function migrateDisabledRules(
   fs: RuleConfigFileSystem,
@@ -88,22 +78,26 @@ export async function migrateDisabledRules(
   if (!(await fs.exists(settingsPath))) {
     return;
   }
-  let disabledRules: string[];
+  let file: Record<string, unknown>;
+  let settings: Record<string, unknown>;
   try {
-    const parsed: unknown = JSON.parse(await fs.readText(settingsPath));
-    const file =
-      parsed !== null && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
-    const settings =
-      file["settings"] !== null && typeof file["settings"] === "object"
-        ? (file["settings"] as Record<string, unknown>)
-        : file;
-    disabledRules = normalizeRuleConfig(settings).disabledRules;
+    file = asObject(JSON.parse(await fs.readText(settingsPath)));
+    settings = "settings" in file ? asObject(file["settings"]) : file;
   } catch {
     // 壊れた settings.json は移す値を持たない。次の保存で書き直る。
     return;
   }
+  const disabledRules = normalizeRuleConfig(settings).disabledRules;
   if (disabledRules.length === 0) {
     return;
   }
   await writeRuleConfig(fs, configPath, { version: RULE_CONFIG_VERSION, disabledRules });
+  delete settings["disabledRules"];
+  await fs.writeText(settingsPath, `${JSON.stringify(file, null, 2)}\n`);
+}
+
+function asObject(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 }

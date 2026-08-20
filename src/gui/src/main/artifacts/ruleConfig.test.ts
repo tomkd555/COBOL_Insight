@@ -55,7 +55,7 @@ describe("writeRuleConfig", () => {
 });
 
 describe("migrateDisabledRules", () => {
-  it("旧 settings.json の disabledRules を設定ファイルへ移す", async () => {
+  it("旧 settings.json の disabledRules を設定ファイルへ移し、旧い置き場所から消す", async () => {
     const fs = fakeFs({
       [SETTINGS_PATH]: JSON.stringify({
         version: 1,
@@ -67,6 +67,30 @@ describe("migrateDisabledRules", () => {
       version: 1,
       disabledRules: ["R004", "S001"],
     });
+    // 移した後の settings.json には残さない。ほかの設定はそのまま残す。
+    expect(JSON.parse(fs.files[SETTINGS_PATH]).settings).toEqual({ severityThreshold: "medium" });
+  });
+
+  /**
+   * 移し先を書けなかった状態で旧い値を消すと、無効にしたルールがどこにも残らない。次の起動で
+   * もう一度移せることを確かめる。
+   */
+  it("設定ファイルを書けなければ旧い値を残し、次の起動で移し直す", async () => {
+    const fs = fakeFs({
+      [SETTINGS_PATH]: JSON.stringify({ settings: { disabledRules: ["R004"] } }),
+    });
+    const writeText = fs.writeText.bind(fs);
+    fs.writeText = () => Promise.reject(new Error("EACCES"));
+
+    await expect(migrateDisabledRules(fs, SETTINGS_PATH, CONFIG_PATH)).rejects.toThrow("EACCES");
+    expect(CONFIG_PATH in fs.files).toBe(false);
+    expect(JSON.parse(fs.files[SETTINGS_PATH]).settings.disabledRules).toEqual(["R004"]);
+
+    fs.writeText = writeText;
+    await migrateDisabledRules(fs, SETTINGS_PATH, CONFIG_PATH);
+
+    expect(JSON.parse(fs.files[CONFIG_PATH])).toEqual({ version: 1, disabledRules: ["R004"] });
+    expect(JSON.parse(fs.files[SETTINGS_PATH]).settings).toEqual({});
   });
 
   /** 設定ファイルが正である。古い settings.json の値で上書きしない。 */

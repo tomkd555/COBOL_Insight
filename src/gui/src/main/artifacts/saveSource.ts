@@ -13,7 +13,9 @@ import { resolveSourceFile, type RealPathResolver } from "./sourceText";
  * engine の save サブコマンドへ引き渡す。
  *
  * 書き先は利用者が画面で開いたファイルであり、資産フォルダ配下に限る境界検査を読取と同じ関門
- * ({@link resolveSourceFile})で行う。一時ファイルは結果にかかわらず必ず片づける。
+ * ({@link resolveSourceFile})で行う。一時ファイルは保存1回ごとに別名を作り、結果にかかわらず
+ * 必ず片づける。名前を固定すると、保存が重なったときに後の保存が前の本文を上書きし、別の資産の
+ * 本文を書き戻しうる。
  */
 
 /** 書き戻しに使う fs の束ね。実体パスの解決に加え、一時ファイルの作成と削除を要する。 */
@@ -26,8 +28,8 @@ export interface SaveFileSystem extends RealPathResolver {
 
 export interface SaveDeps {
   fs: SaveFileSystem;
-  /** 編集後の全文を置く一時ファイル(成果物ディレクトリ配下)。 */
-  tempFile: string;
+  /** 編集後の全文を置く一時ファイルの位置を1つ決める(成果物ディレクトリ配下)。保存ごとに呼ぶ。 */
+  tempFile(): string;
   /** 走査時に記録したコードページを engine が引くプロジェクトファイル。 */
   dbPath: string;
   /** engine の save サブコマンドを1回起動する。 */
@@ -65,19 +67,20 @@ export async function saveSource(
   request: SaveSourceRequest,
 ): Promise<SaveResult> {
   const target = await resolveSourceFile(deps.fs, request.inputDir, request.path);
-  await deps.fs.writeText(deps.tempFile, request.editedText);
+  const tempFile = deps.tempFile();
+  await deps.fs.writeText(tempFile, request.editedText);
   try {
     const result = await deps.run({
       file: target,
-      editedFile: deps.tempFile,
+      editedFile: tempFile,
       codepage: request.codepage,
       copybookPaths: request.copybookPaths,
       db: deps.dbPath,
     });
     return parseSaveSummary(result.summary, result.exitCode);
   } finally {
-    // 後始末の失敗で保存の成否を覆さない。残っても次の保存が上書きする。
-    await deps.fs.remove(deps.tempFile).catch(() => undefined);
+    // 後始末の失敗で保存の成否を覆さない。
+    await deps.fs.remove(tempFile).catch(() => undefined);
   }
 }
 
