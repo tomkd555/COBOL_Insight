@@ -47,13 +47,13 @@ public final class DynamicSqlTaintRule implements Rule {
     public RuleDoc doc() {
         return RuleDoc.named("動的SQL文への外部入力の未検証組み込み", "SQL")
                 .summary("外部入力で汚染された値を、検証も置換もせずに組み立てた文字列を"
-                        + "EXECUTE IMMEDIATE・PREPARE へ渡す箇所を検出する。")
+                        + "EXECUTE IMMEDIATE・PREPARE へ渡す箇所を検出します。")
                 .rationale("入力に SQL の断片を混ぜられると問い合わせの意味が変わり、"
-                        + "想定していない参照・更新を許す。")
+                        + "想定していない参照・更新を許します。")
                 .detection("画面・帳票などの外部入力を汚染源として汚染追跡を行い、"
-                        + "汚染された変数が動的 SQL の文字列オペランドへ届くものを検出する。"
-                        + "ACCEPT FROM DATE・TIME などシステムレジスタ由来の汚染は対象外とする。")
-                .remedy("値をホスト変数として渡し、SQL 文の組み立てへ直接埋め込まない。")
+                        + "汚染された変数が動的 SQL の文字列オペランドへ届くものを検出します。"
+                        + "ACCEPT FROM DATE・TIME などシステムレジスタ由来の汚染は対象外とします。")
+                .remedy("値をホスト変数として渡し、SQL 文の組み立てへ直接埋め込まないようにします。")
                 .example("""
                         STRING "SELECT * FROM CUST WHERE ID='" WS-INPUT "'"
                             DELIMITED BY SIZE INTO WS-SQL.

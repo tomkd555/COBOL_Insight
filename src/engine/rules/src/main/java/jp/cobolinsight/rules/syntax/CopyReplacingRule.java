@@ -53,12 +53,12 @@ public final class CopyReplacingRule implements Rule {
     public RuleDoc doc() {
         return RuleDoc.named("COPY REPLACINGによる置換漏れ", "データ定義")
                 .summary("COPY 文の REPLACING で指定した置換対象が、取り込むコピー句に"
-                        + "一度も現れない箇所を検出する。")
+                        + "一度も現れない箇所を検出します。")
                 .rationale("置換が起きないため、取り込んだ項目の名前が意図した名前にならず、"
-                        + "接頭辞の付け替えを前提にした後続の参照が解決できない。")
+                        + "接頭辞の付け替えを前提にした後続の参照が解決できません。")
                 .detection("REPLACING の置換対象文字列を、対象コピー句の内容(注記行を除く)と"
-                        + "突き合わせ、出現が 0 件のものを検出する。")
-                .remedy("置換対象の綴りをコピー句の記述と揃える。不要になった REPLACING は削る。")
+                        + "突き合わせ、出現が 0 件のものを検出します。")
+                .remedy("置換対象の綴りをコピー句の記述と揃えます。不要になった REPLACING は削ります。")
                 .example("""
                         COPY CUSTREC REPLACING ==:PFX:== BY ==CUST==.
                         """, """

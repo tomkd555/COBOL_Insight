@@ -40,12 +40,12 @@ public final class CicsResponseUncheckedRule implements Rule {
     @Override
     public RuleDoc doc() {
         return RuleDoc.named("CICS応答コード(RESP/RESP2)未検査", "例外処理")
-                .summary("RESP・RESP2 のいずれも指定していない EXEC CICS コマンドを検出する。")
+                .summary("RESP・RESP2 のいずれも指定していない EXEC CICS コマンドを検出します。")
                 .rationale("応答コードを受け取れないため、資源の不在や排他の失敗を"
-                        + "プログラム側で判定できず、異常時は既定の異常終了へ落ちる。")
+                        + "プログラム側で判定できず、異常時は既定の異常終了へ落ちます。")
                 .detection("EXEC CICS コマンドのうち、RESP・RESP2 のいずれのオペランドも"
-                        + "持たないものを検出する。")
-                .remedy("RESP を付けて応答コードを受け、直後に DFHRESP との比較で分岐する。")
+                        + "持たないものを検出します。")
+                .remedy("RESP を付けて応答コードを受け、直後に DFHRESP との比較で分岐します。")
                 .example("""
                         EXEC CICS READ FILE('CUSTFILE') INTO(WS-REC)
                              RIDFLD(WS-KEY) END-EXEC.

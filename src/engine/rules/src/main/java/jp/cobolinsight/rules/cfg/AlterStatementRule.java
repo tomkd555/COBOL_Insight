@@ -28,12 +28,12 @@ public final class AlterStatementRule implements Rule {
     @Override
     public RuleDoc doc() {
         return RuleDoc.named("ALTER文による遷移先の動的変更", "制御フロー")
-                .summary("手続き部の ALTER 文をすべて検出する。")
+                .summary("手続き部の ALTER 文をすべて検出します。")
                 .rationale("ALTER は GO TO の飛び先を実行時に書き換えるため、"
-                        + "ソースを読んでも制御の流れを追えず、静的解析も遷移先を決められない。")
-                .detection("手続き部に現れる ALTER 文を無条件に検出する。")
+                        + "ソースを読んでも制御の流れを追えず、静的解析も遷移先を決められません。")
+                .detection("手続き部に現れる ALTER 文を無条件に検出します。")
                 .remedy("遷移先の切替を条件分岐(IF・EVALUATE)または PERFORM の呼び分けへ"
-                        + "置き換え、ALTER を除く。")
+                        + "置き換え、ALTER を除きます。")
                 .example("""
                         ALTER SWITCH-PARA TO PROCEED TO ERROR-EXIT.
                         """, """

@@ -44,13 +44,13 @@ public final class BinarySubscriptRule implements Rule {
     @Override
     public RuleDoc doc() {
         return RuleDoc.named("添字への二進項目未使用", "添字・指標")
-                .summary("表の添字に USAGE BINARY 以外のデータ項目を使っている参照を検出する。")
+                .summary("表の添字に USAGE BINARY 以外のデータ項目を使っている参照を検出します。")
                 .rationale("DISPLAY 形式の添字は参照のたびに二進数へ変換されるため、"
-                        + "表を繰り返し参照する処理の実行時間が伸びる。")
+                        + "表を繰り返し参照する処理の実行時間が伸びます。")
                 .detection("文テキスト上の「名前(添字)」形式のうち、添字がデータ項目で、"
-                        + "その USAGE が BINARY(COMP)でないものを検出する。"
-                        + "INDEXED BY の指標名とリテラルの添字は対象外とする。")
-                .remedy("添字に使う項目を USAGE BINARY(COMP)で宣言するか、INDEXED BY の指標を使う。")
+                        + "その USAGE が BINARY(COMP)でないものを検出します。"
+                        + "INDEXED BY の指標名とリテラルの添字は対象外とします。")
+                .remedy("添字に使う項目を USAGE BINARY(COMP)で宣言するか、INDEXED BY の指標を使います。")
                 .example("""
                         01  WS-IDX  PIC 9(4).
                             MOVE WS-TBL(WS-IDX) TO WS-OUT.

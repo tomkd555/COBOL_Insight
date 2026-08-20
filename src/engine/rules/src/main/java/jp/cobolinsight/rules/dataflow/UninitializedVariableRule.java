@@ -46,15 +46,15 @@ public final class UninitializedVariableRule implements Rule {
     @Override
     public RuleDoc doc() {
         return RuleDoc.named("未初期化変数の参照", "データフロー")
-                .summary("値を設定される前に参照され得るデータ項目を検出する。")
+                .summary("値を設定される前に参照され得るデータ項目を検出します。")
                 .rationale("記憶域に残った値をそのまま使うため、"
-                        + "実行のたびに結果が変わり、再現しない不具合になる。")
+                        + "実行のたびに結果が変わり、再現しない不具合になります。")
                 .detection("到達定義解析で、入口に置いた未初期化の定義が使用位置へ届くものを"
-                        + "検出する。対象は、プログラム内のいずれかの文が明示的に代入する基本項目に"
-                        + "限る。FILE 節の項目・集団項目・PROCEDURE DIVISION USING の引数・"
+                        + "検出します。対象は、プログラム内のいずれかの文が明示的に代入する基本項目に"
+                        + "限ります。FILE 節の項目・集団項目・PROCEDURE DIVISION USING の引数・"
                         + "特殊レジスタと、ファイル状態や CICS 応答コードのように実行系が暗黙に"
-                        + "設定する項目は対象外とする。")
-                .remedy("宣言へ VALUE 句を置くか、参照前に INITIALIZE・MOVE で値を設定する。")
+                        + "設定する項目は対象外とします。")
+                .remedy("宣言へ VALUE 句を置くか、参照前に INITIALIZE・MOVE で値を設定します。")
                 .example("""
                         01  WS-COUNT  PIC 9(4).
                             IF WS-FLG = "Y"

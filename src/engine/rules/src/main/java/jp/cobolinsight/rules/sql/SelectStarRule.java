@@ -25,11 +25,11 @@ public final class SelectStarRule implements Rule {
     @Override
     public RuleDoc doc() {
         return RuleDoc.named("SELECT * の回避", "可読性・保守性")
-                .summary("SELECT 句に * を使う問い合わせを指摘する。")
-                .rationale("表へ列を足しただけで転送量と受け側の構造が変わる。"
-                        + "必要のない列まで読むため入出力も増える。")
-                .detection("sql-frontend が算出した selectStar シグナルから判定する。")
-                .remedy("必要な列を明示して並べる。")
+                .summary("SELECT 句に * を使う問い合わせを指摘します。")
+                .rationale("表へ列を足しただけで転送量と受け側の構造が変わります。"
+                        + "必要のない列まで読むため入出力も増えます。")
+                .detection("sql-frontend が算出した selectStar シグナルから判定します。")
+                .remedy("必要な列を明示して並べます。")
                 .example("""
                         SELECT * FROM CUSTOMER WHERE ID = :WS-ID
                         """, """

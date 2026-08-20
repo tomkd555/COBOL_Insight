@@ -62,13 +62,13 @@ public final class FileStatusUncheckedRule implements Rule {
     public RuleDoc doc() {
         return RuleDoc.named("ファイル状態(FILE STATUS)未検査", "例外処理")
                 .summary("入出力文の後、次の同一ファイルの入出力に達するまでに"
-                        + "FILE STATUS を検査しない箇所を検出する。")
+                        + "FILE STATUS を検査しない箇所を検出します。")
                 .rationale("入出力の失敗を検知しないまま後続が進み、"
-                        + "読めなかったレコードの内容を使うなど、誤った結果をそのまま出す。")
+                        + "読めなかったレコードの内容を使うなど、誤った結果をそのまま出します。")
                 .detection("READ・WRITE・REWRITE・DELETE の実行後、前方経路で当該 FD の"
-                        + "FILE STATUS 変数を条件参照しないものを検出する。AT END・INVALID KEY 句は"
-                        + "特定の事象しか捉えないため、検査とみなさない。")
-                .remedy("入出力の直後に FILE STATUS を判定し、正常値以外を異常として処理する。")
+                        + "FILE STATUS 変数を条件参照しないものを検出します。AT END・INVALID KEY 句は"
+                        + "特定の事象しか捉えないため、検査とみなしません。")
+                .remedy("入出力の直後に FILE STATUS を判定し、正常値以外を異常として処理します。")
                 .example("""
                         READ CUST-FILE INTO WS-REC.
                         MOVE WS-REC TO WS-OUT.
