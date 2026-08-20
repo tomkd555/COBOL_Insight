@@ -141,16 +141,19 @@ class LintCommandTest {
         assertEquals(0, exitCode, "並べた R001・R008 のいずれも無効化されること");
     }
 
-    /** 綴り違いを黙って無視すると全ルールが有効のまま流れるため、指定したファイルの不在は誤りとする。 */
+    /**
+     * 未作成の設定ファイルは、1件も無効にしていない設定として扱う。GUI は設定の有無に
+     * かかわらず --rule-config を常に渡すため、入れたばかりの環境ではファイルがまだ無い。
+     */
     @Test
-    void missingRuleConfigFileFails() throws IOException {
+    void missingRuleConfigFileDisablesNothing() throws IOException {
         Path dir = assets("cfgmiss", CLEAN.replace("CLEAN1", "CFGMISS"));
 
         int exitCode = new CommandLine(new Main()).execute("lint", dir.toString(),
                 "--sarif", tempDir.resolve("cfgmiss.sarif").toString(),
                 "--rule-config", tempDir.resolve("absent.json").toString());
 
-        assertEquals(2, exitCode, "設定ファイルが無い指定は誤りとして止まること");
+        assertEquals(0, exitCode, "指摘の無い資産は、設定ファイルが無くてもそのまま通ること");
     }
 
     @Test

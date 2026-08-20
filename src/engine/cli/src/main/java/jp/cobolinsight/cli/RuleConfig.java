@@ -22,7 +22,7 @@ import java.util.Set;
  * <p>無効化の指定を engine の一箇所で読むための型である。{@link #resolveDisabled} が読んだ結果を
  * 各 Runner の {@code disabledRuleIds} へ渡す。
  *
- * <p>誤りは 2 段階に分ける。ファイルが無い・JSON が壊れている・版数が違う場合は、利用者が
+ * <p>誤りは 2 段階に分ける。JSON が壊れている・版数が違う場合は、利用者が
  * 意図した設定がまるごと効かないため誤りとして止める。配列の 1 要素だけが文字列でない、
  * といった部分的な誤りは残りの指定を捨てず、警告に回して解析を続ける。カタログに無いルールID
  * もここでは黙って受け入れる(照合はカタログを持つ {@link RulesRunner} が行う)。
@@ -40,15 +40,14 @@ public record RuleConfig(Set<String> disabledRuleIds, List<String> warnings) {
     }
 
     /**
-     * 設定ファイルを読む。指定が無い(null)場合は空の設定を返す。指定したファイルが無い場合は、
-     * 綴り違いを黙って無視すると全ルールが有効のまま流れてしまうため誤りとする。
+     * 設定ファイルを読む。指定が無い(null)場合と、指定したファイルがまだ無い場合は、いずれも
+     * 空の設定(1件も無効にしていない状態)を返す。GUI は設定の有無にかかわらず常に同じ位置を
+     * 渡すため、入れたばかりで未作成という状態が普通に起こる({@link
+     * jp.cobolinsight.rules.user.UserRuleLoader#load} と揃える)。
      */
     public static RuleConfig load(Path file) {
-        if (file == null) {
+        if (file == null || !Files.isRegularFile(file)) {
             return EMPTY;
-        }
-        if (!Files.isRegularFile(file)) {
-            throw new IllegalArgumentException(file + " が無い");
         }
         String json;
         try {

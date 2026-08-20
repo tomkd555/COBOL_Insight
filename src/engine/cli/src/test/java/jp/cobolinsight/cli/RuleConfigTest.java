@@ -77,18 +77,31 @@ class RuleConfigTest {
         assertThrows(IllegalArgumentException.class, () -> parse("{\"disabledRules\": \"R001\"}"));
     }
 
-    /** 指定が無い場合だけが空の設定である。指定した綴りの誤りは黙って流さない。 */
     @Test
     void noFileYieldsEmptyConfig() {
         assertEquals(Set.of(), RuleConfig.load(null).disabledRuleIds());
     }
 
+    /**
+     * 未作成の設定ファイルは空の設定として扱う。GUI は設定の有無にかかわらず --rule-config を
+     * 常に渡すため、入れたばかりの環境ではファイルがまだ無い。
+     */
     @Test
-    void missingFileIsAnError(@TempDir Path dir) {
+    void missingFileYieldsEmptyConfig(@TempDir Path dir) {
         Path absent = dir.resolve("absent.json");
+        RuleConfig config = RuleConfig.load(absent);
+        assertEquals(Set.of(), config.disabledRuleIds());
+        assertEquals(List.of(), config.warnings());
+    }
+
+    /** 壊れた設定ファイルは、未作成と違って利用者の意図が読めないため誤りとして止める。 */
+    @Test
+    void brokenFileIsStillAnError(@TempDir Path dir) throws IOException {
+        Path file = dir.resolve("broken.json");
+        Files.writeString(file, "{\"disabledRules\": [", StandardCharsets.UTF_8);
         IllegalArgumentException e =
-                assertThrows(IllegalArgumentException.class, () -> RuleConfig.load(absent));
-        assertTrue(e.getMessage().contains("absent.json"), e.getMessage());
+                assertThrows(IllegalArgumentException.class, () -> RuleConfig.load(file));
+        assertTrue(e.getMessage().contains("broken.json"), e.getMessage());
     }
 
     @Test
