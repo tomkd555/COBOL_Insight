@@ -10,6 +10,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -95,6 +97,39 @@ class RulesRunnerTest {
         assertEquals(37, result.rules().size());
         assertEquals(1, result.userRuleErrors().size());
         assertTrue(result.toText().contains("警告"), result.toText());
+    }
+
+    /** GUI はルールの説明と有効・無効を同じ JSON から読む。engine が唯一の供給源であるためである。 */
+    @Test
+    void disabledRulesAreMarkedInTheCatalog() {
+        RulesRunner.Result result =
+                RulesRunner.run(new RulesRunner.Options(null, null, Set.of("R004")));
+        Map<String, Boolean> enabled = rulesOf(result).stream()
+                .map(JsonReader::asObject)
+                .collect(Collectors.toMap(rule -> (String) rule.get("id"),
+                        rule -> (Boolean) rule.get("enabled")));
+        assertEquals(Boolean.FALSE, enabled.get("R004"));
+        assertEquals(Boolean.TRUE, enabled.get("R001"));
+        assertEquals(List.of(), JsonReader.asArray(jsonOf(result).get("ruleConfigWarnings")));
+    }
+
+    /** 設定が無ければ全ルールが有効である。 */
+    @Test
+    void everyRuleIsEnabledWithoutRuleConfig() {
+        RulesRunner.Result result = RulesRunner.run(new RulesRunner.Options(null, null));
+        assertTrue(rulesOf(result).stream().map(JsonReader::asObject)
+                .allMatch(rule -> Boolean.TRUE.equals(rule.get("enabled"))));
+    }
+
+    /** ルールを入れ替えた後に設定へ取り残されたIDは、指定を捨てずに警告で知らせる。 */
+    @Test
+    void unknownDisabledIdIsReportedAsWarning() {
+        RulesRunner.Result result =
+                RulesRunner.run(new RulesRunner.Options(null, null, Set.of("R999")));
+        assertEquals(1, result.ruleConfigWarnings().size());
+        assertTrue(result.ruleConfigWarnings().get(0).contains("R999"),
+                result.ruleConfigWarnings().get(0));
+        assertTrue(result.toText().contains("警告: ルール設定"), result.toText());
     }
 
     @Test

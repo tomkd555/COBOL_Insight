@@ -1,8 +1,10 @@
 package jp.cobolinsight.cli;
 
+import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
+import picocli.CommandLine.Spec;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -11,7 +13,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -45,10 +46,17 @@ public final class SqlAdviseCommand implements Callable<Integer> {
             description = "無効化するルールID(繰り返し指定可)")
     List<String> disabledRules = new ArrayList<>();
 
+    @Option(names = "--rule-config", paramLabel = "FILE",
+            description = "ルールの有効・無効を書いた設定ファイル(JSON)。--disable-rule の指定と併せて無効化する")
+    Path ruleConfigFile;
+
+    @Spec
+    CommandLine.Model.CommandSpec spec;
+
     @Override
     public Integer call() {
         List<Path> searchPaths = CommonScanOptions.resolveCopybookPaths(inputDir, copybookPaths);
-        Set<String> disabled = new LinkedHashSet<>(disabledRules);
+        Set<String> disabled = RuleConfig.resolveDisabled(spec, ruleConfigFile, disabledRules);
         SqlAdviseRunner.Result result = SqlAdviseRunner.run(
                 new SqlAdviseRunner.Options(inputDir, searchPaths, codepageOverrides, disabled));
         try {

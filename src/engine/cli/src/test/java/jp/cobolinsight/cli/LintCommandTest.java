@@ -122,6 +122,48 @@ class LintCommandTest {
         assertEquals(0, exitCode, "R008を無効化すると警告が消え成功(0)になること");
     }
 
+    /** 設定ファイルは --disable-rule と同じ効き方をする。GUI とファイルで状態を揃えるためである。 */
+    @Test
+    void ruleConfigFileSuppressesItsFindings() throws IOException {
+        Path dir = assets("warncfg", WARNING.replace("WARN1", "WARNCFG"));
+        Path config = tempDir.resolve("rule-config.json");
+        Files.writeString(config, "{\"version\": 1, \"disabledRules\": [\"R008\"]}",
+                StandardCharsets.UTF_8);
+
+        int exitCode = new CommandLine(new Main()).execute("lint", dir.toString(),
+                "--sarif", tempDir.resolve("warncfg.sarif").toString(),
+                "--rule-config", config.toString());
+
+        assertEquals(0, exitCode, "設定ファイルで R008 を無効化すると成功(0)になること");
+    }
+
+    /** 両方を指定した場合は和を取る。片方だけが効くと利用者の意図から外れる。 */
+    @Test
+    void ruleConfigAndDisableRuleOptionAreUnioned() throws IOException {
+        Path dir = assets("warnboth", WARNING.replace("WARN1", "WARNBOTH"));
+        Path config = tempDir.resolve("rule-config-other.json");
+        Files.writeString(config, "{\"version\": 1, \"disabledRules\": [\"R001\"]}",
+                StandardCharsets.UTF_8);
+
+        int exitCode = new CommandLine(new Main()).execute("lint", dir.toString(),
+                "--sarif", tempDir.resolve("warnboth.sarif").toString(),
+                "--rule-config", config.toString(), "--disable-rule", "R008");
+
+        assertEquals(0, exitCode, "設定ファイル側と --disable-rule 側の両方が効くこと");
+    }
+
+    /** 綴り違いを黙って無視すると全ルールが有効のまま流れるため、指定したファイルの不在は誤りとする。 */
+    @Test
+    void missingRuleConfigFileFails() throws IOException {
+        Path dir = assets("cfgmiss", CLEAN.replace("CLEAN1", "CFGMISS"));
+
+        int exitCode = new CommandLine(new Main()).execute("lint", dir.toString(),
+                "--sarif", tempDir.resolve("cfgmiss.sarif").toString(),
+                "--rule-config", tempDir.resolve("absent.json").toString());
+
+        assertEquals(2, exitCode, "設定ファイルが無い指定は誤りとして止まること");
+    }
+
     @Test
     void copybookFindingIsRelativizedAgainstCopybookPath() throws IOException {
         Path dir = assets("copyuse", COPY_USER);
