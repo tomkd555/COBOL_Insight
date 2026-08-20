@@ -87,10 +87,10 @@ describe("シェルの骨組み", () => {
     expect(level1[0]).toHaveTextContent("COBOL Insight");
   });
 
-  it("アクティビティバーに 5 つの入口を並べる", () => {
+  it("アクティビティバーに 6 つの入口を並べる", () => {
     renderShell();
     const bar = screen.getByRole("navigation", { name: "機能の切り替え" });
-    expect(within(bar).getAllByRole("button")).toHaveLength(5);
+    expect(within(bar).getAllByRole("button")).toHaveLength(6);
     expect(within(bar).getByRole("button", { name: "エクスプローラー" })).toBeInTheDocument();
   });
 
@@ -139,6 +139,12 @@ describe("アクティビティバーからタブを開く", () => {
     renderShell(ANALYZED);
     fireEvent.click(screen.getByTestId("activity-graph"));
     expect(screen.getByRole("tab", { name: "呼出関係図" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("修正案を押すとタブが開く", () => {
+    renderShell(ANALYZED);
+    fireEvent.click(screen.getByTestId("activity-fix"));
+    expect(screen.getByRole("tab", { name: "修正案" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("エクスプローラーを押し直すと側パネルを畳む", () => {

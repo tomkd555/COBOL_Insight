@@ -115,7 +115,7 @@ function fallbackRule(id: string): RuleInfo {
     enabled: true,
     summary:
       analysisError === undefined
-        ? "この ID のルールは一覧に無い。"
+        ? "この ID のルールは一覧にありません。"
         : "解析そのものが失敗したことを示す。ルールによる検出ではない。",
     rationale: "",
     detection: "",

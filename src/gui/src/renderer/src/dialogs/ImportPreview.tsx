@@ -31,7 +31,7 @@ export function ImportPreview({ lines }: ImportPreviewProps): ReactElement {
       </div>
       {lines.length === 0 ? (
         <p className="ci-import-preview__blank">
-          本文を貼り付けると、桁を切り出した結果をここに表示する。
+          本文を貼り付けると、桁を切り出した結果をここに表示します。
         </p>
       ) : (
         <div className="ci-import-preview__body">

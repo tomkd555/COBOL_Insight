@@ -75,7 +75,7 @@ export function GraphCanvas({ elements, selectedId, onSelectNode }: GraphCanvasP
       ref={containerRef}
       data-testid="graph-canvas"
       role="application"
-      aria-label="呼出関係図。ノードを選択すると右の詳細に情報を表示する。キーボードでは左のノード一覧から選ぶ"
+      aria-label="呼出関係図。ノードを選択すると右の詳細に情報を表示します。キーボードでは左のノード一覧から選びます"
     />
   );
 }

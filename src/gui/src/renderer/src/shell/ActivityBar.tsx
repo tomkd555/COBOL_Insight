@@ -17,6 +17,7 @@ interface ActivityItem {
 const ITEMS: readonly ActivityItem[] = [
   { id: "explorer", label: "エクスプローラー", symbol: "▤" },
   { id: "graph", label: singletonTabTitle("graph"), symbol: "⛓" },
+  { id: "fix", label: singletonTabTitle("fix"), symbol: "🛠" },
   { id: "rules", label: singletonTabTitle("rules"), symbol: "✓" },
   { id: "report", label: singletonTabTitle("report"), symbol: "▦" },
   { id: "settings", label: singletonTabTitle("settings"), symbol: "⚙" },
@@ -35,7 +36,7 @@ export function ActivityBar(): ReactElement {
       dispatch({ type: "SHOW_SIDE", view: "explorer" });
       return;
     }
-    if (id === "graph" || id === "rules" || id === "report" || id === "settings") {
+    if (id === "graph" || id === "fix" || id === "rules" || id === "report" || id === "settings") {
       dispatch({ type: "OPEN_TAB", tab: singletonTab(id) });
     }
   }
