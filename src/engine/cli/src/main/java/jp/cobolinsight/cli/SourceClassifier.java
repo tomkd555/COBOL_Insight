@@ -57,8 +57,8 @@ final class SourceClassifier {
             Pattern.compile("^\\S*\\s+DFH(MSD|MDI|MDF)\\b", Pattern.CASE_INSENSITIVE);
 
     /**
-     * COBOL 本体を名指す語。コピー句との区別はこの語の有無へ一元化する。samples のコピー句は
-     * 3ファイルともこの語を持たず、両者を分ける唯一の安定した特徴だからである。
+     * COBOL 本体を名指す語。コピー句との区別はこの語の有無へ一元化する。コピー句は本体へ差し込む
+     * 断片であり DIVISION も PROGRAM-ID も書かないため、両者を分ける唯一の安定した特徴になる。
      */
     private static final Pattern COBOL_MARKER = Pattern.compile(
             "\\b(IDENTIFICATION\\s+DIVISION|ID\\s+DIVISION|ENVIRONMENT\\s+DIVISION"
@@ -136,9 +136,9 @@ final class SourceClassifier {
 
     /**
      * 判定の根拠に使える行か。種別ごとに注記の桁が違うため、3通りすべてを飛ばす。
-     * 7桁目の {@code *} を必ず飛ばすのが要である。{@code samples/cobol/SYK001.cbl} の2行目は
-     * 注記行に {@code PROGRAM-ID : SYK001} を含み、これを本文とみなすと注記だけで COBOL 判定が
-     * 通ってしまう。
+     * 固定形式の7桁目の {@code *} を必ず飛ばすのが要である。COBOL の見出し注記は
+     * {@code PROGRAM-ID : 〜} のように本文の語をそのまま書くのが常であり、注記を本文とみなすと
+     * コピー句や JCL でも COBOL 判定が通ってしまう。
      */
     private static boolean isSignificant(String line) {
         if (line.isBlank()) {

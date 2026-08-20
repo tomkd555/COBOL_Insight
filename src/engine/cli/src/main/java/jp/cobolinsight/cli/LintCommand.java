@@ -51,15 +51,7 @@ public final class LintCommand implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        List<Path> searchPaths = new ArrayList<>(copybookPaths);
-        if (searchPaths.isEmpty()) {
-            for (String name : List.of("copybook", "copy")) {
-                Path candidate = inputDir.resolve(name);
-                if (Files.isDirectory(candidate)) {
-                    searchPaths.add(candidate);
-                }
-            }
-        }
+        List<Path> searchPaths = CommonScanOptions.resolveCopybookPaths(inputDir, copybookPaths);
         Set<String> disabled = new LinkedHashSet<>(disabledRules);
         LintRunner.Result result = LintRunner.run(
                 new LintRunner.Options(inputDir, searchPaths, codepageOverrides, disabled,

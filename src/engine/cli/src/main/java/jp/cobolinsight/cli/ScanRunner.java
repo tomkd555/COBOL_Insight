@@ -422,8 +422,8 @@ public final class ScanRunner {
     }
 
     /**
-     * JCL の INCLUDE メンバを探す位置。従来構成では INPUT_DIR/jcl と一致するが、再帰探索で
-     * 拾った JCL はその位置に無いため、当該ファイルの親ディレクトリを使う。
+     * JCL の INCLUDE メンバを探す位置。当該 JCL の親ディレクトリだけを見る。走査はフォルダ名に
+     * 依存せず資産をどこからでも拾うため、置き場所を決め打ちできない。
      */
     private static List<Path> jclSearchPaths(ScanFile file) {
         Path parent = file.absPath().getParent();
