@@ -164,6 +164,12 @@
   flex-direction: column;
   overflow: auto;
 }
+.ci-editor__note {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-fs-sm);
+}
 
 .ci-tabstrip {
   flex: none;
@@ -217,22 +223,6 @@
 .ci-tab__close:focus-visible {
   outline: 2px solid var(--ci-focus-ring);
   outline-offset: -2px;
-}
-
-.ci-tabbody {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-.ci-tabbody--code {
-  padding: 0;
-}
-.ci-tabbody__note {
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
-  color: var(--color-muted-foreground);
-  font-size: var(--ci-fs-sm);
 }
 
 /* --- ステータスバー --- */

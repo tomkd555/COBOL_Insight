@@ -262,7 +262,7 @@ export function SourceTab({ path, line, onCursor }: SourceTabProps): ReactElemen
   }
 
   if (document.status === "idle" || document.status === "loading") {
-    return <p className="ci-tabbody__note">{path} を読み込んでいます。</p>;
+    return <p className="ci-editor__note">{path} を読み込んでいます。</p>;
   }
 
   if (document.status === "unsupported") {
@@ -334,7 +334,7 @@ export function SourceTab({ path, line, onCursor }: SourceTabProps): ReactElemen
         </div>
       )}
       {document.truncated ? (
-        <p className="ci-tabbody__note">
+        <p className="ci-editor__note">
           先頭の一部だけを読んでいます。残りを切り落とさないため、この本文は編集できません。
         </p>
       ) : null}

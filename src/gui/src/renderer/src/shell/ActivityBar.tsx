@@ -47,7 +47,7 @@ export function ActivityBar(): ReactElement {
   }
 
   return (
-    <nav className="ci-activitybar" aria-label="機能の切り替え">
+    <nav className="ci-activitybar" aria-label="機能の切り替え" data-testid="activitybar">
       <ul className="ci-activitybar__list">
         {ITEMS.map((item) => {
           const current = isCurrent(item.id);

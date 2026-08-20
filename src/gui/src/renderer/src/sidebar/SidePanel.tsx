@@ -68,23 +68,28 @@ export function SidePanel({
   const heading = project.inputDir === null ? "資産フォルダ" : folderName(project.inputDir);
 
   return (
-    <div className="ci-side">
+    <div className="ci-side" data-testid="sidepanel">
       <div className="ci-side__head">
         <h2 className="ci-side__title" title={project.inputDir ?? undefined}>
           {heading}
         </h2>
         <div className="ci-side__actions">
-          <Button onClick={onSelectFolder} disabled={running}>
+          <Button onClick={onSelectFolder} disabled={running} data-testid="select-folder">
             フォルダを選ぶ
           </Button>
           <Button
             variant="primary"
             onClick={onReanalyze}
             disabled={running || project.inputDir === null}
+            data-testid="reanalyze"
           >
             再解析
           </Button>
-          <Button onClick={onImport} disabled={running || project.inputDir === null}>
+          <Button
+            onClick={onImport}
+            disabled={running || project.inputDir === null}
+            data-testid="import-source"
+          >
             端末取込
           </Button>
         </div>

@@ -312,8 +312,8 @@ export interface AssetInventoryItem {
  */
 export interface SourceTextRequest {
   /**
-   * 境界検査の基準ディレクトリ。AppState の project.inputDir、またはコピー句の探索では
-   * project.copybookPaths の1件を渡す。main は symlink を解決した実体パスで配下判定を行う。
+   * 境界検査の基準ディレクトリ。projectStore の inputDir、またはコピー句の探索では
+   * settingsStore の copybookPaths の1件を渡す。main は symlink を解決した実体パスで配下判定を行う。
    */
   inputDir: string;
   /** 読むファイル。inputDir からの相対パス、または inputDir 配下の絶対パス。 */

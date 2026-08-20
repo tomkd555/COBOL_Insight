@@ -43,7 +43,7 @@ export function BottomPanel({ onOpen }: BottomPanelProps): ReactElement {
   const dispatch = useWorkbenchDispatch();
 
   return (
-    <section className="ci-bottom" aria-label="指摘と実行ログ">
+    <section className="ci-bottom" aria-label="指摘と実行ログ" data-testid="bottompanel">
       <div className="ci-bottom__head">
         <div className="ci-bottom__tabs" role="tablist" aria-label="下部パネルの面">
           {VIEWS.map((view) => {

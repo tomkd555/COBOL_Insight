@@ -1,8 +1,8 @@
 import { Fragment, type ReactElement } from "react";
 
 /**
- * 実行中に提示する解析段。「▶ 解析実行」が起動するサブコマンドの順序(scan → lint → sql-lint)を
- * 単一の正とし、現在の段を AppState の runStage が指す。lint は構文・制御フロー・データフローの
+ * 実行中に提示する解析段。「再解析」が起動するサブコマンドの順序(scan → lint → sql-lint)を
+ * 単一の正とし、現在の段を projectStore の runStage が指す。lint は構文・制御フロー・データフローの
  * ルール段を 1 プロセスで実行するため、GUI からは内部の段の進行を観測できない。観測できない段を
  * 強調しないよう、GUI が起動を観測できるサブコマンド単位の 3 段だけを提示する。
  */

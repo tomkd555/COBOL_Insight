@@ -49,7 +49,7 @@ export function EditorArea({ onCursor }: EditorAreaProps): ReactElement {
   const active = workbench.tabs.find((tab) => tab.id === workbench.activeTabId) ?? null;
 
   return (
-    <section className="ci-editor" aria-label="本文">
+    <section className="ci-editor" aria-label="本文" data-testid="editorarea">
       <EditorTabs />
       {active === null ? (
         <div className="ci-editor__body">

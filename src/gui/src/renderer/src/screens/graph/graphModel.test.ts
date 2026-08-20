@@ -27,7 +27,7 @@ import {
   visibleNodeIds,
 } from "./graphModel";
 
-/** 既定のノード種別フィルタ(全種別を表示)。解析不能は AppState の graphTypes に無いため、ここで加える。 */
+/** 既定のノード種別フィルタ(全種別を表示)。解析不能は graphView.kinds に無いため、ここで加える。 */
 const ALL_KINDS: Record<AnyNodeKind, boolean> = {
   JOB: true,
   STEP: true,

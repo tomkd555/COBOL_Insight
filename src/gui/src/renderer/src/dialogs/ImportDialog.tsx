@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { Button } from "../components/Button";
 import { TextInput } from "../components/TextInput";
 import { ASSET_KIND_SPECS, importRelPath, type ImportAssetKind } from "../../../shared/assetImport";
+import { messageOf } from "../services/analysis";
 import { ImportPreview } from "./ImportPreview";
 import { clipColumns } from "./importModel";
 
@@ -17,11 +18,6 @@ const IDLE: ImportStatus = { kind: "idle" };
 /** 桁として受ける範囲。固定形式の記録長に余裕を見た上限とする。 */
 const MIN_COLUMN = 1;
 const MAX_COLUMN = 200;
-
-/** 例外・非 Error 値から表示用の文言を取り出す。 */
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 
 /** 桁の入力値を整数へ正規化する。数値として読めない入力は現在値を保つ。 */
 function columnValue(raw: string, current: number): number {

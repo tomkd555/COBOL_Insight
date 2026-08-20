@@ -81,6 +81,7 @@ export function TraceTree({
         className="ci-trace__tree"
         role="tree"
         aria-labelledby="ci-trace-title"
+        data-testid="trace-tree"
       >
         {rows.map((row, index) => {
           const selected = row.node.id === selectedId;

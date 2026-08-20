@@ -50,6 +50,7 @@ export function RuleTable({
                   role="switch"
                   aria-checked={row.enabled}
                   aria-label={`${row.id} ${row.name}`}
+                  data-testid={`rule-switch-${row.id}`}
                   disabled={disabled}
                   onClick={() => onToggle(row.id)}
                 >
