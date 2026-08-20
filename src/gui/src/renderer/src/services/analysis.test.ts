@@ -113,6 +113,13 @@ describe("runAnalysis", () => {
     expect(runLint.mock.calls[0][0]).not.toHaveProperty("disabledRules");
   });
 
+  /** 利用者定義ルールは lint が読む。渡し忘れると U 始まりのルールだけ検出されない。 */
+  it("利用者定義ルールの定義ファイルを指摘の検出へ渡す", async () => {
+    await runAnalysis(REQUEST, recorder());
+
+    expect(runLint.mock.calls[0][0].userRulesFile).toBe(OUTPUT_PATHS.userRules);
+  });
+
   it("走査に失敗しても後の段を走らせ、失敗として返す", async () => {
     runScan.mockRejectedValue(new Error("解析エンジンを起動できない"));
     const handlers = recorder();

@@ -254,9 +254,9 @@ export function buildExpansionZones(input: ExpansionZoneInput): ExpansionZone[] 
     if (expansion === undefined) {
       zones.push({
         afterLine: statement.line,
-        title: `COPY ${statement.name} ― 展開データが無い`,
-        note: "入れ子の COPY と暗黙のコピー句(SQLCA)は展開の対象外である。",
-        ariaLabel: `${statement.line} 行の COPY ${statement.name} は展開データが無い`,
+        title: `COPY ${statement.name} ― 展開データがありません`,
+        note: "入れ子の COPY と暗黙のコピー句(SQLCA)は展開の対象外です。",
+        ariaLabel: `${statement.line} 行の COPY ${statement.name} は展開データがありません`,
         lines: [],
       });
       continue;
@@ -267,8 +267,8 @@ export function buildExpansionZones(input: ExpansionZoneInput): ExpansionZone[] 
       title: `COPY ${expansion.copybookName} の展開 ― ${expansion.copybookPath}（${expansion.lines.length} 行）`,
       note:
         original === undefined
-          ? "REPLACING 適用後。一連番号欄・識別欄と注記行は前処理で空になるため、注記行は空のまま示す。"
-          : "REPLACING 適用後。一連番号欄・識別欄は前処理で空になり、注記行は原本から補う。",
+          ? "REPLACING 適用後。一連番号欄・識別欄と注記行は前処理で空になるため、注記行は空のまま示します。"
+          : "REPLACING 適用後。一連番号欄・識別欄は前処理で空になり、注記行は原本から補います。",
       ariaLabel: `${statement.line} 行の COPY ${expansion.copybookName} の展開 ${expansion.lines.length} 行`,
       lines: expansion.lines.map((line) =>
         toZoneLine(line.copybookLine, line.text, original, input.codepage),
@@ -284,19 +284,19 @@ export function copyExpansionSummary(
   state: CopyExpansionState,
 ): string {
   if (state.status === "loading") {
-    return "コピー句の展開を読み込んでいる…";
+    return "コピー句の展開を読み込んでいます…";
   }
   if (state.status === "error") {
-    return `コピー句の展開を取得できない（${state.message}）。解析を実行し直すと対応表を作り直す。`;
+    return `コピー句の展開を取得できませんでした（${state.message}）。解析を実行し直すと対応表を作り直します。`;
   }
   if (state.status === "idle") {
-    return `COPY 文 ${statements.length} 件 ― 展開すると取り込んだ行を COPY 文の位置へ差し込む`;
+    return `COPY 文 ${statements.length} 件 ― 展開すると取り込んだ行を COPY 文の位置へ差し込みます`;
   }
   const lines = new Set(state.expansions.map((expansion) => expansion.copyStatementLine));
   const expanded = statements.filter((statement) => lines.has(statement.line)).length;
   const missing = statements.length - expanded;
   const head = `COPY 文 ${statements.length} 件のうち ${expanded} 件を展開中`;
-  return missing === 0 ? head : `${head}（${missing} 件は展開データが無い）`;
+  return missing === 0 ? head : `${head}（${missing} 件は展開データがありません）`;
 }
 
 /** 1行に載る指摘1件。重大度と名称は SARIF の level ではなくルールカタログから引く。 */
@@ -575,7 +575,7 @@ export function linkSummary(
   generatedLines: readonly number[],
 ): string {
   if (cobolLines.length === 0 && generatedLines.length === 0) {
-    return "カーソル行に対応する行はない（逐語対訳の対応表に無い行）";
+    return "カーソル行に対応する行はありません（逐語対訳の対応表に無い行）";
   }
   return `対応行を強調中 ― COBOL ${cobolLines.length} 行 ↔ 生成 ${generatedLines.length} 行`;
 }

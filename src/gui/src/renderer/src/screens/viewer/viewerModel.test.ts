@@ -190,7 +190,7 @@ describe("linkSummary(相互ハイライトの状態)", () => {
   it("対応が無い行はその旨を示す", () => {
     const linked = linkFromCobolLine(index, 5);
     expect(linkSummary(linked.cobolLines, linked.generatedLines)).toBe(
-      "カーソル行に対応する行はない（逐語対訳の対応表に無い行）",
+      "カーソル行に対応する行はありません（逐語対訳の対応表に無い行）",
     );
   });
 });
@@ -479,7 +479,7 @@ describe("buildExpansionZones(COPY 文の位置へ差し込む展開)", () => {
       text: "      * 受注レコード                                                CPY00110",
       restored: true,
     });
-    expect(zone.note).toContain("注記行は原本から補う");
+    expect(zone.note).toContain("注記行は原本から補います");
   });
 
   it("原本を読めないときは空行のまま示し、空に見える理由を添える", () => {
@@ -523,12 +523,12 @@ describe("copyExpansionSummary(展開の状態の1行表示)", () => {
 
   it("閉じているあいだは件数と、展開すると何が起きるかを示す", () => {
     expect(copyExpansionSummary(STATEMENTS, { status: "idle" })).toBe(
-      "COPY 文 2 件 ― 展開すると取り込んだ行を COPY 文の位置へ差し込む",
+      "COPY 文 2 件 ― 展開すると取り込んだ行を COPY 文の位置へ差し込みます",
     );
   });
 
   it("読込中と取得失敗は、空表示に潰さずそれぞれの理由を示す", () => {
-    expect(copyExpansionSummary(STATEMENTS, { status: "loading" })).toContain("読み込んでいる");
+    expect(copyExpansionSummary(STATEMENTS, { status: "loading" })).toContain("読み込んでいます");
     expect(copyExpansionSummary(STATEMENTS, { status: "error", message: "ファイルが無い" })).toContain(
       "ファイルが無い",
     );
@@ -541,7 +541,7 @@ describe("copyExpansionSummary(展開の状態の1行表示)", () => {
       copybookLines: new Map<string, readonly string[]>(),
     } as const;
     expect(copyExpansionSummary(STATEMENTS, state)).toBe(
-      "COPY 文 2 件のうち 1 件を展開中（1 件は展開データが無い）",
+      "COPY 文 2 件のうち 1 件を展開中（1 件は展開データがありません）",
     );
     expect(copyExpansionSummary(STATEMENTS.slice(0, 1), state)).toBe(
       "COPY 文 1 件のうち 1 件を展開中",

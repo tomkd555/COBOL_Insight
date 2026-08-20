@@ -85,6 +85,8 @@ export async function runAnalysis(
       sarifFile: paths.lintSarif,
       copybookPaths: request.copybookPaths,
       ruleConfigFile: paths.ruleConfig,
+      // 定義ファイルが未作成でも常に渡す。engine の UserRuleLoader は無いファイルを空として扱う。
+      userRulesFile: paths.userRules,
     });
     handlers.onFindings({ status: "ready", items: await readFindings(result.outputs.sarif) });
     lintFailed = false;

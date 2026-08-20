@@ -298,7 +298,7 @@ export function reparseWarning(reparseFailures: number | null): string | null {
   if (reparseFailures === null || reparseFailures === 0) {
     return null;
   }
-  return `修正後ソースの再構文解析で ${reparseFailures} 件が検証に失敗した。失敗した修正は内容を確認のうえ棄却するか、手動で修正する。`;
+  return `修正後ソースの再構文解析で ${reparseFailures} 件が検証に失敗しました。失敗した修正は内容を確かめて棄却するか、手作業で直してください。`;
 }
 
 /** 解析段の失敗(復号・構文解析)を示す警告文。失敗が無ければ null。 */
@@ -306,7 +306,7 @@ export function analysisWarning(summary: FixSummaryInfo): string | null {
   if (summary.analysisErrors === 0) {
     return null;
   }
-  return `解析で ${summary.analysisErrors} 件のエラーがある。修正案は解析できた資産の範囲で生成している。`;
+  return `解析で ${summary.analysisErrors} 件のエラーがあります。修正案は解析できた資産の範囲で生成しています。`;
 }
 
 /**
@@ -330,7 +330,7 @@ export function applyCaution(counts: DecisionCounts): string | null {
   if (counts.rejected === 0) {
     return null;
   }
-  return `棄却した ${counts.rejected} 件も書き出しに含まれる。書き出しは修正案を選べないため、取り込む際に判定を確認する。`;
+  return `棄却した ${counts.rejected} 件も書き出しに含まれます。書き出しでは修正案を選べないため、取り込むときに判定を確かめてください。`;
 }
 
 /** 書き出し後の結果文言。 */
@@ -338,10 +338,10 @@ export function applyNotice(outcome: FixApplyOutcome): string {
   const held =
     outcome.copybookFixes.length === 0
       ? ""
-      : ` コピー句 ${outcome.copybookFixes.length} 件は原本を書き換えないため提示に留めている。`;
+      : ` コピー句 ${outcome.copybookFixes.length} 件は原本を書き換えないため提示に留めています。`;
   const failed =
     outcome.reparseFailures === 0 ? "" : ` 再構文解析の失敗 ${outcome.reparseFailures} 件。`;
-  return `${outcome.outDir} へ ${outcome.written.length} 件を書き出した（原本は変更していない）。${held}${failed}`;
+  return `${outcome.outDir} へ ${outcome.written.length} 件を書き出しました（原本は変更していません）。${held}${failed}`;
 }
 
 /** diff 画面の4状態を、解析ライフサイクルと fix の取得状態から導く。 */
