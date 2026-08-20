@@ -147,12 +147,16 @@
 }
 .ci-diff__heading {
   display: flex;
+  flex: 1 1 0;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: var(--ci-space-2);
   min-width: 0;
 }
 .ci-diff__title {
   margin: 0;
+  /* 幅が足りないときも題目が先に消えないよう下限を持つ。切り詰めは省略記号で示す */
+  min-width: 6em;
   font-size: var(--ci-fs-md);
   font-weight: 700;
   white-space: nowrap;
@@ -160,10 +164,12 @@
   text-overflow: ellipsis;
 }
 .ci-diff__subtitle {
-  flex: none;
+  flex: 0 1 auto;
   font-size: var(--ci-fs-xs);
   color: var(--ci-text-muted);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .ci-diff__spacer {
   flex: 1;
@@ -245,7 +251,8 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  /* ページ拡大でツールバーが多段になっても、差分本体が見える帯を確保する */
+  min-height: 12em;
   min-width: 0;
   margin: 0 var(--ci-space-4) var(--ci-space-2);
   border: 1px solid var(--ci-border);

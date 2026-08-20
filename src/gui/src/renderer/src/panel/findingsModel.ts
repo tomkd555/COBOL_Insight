@@ -108,7 +108,7 @@ export function fileOptions(rows: readonly PanelFinding[]): FilterOption[] {
 /** 出所選択肢。 */
 export const SOURCE_OPTIONS: readonly FilterOption[] = [
   { value: ALL, label: "出所: すべて" },
-  { value: "lint", label: "出所: 指摘" },
+  { value: "lint", label: "出所: コード" },
   { value: "sql", label: "出所: SQL" },
   { value: "save", label: "出所: 保存時の検証" },
 ];
