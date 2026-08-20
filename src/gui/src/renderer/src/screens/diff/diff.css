@@ -132,7 +132,8 @@
   min-width: 0;
 }
 /*
- * ツールバー。Monaco へ届くまでの段数を減らすため、折り返さず1行に収める。題目が長い場合は
+ * ツールバー。通常幅では1行に収まる。ページ拡大などで幅が足りないときは折り返す。
+ * クリップで隠すとボタンへ届かなくなるため、overflow は指定しない。題目が長い場合は
  * 省略記号で切る(全文は一覧のカードが示す)。
  */
 .ci-diff__toolbar {
@@ -140,10 +141,9 @@
   display: flex;
   align-items: center;
   gap: var(--ci-space-2);
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   padding: var(--ci-space-1) var(--ci-space-4);
   border-bottom: 1px solid var(--ci-border-soft);
-  overflow: hidden;
 }
 .ci-diff__heading {
   display: flex;
