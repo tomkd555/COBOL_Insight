@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * samples 全体を CONTROL_FLOW 段の13ルールで解析し、samples/期待結果.md が正解として挙げる
+ * samples 全体を CONTROL_FLOW 段の13ルールで解析し、samples/expected-results.md が正解として挙げる
  * 検出位置と突き合わせる。R017 は包含関係だけを表明し(SYK001:85 と SYK002:130 を含み、
  * OPEN/CLOSE の行を検出しない)、他のルールは検出集合の完全一致で表明する。
  */

@@ -140,7 +140,7 @@ final class SourceDiscovery {
      * 内容で判定する。
      *
      * <p>.md を落とすのは、散文に PROGRAM-ID の語が現れるだけで解析対象へ化けるのを断つためで
-     * ある。{@code samples/期待結果.md} が実例で、資産の説明として COBOL の語を本文へ書く文書は
+     * ある。{@code samples/expected-results.md} が実例で、資産の説明として COBOL の語を本文へ書く文書は
      * 資産フォルダに置かれる。文書はどの種別の資産でもないので、判定できなかったものとしてでは
      * なく候補の外として扱う。
      */

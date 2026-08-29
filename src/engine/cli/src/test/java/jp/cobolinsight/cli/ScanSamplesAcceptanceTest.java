@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * scan の受入回帰テスト。samples/ 全体の scan が成功し、SQLiteへ期待どおりの
- * 行が入ることを、期待結果.md 4・6・9章の値と突合して検証する。
+ * 行が入ることを、expected-results.md 4・6・9章の値と突合して検証する。
  */
 class ScanSamplesAcceptanceTest {
 
@@ -65,10 +65,10 @@ class ScanSamplesAcceptanceTest {
     void allEighteenSourcesAreScannedWithoutError() {
         assertEquals(0, summary.exitCode(), "終了コードは成功(0)であること");
         assertEquals(0, summary.findingCount(), "パース失敗のfindingが無いこと");
-        assertEquals(18, summary.analyzed().size(),
+        assertEquals(20, summary.analyzed().size(),
                 "JCL3本・COBOL11本(encoding/の2本を含む)・コピー句3本・BMSマップ1本の計18本を"
                         + "解析すること");
-        assertEquals(18, dao.findAllSources().size());
+        assertEquals(20, dao.findAllSources().size());
     }
 
     @Test
@@ -80,7 +80,7 @@ class ScanSamplesAcceptanceTest {
         List<String> sortedPaths = pathsById.stream().sorted().toList();
         assertEquals(sortedPaths, pathsById, "SOURCE.id はパスの辞書順で振られること");
         assertEquals(1, sources.stream().mapToLong(SourceRecord::id).min().orElseThrow());
-        assertEquals(18, sources.stream().mapToLong(SourceRecord::id).max().orElseThrow());
+        assertEquals(20, sources.stream().mapToLong(SourceRecord::id).max().orElseThrow());
     }
 
     @Test
@@ -106,9 +106,13 @@ class ScanSamplesAcceptanceTest {
     @Test
     void encodingInfoIsPersistedForAllSources() {
         for (SourceRecord source : dao.findAllSources()) {
-            // encoding/SYKENC1_SJIS.cbl だけが Shift_JIS(windows-31j)で、他は UTF-8 である。
-            String expected = "encoding/SYKENC1_SJIS.cbl".equals(source.path())
-                    ? "windows-31j" : "UTF-8";
+            // SJIS sample is windows-31j; both EBCDIC samples are estimated as x-IBM930
+            // (IBM930 and IBM939 cannot be told apart by byte distribution); the rest are UTF-8.
+            String expected = switch (source.path()) {
+                case "encoding/SYKENC1_SJIS.cbl" -> "windows-31j";
+                case "encoding/SYKENC1_CP930.cbl", "encoding/SYKENC1_CP939.cbl" -> "x-IBM930";
+                default -> "UTF-8";
+            };
             var info = dao.findEncodingInfo(source.id()).orElseThrow();
             assertEquals(expected, info.detectedCharset(), source.path());
             assertFalse(info.manualOverride());
@@ -126,7 +130,7 @@ class ScanSamplesAcceptanceTest {
                 "copybook/SYKCPY2.cpy->cobol/SYK002.cbl",
                 "copybook/SYKCPY3.cpy->cobol/SYK006.cbl",
                 "copybook/SYKCPY3.cpy->cobol/SYK007.cbl"));
-        assertEquals(expected, edges, "期待結果.md 6章のコピー句使用状況と一致すること");
+        assertEquals(expected, edges, "expected-results.md 6章のコピー句使用状況と一致すること");
     }
 
     @Test
@@ -139,7 +143,7 @@ class ScanSamplesAcceptanceTest {
                 "jcl/SYKD020.jcl->cobol/SYK007.cbl",
                 "jcl/SYKD030.jcl->cobol/SYK001.cbl",
                 "jcl/SYKD030.jcl->cobol/SYK002.cbl"));
-        assertEquals(expected, edges, "期待結果.md 4章のEXEC PGM対応と一致すること");
+        assertEquals(expected, edges, "expected-results.md 4章のEXEC PGM対応と一致すること");
     }
 
     @Test
@@ -219,7 +223,7 @@ class ScanSamplesAcceptanceTest {
         ScanRunner.Summary second = ScanRunner.run(new ScanRunner.Options(SAMPLES,
                 tempDir.resolve("m1.db"), List.of(SAMPLES.resolve("copybook")), Map.of()));
         assertEquals(List.of(), second.analyzed(), "変更が無ければ再解析しないこと");
-        assertEquals(18, second.skipped().size());
+        assertEquals(20, second.skipped().size());
         assertEquals(0, second.exitCode());
     }
 

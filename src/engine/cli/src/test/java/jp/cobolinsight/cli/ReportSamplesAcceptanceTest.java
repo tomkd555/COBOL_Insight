@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * samples/ 全体の report 受入回帰テスト。samples を scan して SQLite を作り、
  * その DB と資産フォルダに対し report を実行して、統合レポートに次を含むことを突合する:
- * データフロー解析による7欠陥(期待結果.md No.1/2/3/5/9/13/14 = R001/R003/R004/R005)を lint 検出として、
+ * データフロー解析による7欠陥(expected-results.md No.1/2/3/5/9/13/14 = R001/R003/R004/R005)を lint 検出として、
  * SQL 指摘 S004/S006(SYK006:145)を、呼出関係の要約(プログラム間の CALL 辺)を含み、
  * HTML とテキストの両形式を生成し、統合の終了コードが 2(samples は ERROR レベルの検出を含む)に
  * なること。

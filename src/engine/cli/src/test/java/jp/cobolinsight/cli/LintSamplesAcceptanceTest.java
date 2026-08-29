@@ -18,15 +18,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * samples/ 全体の lint 受入回帰テスト。構文段階(SYNTAX)・制御フロー段階
- * (CONTROL_FLOW)・データフロー段階(DATA_FLOW)の3段階を実行し、期待結果.md の欠陥をファイル・行番号
+ * (CONTROL_FLOW)・データフロー段階(DATA_FLOW)の3段階を実行し、expected-results.md の欠陥をファイル・行番号
  * どおりに検出し、samplesに意図的欠陥の無いルールが誤検出を出さないことを突合する。構文段階のR002
  * (未使用変数)・R008(THRUなし単独段落PERFORM)、制御フロー段階のR007/R011/R017/R018/R021/R022/R031、
- * データフロー段階のR001/R003/R004/R005(期待結果.md No.1/2/3/5/9/13/14)の検出と、samplesがERRORレベルの検出を
+ * データフロー段階のR001/R003/R004/R005(expected-results.md No.1/2/3/5/9/13/14)の検出と、samplesがERRORレベルの検出を
  * 含むため終了コードが2であることを確認する。lint は rule id が "R" で始まるルールのみを実行し、
  * SQL指摘(S接頭辞)を除外する。R017は path-sensitive な忠実実装のため付随検出を許容し、
  * 必須2件の包含とOPEN/CLOSE非検出のみを表明する。
  *
- * <p>正解の出所は samples/期待結果.md(12種別18件)。この18件は「意図的に混入した欠陥15件」と
+ * <p>正解の出所は samples/expected-results.md(12種別18件)。この18件は「意図的に混入した欠陥15件」と
  * 「CICS関連の検出3件」の合計である。データフロー解析が拾うのは18件中の7件
  * (No.1/2/3/5/9/13/14)。
  */
@@ -60,7 +60,7 @@ class LintSamplesAcceptanceTest {
 
     @Test
     void allElevenCobolSourcesAreParsedWithoutFailure() {
-        assertEquals(11, result.analyzed().size(),
+        assertEquals(13, result.analyzed().size(),
                 "COBOL 11本(encoding/の2本を含む)を解析すること");
         assertEquals(List.of(), byRule(Finding.PARSE_FAILURE_RULE_ID), "パース失敗が無いこと");
         assertEquals(List.of(), byRule("decode-failure"), "復号失敗が無いこと");
@@ -69,11 +69,11 @@ class LintSamplesAcceptanceTest {
     @Test
     void r002DetectsExactlyTheExpectedUnusedVariable() {
         List<Finding> findings = byRule("R002");
-        assertEquals(1, findings.size(), () -> "R002は期待結果.md No.8の1件だけ検出すること: "
+        assertEquals(1, findings.size(), () -> "R002はexpected-results.md No.8の1件だけ検出すること: "
                 + findings);
         Finding finding = findings.get(0);
         assertEquals("cobol/SYK003.cbl", finding.location().file());
-        assertEquals(20, finding.location().line(), "期待結果.md No.8: 宣言行20で検出すること");
+        assertEquals(20, finding.location().line(), "expected-results.md No.8: 宣言行20で検出すること");
         assertEquals(FindingLevel.NOTE, finding.level());
         assertTrue(finding.message().contains("WS-旧チェック方式件数"), finding.message());
     }
@@ -93,28 +93,28 @@ class LintSamplesAcceptanceTest {
     @Test
     void r001DetectsExactlyTheTwoUninitializedVariableReferences() {
         assertEquals(Set.of("cobol/SYK001.cbl:121", "cobol/SYK004.cbl:41"), fileLines("R001"),
-                "R001は未初期化変数の参照2件(期待結果.md No.1,9)を検出すること");
+                "R001は未初期化変数の参照2件(expected-results.md No.1,9)を検出すること");
         assertTrue(allLevel("R001", FindingLevel.ERROR), "R001は全件ERRORであること");
     }
 
     @Test
     void r003DetectsExactlyTheTwoMoveTruncations() {
         assertEquals(Set.of("cobol/SYK001.cbl:128", "cobol/SYK002.cbl:118"), fileLines("R003"),
-                "R003はMOVEでの桁落ち・切り捨て2件(期待結果.md No.2,5)を検出すること");
+                "R003はMOVEでの桁落ち・切り捨て2件(expected-results.md No.2,5)を検出すること");
         assertTrue(allLevel("R003", FindingLevel.ERROR), "R003は全件ERRORであること");
     }
 
     @Test
     void r005DetectsExactlyTheTwoOutOfRangeSubscripts() {
         assertEquals(Set.of("cobol/SYK001.cbl:114", "cobol/SYK006.cbl:139"), fileLines("R005"),
-                "R005はOCCURS範囲外になり得る添字2件(期待結果.md No.3,13)を検出すること");
+                "R005はOCCURS範囲外になり得る添字2件(expected-results.md No.3,13)を検出すること");
         assertTrue(allLevel("R005", FindingLevel.ERROR), "R005は全件ERRORであること");
     }
 
     @Test
     void r004DetectsExactlyTheOnSizeErrorMissingCompute() {
         assertEquals(Set.of("cobol/SYK007.cbl:79"), fileLines("R004"),
-                "R004はON SIZE ERROR欠如の演算1件(期待結果.md No.14)を検出すること");
+                "R004はON SIZE ERROR欠如の演算1件(expected-results.md No.14)を検出すること");
         assertTrue(allLevel("R004", FindingLevel.ERROR), "R004は全件ERRORであること");
     }
 
@@ -155,7 +155,7 @@ class LintSamplesAcceptanceTest {
     @Test
     void r007DetectsExactlyTheGoToIntoThruRange() {
         assertEquals(Set.of("cobol/SYK002.cbl:124"), fileLines("R007"),
-                "R007は期待結果.md No.7のGO TO 1件だけ検出すること");
+                "R007はexpected-results.md No.7のGO TO 1件だけ検出すること");
         assertTrue(allLevel("R007", FindingLevel.ERROR));
     }
 

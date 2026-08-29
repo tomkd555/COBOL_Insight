@@ -33,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * 呼出関係グラフ構築の受入回帰テスト。samples/ 全体(COBOL9・JCL3・BMS1)から構築した
- * 呼出関係グラフを、期待結果.md 4・5・9章の正解グラフと1辺単位で突合する。
+ * 呼出関係グラフを、expected-results.md 4・5・9章の正解グラフと1辺単位で突合する。
  */
 class CallGraphSamplesAcceptanceTest {
 
@@ -65,7 +65,7 @@ class CallGraphSamplesAcceptanceTest {
                 + edge.resolution() + "]";
     }
 
-    /** 期待結果.md 4章(JCL・データセット)・5章(CALL)・9章(CICS)から起こした正解の全辺。 */
+    /** expected-results.md 4章(JCL・データセット)・5章(CALL)・9章(CICS)から起こした正解の全辺。 */
     private static Set<String> expectedEdges() {
         Set<String> expected = new TreeSet<>();
         // 4章: ジョブ→ステップ→プログラム(EXEC PGM=対応。SYKD020のSTEP020は
@@ -125,7 +125,7 @@ class CallGraphSamplesAcceptanceTest {
         Set<String> actual = result.callGraph().edges().stream()
                 .map(CallGraphSamplesAcceptanceTest::edgeKey)
                 .collect(Collectors.toCollection(TreeSet::new));
-        assertEquals(expectedEdges(), actual, "期待結果.md 4・5・9章の正解グラフと1辺単位で一致すること");
+        assertEquals(expectedEdges(), actual, "expected-results.md 4・5・9章の正解グラフと1辺単位で一致すること");
     }
 
     @Test
@@ -237,7 +237,7 @@ class CallGraphSamplesAcceptanceTest {
         ScanRunner.Result second = ScanRunner.runWithGraph(new ScanRunner.Options(SAMPLES,
                 rescanDb, List.of(SAMPLES.resolve("copybook")), Map.of()));
         assertEquals(List.of(), second.summary().analyzed(), "変更が無ければ再解析しないこと");
-        assertEquals(18, second.summary().skipped().size());
+        assertEquals(20, second.summary().skipped().size());
         assertEquals(0, second.summary().exitCode());
         assertEquals(result.callGraph().toJson(), second.callGraph().toJson(),
                 "増分scan(全ファイルskip)でも同一のグラフが再構築されること");

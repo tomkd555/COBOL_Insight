@@ -50,4 +50,16 @@ class SampleDecodingTest {
 
         assertEquals(decoder.decode(utf8).text(), decoder.decode(sjis).text());
     }
+
+    @Test
+    void ebcdicSamplesDecodeToTheUtf8TextWithManualOverride() throws IOException {
+        String expected = decoder.decode(Files.readAllBytes(SAMPLES.resolve("SYKENC1_UTF8.cbl"))).text();
+        for (var cp : java.util.Map.of("SYKENC1_CP930.cbl", CodePage.IBM930, "SYKENC1_CP939.cbl", CodePage.IBM939).entrySet()) {
+            byte[] bytes = Files.readAllBytes(SAMPLES.resolve(cp.getKey()));
+            assertEquals(1_152, bytes.length, cp.getKey());
+            DecodedSource source = decoder.decode(bytes, cp.getValue());
+            assertEquals(expected, source.text(), cp.getKey() + " must decode to the UTF-8 original");
+            assertTrue(decoder.decode(bytes).encodingInfo().codePage().isEbcdic(), cp.getKey() + " must be estimated as EBCDIC");
+        }
+    }
 }
