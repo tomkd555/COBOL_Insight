@@ -68,6 +68,7 @@ export const LANGUAGE_ID = {
   cobol: "cobol-fixed",
   jcl: "jcl",
   bms: "bms",
+  json: "json",
 } as const;
 
 export const COBOL_INSIGHT_THEME = "cobol-insight";
@@ -272,6 +273,37 @@ export function bmsLanguage(): MonarchLanguage {
   };
 }
 
+/* ------------------------------------------------------------------ JSON */
+
+/**
+ * The JSON grammar, for the rule configuration file.
+ *
+ * Monaco ships JSON only as a language service (vs/language/json), which brings a worker of its own
+ * and with it validation and completion. This editor registers grammars and nothing else — one base
+ * worker serves the whole renderer — so JSON is highlighted from a Monarch definition like the other
+ * three languages rather than from that service.
+ */
+export function jsonLanguage(): MonarchLanguage {
+  return {
+    ignoreCase: false,
+    defaultToken: "identifier",
+    tokenizer: {
+      root: [
+        // A member name, told apart from a value by the colon that follows it.
+        [/"(?:[^"\\]|\\.)*"(?=\s*:)/, "attribute.name"],
+        [/"(?:[^"\\]|\\.)*"/, "string"],
+        // A string the line ends in the middle of: JSON has no multi-line string.
+        [/"(?:[^"\\]|\\.)*$/, "string.invalid"],
+        [/-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/, "number"],
+        [/\b(?:true|false|null)\b/, "constant"],
+        [/[{}[\],:]/, "delimiter"],
+        [/\s+/, "white"],
+        [/./, "identifier"],
+      ],
+    },
+  };
+}
+
 /* ------------------------------------------------------------------ theme */
 
 /**
@@ -319,6 +351,9 @@ export function languageIdFor(path: string): string {
   }
   if (extension === "bms" || extension === "map") {
     return LANGUAGE_ID.bms;
+  }
+  if (extension === "json") {
+    return LANGUAGE_ID.json;
   }
   return LANGUAGE_ID.cobol;
 }

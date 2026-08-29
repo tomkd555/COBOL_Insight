@@ -15,8 +15,8 @@ import {
 } from "react";
 import { text } from "../text";
 
-/** Tab kinds. Only `source` binds to one asset; the rest open at most one tab each. */
-export type TabKind = "source" | "graph" | "rules" | "report" | "settings" | "fix";
+/** Tab kinds. `source`, `fix` and `transpile` bind to one asset; the rest open at most one tab each. */
+export type TabKind = "source" | "graph" | "rules" | "report" | "settings" | "fix" | "transpile";
 
 /** What the activity bar can put in the side bar. */
 export type SideView = "explorer" | "search" | "rules" | "problems";
@@ -131,6 +131,23 @@ export function fixTabId(path: string): string {
 export function fixTab(path: string): WorkbenchTab {
   const name = path.split("/").pop() ?? path;
   return { id: fixTabId(path), kind: "fix", title: `${name}（${text.fixView.diff}）`, path, line: null };
+}
+
+/** The id of an asset's translation. Its own tab, so the COBOL source stays open beside it. */
+export function transpileTabId(path: string): string {
+  return `transpile:${path}`;
+}
+
+/** A tab holding the generated Python or Java for one asset, beside the COBOL. */
+export function transpileTab(path: string): WorkbenchTab {
+  const name = path.split("/").pop() ?? path;
+  return {
+    id: transpileTabId(path),
+    kind: "transpile",
+    title: `${name}（${text.transpileView.tab}）`,
+    path,
+    line: null,
+  };
 }
 
 export type WorkbenchAction =

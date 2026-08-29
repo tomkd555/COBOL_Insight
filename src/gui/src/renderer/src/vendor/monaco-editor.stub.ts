@@ -124,8 +124,46 @@ class StubEditor {
     return disposable;
   }
 
+  onDidChangeCursorSelection(): typeof disposable {
+    return disposable;
+  }
+
+  onDidScrollChange(): typeof disposable {
+    return disposable;
+  }
+
+  onMouseDown(): typeof disposable {
+    return disposable;
+  }
+
+  addAction(): typeof disposable {
+    return disposable;
+  }
+
+  /** View zones need a layout to sit in, so the callback is handed an accessor that keeps none. */
+  changeViewZones(callback: (accessor: StubViewZoneAccessor) => void): void {
+    callback(new StubViewZoneAccessor());
+  }
+
   dispose(): void {
     this.model = null;
+  }
+}
+
+/** A view-zone accessor that hands out ids and forgets the zones. */
+class StubViewZoneAccessor {
+  private next = 0;
+
+  addZone(): string {
+    return `stub-zone:${(this.next += 1)}`;
+  }
+
+  removeZone(): void {
+    /* nothing was kept to remove */
+  }
+
+  layoutZone(): void {
+    /* nothing is laid out */
   }
 }
 
@@ -167,6 +205,11 @@ export const languages = {
   setLanguageConfiguration: (): void => undefined,
   registerCodeActionProvider: (): typeof disposable => disposable,
 };
+
+/** Stands in for the key enums an editor action's keybinding is built from. */
+export const KeyMod = { CtrlCmd: 2048, Shift: 1024, Alt: 512, WinCtrl: 256 };
+
+export const KeyCode = { KeyC: 33 };
 
 /** Stands in for the monaco.Range constructor. */
 export class Range {

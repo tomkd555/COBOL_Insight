@@ -847,6 +847,131 @@
   font-size: var(--ci-size-sm);
 }
 
+/* ---------------------------------------------------------------- the COPY expansion */
+
+/*
+ * A COPY expansion, drawn as a Monaco view zone between the lines of the source. It is set apart from
+ * the body by its own ground and a left rule, because none of it is text the file holds.
+ */
+.ci-copy {
+  height: 100%;
+  overflow: auto;
+  border-left: 2px solid var(--ci-kind-copybook);
+  background: color-mix(in srgb, var(--ci-kind-copybook) 8%, transparent);
+  font-family: var(--ci-font-code);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-copy__header {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-2);
+  padding: 0 var(--ci-space-2);
+  color: var(--ci-fg-dim);
+}
+
+.ci-copy__toggle {
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius);
+  padding: 0 var(--ci-space-2);
+  background: var(--ci-bg-raised);
+  color: var(--ci-fg);
+  font-family: var(--ci-font-ui);
+  font-size: var(--ci-size-sm);
+  cursor: pointer;
+}
+
+.ci-copy__toggle:hover {
+  background: var(--ci-bg-hover);
+}
+
+.ci-copy__toggle:focus-visible {
+  outline: 2px solid var(--ci-focus);
+  outline-offset: 1px;
+}
+
+.ci-copy__name {
+  color: var(--ci-kind-copybook);
+}
+
+.ci-copy__path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ci-copy__lines {
+  padding: 0 var(--ci-space-2);
+  color: var(--ci-fg);
+  white-space: pre;
+}
+
+.ci-copy__number {
+  display: inline-block;
+  width: 5ch;
+  margin-inline-end: var(--ci-space-2);
+  color: var(--ci-fg-dim);
+  text-align: right;
+  user-select: none;
+}
+
+/* The copybook's own line, as the engine preprocessed it. */
+.ci-copy__text {
+  color: var(--ci-fg);
+}
+
+/* The glyph that opens and closes the expansion, on the COPY statement's own line. */
+.ci-copy__glyph::before {
+  content: "";
+  display: block;
+  margin: 6px 0 0 4px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--ci-kind-copybook);
+  border-radius: 2px;
+}
+
+/* ---------------------------------------------------------------- the transpile view */
+
+.ci-transpile {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+}
+
+.ci-sidebyside {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  min-height: 0;
+  background: var(--ci-border);
+}
+
+.ci-sidebyside__pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--ci-bg-editor);
+}
+
+.ci-sidebyside__label {
+  padding: var(--ci-space-1) var(--ci-space-3);
+  overflow: hidden;
+  border-bottom: 1px solid var(--ci-border);
+  color: var(--ci-fg-dim);
+  font-size: var(--ci-size-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ci-sidebyside__code {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 /* ---------------------------------------------------------------- palette, modal, toast */
 
 .ci-palette,

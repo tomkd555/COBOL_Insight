@@ -3,6 +3,8 @@ import { text } from "../../text";
 import { api, errorMessage } from "../../api";
 import { CODEPAGES } from "../../../../shared/codepage";
 import { SEVERITIES, type Severity } from "../../model/severity";
+import { artifactSubdir } from "../../model/artifactPaths";
+import { useProject } from "../../state/projectStore";
 import {
   toAppSettings,
   useSettings,
@@ -46,6 +48,7 @@ function same(left: Draft, right: Draft): boolean {
 export function Settings({ notify }: SettingsEditorProps): ReactElement {
   const settings = useSettings();
   const dispatch = useSettingsDispatch();
+  const project = useProject();
   const [draft, setDraft] = useState<Draft>(() => draftOf(settings));
   const [saved, setSaved] = useState(false);
   const [missing, setMissing] = useState<readonly string[]>([]);
@@ -195,6 +198,8 @@ export function Settings({ notify }: SettingsEditorProps): ReactElement {
         <input
           className="ci-input"
           value={draft.fixOutDir}
+          // Left empty, the write-out goes beside the project file; the placeholder names where.
+          placeholder={artifactSubdir(project.outputPaths?.db, "fix")}
           onChange={(event) => edit({ fixOutDir: event.target.value })}
           data-testid="settings-fix-outdir"
         />
