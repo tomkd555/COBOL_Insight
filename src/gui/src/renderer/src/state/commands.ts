@@ -12,6 +12,7 @@ import type { ProjectState } from "./projectStore";
 import {
   CUSTOM_RULES_TAB_ID,
   settingsTab,
+  transpileTab,
   type WorkbenchAction,
   type WorkbenchState,
 } from "./workbenchStore";
@@ -30,6 +31,7 @@ export type CommandId =
   | "view.showProblems"
   | "view.showOutput"
   | "view.showSettings"
+  | "view.showTranspile"
   | "rules.toggleActive"
   | "rules.validateCustom"
   | "rules.saveCustom"
@@ -74,6 +76,12 @@ export interface CommandContext {
 function activeRuleId(workbench: WorkbenchState): string | null {
   const active = workbench.tabs.find((tab) => tab.id === workbench.activeTabId);
   return active?.kind === "rules" ? active.path : null;
+}
+
+/** The asset the active tab shows the source of, or null when the active tab shows none. */
+function activeSourcePath(workbench: WorkbenchState): string | null {
+  const active = workbench.tabs.find((tab) => tab.id === workbench.activeTabId);
+  return active?.kind === "source" ? active.path : null;
 }
 
 /** Builds the command list for the current context. */
@@ -160,6 +168,19 @@ export function buildCommands(context: CommandContext): Command[] {
       category: text.command.categoryView,
       when: () => true,
       run: () => workbenchDispatch({ type: "OPEN_TAB", tab: settingsTab(text.settings.title) }),
+    },
+    {
+      id: "view.showTranspile",
+      title: text.command.showTranspile,
+      category: text.command.categoryView,
+      // Only a COBOL source has a translation, so the command applies to a source tab alone.
+      when: () => activeSourcePath(workbench) !== null,
+      run: () => {
+        const path = activeSourcePath(workbench);
+        if (path !== null) {
+          workbenchDispatch({ type: "OPEN_TAB", tab: transpileTab(path) });
+        }
+      },
     },
     {
       id: "rules.toggleActive",

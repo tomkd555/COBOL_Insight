@@ -124,8 +124,42 @@ class StubEditor {
     return disposable;
   }
 
+  onDidChangeCursorSelection(): typeof disposable {
+    return disposable;
+  }
+
+  onDidScrollChange(): typeof disposable {
+    return disposable;
+  }
+
+  onMouseDown(): typeof disposable {
+    return disposable;
+  }
+
+  /** View zones need a layout to sit in, so the callback is handed an accessor that keeps none. */
+  changeViewZones(callback: (accessor: StubViewZoneAccessor) => void): void {
+    callback(new StubViewZoneAccessor());
+  }
+
   dispose(): void {
     this.model = null;
+  }
+}
+
+/** A view-zone accessor that hands out ids and forgets the zones. */
+class StubViewZoneAccessor {
+  private next = 0;
+
+  addZone(): string {
+    return `stub-zone:${(this.next += 1)}`;
+  }
+
+  removeZone(): void {
+    /* nothing was kept to remove */
+  }
+
+  layoutZone(): void {
+    /* nothing is laid out */
   }
 }
 

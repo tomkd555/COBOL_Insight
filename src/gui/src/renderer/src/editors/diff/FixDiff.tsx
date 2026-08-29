@@ -4,6 +4,7 @@ import { api, errorMessage } from "../../api";
 import { text } from "../../text";
 import { useProject } from "../../state/projectStore";
 import { useSettings } from "../../state/settingsStore";
+import { artifactSubdir, fixOutDirOf } from "../../model/artifactPaths";
 import { languageIdFor } from "../../vendor/monarch";
 import { DiffView } from "./DiffView";
 
@@ -20,12 +21,6 @@ type Load =
   | { status: "empty" }
   | { status: "error"; message: string };
 
-/** The folder a path sits in, trailing separator included. Empty when it names no folder. */
-function directoryOf(path: string): string {
-  const separator = Math.max(path.lastIndexOf("\\"), path.lastIndexOf("/"));
-  return separator < 0 ? "" : path.slice(0, separator + 1);
-}
-
 /** Joins a relative path onto a base, using whichever separator the base already uses. */
 function joinPath(base: string, relPath: string): string {
   const separator = base.includes("\\") ? "\\" : "/";
@@ -41,7 +36,7 @@ function joinPath(base: string, relPath: string): string {
  * subcommand that returns the corrected text without writing it, and `fix preview` emits only a
  * unified diff. The scratch directory sits beside the project file, apart from the directory the
  * "write out" button uses, so looking at a proposal never leaves anything in the place a user
- * collects results from.
+ * collects results from. Where the button writes is the user's own setting when they have set one.
  */
 export function FixDiff({ path, onNotify }: FixDiffProps): ReactElement {
   const project = useProject();
@@ -50,14 +45,14 @@ export function FixDiff({ path, onNotify }: FixDiffProps): ReactElement {
   const [applying, setApplying] = useState(false);
 
   const inputDir = project.inputDir;
-  const artifactDir = directoryOf(project.outputPaths?.db ?? "");
-  const previewDir = `${artifactDir}fix-preview`;
-  const applyDir = `${artifactDir}fix`;
+  const dbPath = project.outputPaths?.db;
+  const previewDir = artifactSubdir(dbPath, "fix-preview");
+  const applyDir = fixOutDirOf(settings.fixOutDir, dbPath);
   const copybookPaths = settings.copybookPaths;
   const rulesFile = project.outputPaths?.rules;
 
   useEffect(() => {
-    if (inputDir === null || artifactDir === "") {
+    if (inputDir === null || previewDir === "") {
       return;
     }
     let cancelled = false;
@@ -90,7 +85,7 @@ export function FixDiff({ path, onNotify }: FixDiffProps): ReactElement {
     return () => {
       cancelled = true;
     };
-  }, [inputDir, path, previewDir, artifactDir, copybookPaths, rulesFile]);
+  }, [inputDir, path, previewDir, copybookPaths, rulesFile]);
 
   const apply = (): void => {
     if (inputDir === null) {

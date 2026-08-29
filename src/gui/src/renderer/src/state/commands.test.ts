@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import { initialProjectState, type ProjectState } from "./projectStore";
 import {
   initialWorkbenchState,
+  settingsTab,
   sourceTab,
+  transpileTab,
   type WorkbenchState,
 } from "./workbenchStore";
 import { availableCommands, buildCommands, filterCommands, type CommandContext } from "./commands";
@@ -88,6 +90,19 @@ describe("when", () => {
     expect(offered(running)).toBe(true);
   });
 
+  it("offers the translation only for a source tab", () => {
+    const offered = (workbench: WorkbenchState): boolean =>
+      availableCommands(buildCommands(context({ workbench }))).some(
+        (command) => command.id === "view.showTranspile",
+      );
+    expect(offered(initialWorkbenchState)).toBe(false);
+    expect(offered(withTab)).toBe(true);
+    const settings = settingsTab("設定");
+    expect(offered({ ...initialWorkbenchState, tabs: [settings], activeTabId: settings.id })).toBe(
+      false,
+    );
+  });
+
   it("offers the tab commands only when a tab is open", () => {
     const withoutTabs = availableCommands(buildCommands(context())).map((command) => command.id);
     expect(withoutTabs).not.toContain("editor.closeTab");
@@ -105,6 +120,16 @@ describe("run", () => {
     const commands = buildCommands(context({ workbench: withTab, requestCloseTab }));
     commands.find((command) => command.id === "editor.closeTab")?.run();
     expect(requestCloseTab).toHaveBeenCalledWith(withTab.activeTabId);
+  });
+
+  it("opens the translation of the asset the active source tab shows", () => {
+    const workbenchDispatch = vi.fn();
+    const commands = buildCommands(context({ workbench: withTab, workbenchDispatch }));
+    commands.find((command) => command.id === "view.showTranspile")?.run();
+    expect(workbenchDispatch).toHaveBeenCalledWith({
+      type: "OPEN_TAB",
+      tab: transpileTab("a.cbl"),
+    });
   });
 
   it("dispatches the layout toggles", () => {

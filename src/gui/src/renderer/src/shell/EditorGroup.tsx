@@ -8,6 +8,7 @@ import { RuleDetail } from "../editors/rules/RuleDetail";
 import { CustomRules } from "../editors/rules/CustomRules";
 import { Settings } from "../editors/settings/Settings";
 import { FixDiff } from "../editors/diff/FixDiff";
+import { TranspilePane } from "../editors/transpile/TranspilePane";
 import { Placeholder } from "../editors/Placeholder";
 
 export interface EditorGroupProps {
@@ -46,6 +47,9 @@ export function EditorGroup({
     }
     if (tab.kind === "fix" && tab.path !== null) {
       return <FixDiff path={tab.path} onNotify={notify} />;
+    }
+    if (tab.kind === "transpile" && tab.path !== null) {
+      return <TranspilePane path={tab.path} />;
     }
     // A rules tab either describes one rule (its id is in `path`) or edits the user-defined rules.
     if (tab.kind === "rules") {

@@ -49,7 +49,7 @@ function fakeApi(overrides: Partial<CobolInsightApi> = {}): CobolInsightApi {
     readInventory: vi.fn(async () => INVENTORY),
     readSarif: vi.fn(async (path: string) => (path === OUTPUT_PATHS.sarif ? FINDINGS : [])),
     readGraph: vi.fn(),
-    readCopyExpansion: vi.fn(),
+    readCopyExpansion: vi.fn(async () => ({ programs: [] })),
     readFixDiff: vi.fn(),
     readTranspile: vi.fn(),
     readReport: vi.fn(),

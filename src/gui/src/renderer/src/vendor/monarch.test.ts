@@ -6,6 +6,7 @@ import {
   cobolInsightTheme,
   cobolLanguage,
   jclLanguage,
+  jsonLanguage,
   languageIdFor,
   type MonarchRule,
 } from "./monarch";
@@ -123,6 +124,26 @@ describe("languageIdFor", () => {
   });
 });
 
+describe("the JSON grammar", () => {
+  const rules = jsonLanguage().tokenizer["root"];
+
+  it("tells a member name from a string value by the colon that follows it", () => {
+    expect(firstMatch(rules, '"id": "U001"')?.[1]).toBe("attribute.name");
+    expect(firstMatch(rules, '"U001", 1]')?.[1]).toBe("string");
+  });
+
+  it("reads the literals, the numbers and the punctuation", () => {
+    expect(firstMatch(rules, "true, false")?.[1]).toBe("constant");
+    expect(firstMatch(rules, "null}")?.[1]).toBe("constant");
+    expect(firstMatch(rules, "-12.5e3")?.[1]).toBe("number");
+    expect(firstMatch(rules, "{")?.[1]).toBe("delimiter");
+  });
+
+  it("marks a string the line ends in the middle of", () => {
+    expect(firstMatch(rules, '"not closed')?.[1]).toBe("string.invalid");
+  });
+});
+
 describe("the theme", () => {
   it("colours every token the grammars emit", () => {
     const tokens = new Set(cobolInsightTheme().rules.map((rule) => rule.token));
@@ -140,7 +161,7 @@ describe("registerLanguages", () => {
     };
     registerLanguages(target);
     registerLanguages(target);
-    expect(target.languages.register).toHaveBeenCalledTimes(3);
+    expect(target.languages.register).toHaveBeenCalledTimes(4);
     expect(target.editor.defineTheme).toHaveBeenCalledWith(
       COBOL_INSIGHT_THEME,
       expect.objectContaining({ base: "vs-dark" }),

@@ -159,6 +159,80 @@ const COPYBOOK_TEXT = [
   "000300     05  ORDER-QTY     PIC 9(5).                                 CPY00130",
 ].join("\n");
 
+/*
+ * The COPY expansion table for the first asset. Line 5 of COBOL_TEXT is its COPY statement, and the
+ * lines are the copybook's, which is what the view zone between lines 5 and 6 has to show.
+ */
+const COPY_EXPANSION = {
+  programs: [
+    {
+      path: "cobol/SYK001.cbl",
+      programId: "SYK001",
+      expansions: [
+        {
+          copyStatementLine: 5,
+          copybookName: "SYKCPY1",
+          copybookPath: "copybook/SYKCPY1.cpy",
+          lines: COPYBOOK_TEXT.split("\n").map((text, index) => ({
+            copybookLine: index + 1,
+            text,
+          })),
+        },
+      ],
+    },
+  ],
+};
+
+/*
+ * The translation of the first asset, in both languages, with the line correspondence the engine
+ * persists into LINE_MAP. Only the four statements of the procedure division are mapped, which is
+ * what lets the smoke tell a real mapping from a pane that merely scrolled to the same line number.
+ */
+const PYTHON_TEXT = [
+  "def main():",
+  "    print('PLEASE COPY THIS TEXT')",
+  "    wk_order_id = juchu_bango",
+  "    return",
+].join("\n");
+
+const JAVA_TEXT = [
+  "public final class SYK001 {",
+  "    public static void main(String[] args) {",
+  "        System.out.println(\"PLEASE COPY THIS TEXT\");",
+  "        wkOrderId = juchuBango;",
+  "        return;",
+  "    }",
+  "}",
+].join("\n");
+
+/** COBOL line -> generated line, per generated file. The Java form sits one line further down. */
+function lineMapRows(genFile, offset) {
+  return [
+    [7, 1],
+    [9, 2],
+    [10, 3],
+    [11, 4],
+  ].map(([cobolLine, genLine], index) => ({
+    id: index + 1,
+    cobolLineStart: cobolLine,
+    cobolLineEnd: cobolLine,
+    genFile,
+    genLineStart: genLine + offset,
+    genLineEnd: genLine + offset,
+    kind: "1:1",
+    note: "",
+    anchorId: `A${index + 1}`,
+  }));
+}
+
+const TRANSPILE = {
+  files: [
+    { name: "syk001.py", language: "python", text: PYTHON_TEXT },
+    { name: "SYK001.java", language: "java", text: JAVA_TEXT },
+  ],
+  lineMap: [...lineMapRows("syk001.py", 0), ...lineMapRows("SYK001.java", 1)],
+};
+
 const GRAPH = {
   nodes: [
     { id: 2, type: "PROGRAM", label: "SYK001" },
@@ -198,6 +272,8 @@ let settings = {
   severityThreshold: "warning",
   defaultEncoding: "",
   copybookPaths: [],
+  // Empty, so the fix write-out falls back to the directory beside the project file.
+  fixOutDir: "",
   lastInputDir: "",
   paneSizes: {},
 };
@@ -273,7 +349,7 @@ const api = {
   readInventory: () => Promise.resolve(INVENTORY),
   readSarif: (path) => Promise.resolve(path === SQL_SARIF ? SQL_FINDINGS : FINDINGS),
   readGraph: () => Promise.resolve(GRAPH),
-  readCopyExpansion: () => Promise.resolve({ programs: [] }),
+  readCopyExpansion: () => Promise.resolve(COPY_EXPANSION),
   readFixDiff: (request) =>
     Promise.resolve({
       relPath: request.relPath,
@@ -281,7 +357,7 @@ const api = {
       // One line differs, so the diff view has something to line up.
       fixedText: COBOL_TEXT.replace("STOP RUN.", "GOBACK.  "),
     }),
-  readTranspile: () => Promise.resolve({ files: [], lineMap: [] }),
+  readTranspile: () => Promise.resolve(TRANSPILE),
   readReport: () => Promise.resolve("<h1>COBOL Insight 解析レポート</h1>"),
 
   outputPaths: () =>

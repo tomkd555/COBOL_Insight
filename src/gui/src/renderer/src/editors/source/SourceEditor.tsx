@@ -23,6 +23,7 @@ import { monacoEditor } from "../../vendor/monacoEditor";
 import { registerLanguages } from "../../vendor/monacoLanguages";
 import { COBOL_INSIGHT_THEME, languageIdFor } from "../../vendor/monarch";
 import { existingModel, modelFor, resetModel } from "../../vendor/monacoModels";
+import { useCopyZones } from "./copyZones";
 import { registerQuickFix, setQuickFixTarget } from "./quickFix";
 
 export interface SourceEditorProps {
@@ -51,10 +52,9 @@ type Load =
  * tab, so React keeps it mounted across a switch and only the model changes — which is what lets the
  * undo stack and an unsaved edit survive the switch.
  *
- * TODO: the inline COPY expansion (scan's expansion table, drawn as Monaco view zones between the
- * original lines) and the translate side-by-side pane (the generated Python or Java beside the COBOL,
- * lined up through LINE_MAP). Both existed in V1 and neither is started here; the artefacts they read
- * are already reachable over the IPC contract (`artifact:copy-expansion` and `artifact:transpile`).
+ * The COPY expansions scan recorded are drawn between the lines as view zones (editors/source
+ * copyZones); the translation of the same asset is its own tab (editors/transpile), because lining
+ * two languages up needs the width of the whole editor area.
  */
 export function SourceEditor({ path, line, onShowFix }: SourceEditorProps): ReactElement {
   const project = useProject();
@@ -237,6 +237,12 @@ export function SourceEditor({ path, line, onShowFix }: SourceEditorProps): Reac
     });
     // `workbench` is deliberately left out: a draft change must not reload the model under the caret.
   }, [load, tabId, languageId, codepage, setStatus]);
+
+  /* ---------------------------------------------------------------- COPY expansion */
+
+  // Declared after the model effect so that a tab switch has swapped the model before the zones of
+  // the previous asset are taken down and the new one's are drawn.
+  useCopyZones(editorRef, path, load.status === "ready");
 
   /* ---------------------------------------------------------------- read-only, reveal */
 

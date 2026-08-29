@@ -170,11 +170,23 @@ export interface EngineResult {
 
 /** Byte geometry of one decoded line: its byte length and the character offsets of the COBOL areas. */
 export interface DecodedLine {
-  /** Length of the line in the original encoding, newline excluded. */
+  /**
+   * Length of the line in the original encoding, its line terminator included — one byte for LF, two
+   * for CRLF. EBCDIC shift-out and shift-in bytes count too, since they occupy byte columns. The last
+   * line of the file runs to the end of the file.
+   */
   byteLength: number;
   /**
-   * Character offsets of the fixed-format column boundaries, as [sequence, indicator, area A,
-   * identification] — that is, the character index where byte columns 7, 8, 12 and 73 start.
+   * Character offsets of the fixed-format column boundaries, as [indicator, area A, area B,
+   * identification] — that is, the zero-based character index within the line at which byte columns
+   * 7, 8, 12 and 73 begin, or -1 when the line does not reach the column.
+   *
+   * A column landing inside a double-byte character does not split it: the boundary is the first
+   * character starting at or after that byte. The line terminator is one of the characters searched,
+   * so an exactly 72-byte line reports the position just past its text for column 73 rather than -1;
+   * only a final line that ends without a terminator reports -1 there. The columns are counted in the
+   * original encoding's bytes and the answer is a UTF-16 offset into the decoded text, so the two
+   * coincide only on a line of single-byte characters.
    */
   boundaries: [number, number, number, number];
 }

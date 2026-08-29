@@ -673,12 +673,23 @@ On failure the output file is still written, with empty fields and the message i
 - `codepage` — the charset actually used.
 - `detected` — `true` when the code page was detected rather than forced.
 - `soSiPresent` — whether shift-out / shift-in bytes were seen.
-- `lines[].byteLength` — the line's length in bytes, newline included.
+- `lines[].byteLength` — the line's length in bytes, its terminator included: one
+  byte for LF, two for CRLF. Shift-out and shift-in bytes count as well, since they
+  occupy byte columns even though no character maps to them. The last line runs to
+  the end of the file, so trailing bytes that produced no character land on it.
 - `lines[].boundaries` — four values, for byte columns 7, 8, 12 and 73 (one-based):
   the start of the indicator, A, B and identification areas. Each value is the
   zero-based UTF-16 character offset within the line where that byte column
-  begins, or `-1` when the line is too short to reach it. A column landing inside
-  a double-byte character yields that character's offset.
+  begins, or `-1` when the line does not reach it. Byte columns are counted in the
+  original encoding and the answer is an offset into the decoded text, so the two
+  coincide only on a line of single-byte characters.
+
+  A column landing inside a double-byte character does not split it: the boundary
+  is the first character that *starts* at or after that byte. The terminator is one
+  of the characters searched, which is what makes an exactly 72-byte line report
+  the offset of its own line break for column 73 — that is, the position just past
+  its text — rather than `-1`. The last line of a file that ends without a line
+  break has no such character and reports `-1`.
 - `stamp` — the original's last-modified time in milliseconds and its size in
   bytes, for the caller to detect a change under it.
 - `error` — the failure message, or `""`.

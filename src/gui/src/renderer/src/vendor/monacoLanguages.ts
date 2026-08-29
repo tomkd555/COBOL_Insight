@@ -6,12 +6,15 @@
  * involved, which is why the editor needs Monaco's one base worker and none of the per-language
  * ones.
  *
- * TODO: Python and Java, for the translate side-by-side pane. Monaco ships both grammars
- * (monaco-editor/languages/definitions/{python,java}) but they carry no type declarations, so
- * registering them needs an ambient declaration; there is no consumer for them until that pane
- * exists.
+ * Python and Java come from Monaco's own definitions, which the transpile pane shows the generated
+ * code in. Each `register` module registers the language with a lazy loader, so the grammar itself is
+ * only fetched once a model is opened in it; the package's default entry point, which would register
+ * every language Monaco ships, is still avoided.
  */
 
+// The generated code of the transpile pane. Side-effect imports: each registers one language.
+import "monaco-editor/languages/definitions/python/register";
+import "monaco-editor/languages/definitions/java/register";
 import {
   COBOL_INSIGHT_THEME,
   LANGUAGE_ID,
@@ -19,6 +22,7 @@ import {
   cobolInsightTheme,
   cobolLanguage,
   jclLanguage,
+  jsonLanguage,
   type MonacoThemeData,
   type MonarchLanguage,
 } from "./monarch";
@@ -36,7 +40,7 @@ export interface LanguageRegistrationTarget {
 
 let registered = false;
 
-/** Registers the COBOL, JCL and BMS grammars and the theme. Repeated calls do nothing. */
+/** Registers the COBOL, JCL, BMS and JSON grammars and the theme. Repeated calls do nothing. */
 export function registerLanguages(monaco: LanguageRegistrationTarget): void {
   if (registered) {
     return;
@@ -45,6 +49,7 @@ export function registerLanguages(monaco: LanguageRegistrationTarget): void {
     [LANGUAGE_ID.cobol, cobolLanguage()],
     [LANGUAGE_ID.jcl, jclLanguage()],
     [LANGUAGE_ID.bms, bmsLanguage()],
+    [LANGUAGE_ID.json, jsonLanguage()],
   ];
   for (const [id, definition] of definitions) {
     monaco.languages.register({ id });

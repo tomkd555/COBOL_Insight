@@ -145,6 +145,29 @@ export const text = {
     overflow: (bytes: number): string => `この行は ${bytes} バイトあり、80 桁の記録に収まりません。`,
   },
 
+  copyExpansion: {
+    heading: (name: string, lines: number): string => `COPY ${name}（${lines} 行）`,
+    expand: "開く",
+    collapse: "閉じる",
+    toggleLabel: (name: string): string => `${name} の展開の開閉`,
+    glyphHint: "この COPY の展開を開閉します。",
+  },
+
+  transpileView: {
+    tab: "変換",
+    cobol: "COBOL",
+    generated: "生成コード",
+    language: "生成する言語",
+    python: "Python",
+    java: "Java",
+    loading: "変換しています…",
+    error: "変換結果を取得できませんでした。",
+    empty: "この資産の変換結果はありませんでした。",
+    noMap: "行の対応が記録されていません。",
+    left: (path: string): string => `${path}（原本）`,
+    right: (name: string): string => `${name}（生成）`,
+  },
+
   save: {
     noReason: "解析エンジンは理由を返しませんでした。",
     saved: (path: string): string => `${path} を保存しました。`,
@@ -215,6 +238,7 @@ export const text = {
     showProblems: "指摘を開く",
     showOutput: "出力を開く",
     showSettings: "設定を開く",
+    showTranspile: "この資産の変換結果を開く",
     toggleRule: "このルールの有効・無効を切り替える",
     validateCustomRules: "利用者定義ルールを検証する",
     saveCustomRules: "利用者定義ルールを保存する",
@@ -352,7 +376,7 @@ export const text = {
     threshold: "指摘の重大度しきい値",
     thresholdNote: "これより低い重大度の指摘は指摘一覧に出しません。",
     fixOutDir: "修正案の出力先",
-    fixOutDirNote: "空にすると engine の既定の場所へ書き出します。原本は書き換えません。",
+    fixOutDirNote: "空にすると、解析結果と同じ場所へ書き出します。原本は書き換えません。",
     save: "保存する",
     saved: "保存しました。",
     dirty: "未保存の変更があります。",

@@ -20,11 +20,12 @@
  *  13. switching away from an edited tab and back keeps the edit, and Ctrl+Z takes it back
  *  14. saving a file that changed underneath raises the conflict dialog instead of overwriting
  *  15. a finding whose rule has a fix offers a quick fix, which opens the diff tab
+ *  17. the transpile view lines the generated code up with the COBOL through the line map
+ *  19. a COPY statement carries its expansion as a view zone, which its own control collapses
  *
  * TODO 6: Cytoscape builds a canvas and paints nodes onto it (opaque pixels are present).
  * TODO 7: the execution-order list orders its children by the engine's seq.
- * TODO 17: the report view renders the engine's HTML.
- * TODO 18: the transpile view lines the generated code up with the COBOL.
+ * TODO 18: the report view renders the engine's HTML.
  *
  * Elements are selected by data-testid: selecting by visible text or class name would break this
  * smoke every time the wording or the styling changed. The engine is never launched — the preload is
@@ -209,6 +210,48 @@ async function checkEditorLayout(win) {
   );
 }
 
+/**
+ * Check 19: the COPY expansion. The scan's table puts the copybook's lines under the COPY statement
+ * on line 5 of the first asset, and they are drawn as a Monaco view zone rather than as text — so the
+ * model must not carry them, or a save would write the copybook into the program.
+ */
+async function checkCopyExpansion(win) {
+  await openAsset(win, "cobol/SYK001.cbl");
+  const zone = await waitUntil(
+    win,
+    `(() => {
+      const node = document.querySelector('[data-testid="copy-zone-5"]');
+      if (node === null) return null;
+      return {
+        text: node.textContent,
+        inModel: ${EDITOR}.getModel().getValue().includes('SYK-ORDER-REC'),
+      };
+    })()`,
+    "the COPY expansion view zone",
+  );
+
+  await waitUntil(win, clickTestId("copy-zone-toggle-5"), "the collapse control");
+  const collapsed = await waitUntil(
+    win,
+    `(() => {
+      const toggle = document.querySelector('[data-testid="copy-zone-toggle-5"]');
+      const node = document.querySelector('[data-testid="copy-zone-5"]');
+      if (toggle === null || node === null) return null;
+      const hidden = node.querySelector('.ci-copy__lines') === null;
+      return toggle.getAttribute('aria-expanded') === 'false' && hidden ? 'collapsed' : null;
+    })()`,
+    "the collapsed expansion",
+  );
+  // Leave it open again, so the checks that follow see the editor as the ones before them left it.
+  await waitUntil(win, clickTestId("copy-zone-toggle-5"), "the expand control");
+
+  record(
+    "19. a COPY statement carries its expansion as a collapsible view zone",
+    zone.text.includes("SYK-ORDER-REC") && zone.inModel === false && collapsed === "collapsed",
+    `zone held ${JSON.stringify(zone.text.slice(0, 48))}`,
+  );
+}
+
 /** Check 4: typing raises the unsaved mark on the tab. */
 async function checkDirtyMark(win) {
   await waitUntil(win, typeAtStart("X"), "typing into the editor");
@@ -386,6 +429,127 @@ async function checkQuickFix(win) {
     opened === true,
     `offered ${JSON.stringify(chosen.titles)}`,
   );
+}
+
+/** Runs a command by its title through the palette, which is the only route the shell offers. */
+async function runCommand(win, title) {
+  await evaluate(
+    win,
+    `window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true, bubbles: true }))`,
+  );
+  await waitUntil(
+    win,
+    `(() => {
+      const input = document.querySelector('[data-testid="command-palette-input"]');
+      if (input === null) return false;
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      setter.call(input, ${JSON.stringify(title)});
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    })()`,
+    `typing ${title} into the palette`,
+  );
+  await evaluate(
+    win,
+    `document.querySelector('[data-testid="command-palette-input"]')
+       .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))`,
+  );
+}
+
+/** Chooses an option in a select the way a person would, so React sees the change. */
+function chooseOption(testId, value) {
+  return `(() => {
+    const field = document.querySelector('[data-testid=${JSON.stringify(testId)}]');
+    if (field === null) return false;
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value').set;
+    setter.call(field, ${JSON.stringify(value)});
+    field.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  })()`;
+}
+
+/**
+ * The two editors of the transpile view, told apart by the element each was created in. Telling them
+ * apart by their text would not do: the COBOL and its translation share the program's name.
+ */
+const TRANSPILE_PANES = `(() => {
+  const editors = window.ciMonaco.editor.getEditors();
+  const paneAt = (testId) => {
+    const host = document.querySelector('[data-testid="' + testId + '"]');
+    if (host === null) return undefined;
+    return editors.find(
+      (editor) => editor.getModel() !== null && host.contains(editor.getContainerDomNode()),
+    );
+  };
+  return { cobol: paneAt('transpile-cobol'), generated: paneAt('transpile-generated') };
+})()`;
+
+/**
+ * Check 17: the transpile view. It opens for the asset in the active source tab, and moving the
+ * caret in the COBOL moves the caret in the generated code to the line LINE_MAP names — line 10 of
+ * the COBOL is line 3 of the Python and line 4 of the Java, so a pane that merely followed the line
+ * number would land on 10 in both.
+ */
+async function checkTranspile(win) {
+  await activateSourceTab(win, "cobol/SYK001.cbl", SYK001_MARK);
+  await runCommand(win, "変換");
+  await waitUntil(
+    win,
+    `document.querySelector('[data-testid="transpile-cobol"]') !== null`,
+    "the transpile view",
+  );
+  await waitUntil(
+    win,
+    `(() => {
+      const panes = ${TRANSPILE_PANES};
+      if (panes.cobol === undefined || panes.generated === undefined) return null;
+      if (!panes.generated.getModel().getValue().includes('def main')) return null;
+      panes.cobol.setPosition({ lineNumber: 10, column: 1 });
+      return true;
+    })()`,
+    "the two panes showing the Python",
+  );
+  const python = await waitUntil(
+    win,
+    `(() => {
+      const panes = ${TRANSPILE_PANES};
+      const line = panes.generated === undefined ? 0 : panes.generated.getPosition().lineNumber;
+      return line === 0 ? null : line;
+    })()`,
+    "the caret the Python pane followed to",
+  );
+
+  await waitUntil(win, chooseOption("transpile-language", "java"), "the language selector");
+  await waitUntil(
+    win,
+    `(() => {
+      const panes = ${TRANSPILE_PANES};
+      if (panes.cobol === undefined || panes.generated === undefined) return null;
+      if (!panes.generated.getModel().getValue().includes('public final class')) return null;
+      panes.cobol.setPosition({ lineNumber: 1, column: 1 });
+      panes.cobol.setPosition({ lineNumber: 10, column: 1 });
+      return true;
+    })()`,
+    "the two panes showing the Java",
+  );
+  const java = await waitUntil(
+    win,
+    `(() => {
+      const panes = ${TRANSPILE_PANES};
+      const line = panes.generated === undefined ? 0 : panes.generated.getPosition().lineNumber;
+      return line === 0 ? null : line;
+    })()`,
+    "the caret the Java pane followed to",
+  );
+
+  record(
+    "17. the transpile view lines the generated code up through the line map",
+    python === 3 && java === 4,
+    `COBOL line 10 reached Python line ${python} and Java line ${java}`,
+  );
+
+  // Back to the source, so the pane is unmounted and its two editors are disposed.
+  await activateSourceTab(win, "cobol/SYK001.cbl", SYK001_MARK);
 }
 
 /** Check 5: the problems table and the route from a row into the source. */
@@ -707,11 +871,13 @@ async function main() {
       checkAssetTree,
       checkFindings,
       checkEditorLayout,
+      checkCopyExpansion,
       checkDirtyMark,
       checkEditSurvivesSwitch,
       checkEbcdicColumns,
       checkSaveConflict,
       checkQuickFix,
+      checkTranspile,
       checkRules,
       checkRuleAndSettingsEditors,
       checkImportDialog,
