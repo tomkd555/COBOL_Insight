@@ -1,0 +1,24 @@
+*----------------------------------------------------------------*
+* MAPSET CRPMAP1 ／ MAP CRPM01                                     *
+* 商品照会画面処理(CRP006/CRP007)の疑似会話で使用するマップ。       *
+* フィールド: SHOCD(商品コード入力)、MSG(メッセージ表示)           *
+*----------------------------------------------------------------*
+
+CRPMAP1  DFHMSD TYPE=&SYSPARM,                                         X
+               MODE=INOUT,                                             X
+               LANG=COBOL,                                             X
+               STORAGE=AUTO,                                           X
+               TIOAPFX=YES
+
+CRPM01   DFHMDI SIZE=(24,80)
+
+SHOCD    DFHMDF POS=(3,10),                                            X
+               LENGTH=8,                                               X
+               ATTRB=(UNPROT,NUM)
+
+MSG      DFHMDF POS=(22,5),                                            X
+               LENGTH=40,                                              X
+               ATTRB=(PROT,BRT)
+
+         DFHMSD TYPE=FINAL
+         END
