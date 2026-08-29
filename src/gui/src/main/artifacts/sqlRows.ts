@@ -1,34 +1,35 @@
 /**
- * sql.js(WASM・オフライン)で SQLite を読むときの共通型と行の読み口。列順に依存せず列名で値を取り出し、
- * SQLite の緩い型付けを TypeScript の値へ狭める。SQL 文と取り出し先の interface は各読取モジュールが持つ。
+ * Shared types and the row reader for the SQLite reads done through sql.js (WASM, offline). Values
+ * are taken by column name rather than by position, and SQLite's loose typing is narrowed to
+ * TypeScript values. Each reader module owns its own SQL and result interface.
  */
 
-/** sql.js の1セルの値域。 */
+/** The value domain of one sql.js cell. */
 export type SqlCellValue = string | number | Uint8Array | null;
 
-/** sql.js Database.exec の返す結果1件分。 */
+/** One result of sql.js Database.exec. */
 export interface SqlExecResult {
   columns: string[];
   values: SqlCellValue[][];
 }
 
-/** sql.js の bind パラメータ(名前付き `$name` または位置指定)。 */
+/** sql.js bind parameters, either named ($name) or positional. */
 export type SqlBindParams = Record<string, SqlCellValue> | SqlCellValue[];
 
-/** SQLite 読取に要する、sql.js Database の最小インターフェース。 */
+/** The minimum sql.js Database interface the readers need. */
 export interface QueryableDatabase {
   exec(sql: string, params?: SqlBindParams): SqlExecResult[];
 }
 
-/** 1行から列名で値を取り出す読み口。想定外の型・列の不在は既定値へ落とす。 */
+/** Reads one row by column name, falling back where the type or the column is not what was expected. */
 export interface SqlRow {
-  /** 文字列列。NULL・非文字列は fallback。 */
+  /** A text column. NULL and non-strings fall back. */
   text(column: string, fallback: string): string;
-  /** NULL 可の文字列列(SOURCE.codepage 等)。 */
+  /** A nullable text column (SOURCE.codepage and the like). */
   textOrNull(column: string): string | null;
-  /** 整数列。NULL・非数値は fallback。 */
+  /** An integer column. NULL and non-numbers fall back. */
   int(column: string, fallback: number): number;
-  /** NULL 可の整数列(CALL_EDGE.line 等)。 */
+  /** A nullable integer column (CALL_EDGE.line and the like). */
   intOrNull(column: string): number | null;
 }
 
@@ -57,7 +58,7 @@ function rowReader(values: SqlCellValue[], index: Map<string, number>): SqlRow {
   };
 }
 
-/** exec の結果(先頭の1文分)を列名で引きながら1件ずつ変換する。結果が無ければ空配列。 */
+/** Maps the first statement's rows one by one, reading columns by name. No result yields []. */
 export function mapRows<T>(results: SqlExecResult[], map: (row: SqlRow) => T): T[] {
   if (results.length === 0) {
     return [];

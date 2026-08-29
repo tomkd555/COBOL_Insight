@@ -1,187 +1,203 @@
-import { render, screen, fireEvent, within } from "@testing-library/react";
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import type { CobolInsightApi, SourceTextResult } from "../../../shared/engine-api";
-import { Shell } from "./Shell";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent } from "@testing-library/dom";
+import type { CobolInsightApi } from "../../../shared/ipc";
+import { emptyAppSettings } from "../../../shared/settings";
 import { App } from "../App";
-import {
-  ProjectProvider,
-  initialProjectState,
-  type ProjectState,
-} from "../state/projectStore";
-import { SettingsProvider } from "../state/settingsStore";
-import { WorkbenchProvider } from "../state/workbenchStore";
-import { FIXTURE_CATALOG } from "../data/__fixtures__/catalog";
-import { SAMPLE_FINDINGS, SAMPLE_INVENTORY } from "../data/__fixtures__/samples";
-import type { FakeEditor } from "../screens/viewer/monacoFake";
 
-/**
- * Monaco は Worker と実 DOM の計測を要するため jsdom では動かない。描画ライブラリの入口を
- * 差し替え、本文の面が実際に組み上がるところまでを試験の対象にする。
- */
-const monacoStore = vi.hoisted(() => ({ editors: [] as FakeEditor[] }));
-
-vi.mock("../vendor/monacoEditor", async () => {
-  const { createMonacoFake } = await import("../screens/viewer/monacoFake");
-  return { monacoEditor: () => createMonacoFake(monacoStore) };
-});
-
-vi.mock("../vendor/monacoLanguages", () => ({
-  GENERATED_LANGUAGE_ID: { python: "python", java: "java" },
-  registerGeneratedLanguages: () => undefined,
-}));
-
-/** 走査と検出を終えた状態。 */
-const ANALYZED: ProjectState = {
-  ...initialProjectState,
-  mode: "results",
-  inputDir: "C:\\資産",
-  dbPath: "C:\\out\\cobol-insight.db",
-  inventory: { status: "ready", items: [...SAMPLE_INVENTORY] },
-  findings: { status: "ready", items: [...SAMPLE_FINDINGS] },
-  sqlAdvice: { status: "ready", items: [] },
-  catalog: FIXTURE_CATALOG,
+const OUTPUT_PATHS = {
+  db: "C:/data/p.db",
+  sarif: "C:/data/lint.sarif",
+  sqlSarif: "C:/data/sql.sarif",
+  copyExpansion: "C:/data/copy.json",
+  rules: "C:/data/rules.json",
 };
 
-const SOURCE: SourceTextResult = {
-  text: "       IDENTIFICATION DIVISION.\n       PROGRAM-ID. SYK001.\n",
-  codepage: "Shift_JIS",
-  truncated: false,
-  unsupported: false,
-};
+const INVENTORY = [
+  { id: 1, path: "cobol/SYK001.cbl", name: "SYK001.cbl", type: "PROGRAM", codepage: "Shift_JIS", byteSize: 100, findingCount: 1 },
+  { id: 2, path: "jcl/SYKD010.jcl", name: "SYKD010.jcl", type: "JCL", codepage: "Shift_JIS", byteSize: 80, findingCount: 0 },
+];
 
-/**
- * main 側の口を最小限だけ差し替える。この試験はシェルの組み立てを見るものであり、
- * engine の起動と成果物の読取は別の試験が受け持つ。
- */
-beforeEach(() => {
-  const stub: Partial<CobolInsightApi> = {
-    getOutputPaths: vi.fn().mockRejectedValue(new Error("試験では成果物の位置を持たない")),
-    readSettings: vi.fn().mockRejectedValue(new Error("試験では設定を持たない")),
-    readSourceText: vi.fn().mockResolvedValue(SOURCE),
-  };
-  window.cobolInsight = stub as CobolInsightApi;
-});
+const FINDINGS = [
+  { ruleId: "R001", level: "error", message: "未初期化", file: "cobol/SYK001.cbl", startLine: 10, startColumn: 1 },
+];
 
-function renderShell(project: ProjectState = initialProjectState): void {
-  render(
-    <SettingsProvider>
-      <ProjectProvider initial={project}>
-        <WorkbenchProvider>
-          <Shell />
-        </WorkbenchProvider>
-      </ProjectProvider>
-    </SettingsProvider>,
-  );
+function fakeApi(overrides: Partial<CobolInsightApi> = {}): CobolInsightApi {
+  return {
+    run: vi.fn(async (invocation) => ({
+      subcommand: invocation.subcommand,
+      exitCode: 0,
+      summary: null,
+      stdout: "",
+      stderr: "",
+      outputs: {},
+    })),
+    cancel: vi.fn(async () => undefined),
+    decode: vi.fn(async () => ({
+      text: "000100 IDENTIFICATION DIVISION.\n000200 PROGRAM-ID. SYK001.\n",
+      codepage: "Shift_JIS",
+      detected: true,
+      soSiPresent: false,
+      lines: [],
+      stamp: { mtimeMs: 0, byteSize: 0 },
+      error: "",
+    })),
+    save: vi.fn(),
+    rules: vi.fn(async () => ({ rules: [], ruleErrors: [] })),
+    validateRules: vi.fn(),
+    readInventory: vi.fn(async () => INVENTORY),
+    readSarif: vi.fn(async (path: string) => (path === OUTPUT_PATHS.sarif ? FINDINGS : [])),
+    readGraph: vi.fn(),
+    readCopyExpansion: vi.fn(),
+    readFixDiff: vi.fn(),
+    readTranspile: vi.fn(),
+    readReport: vi.fn(),
+    outputPaths: vi.fn(async () => OUTPUT_PATHS),
+    selectFolder: vi.fn(async () => "C:/assets"),
+    dirExists: vi.fn(async () => true),
+    stat: vi.fn(async () => null),
+    importSource: vi.fn(),
+    readSettings: vi.fn(async () => emptyAppSettings()),
+    writeSettings: vi.fn(async () => undefined),
+    readRules: vi.fn(),
+    writeRules: vi.fn(),
+    versions: { chrome: "0", node: "0", electron: "0" },
+    ...overrides,
+  } as CobolInsightApi;
 }
 
-describe("シェルの骨組み", () => {
-  it("解析エンジンへ繋がらなくても描ける", () => {
+function install(api: CobolInsightApi): void {
+  Object.defineProperty(window, "cobolInsight", { value: api, configurable: true });
+}
+
+beforeEach(() => {
+  install(fakeApi());
+});
+
+describe("the shell", () => {
+  it("is built from the four regions", async () => {
     render(<App />);
-    expect(screen.getByRole("banner")).toHaveTextContent("COBOL Insight");
+    expect(await screen.findByTestId("activitybar")).toBeInTheDocument();
+    expect(screen.getByTestId("sidepanel")).toBeInTheDocument();
+    expect(screen.getByTestId("editorarea")).toBeInTheDocument();
+    expect(screen.getByTestId("bottompanel")).toBeInTheDocument();
   });
 
-  it("製品名が文書で唯一の h1 である", () => {
-    renderShell();
-    const level1 = screen.getAllByRole("heading", { level: 1 });
-    expect(level1).toHaveLength(1);
-    expect(level1[0]).toHaveTextContent("COBOL Insight");
-  });
-
-  it("アクティビティバーに 6 つの入口を並べる", () => {
-    renderShell();
-    const bar = screen.getByRole("navigation", { name: "機能の切り替え" });
-    expect(within(bar).getAllByRole("button")).toHaveLength(6);
-    expect(within(bar).getByRole("button", { name: "エクスプローラー" })).toBeInTheDocument();
-  });
-
-  it("資産フォルダを選ぶ前は、側パネルが選択を促す", () => {
-    renderShell();
-    expect(screen.getByRole("region", { name: "資産フォルダを選んでください" })).toBeInTheDocument();
-  });
-
-  it("ステータスバーへプロジェクトの場所と件数を出す", () => {
-    renderShell(ANALYZED);
-    const status = screen.getByRole("contentinfo");
-    expect(status).toHaveTextContent("C:\\資産");
-    expect(status).toHaveTextContent("解析完了");
-    expect(status).toHaveTextContent(`資産 ${SAMPLE_INVENTORY.length}`);
+  it("shows the welcome view while no tab is open", async () => {
+    render(<App />);
+    expect(await screen.findByTestId("welcome")).toBeInTheDocument();
   });
 });
 
-describe("ツリーから本文を開く", () => {
-  it("資産を押すとタブが開き、その資産の面を出す", () => {
-    renderShell(ANALYZED);
-    fireEvent.click(screen.getByTestId("tree-cobol/SYK001.cbl"));
-    expect(screen.getByRole("tab", { name: "cobol/SYK001.cbl" })).toHaveAttribute(
-      "aria-selected",
-      "true",
+describe("choosing a folder", () => {
+  it("runs the three stages and fills the tree with kind badges", async () => {
+    const api = fakeApi();
+    install(api);
+    render(<App />);
+
+    fireEvent.click(await screen.findByTestId("select-folder"));
+
+    const row = await screen.findByTestId("tree-cobol/SYK001.cbl");
+    expect(row.textContent).toContain("SYK001.cbl");
+    expect(row.querySelector(".ci-badge")).not.toBeNull();
+    expect(await screen.findByTestId("tree-jcl/SYKD010.jcl")).toBeInTheDocument();
+
+    const subcommands = (api.run as ReturnType<typeof vi.fn>).mock.calls.map(
+      (call) => (call[0] as { subcommand: string }).subcommand,
     );
+    expect(subcommands).toEqual(["scan", "lint", "sql-lint"]);
+  });
+
+  it("passes the one rule file to every stage", async () => {
+    const api = fakeApi();
+    install(api);
+    render(<App />);
+    fireEvent.click(await screen.findByTestId("select-folder"));
+    await screen.findByTestId("tree-cobol/SYK001.cbl");
+
+    for (const call of (api.run as ReturnType<typeof vi.fn>).mock.calls) {
+      const invocation = call[0] as { request: { rulesFile?: string } };
+      expect(invocation.request.rulesFile).toBe(OUTPUT_PATHS.rules);
+    }
+  });
+});
+
+describe("the problems panel", () => {
+  it("opens the asset's tab when a row is chosen", async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByTestId("select-folder"));
+
+    const row = await screen.findByTestId("finding-lint:0");
+    fireEvent.click(row);
+
+    expect(await screen.findByTestId("tab-source:cobol/SYK001.cbl")).toBeInTheDocument();
     expect(screen.getByTestId("tabpanel-source:cobol/SYK001.cbl")).toBeInTheDocument();
   });
+});
 
-  it("タブを閉じると空状態へ戻る", () => {
-    renderShell(ANALYZED);
-    fireEvent.click(screen.getByTestId("tree-cobol/SYK001.cbl"));
-    fireEvent.click(screen.getByRole("button", { name: "SYK001.cbl を閉じる" }));
-    expect(screen.queryByRole("tab", { name: "cobol/SYK001.cbl" })).toBeNull();
-    expect(screen.getByRole("region", { name: "資産を開いていません" })).toBeInTheDocument();
+describe("the command palette", () => {
+  it("opens on Ctrl+Shift+P, filters as you type, and runs on Enter", async () => {
+    render(<App />);
+    await screen.findByTestId("activitybar");
+    expect(screen.getByTestId("bottompanel")).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "P", ctrlKey: true, shiftKey: true });
+    const input = await screen.findByTestId("command-palette-input");
+
+    fireEvent.change(input, { target: { value: "パネル" } });
+    expect(screen.getByTestId("command-view.togglePanel")).toBeInTheDocument();
+    expect(screen.queryByTestId("command-view.toggleSideBar")).toBeNull();
+
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(screen.queryByTestId("command-palette")).toBeNull());
+    expect(screen.queryByTestId("bottompanel")).toBeNull();
   });
 
-  it("フォルダを押すと畳み、配下の資産を並べない", () => {
-    renderShell(ANALYZED);
-    fireEvent.click(screen.getByTestId("tree-cobol"));
-    expect(screen.queryByTestId("tree-cobol/SYK001.cbl")).toBeNull();
+  it("closes on Escape without running anything", async () => {
+    render(<App />);
+    fireEvent.keyDown(window, { key: "P", ctrlKey: true, shiftKey: true });
+    const input = await screen.findByTestId("command-palette-input");
+    fireEvent.keyDown(input, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByTestId("command-palette")).toBeNull());
+    expect(screen.getByTestId("bottompanel")).toBeInTheDocument();
+  });
+
+  it("says so when nothing matches", async () => {
+    render(<App />);
+    fireEvent.keyDown(window, { key: "P", ctrlKey: true, shiftKey: true });
+    fireEvent.change(await screen.findByTestId("command-palette-input"), {
+      target: { value: "zzzz" },
+    });
+    expect(screen.getByTestId("command-palette-empty")).toBeInTheDocument();
   });
 });
 
-describe("アクティビティバーからタブを開く", () => {
-  it("呼出関係図を押すとタブが開く", () => {
-    renderShell(ANALYZED);
-    fireEvent.click(screen.getByTestId("activity-graph"));
-    expect(screen.getByRole("tab", { name: "呼出関係図" })).toHaveAttribute("aria-selected", "true");
-  });
+describe("closing a tab", () => {
+  it("closes a clean tab without asking", async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByTestId("select-folder"));
+    fireEvent.click(await screen.findByTestId("tree-cobol/SYK001.cbl"));
 
-  it("修正案を押すとタブが開く", () => {
-    renderShell(ANALYZED);
-    fireEvent.click(screen.getByTestId("activity-fix"));
-    expect(screen.getByRole("tab", { name: "修正案" })).toHaveAttribute("aria-selected", "true");
-  });
-
-  it("エクスプローラーを押し直すと側パネルを畳む", () => {
-    renderShell(ANALYZED);
-    fireEvent.click(screen.getByTestId("activity-explorer"));
-    expect(screen.queryByRole("tree", { name: "資産" })).toBeNull();
-    fireEvent.click(screen.getByTestId("activity-explorer"));
-    expect(screen.getByRole("tree", { name: "資産" })).toBeInTheDocument();
+    const tabId = "source:cobol/SYK001.cbl";
+    expect(await screen.findByTestId(`tab-${tabId}`)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId(`close-${tabId}`));
+    await waitFor(() => expect(screen.queryByTestId(`tab-${tabId}`)).toBeNull());
+    expect(screen.queryByTestId("confirm-discard")).toBeNull();
   });
 });
 
-describe("下部パネルの指摘", () => {
-  it("lint の指摘を表へ並べる", () => {
-    renderShell(ANALYZED);
-    const table = screen.getByRole("table", { name: "検出した指摘の一覧" });
-    expect(within(table).getAllByRole("row")).toHaveLength(SAMPLE_FINDINGS.length + 1);
+describe("keyboard chords", () => {
+  it("toggles the side bar with Ctrl+B", async () => {
+    render(<App />);
+    expect(await screen.findByTestId("sidepanel")).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "b", ctrlKey: true });
+    await waitFor(() => expect(screen.queryByTestId("sidepanel")).toBeNull());
   });
 
-  it("行を押すとその資産の該当行を開く", () => {
-    renderShell(ANALYZED);
-    const table = screen.getByRole("table", { name: "検出した指摘の一覧" });
-    fireEvent.click(within(table).getAllByRole("row")[1]);
-    expect(screen.getAllByRole("tab").some((tab) => tab.getAttribute("aria-selected") === "true")).toBe(
-      true,
-    );
-  });
-
-  it("実行ログへ切り替えられる", () => {
-    renderShell(ANALYZED);
-    fireEvent.click(screen.getByTestId("bottom-log"));
-    expect(screen.getByTestId("bottom-log")).toHaveAttribute("aria-selected", "true");
-    expect(screen.queryByRole("table", { name: "検出した指摘の一覧" })).toBeNull();
-  });
-
-  it("畳んで開ける", () => {
-    renderShell(ANALYZED);
-    fireEvent.click(screen.getByRole("button", { name: "下部パネルを畳む" }));
-    expect(screen.queryByTestId("bottom-log")).toBeNull();
+  it("toggles the panel with Ctrl+J", async () => {
+    render(<App />);
+    expect(await screen.findByTestId("bottompanel")).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "j", ctrlKey: true });
+    await waitFor(() => expect(screen.queryByTestId("bottompanel")).toBeNull());
   });
 });

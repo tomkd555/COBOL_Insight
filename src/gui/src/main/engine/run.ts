@@ -1,9 +1,9 @@
-import type { EngineInvocation, EngineResult } from "../../shared/engine-api";
+import type { EngineInvocation, EngineResult } from "../../shared/ipc";
 import { buildEngineArgs, collectRequestedOutputs } from "./args";
 import { extractSummaryJson, summaryOutputs } from "./summary";
 import type { EngineLaunch } from "./launch";
 
-/** spawn した子プロセスの、runEngine が要する最小の形。child_process.ChildProcess が満たす。 */
+/** The minimum of a spawned child's stream that runEngine uses; ChildProcess satisfies it. */
 export interface EngineProcessStream {
   on(event: "data", listener: (chunk: Buffer | string) => void): unknown;
 }
@@ -13,11 +13,11 @@ export interface EngineProcess {
   stderr: EngineProcessStream | null;
   on(event: "close", listener: (code: number | null) => void): unknown;
   on(event: "error", listener: (error: Error) => void): unknown;
-  /** 実行中のプロセスを終了させる。終了済みなら false を返す。 */
+  /** Terminates the process; returns false when it had already exited. */
   kill(): boolean;
 }
 
-/** 子プロセス起動関数。テストではモックを注入し、本番は child_process.spawn を薄く包む。 */
+/** The spawn function. Tests inject a fake; production wraps child_process.spawn. */
 export type EngineSpawn = (
   command: string,
   args: string[],
@@ -26,27 +26,21 @@ export type EngineSpawn = (
 
 export interface RunEngineDeps {
   spawn: EngineSpawn;
-  /** 子プロセスへ渡す環境変数(開発時は JAVA_HOME を含める)。 */
+  /** Environment for the child (JAVA_HOME in development). */
   env?: NodeJS.ProcessEnv;
-  /** 子プロセスの作業ディレクトリ。相対の出力先パスの基準になる。 */
+  /** Working directory of the child; relative output paths resolve against it. */
   cwd?: string;
-  /** spawn 直後に呼ぶ。呼び手はここで受けた子プロセスを控え、キャンセルと終了時の後始末に使う。 */
+  /** Called right after spawn so the caller can hold the child for cancellation and cleanup. */
   onStart?: (child: EngineProcess) => void;
 }
 
+/** Progress callback signature. Nothing calls it yet; it reserves the shape for streamed progress. */
+export type EngineProgress = (line: string) => void;
+
 /**
- * engine CLI を1回起動し、stdout 末尾のサマリ JSON・終了コード・成果物パスを {@link EngineResult}
- * として返す。ソケット・HTTP は用いず、child_process.spawn とファイル出力のみで完結する。
- * 出力先は「リクエストで明示指定したパス」と「サマリ JSON が報告したパス」を併合して確定する。
- *
- * engine は検出結果の重大度を終了コードへ載せる(0=指摘なし、1=警告あり、2=エラーあり)。
- * 非ゼロは実行の失敗を意味しないため reject せず結果として返し、起動そのものに失敗したとき
- * (実行ファイルが無い等の spawn の error)だけ reject する。
- */
-/**
- * 受け取った全チャンクを連結してから一度だけ UTF-8 として復号する。チャンクごとに復号すると、
- * 多バイト文字がチャンク境界で分割された場合にその文字が置換文字へ落ちる。engine は標準出力・
- * 標準エラーを UTF-8 で書く。
+ * Concatenates every chunk before decoding once as UTF-8. Decoding chunk by chunk would turn any
+ * multi-byte character split across a chunk boundary into a replacement character. The engine writes
+ * both stdout and stderr as UTF-8.
  */
 function decodeChunks(chunks: (Buffer | string)[]): string {
   if (chunks.every((chunk) => typeof chunk === "string")) {
@@ -57,11 +51,21 @@ function decodeChunks(chunks: (Buffer | string)[]): string {
   ).toString("utf8");
 }
 
+/**
+ * Runs the engine CLI once and returns its summary JSON, exit code and artefact paths. Only
+ * child_process.spawn and file output are involved; there is no socket and no HTTP.
+ *
+ * The engine puts finding severity in its exit code (0 = clean, 1 = warnings, 2 = errors), so a
+ * non-zero code is not a failure and does not reject. Only a failure to start the process at all
+ * (a missing executable, say) rejects.
+ */
 export function runEngine(
   deps: RunEngineDeps,
   launch: EngineLaunch,
   invocation: EngineInvocation,
+  onProgress?: EngineProgress,
 ): Promise<EngineResult> {
+  void onProgress;
   const args = [...launch.prefixArgs, ...buildEngineArgs(invocation)];
   return new Promise<EngineResult>((resolve, reject) => {
     const child = deps.spawn(launch.command, args, { env: deps.env, cwd: deps.cwd });
@@ -83,8 +87,8 @@ export function runEngine(
       const summary = extractSummaryJson(stdout);
       resolve({
         subcommand: invocation.subcommand,
-        // シグナルで終了した場合 code は null になる。engine 自身は負の値を返さないため、
-        // -1 を「終了コードを得られなかった」の印として使う。
+        // A process killed by a signal reports null. The engine never returns a negative code, so
+        // -1 marks "no exit code was available".
         exitCode: code ?? -1,
         summary,
         stdout,

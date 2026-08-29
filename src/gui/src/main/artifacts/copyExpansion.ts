@@ -3,15 +3,16 @@ import type {
   CopyExpansionData,
   CopyExpansionLine,
   CopyExpansionProgram,
-} from "../../shared/engine-api";
+} from "../../shared/ipc";
 
 /**
- * scan の --copy-expansion が書く JSON を、画面が要する形へ変換する純関数。未知構造には防御的に
- * 当たり、欠けた項目は空文字・0・空配列で補う。読めない本文は例外とし、成果物が無い場合と同じく
- * 呼び出し側(renderer)が理由として示す。
+ * Converts the JSON scan writes through --copy-expansion into the shape the screens read. Unknown
+ * structure is handled defensively and missing fields become "", 0 or []. Unreadable text throws,
+ * which the caller reports the same way it reports a missing artefact.
  *
- * 行の text は engine の前処理を通した後の姿であり、注記行・一連番号欄・識別欄は空白である。
- * 空白の行も並びの一部として保つ(コピー句の行番号との対応が崩れる)。
+ * Each line's text is the engine's preprocessed form: comment lines, the sequence area and the
+ * identification area are blank. Blank lines are kept, because dropping them would break the
+ * correspondence with the copybook's line numbers.
  */
 export function parseCopyExpansion(text: string): CopyExpansionData {
   const doc: unknown = JSON.parse(text);

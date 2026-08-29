@@ -1,10 +1,11 @@
-import type { EngineOutputs } from "../../shared/engine-api";
+import type { EngineOutputs } from "../../shared/ipc";
 
 /**
- * engine CLI の stdout からサマリ JSON を取り出す。Che4z LSP が logback のステータス行を
- * stdout へ書くため、サマリ JSON は「末尾の、JSON オブジェクトとしてパースできる行」とする。
- * call-graph 無指定時はグラフ本体 JSON がこの位置に来る。--json 等でファイル出力した場合は
- * JSON 行が無く null を返す。
+ * Extracts the summary JSON from the engine's stdout.
+ *
+ * The Che4z LSP writes logback status lines to stdout, so the summary is defined as the last line
+ * that parses as a JSON object. With `call-graph` and no output file, the graph JSON itself occupies
+ * that position. When the result went to a file instead, there is no JSON line and this returns null.
  */
 export function extractSummaryJson(stdout: string): Record<string, unknown> | null {
   const lines = stdout.split(/\r?\n/);
@@ -19,16 +20,16 @@ export function extractSummaryJson(stdout: string): Record<string, unknown> | nu
         return parsed as Record<string, unknown>;
       }
     } catch {
-      // JSON でない行(logback 雑音等)は読み飛ばす。
+      // Not JSON (logback noise and the like): keep looking further up.
     }
   }
   return null;
 }
 
 /**
- * サマリ JSON に含まれる成果物パス項目(dbFile/sarifFile/htmlFile/textFile/outputDir)を
- * {@link EngineOutputs} へ写す。runner が明示指定の出力先とこれを併合し、実際に書かれた
- * ファイルの位置を確定する。
+ * Copies the artefact paths the summary reports (dbFile/sarifFile/htmlFile/textFile/outputDir) into
+ * {@link EngineOutputs}. The runner merges this with the explicitly requested destinations to settle
+ * where the files actually landed.
  */
 export function summaryOutputs(summary: Record<string, unknown> | null): EngineOutputs {
   const outputs: EngineOutputs = {};

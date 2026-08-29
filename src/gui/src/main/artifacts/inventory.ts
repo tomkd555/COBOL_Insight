@@ -1,10 +1,10 @@
-import type { AssetInventoryItem } from "../../shared/engine-api";
+import type { AssetInventoryItem } from "../../shared/ipc";
 import { mapRows, type QueryableDatabase } from "./sqlRows";
 
 /**
- * 呼出関係グラフ層(ソース非対応ノード・グラフ辺・linker 由来 finding)の ID 下限。
- * scan 由来の finding だけを数えるため、この値以上の finding を除く。
- * ScanRunner.GRAPH_ID_BASE と一致させること。
+ * The lower bound of the graph layer's ids (nodes with no source, graph edges, linker findings).
+ * Findings at or above it are excluded so only scan-derived findings are counted.
+ * Keep in step with ScanRunner.GRAPH_ID_BASE.
  */
 const GRAPH_ID_BASE = 1_000_000_000_000;
 
@@ -22,10 +22,10 @@ const INVENTORY_QUERY = `
 `;
 
 /**
- * scan 済み SQLite の SOURCE 表を NODE.type・scan 由来 finding 件数と結合し、資産一覧を返す純関数
- * (資産エクスプローラー画面の供給源)。scan の stdout サマリ JSON にはインベントリ(コードページ・
- * 種別・件数)が無いため、画面はこの問い合わせの結果だけを資産一覧として用いる。
- * NODE.id=SOURCE.id 規約に依存する。
+ * Joins the SOURCE table of a scanned project file with NODE.type and the scan finding count to
+ * produce the asset inventory the explorer shows. scan's summary JSON carries no inventory
+ * (codepage, kind, counts), so this query is the explorer's only source. It relies on the
+ * NODE.id = SOURCE.id convention.
  */
 export function readInventory(db: QueryableDatabase): AssetInventoryItem[] {
   return mapRows(db.exec(INVENTORY_QUERY), (row) => {

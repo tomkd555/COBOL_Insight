@@ -1,0 +1,176 @@
+/**
+ * Every action the shell can perform, in one array.
+ *
+ * The command palette, the keyboard chords and any menu all read this one list, so an action cannot
+ * exist on one route and be missing from another. A command holds an id, a title, a category, a
+ * `when` predicate that decides whether it currently applies, and the function that runs it.
+ */
+
+import type { Dispatch } from "react";
+import { text } from "../text";
+import type { ProjectState } from "./projectStore";
+import type { WorkbenchAction, WorkbenchState } from "./workbenchStore";
+
+/** Command ids. The keybinding table maps chords onto these. */
+export type CommandId =
+  | "file.selectFolder"
+  | "run.analyze"
+  | "run.cancel"
+  | "view.toggleSideBar"
+  | "view.togglePanel"
+  | "view.showExplorer"
+  | "view.showSearch"
+  | "view.showRules"
+  | "view.showProblems"
+  | "view.showOutput"
+  | "editor.closeTab"
+  | "editor.nextTab"
+  | "editor.previousTab";
+
+export interface Command {
+  readonly id: CommandId;
+  readonly title: string;
+  readonly category: string;
+  /** Whether the command applies right now. A command that does not is hidden and does not fire. */
+  readonly when: () => boolean;
+  readonly run: () => void;
+}
+
+/** What the command implementations need from the rest of the application. */
+export interface CommandContext {
+  readonly project: ProjectState;
+  readonly workbench: WorkbenchState;
+  readonly workbenchDispatch: Dispatch<WorkbenchAction>;
+  /** Opens the folder picker and, when a folder is chosen, starts the analysis. */
+  readonly selectFolder: () => void;
+  /** Starts the analysis on the folder already chosen. */
+  readonly runAnalysis: () => void;
+  readonly cancelAnalysis: () => void;
+  /** Closes a tab, asking first when it holds unsaved edits. */
+  readonly requestCloseTab: (id: string) => void;
+}
+
+/** Builds the command list for the current context. */
+export function buildCommands(context: CommandContext): Command[] {
+  const { project, workbench, workbenchDispatch } = context;
+  const running = (): boolean => project.mode === "running";
+  const hasFolder = (): boolean => project.inputDir !== null;
+  const hasTabs = (): boolean => workbench.tabs.length > 0;
+
+  return [
+    {
+      id: "file.selectFolder",
+      title: text.command.selectFolder,
+      category: text.command.categoryFile,
+      when: () => !running(),
+      run: context.selectFolder,
+    },
+    {
+      id: "run.analyze",
+      title: text.command.run,
+      category: text.command.categoryRun,
+      when: () => hasFolder() && !running(),
+      run: context.runAnalysis,
+    },
+    {
+      id: "run.cancel",
+      title: text.command.cancel,
+      category: text.command.categoryRun,
+      when: running,
+      run: context.cancelAnalysis,
+    },
+    {
+      id: "view.toggleSideBar",
+      title: text.command.toggleSideBar,
+      category: text.command.categoryView,
+      when: () => true,
+      run: () => workbenchDispatch({ type: "TOGGLE_SIDE" }),
+    },
+    {
+      id: "view.togglePanel",
+      title: text.command.togglePanel,
+      category: text.command.categoryView,
+      when: () => true,
+      run: () => workbenchDispatch({ type: "TOGGLE_PANEL" }),
+    },
+    {
+      id: "view.showExplorer",
+      title: text.command.showExplorer,
+      category: text.command.categoryView,
+      when: () => true,
+      run: () => workbenchDispatch({ type: "SHOW_SIDE", view: "explorer" }),
+    },
+    {
+      id: "view.showSearch",
+      title: text.command.showSearch,
+      category: text.command.categoryView,
+      when: () => true,
+      run: () => workbenchDispatch({ type: "SHOW_SIDE", view: "search" }),
+    },
+    {
+      id: "view.showRules",
+      title: text.command.showRules,
+      category: text.command.categoryView,
+      when: () => true,
+      run: () => workbenchDispatch({ type: "SHOW_SIDE", view: "rules" }),
+    },
+    {
+      id: "view.showProblems",
+      title: text.command.showProblems,
+      category: text.command.categoryView,
+      when: () => true,
+      run: () => workbenchDispatch({ type: "SHOW_PANEL", view: "problems" }),
+    },
+    {
+      id: "view.showOutput",
+      title: text.command.showOutput,
+      category: text.command.categoryView,
+      when: () => true,
+      run: () => workbenchDispatch({ type: "SHOW_PANEL", view: "output" }),
+    },
+    {
+      id: "editor.closeTab",
+      title: text.command.closeTab,
+      category: text.command.categoryFile,
+      when: () => workbench.activeTabId !== null,
+      run: () => {
+        if (workbench.activeTabId !== null) {
+          context.requestCloseTab(workbench.activeTabId);
+        }
+      },
+    },
+    {
+      id: "editor.nextTab",
+      title: text.command.nextTab,
+      category: text.command.categoryView,
+      when: hasTabs,
+      run: () => workbenchDispatch({ type: "STEP_TAB", step: 1 }),
+    },
+    {
+      id: "editor.previousTab",
+      title: text.command.previousTab,
+      category: text.command.categoryView,
+      when: hasTabs,
+      run: () => workbenchDispatch({ type: "STEP_TAB", step: -1 }),
+    },
+  ];
+}
+
+/** The commands that apply right now, in the order they were declared. */
+export function availableCommands(commands: readonly Command[]): Command[] {
+  return commands.filter((command) => command.when());
+}
+
+/**
+ * Filters commands by what was typed, matching case-insensitively against the title and the
+ * category. An empty query keeps everything.
+ */
+export function filterCommands(commands: readonly Command[], query: string): Command[] {
+  const needle = query.trim().toLowerCase();
+  if (needle === "") {
+    return [...commands];
+  }
+  return commands.filter((command) =>
+    `${command.category} ${command.title}`.toLowerCase().includes(needle),
+  );
+}

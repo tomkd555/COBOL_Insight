@@ -1,42 +1,71 @@
 import type { ReactElement } from "react";
-import { Button } from "../components/Button";
+import { text } from "../text";
+import { RUN_STAGE_COUNT, useProject } from "../state/projectStore";
 
 export interface TitleBarProps {
-  appName?: string;
-  /** 解析実行中か。実行中はスピナーと対象・キャンセルを表示する。 */
-  isRunning?: boolean;
-  /** 実行中の対象表示(例「SYK006.cbl（13 / 19 件）」)。 */
-  runningLabel?: string;
-  onCancelRun?: () => void;
+  onRun: () => void;
+  onCancel: () => void;
+  onSelectFolder: () => void;
 }
 
 /**
- * 最上部 44px のタイトルバー。左にアプリ名、実行中は右に回転スピナー・対象・キャンセルを出す。
- * アプリ名は文書全体で唯一の h1 とし、各画面のタイトルはその下の h2 に置く。
+ * The title bar: the product name, the folder under analysis, and the run and cancel actions. The
+ * run button becomes the cancel button while an analysis is in progress, so the two never contend
+ * for the same click.
  */
-export function TitleBar({
-  appName = "COBOL Insight",
-  isRunning = false,
-  runningLabel,
-  onCancelRun,
-}: TitleBarProps): ReactElement {
+export function TitleBar({ onRun, onCancel, onSelectFolder }: TitleBarProps): ReactElement {
+  const project = useProject();
+  const running = project.mode === "running";
+
   return (
-    <header className="ci-titlebar">
-      <h1 className="ci-titlebar__brand">{appName}</h1>
+    <header className="ci-titlebar" data-testid="titlebar">
+      <span className="ci-titlebar__name">{text.app.name}</span>
+      <button
+        type="button"
+        className="ci-titlebar__folder"
+        onClick={onSelectFolder}
+        disabled={running}
+        data-testid="select-folder"
+      >
+        <span className="codicon codicon-folder-opened" aria-hidden="true" />
+        <span className="ci-titlebar__folder-path">
+          {project.inputDir ?? text.status.noFolder}
+        </span>
+      </button>
       <div className="ci-titlebar__spacer" />
-      {isRunning ? (
-        <div className="ci-titlebar__running" role="status" aria-live="polite">
-          <span className="ci-titlebar__spinner" aria-hidden="true" />
-          <span className="ci-titlebar__running-text">
-            解析実行中{runningLabel ? ` ― ${runningLabel}` : ""}
+      {running ? (
+        <>
+          <span className="ci-titlebar__stage" data-testid="run-stage">
+            {text.status.stage(project.runStage, RUN_STAGE_COUNT)}
           </span>
-          {onCancelRun ? (
-            <Button onClick={onCancelRun} aria-label="解析をキャンセル">
-              キャンセル
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
+          <progress
+            className="ci-titlebar__progress"
+            max={RUN_STAGE_COUNT}
+            value={project.runStage}
+            aria-label={text.app.running}
+          />
+          <button
+            type="button"
+            className="ci-titlebar__action"
+            onClick={onCancel}
+            data-testid="cancel-run"
+          >
+            <span className="codicon codicon-debug-stop" aria-hidden="true" />
+            {text.app.cancel}
+          </button>
+        </>
+      ) : (
+        <button
+          type="button"
+          className="ci-titlebar__action ci-titlebar__action--primary"
+          onClick={onRun}
+          disabled={project.inputDir === null}
+          data-testid="run-analysis"
+        >
+          <span className="codicon codicon-play" aria-hidden="true" />
+          {text.app.run}
+        </button>
+      )}
     </header>
   );
 }
