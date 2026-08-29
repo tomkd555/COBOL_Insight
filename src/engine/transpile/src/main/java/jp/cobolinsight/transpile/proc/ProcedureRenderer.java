@@ -1,8 +1,8 @@
 package jp.cobolinsight.transpile.proc;
 
-import jp.cobolinsight.engineapi.linemap.MappingKind;
-import jp.cobolinsight.engineapi.source.LineRange;
-import jp.cobolinsight.engineapi.source.SourceRange;
+import jp.cobolinsight.core.linemap.MappingKind;
+import jp.cobolinsight.core.source.LineRange;
+import jp.cobolinsight.core.source.SourceRange;
 import jp.cobolinsight.transpile.emit.LineTrackingEmitter;
 
 import java.util.ArrayList;

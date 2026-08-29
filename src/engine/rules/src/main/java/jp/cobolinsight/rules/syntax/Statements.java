@@ -1,12 +1,12 @@
 package jp.cobolinsight.rules.syntax;
 
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
-import jp.cobolinsight.engineapi.semantic.CompoundStatement;
-import jp.cobolinsight.engineapi.semantic.GoToStatement;
-import jp.cobolinsight.engineapi.semantic.Procedure;
-import jp.cobolinsight.engineapi.semantic.SimpleStatement;
-import jp.cobolinsight.engineapi.semantic.Statement;
-import jp.cobolinsight.engineapi.semantic.StatementBlock;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.semantic.CompoundStatement;
+import jp.cobolinsight.core.semantic.GoToStatement;
+import jp.cobolinsight.core.semantic.Procedure;
+import jp.cobolinsight.core.semantic.SimpleStatement;
+import jp.cobolinsight.core.semantic.Statement;
+import jp.cobolinsight.core.semantic.StatementBlock;
 
 import java.util.ArrayList;
 import java.util.List;

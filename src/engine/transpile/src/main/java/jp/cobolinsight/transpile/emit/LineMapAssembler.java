@@ -1,6 +1,6 @@
 package jp.cobolinsight.transpile.emit;
 
-import jp.cobolinsight.engineapi.linemap.LineMappingEntry;
+import jp.cobolinsight.core.linemap.LineMappingEntry;
 
 import java.util.ArrayList;
 import java.util.Comparator;

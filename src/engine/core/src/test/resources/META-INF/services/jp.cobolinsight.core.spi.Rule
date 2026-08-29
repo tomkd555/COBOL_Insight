@@ -1,0 +1,2 @@
+jp.cobolinsight.core.pipeline.StubSyntaxRule
+jp.cobolinsight.core.pipeline.StubDataflowRule

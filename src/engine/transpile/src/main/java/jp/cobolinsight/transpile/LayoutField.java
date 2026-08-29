@@ -1,7 +1,7 @@
 package jp.cobolinsight.transpile;
 
-import jp.cobolinsight.engineapi.picture.PictureType;
-import jp.cobolinsight.engineapi.semantic.ConditionName;
+import jp.cobolinsight.core.picture.PictureType;
+import jp.cobolinsight.core.semantic.ConditionName;
 
 import java.util.List;
 import java.util.Objects;

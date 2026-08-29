@@ -1,11 +1,11 @@
 package jp.cobolinsight.rules.syntax;
 
-import jp.cobolinsight.cobolfrontend.Che4zCobolParser;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
-import jp.cobolinsight.engineapi.source.DecodedSource;
-import jp.cobolinsight.engineapi.source.EncodingInfo;
-import jp.cobolinsight.engineapi.spi.AnalysisContext;
-import jp.cobolinsight.engineapi.spi.ParseOutcome;
+import jp.cobolinsight.frontend.cobol.Che4zCobolParser;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.source.DecodedSource;
+import jp.cobolinsight.core.source.EncodingInfo;
+import jp.cobolinsight.core.spi.AnalysisContext;
+import jp.cobolinsight.core.spi.ParseOutcome;
 import jp.cobolinsight.rules.SourceTextIndex;
 
 import java.io.IOException;

@@ -25,7 +25,7 @@ val guiTest = tasks.register<Exec>("guiTest") {
 val dist = tasks.register<Exec>("dist") {
     group = "distribution"
     description = "Builds the engine app-image, then packages the GUI into release/ with electron-builder."
-    dependsOn(":engine:cli:jpackageAppImage", npmInstall)
+    dependsOn(":engine:app:jpackageAppImage", npmInstall)
     workingDir = guiDir.asFile
     commandLine(npm, "run", "dist")
 }

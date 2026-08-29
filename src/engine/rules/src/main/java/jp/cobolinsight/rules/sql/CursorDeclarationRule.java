@@ -1,14 +1,14 @@
 package jp.cobolinsight.rules.sql;
 
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.Severity;
-import jp.cobolinsight.engineapi.spi.AnalysisContext;
-import jp.cobolinsight.engineapi.spi.AnalysisPhase;
-import jp.cobolinsight.engineapi.spi.Rule;
-import jp.cobolinsight.engineapi.spi.RuleDoc;
-import jp.cobolinsight.engineapi.sql.CursorSignals;
-import jp.cobolinsight.engineapi.sql.SqlStatementKind;
-import jp.cobolinsight.engineapi.sql.SqlStatementModel;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.Severity;
+import jp.cobolinsight.core.spi.AnalysisContext;
+import jp.cobolinsight.core.spi.AnalysisPhase;
+import jp.cobolinsight.core.spi.Rule;
+import jp.cobolinsight.core.spi.RuleDoc;
+import jp.cobolinsight.core.sql.CursorSignals;
+import jp.cobolinsight.core.sql.SqlStatementKind;
+import jp.cobolinsight.core.sql.SqlStatementModel;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -1,13 +1,13 @@
 package jp.cobolinsight.rules.sarif;
 
-import jp.cobolinsight.engineapi.finding.CodeFlow;
-import jp.cobolinsight.engineapi.finding.CodeFlowStep;
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.FixSuggestion;
-import jp.cobolinsight.engineapi.finding.TextEdit;
-import jp.cobolinsight.engineapi.json.JsonWriter;
-import jp.cobolinsight.engineapi.spi.Rule;
-import jp.cobolinsight.engineapi.spi.RuleDoc;
+import jp.cobolinsight.core.finding.CodeFlow;
+import jp.cobolinsight.core.finding.CodeFlowStep;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.FixSuggestion;
+import jp.cobolinsight.core.finding.TextEdit;
+import jp.cobolinsight.core.json.JsonWriter;
+import jp.cobolinsight.core.spi.Rule;
+import jp.cobolinsight.core.spi.RuleDoc;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;

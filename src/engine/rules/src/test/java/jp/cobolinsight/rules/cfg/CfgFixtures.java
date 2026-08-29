@@ -1,19 +1,19 @@
 package jp.cobolinsight.rules.cfg;
 
-import jp.cobolinsight.bmsfrontend.BmsModelMapper;
-import jp.cobolinsight.bmsfrontend.BmsParseResult;
-import jp.cobolinsight.bmsfrontend.BmsSourceParser;
-import jp.cobolinsight.cobolfrontend.Che4zCobolParser;
-import jp.cobolinsight.dataflow.CfgBuilder;
-import jp.cobolinsight.engineapi.bms.BmsMapset;
-import jp.cobolinsight.engineapi.cfg.ControlFlowGraph;
-import jp.cobolinsight.engineapi.cfg.ControlFlowGraphs;
-import jp.cobolinsight.engineapi.jcl.JclJobModel;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
-import jp.cobolinsight.engineapi.source.DecodedSource;
-import jp.cobolinsight.engineapi.source.EncodingInfo;
-import jp.cobolinsight.engineapi.spi.AnalysisContext;
-import jp.cobolinsight.engineapi.spi.ParseOutcome;
+import jp.cobolinsight.frontend.bms.BmsModelMapper;
+import jp.cobolinsight.frontend.bms.BmsParseResult;
+import jp.cobolinsight.frontend.bms.BmsSourceParser;
+import jp.cobolinsight.frontend.cobol.Che4zCobolParser;
+import jp.cobolinsight.analysis.dataflow.CfgBuilder;
+import jp.cobolinsight.core.bms.BmsMapset;
+import jp.cobolinsight.core.cfg.ControlFlowGraph;
+import jp.cobolinsight.core.cfg.ControlFlowGraphs;
+import jp.cobolinsight.core.jcl.JclJobModel;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.source.DecodedSource;
+import jp.cobolinsight.core.source.EncodingInfo;
+import jp.cobolinsight.core.spi.AnalysisContext;
+import jp.cobolinsight.core.spi.ParseOutcome;
 import jp.cobolinsight.rules.SourceTextIndex;
 
 import java.io.IOException;

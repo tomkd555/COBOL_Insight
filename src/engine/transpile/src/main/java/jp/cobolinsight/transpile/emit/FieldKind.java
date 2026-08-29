@@ -1,7 +1,7 @@
 package jp.cobolinsight.transpile.emit;
 
-import jp.cobolinsight.engineapi.picture.PictureCategory;
-import jp.cobolinsight.engineapi.picture.PictureType;
+import jp.cobolinsight.core.picture.PictureCategory;
+import jp.cobolinsight.core.picture.PictureType;
 
 /**
  * アクセサが値とバイト列を変換する際の符号化区分。基本項目の PICTURE と USAGE から決まり、

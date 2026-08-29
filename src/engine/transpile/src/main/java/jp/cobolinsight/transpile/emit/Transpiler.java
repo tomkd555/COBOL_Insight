@@ -1,13 +1,13 @@
 package jp.cobolinsight.transpile.emit;
 
-import jp.cobolinsight.engineapi.linemap.LineMappingEntry;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
-import jp.cobolinsight.engineapi.semantic.DataItem;
-import jp.cobolinsight.engineapi.semantic.EmbeddedBlock;
-import jp.cobolinsight.engineapi.source.SourceRange;
-import jp.cobolinsight.engineapi.transpile.GeneratedFile;
-import jp.cobolinsight.engineapi.transpile.TargetLanguage;
-import jp.cobolinsight.engineapi.transpile.TranspileResult;
+import jp.cobolinsight.core.linemap.LineMappingEntry;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.semantic.DataItem;
+import jp.cobolinsight.core.semantic.EmbeddedBlock;
+import jp.cobolinsight.core.source.SourceRange;
+import jp.cobolinsight.core.transpile.GeneratedFile;
+import jp.cobolinsight.core.transpile.TargetLanguage;
+import jp.cobolinsight.core.transpile.TranspileResult;
 import jp.cobolinsight.transpile.LayoutField;
 import jp.cobolinsight.transpile.RecordLayoutResolver;
 import jp.cobolinsight.transpile.proc.DataDivisionSql;

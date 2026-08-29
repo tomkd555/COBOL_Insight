@@ -1,8 +1,8 @@
 package jp.cobolinsight.rules;
 
-import jp.cobolinsight.engineapi.pipeline.AnalysisServices;
-import jp.cobolinsight.engineapi.spi.Rule;
-import jp.cobolinsight.engineapi.spi.RuleDoc;
+import jp.cobolinsight.core.pipeline.AnalysisServices;
+import jp.cobolinsight.core.spi.Rule;
+import jp.cobolinsight.core.spi.RuleDoc;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;

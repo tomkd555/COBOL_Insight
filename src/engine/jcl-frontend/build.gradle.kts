@@ -4,7 +4,7 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":engine:engine-api"))
+    implementation(project(":engine:core"))
     antlr("org.antlr:antlr4:4.13.2")
     implementation("org.antlr:antlr4-runtime:4.13.2")
 }
@@ -16,7 +16,7 @@ tasks.generateGrammarSource {
     arguments = arguments + listOf(
         "-visitor",
         "-listener",
-        "-package", "jp.cobolinsight.jclfrontend.mapa",
+        "-package", "jp.cobolinsight.frontend.jcl.mapa",
         "-lib", layout.buildDirectory.dir("generated-src/antlr/main").get().asFile.absolutePath
     )
 }

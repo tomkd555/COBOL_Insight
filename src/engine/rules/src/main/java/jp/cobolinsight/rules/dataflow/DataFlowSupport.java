@@ -1,10 +1,10 @@
 package jp.cobolinsight.rules.dataflow;
 
-import jp.cobolinsight.engineapi.picture.PictureType;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
-import jp.cobolinsight.engineapi.semantic.ConditionName;
-import jp.cobolinsight.engineapi.semantic.DataItem;
-import jp.cobolinsight.engineapi.semantic.Occurs;
+import jp.cobolinsight.core.picture.PictureType;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.semantic.ConditionName;
+import jp.cobolinsight.core.semantic.DataItem;
+import jp.cobolinsight.core.semantic.Occurs;
 import jp.cobolinsight.rules.SourceTextIndex;
 
 import java.nio.file.Path;

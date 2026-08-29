@@ -1,8 +1,8 @@
 package jp.cobolinsight.rules.user;
 
-import jp.cobolinsight.engineapi.finding.Severity;
-import jp.cobolinsight.engineapi.spi.AnalysisPhase;
-import jp.cobolinsight.engineapi.spi.Rule;
+import jp.cobolinsight.core.finding.Severity;
+import jp.cobolinsight.core.spi.AnalysisPhase;
+import jp.cobolinsight.core.spi.Rule;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

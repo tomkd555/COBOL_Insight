@@ -19,10 +19,10 @@ const installLibDir = resolve(
   guiRoot,
   "..",
   "engine",
-  "cli",
+  "app",
   "build",
   "install",
-  "cli",
+  "app",
   "lib",
 );
 

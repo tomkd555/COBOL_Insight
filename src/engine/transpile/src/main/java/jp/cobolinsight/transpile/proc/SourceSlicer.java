@@ -1,7 +1,7 @@
 package jp.cobolinsight.transpile.proc;
 
-import jp.cobolinsight.engineapi.source.SourcePosition;
-import jp.cobolinsight.engineapi.source.SourceRange;
+import jp.cobolinsight.core.source.SourcePosition;
+import jp.cobolinsight.core.source.SourceRange;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -1,14 +1,14 @@
 package jp.cobolinsight.rules.dataflow;
 
-import jp.cobolinsight.engineapi.cfg.CfgNode;
-import jp.cobolinsight.engineapi.dataflow.ProgramDataFlow;
-import jp.cobolinsight.engineapi.dataflow.TaintKind;
-import jp.cobolinsight.engineapi.dataflow.TaintStep;
-import jp.cobolinsight.engineapi.finding.CodeFlow;
-import jp.cobolinsight.engineapi.finding.CodeFlowStep;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
-import jp.cobolinsight.engineapi.semantic.DataItem;
-import jp.cobolinsight.engineapi.source.SourcePosition;
+import jp.cobolinsight.core.cfg.CfgNode;
+import jp.cobolinsight.core.dataflow.ProgramDataFlow;
+import jp.cobolinsight.core.dataflow.TaintKind;
+import jp.cobolinsight.core.dataflow.TaintStep;
+import jp.cobolinsight.core.finding.CodeFlow;
+import jp.cobolinsight.core.finding.CodeFlowStep;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.semantic.DataItem;
+import jp.cobolinsight.core.source.SourcePosition;
 
 import java.util.ArrayList;
 import java.util.Collection;

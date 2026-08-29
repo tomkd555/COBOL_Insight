@@ -1,9 +1,9 @@
 package jp.cobolinsight.rules;
 
-import jp.cobolinsight.engineapi.finding.Severity;
-import jp.cobolinsight.engineapi.pipeline.AnalysisServices;
-import jp.cobolinsight.engineapi.spi.AnalysisPhase;
-import jp.cobolinsight.engineapi.spi.Rule;
+import jp.cobolinsight.core.finding.Severity;
+import jp.cobolinsight.core.pipeline.AnalysisServices;
+import jp.cobolinsight.core.spi.AnalysisPhase;
+import jp.cobolinsight.core.spi.Rule;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

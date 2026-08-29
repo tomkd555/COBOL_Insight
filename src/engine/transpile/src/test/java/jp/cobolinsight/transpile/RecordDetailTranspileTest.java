@@ -1,8 +1,8 @@
 package jp.cobolinsight.transpile;
 
-import jp.cobolinsight.engineapi.semantic.ConditionName;
-import jp.cobolinsight.engineapi.semantic.DataItem;
-import jp.cobolinsight.engineapi.source.SourcePosition;
+import jp.cobolinsight.core.semantic.ConditionName;
+import jp.cobolinsight.core.semantic.DataItem;
+import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.transpile.emit.JavaEmitter;
 import jp.cobolinsight.transpile.emit.LineTrackingEmitter;
 import jp.cobolinsight.transpile.emit.RecordClassGenerator;

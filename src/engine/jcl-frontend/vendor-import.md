@@ -9,18 +9,18 @@
 
 - 手書き Java: `jcl/src` にある手書きの 50 ファイルのうち 48 ファイルを
   `src/main/java/jp/cobolinsight/jclfrontend/mapa/` へ複製する。
-  - 除外: `Demo01.java`(CLI デモ。同じパース処理は `jp.cobolinsight.jclfrontend.JclFrontend` が実装する)、
+  - 除外: `Demo01.java`(CLI デモ。同じパース処理は `jp.cobolinsight.frontend.jcl.JclFrontend` が実装する)、
     `TheCLI.java`(commons-cli 依存。下記の置き換え版を本モジュールで実装する)。
 - ANTLR 文法: `JCLLexer.g4` `JCLParser.g4` `JCLPPLexer.g4` `JCLPPParser.g4` `DSNTSOLexer.g4`
   `DSNTSOParser.g4` `TSOLexer.g4` `TSOParser.g4` `JCLDDAMPLexer.g4` `JCLDDAMPParser.g4` の 10 ファイルを
   `src/main/antlr/` へ複製する。
   - 除外: `JCLNotifyWhenLexer.g4` `JCLNotifyWhenParser.g4`(上流 Makefile の `all` ターゲットに含まれず未使用)。
 - 上流の生成物(`*.tokens` `*.interp` と ANTLR 生成 Java)は複製せず、Gradle の antlr プラグイン
-  (ANTLR 4.13.2、`-package jp.cobolinsight.jclfrontend.mapa` 指定)でビルド時に生成する。
+  (ANTLR 4.13.2、`-package jp.cobolinsight.frontend.jcl.mapa` 指定)でビルド時に生成する。
 
 ## 複製に対する改変点
 
-1. 全 48 Java ファイル: 先頭に `package jp.cobolinsight.jclfrontend.mapa;` を付与する。
+1. 全 48 Java ファイル: 先頭に `package jp.cobolinsight.frontend.jcl.mapa;` を付与する。
    上流の著作権表示コメントは 2 行目以降にそのまま保持する。
 2. `TheCLI.java`: commons-cli によるコマンドライン解析を持たない同名・同フィールドのクラスとして
    本モジュールで実装する(取込元の複製ではない)。取り込んだクラス群が参照するフィールド
@@ -44,9 +44,9 @@
 
 ## モジュール入口
 
-- `jp.cobolinsight.jclfrontend.JclFrontend#parse(Path, Map<String, String>, List<String>)` が
+- `jp.cobolinsight.frontend.jcl.JclFrontend#parse(Path, Map<String, String>, List<String>)` が
   ジョブ→ステップ→PGM/PROC→DD(解決済み DSN)の結果モデル
   (`JclParseResult` `ParsedJob` `ParsedStep` `ParsedDd`)を返す。
-- `jp.cobolinsight.jclfrontend.MapaJclParser` が engine-api の SPI
-  `jp.cobolinsight.engineapi.spi.JclParser` を実装し、上記の結果モデルを
+- `jp.cobolinsight.frontend.jcl.MapaJclParser` が engine-api の SPI
+  `jp.cobolinsight.core.spi.JclParser` を実装し、上記の結果モデルを
   `JclJobModel`(EXEC PROC は「ステップ名.PROC内ステップ名」で平坦化)へ変換する。

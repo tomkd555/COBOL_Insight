@@ -1,9 +1,9 @@
 package jp.cobolinsight.rules.user;
 
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.FindingLevel;
-import jp.cobolinsight.engineapi.spi.AnalysisContext;
-import jp.cobolinsight.engineapi.spi.Rule;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.FindingLevel;
+import jp.cobolinsight.core.spi.AnalysisContext;
+import jp.cobolinsight.core.spi.Rule;
 import jp.cobolinsight.rules.SourceTextIndex;
 import org.junit.jupiter.api.Test;
 

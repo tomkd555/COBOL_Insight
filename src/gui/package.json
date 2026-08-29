@@ -55,7 +55,7 @@
     ],
     "extraResources": [
       {
-        "from": "../engine/cli/build/jpackage/app-image/COBOLInsight",
+        "from": "../engine/app/build/jpackage/app-image/COBOLInsight",
         "to": "engine",
         "filter": [
           "**/*"

@@ -1,14 +1,14 @@
 package jp.cobolinsight.transpile.proc;
 
-import jp.cobolinsight.engineapi.semantic.CompoundStatement;
-import jp.cobolinsight.engineapi.semantic.ControlKind;
-import jp.cobolinsight.engineapi.semantic.EmbeddedBlock;
-import jp.cobolinsight.engineapi.semantic.GoToStatement;
-import jp.cobolinsight.engineapi.semantic.Procedure;
-import jp.cobolinsight.engineapi.semantic.SimpleStatement;
-import jp.cobolinsight.engineapi.semantic.Statement;
-import jp.cobolinsight.engineapi.semantic.StatementBlock;
-import jp.cobolinsight.engineapi.source.SourceRange;
+import jp.cobolinsight.core.semantic.CompoundStatement;
+import jp.cobolinsight.core.semantic.ControlKind;
+import jp.cobolinsight.core.semantic.EmbeddedBlock;
+import jp.cobolinsight.core.semantic.GoToStatement;
+import jp.cobolinsight.core.semantic.Procedure;
+import jp.cobolinsight.core.semantic.SimpleStatement;
+import jp.cobolinsight.core.semantic.Statement;
+import jp.cobolinsight.core.semantic.StatementBlock;
+import jp.cobolinsight.core.source.SourceRange;
 import jp.cobolinsight.transpile.emit.Identifiers;
 
 import java.util.ArrayList;

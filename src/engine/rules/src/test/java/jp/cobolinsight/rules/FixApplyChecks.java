@@ -1,9 +1,9 @@
 package jp.cobolinsight.rules;
 
-import jp.cobolinsight.engineapi.finding.TextEdit;
-import jp.cobolinsight.fix.ByteSpliceApplier;
-import jp.cobolinsight.fix.ReparseResult;
-import jp.cobolinsight.fix.ReparseVerifier;
+import jp.cobolinsight.core.finding.TextEdit;
+import jp.cobolinsight.core.fix.ByteSpliceApplier;
+import jp.cobolinsight.core.fix.ReparseResult;
+import jp.cobolinsight.core.fix.ReparseVerifier;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;

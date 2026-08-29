@@ -1,7 +1,7 @@
 package jp.cobolinsight.transpile.emit;
 
-import jp.cobolinsight.engineapi.transpile.GeneratedFile;
-import jp.cobolinsight.engineapi.transpile.TargetLanguage;
+import jp.cobolinsight.core.transpile.GeneratedFile;
+import jp.cobolinsight.core.transpile.TargetLanguage;
 
 import java.util.ArrayList;
 import java.util.List;

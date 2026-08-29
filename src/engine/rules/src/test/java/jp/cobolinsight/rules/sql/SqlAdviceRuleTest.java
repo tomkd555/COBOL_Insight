@@ -1,9 +1,9 @@
 package jp.cobolinsight.rules.sql;
 
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.spi.AnalysisContext;
-import jp.cobolinsight.engineapi.sql.SqlStatementKind;
-import jp.cobolinsight.engineapi.sql.SqlStatementModel;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.spi.AnalysisContext;
+import jp.cobolinsight.core.sql.SqlStatementKind;
+import jp.cobolinsight.core.sql.SqlStatementModel;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

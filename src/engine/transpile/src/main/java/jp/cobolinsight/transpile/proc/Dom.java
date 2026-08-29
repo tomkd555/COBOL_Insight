@@ -1,6 +1,6 @@
 package jp.cobolinsight.transpile.proc;
 
-import jp.cobolinsight.engineapi.cfg.CfgNode;
+import jp.cobolinsight.core.cfg.CfgNode;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;

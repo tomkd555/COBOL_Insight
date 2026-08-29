@@ -21,19 +21,15 @@ dependencyResolutionManagement {
 rootProject.name = "cobol-insight"
 
 val engineModules = listOf(
-    "engine-api",
-    "encoding",
+    "core",
     "cobol-frontend",
     "jcl-frontend",
     "sql-frontend",
     "bms-frontend",
-    "dataflow",
-    "linker",
+    "analysis",
     "rules",
     "transpile",
-    "fix",
-    "persistence",
-    "cli"
+    "app"
 )
 
 // The intermediate project :engine lives under src/engine, not rootDir/engine.

@@ -1,9 +1,9 @@
 package jp.cobolinsight.transpile;
 
-import jp.cobolinsight.engineapi.linemap.LineMappingEntry;
-import jp.cobolinsight.engineapi.transpile.GeneratedFile;
-import jp.cobolinsight.engineapi.transpile.TargetLanguage;
-import jp.cobolinsight.engineapi.transpile.TranspileResult;
+import jp.cobolinsight.core.linemap.LineMappingEntry;
+import jp.cobolinsight.core.transpile.GeneratedFile;
+import jp.cobolinsight.core.transpile.TargetLanguage;
+import jp.cobolinsight.core.transpile.TranspileResult;
 import jp.cobolinsight.transpile.emit.Transpiler;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

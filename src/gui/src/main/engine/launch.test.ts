@@ -33,8 +33,8 @@ describe("resolveEngineLaunch", () => {
       javaHome: "C:/tools/jdk-21",
     });
     expect(launch.command).toBe(join("C:/tools/jdk-21", "bin", "java.exe"));
-    const installLib = join("C:/repo/gui", "..", "engine", "cli", "build", "install", "cli", "lib", "*");
-    expect(launch.prefixArgs).toEqual(["-classpath", installLib, "jp.cobolinsight.cli.Main"]);
+    const installLib = join("C:/repo/gui", "..", "engine", "app", "build", "install", "app", "lib", "*");
+    expect(launch.prefixArgs).toEqual(["-classpath", installLib, "jp.cobolinsight.app.cli.Main"]);
   });
 
   it("開発時に JAVA_HOME 未設定なら PATH 上の java を使う", () => {
@@ -55,6 +55,6 @@ describe("resolveEngineLaunch", () => {
       appRoot: "/repo/gui",
     });
     expect(launch.command).toBe("java");
-    expect(launch.prefixArgs[2]).toBe("jp.cobolinsight.cli.Main");
+    expect(launch.prefixArgs[2]).toBe("jp.cobolinsight.app.cli.Main");
   });
 });

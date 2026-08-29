@@ -1,6 +1,6 @@
 package jp.cobolinsight.transpile.proc;
 
-import jp.cobolinsight.engineapi.transpile.TargetLanguage;
+import jp.cobolinsight.core.transpile.TargetLanguage;
 import jp.cobolinsight.transpile.emit.LineTrackingEmitter;
 
 import java.util.List;

@@ -1,8 +1,8 @@
 package jp.cobolinsight.transpile;
 
-import jp.cobolinsight.engineapi.picture.PictureType;
-import jp.cobolinsight.engineapi.semantic.DataItem;
-import jp.cobolinsight.engineapi.semantic.Occurs;
+import jp.cobolinsight.core.picture.PictureType;
+import jp.cobolinsight.core.semantic.DataItem;
+import jp.cobolinsight.core.semantic.Occurs;
 
 import java.util.ArrayList;
 import java.util.HashMap;

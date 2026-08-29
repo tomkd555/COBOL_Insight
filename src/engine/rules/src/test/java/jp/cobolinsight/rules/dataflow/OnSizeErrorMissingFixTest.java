@@ -1,10 +1,10 @@
 package jp.cobolinsight.rules.dataflow;
 
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.FixSuggestion;
-import jp.cobolinsight.engineapi.finding.TextEdit;
-import jp.cobolinsight.engineapi.spi.AnalysisContext;
-import jp.cobolinsight.fix.ByteSpliceApplier;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.FixSuggestion;
+import jp.cobolinsight.core.finding.TextEdit;
+import jp.cobolinsight.core.spi.AnalysisContext;
+import jp.cobolinsight.core.fix.ByteSpliceApplier;
 import jp.cobolinsight.rules.FixApplyChecks;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

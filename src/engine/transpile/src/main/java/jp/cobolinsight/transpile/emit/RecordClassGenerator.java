@@ -1,9 +1,9 @@
 package jp.cobolinsight.transpile.emit;
 
-import jp.cobolinsight.engineapi.picture.PictureType;
-import jp.cobolinsight.engineapi.semantic.ConditionName;
-import jp.cobolinsight.engineapi.semantic.DataItem;
-import jp.cobolinsight.engineapi.source.LineRange;
+import jp.cobolinsight.core.picture.PictureType;
+import jp.cobolinsight.core.semantic.ConditionName;
+import jp.cobolinsight.core.semantic.DataItem;
+import jp.cobolinsight.core.source.LineRange;
 import jp.cobolinsight.transpile.LayoutField;
 
 import java.util.ArrayList;

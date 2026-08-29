@@ -20,7 +20,7 @@ export interface EngineLaunch {
 }
 
 /** jpackage app-image のメインクラス名(installDist を java 直接起動する場合に指定する)。 */
-const MAIN_CLASS = "jp.cobolinsight.cli.Main";
+const MAIN_CLASS = "jp.cobolinsight.app.cli.Main";
 
 /**
  * engine CLI の起動対象を解決する純関数。ネットワークやソケットは用いず、ローカルの
@@ -31,7 +31,7 @@ const MAIN_CLASS = "jp.cobolinsight.cli.Main";
  *       直接起動する。system の JRE を要さない。</li>
  *   <li>開発時: gradle :engine:cli:installDist の成果物 lib を classpath に、JAVA_HOME
  *       (無ければ PATH)の java でメインクラスを起動する。appRoot(src/gui)の親が src であり、
- *       その配下の engine/cli/build/install/cli を参照する。</li>
+ *       その配下の engine/app/build/install/app を参照する。</li>
  * </ul>
  *
  * classpath 末尾の `lib/*` は java 自身が展開するワイルドカードである。spawn はシェルを介さない
@@ -47,10 +47,10 @@ export function resolveEngineLaunch(input: EngineLaunchInput): EngineLaunch {
     input.appRoot,
     "..",
     "engine",
-    "cli",
+    "app",
     "build",
     "install",
-    "cli",
+    "app",
   );
   const classpath = join(installDir, "lib", "*");
   const javaName = isWindows ? "java.exe" : "java";

@@ -8,8 +8,7 @@ val lsp4j = "0.14.0"
 val guice = "4.2.3"
 
 dependencies {
-    implementation(project(":engine:engine-api"))
-    implementation(project(":engine:encoding"))
+    implementation(project(":engine:core"))
     implementation("jp.cobolinsight.vendor:che4z-cobol-engine:2.5.1-ja1")
     implementation("org.antlr:antlr4-runtime:4.13.2")
     implementation("org.eclipse.lsp4j:org.eclipse.lsp4j:$lsp4j")

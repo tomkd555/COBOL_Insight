@@ -1,6 +1,6 @@
 package jp.cobolinsight.rules.user;
 
-import jp.cobolinsight.engineapi.source.AssetKind;
+import jp.cobolinsight.core.source.AssetKind;
 
 /**
  * 利用者定義ルールが走査する資産の種別。lint がテキスト索引へ載せるのは COBOL 本体・コピー句・

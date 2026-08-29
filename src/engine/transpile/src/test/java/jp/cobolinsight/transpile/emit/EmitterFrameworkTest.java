@@ -1,8 +1,8 @@
 package jp.cobolinsight.transpile.emit;
 
-import jp.cobolinsight.engineapi.linemap.LineMappingEntry;
-import jp.cobolinsight.engineapi.linemap.MappingKind;
-import jp.cobolinsight.engineapi.source.LineRange;
+import jp.cobolinsight.core.linemap.LineMappingEntry;
+import jp.cobolinsight.core.linemap.MappingKind;
+import jp.cobolinsight.core.source.LineRange;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

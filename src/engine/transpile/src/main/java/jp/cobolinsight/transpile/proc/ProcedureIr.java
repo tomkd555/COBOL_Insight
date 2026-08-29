@@ -1,6 +1,6 @@
 package jp.cobolinsight.transpile.proc;
 
-import jp.cobolinsight.engineapi.source.SourceRange;
+import jp.cobolinsight.core.source.SourceRange;
 
 import java.util.List;
 

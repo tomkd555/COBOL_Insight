@@ -1,7 +1,7 @@
 package jp.cobolinsight.rules.sql;
 
-import jp.cobolinsight.engineapi.source.SourcePosition;
-import jp.cobolinsight.engineapi.sql.SqlStatementModel;
+import jp.cobolinsight.core.source.SourcePosition;
+import jp.cobolinsight.core.sql.SqlStatementModel;
 
 /** SQL指摘ルール共通の補助。SQL文モデルの位置から報告位置を組む。 */
 final class SqlAdviceSupport {
