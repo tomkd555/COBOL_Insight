@@ -857,3 +857,344 @@
   color: var(--ci-fg-dim);
   cursor: pointer;
 }
+
+/* ---------------------------------------------------------------- strips */
+
+.ci-strip {
+  margin: var(--ci-space-2) 0;
+  padding: var(--ci-space-2);
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-strip--error {
+  background: var(--ci-danger-bg);
+  border-color: var(--ci-danger);
+}
+
+.ci-strip--ok {
+  border-color: var(--ci-kind-cobol);
+}
+
+.ci-strip__title {
+  margin: 0;
+  color: var(--ci-fg-strong);
+}
+
+.ci-strip__list {
+  margin: var(--ci-space-1) 0 0;
+  padding-inline-start: var(--ci-space-4);
+}
+
+/* ---------------------------------------------------------------- rules */
+
+.ci-rules {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-bottom: var(--ci-space-3);
+}
+
+.ci-rules__toolbar {
+  display: flex;
+  gap: var(--ci-space-2);
+  padding: var(--ci-space-2) var(--ci-space-2) 0;
+}
+
+.ci-rules__toolbar > * {
+  min-width: 0;
+}
+
+.ci-rules__state {
+  margin: var(--ci-space-3) var(--ci-space-2);
+  color: var(--ci-fg-dim);
+}
+
+.ci-rules__group {
+  margin-top: var(--ci-space-3);
+}
+
+.ci-rules__grouphead {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-1);
+  padding: 0 var(--ci-space-2);
+}
+
+.ci-rules__groupname {
+  flex: 1;
+  margin: 0;
+  color: var(--ci-fg-dim);
+  font-size: var(--ci-size-sm);
+  text-transform: uppercase;
+}
+
+.ci-rules__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ci-space-1);
+  padding: var(--ci-space-1) var(--ci-space-2);
+}
+
+.ci-rules__row:hover {
+  background: var(--ci-bg-hover);
+}
+
+.ci-rules__name {
+  flex: 1 1 40%;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  text-align: start;
+}
+
+.ci-rules__id {
+  margin-inline-end: var(--ci-space-2);
+  color: var(--ci-fg-dim);
+  font-family: var(--ci-font-code);
+}
+
+/* ---------------------------------------------------------------- rule description */
+
+.ci-ruledetail {
+  overflow: auto;
+  height: 100%;
+  padding: var(--ci-space-4);
+}
+
+.ci-ruledetail__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ci-space-2);
+}
+
+.ci-ruledetail__title {
+  margin: 0;
+  font-size: var(--ci-size-lg);
+}
+
+.ci-ruledetail__section {
+  max-width: 80ch;
+  margin-top: var(--ci-space-4);
+}
+
+.ci-ruledetail__label {
+  margin: 0 0 var(--ci-space-1);
+  color: var(--ci-fg-dim);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-ruledetail__prose {
+  margin: 0;
+}
+
+.ci-ruledetail__code {
+  overflow-x: auto;
+  margin: 0;
+  padding: var(--ci-space-2);
+  background: var(--ci-bg-raised);
+  border: 1px solid var(--ci-border);
+  border-radius: var(--ci-radius);
+  font-family: var(--ci-font-code);
+}
+
+.ci-ruledetail__state {
+  padding: var(--ci-space-4);
+  color: var(--ci-fg-dim);
+}
+
+/* ---------------------------------------------------------------- forms */
+
+.ci-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-space-2);
+  margin: var(--ci-space-3) 0;
+  padding: var(--ci-space-3);
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius);
+}
+
+.ci-form__legend {
+  padding: 0 var(--ci-space-1);
+  color: var(--ci-fg-dim);
+  font-family: var(--ci-font-code);
+}
+
+.ci-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-space-1);
+  max-width: 72ch;
+}
+
+.ci-form__label {
+  color: var(--ci-fg-dim);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-form__note {
+  color: var(--ci-fg-dim);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-form__error {
+  color: var(--ci-severity-high);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-form__checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ci-space-3);
+}
+
+.ci-form__check {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-1);
+}
+
+.ci-input--code {
+  font-family: var(--ci-font-code);
+}
+
+/* ---------------------------------------------------------------- custom rules */
+
+.ci-custom {
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  height: 100%;
+  padding: var(--ci-space-4);
+}
+
+.ci-custom__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ci-space-2);
+}
+
+.ci-custom__title {
+  flex: 1;
+  margin: 0;
+  font-size: var(--ci-size-lg);
+}
+
+.ci-custom__dirty,
+.ci-settings__state {
+  color: var(--ci-fg-dim);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-custom__state {
+  color: var(--ci-fg-dim);
+}
+
+.ci-custom__forms {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.ci-custom__raw {
+  min-height: 24em;
+  margin-top: var(--ci-space-3);
+  padding: var(--ci-space-2);
+  background: var(--ci-bg-raised);
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius);
+  font-family: var(--ci-font-code);
+  white-space: pre;
+  resize: vertical;
+}
+
+/* ---------------------------------------------------------------- settings */
+
+.ci-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-space-3);
+  overflow: auto;
+  height: 100%;
+  padding: var(--ci-space-4);
+}
+
+.ci-settings__title {
+  margin: 0;
+  font-size: var(--ci-size-lg);
+}
+
+.ci-settings__path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ci-space-2);
+  max-width: 72ch;
+}
+
+.ci-settings__path .ci-input {
+  flex: 1;
+}
+
+.ci-settings__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-2);
+}
+
+/* ---------------------------------------------------------------- terminal import */
+
+.ci-modal__dialog--wide {
+  width: min(1040px, 94vw);
+  margin-top: 6vh;
+}
+
+.ci-import {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ci-space-4);
+}
+
+.ci-import__form,
+.ci-import__body {
+  display: flex;
+  flex: 1 1 22rem;
+  flex-direction: column;
+  gap: var(--ci-space-2);
+  min-width: 0;
+}
+
+.ci-import__columns {
+  display: flex;
+  gap: var(--ci-space-2);
+}
+
+.ci-import__columns .ci-input {
+  width: 6rem;
+}
+
+.ci-import__paste,
+.ci-import__preview {
+  overflow: auto;
+  min-height: 10em;
+  max-height: 40vh;
+  margin: 0;
+  padding: var(--ci-space-2);
+  background: var(--ci-bg-raised);
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius);
+  font-family: var(--ci-font-code);
+  white-space: pre;
+}
+
+.ci-import__paste {
+  resize: vertical;
+}

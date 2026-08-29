@@ -9,7 +9,13 @@
 import type { Dispatch } from "react";
 import { text } from "../text";
 import type { ProjectState } from "./projectStore";
-import type { WorkbenchAction, WorkbenchState } from "./workbenchStore";
+import {
+  CUSTOM_RULES_TAB_ID,
+  settingsTab,
+  type WorkbenchAction,
+  type WorkbenchState,
+} from "./workbenchStore";
+import type { RulesActions } from "./useRules";
 
 /** Command ids. The keybinding table maps chords onto these. */
 export type CommandId =
@@ -23,6 +29,10 @@ export type CommandId =
   | "view.showRules"
   | "view.showProblems"
   | "view.showOutput"
+  | "view.showSettings"
+  | "rules.toggleActive"
+  | "rules.validateCustom"
+  | "rules.saveCustom"
   | "editor.closeTab"
   | "editor.nextTab"
   | "editor.previousTab";
@@ -48,6 +58,14 @@ export interface CommandContext {
   readonly cancelAnalysis: () => void;
   /** Closes a tab, asking first when it holds unsaved edits. */
   readonly requestCloseTab: (id: string) => void;
+  /** Writing the rule configuration file. */
+  readonly rulesActions: RulesActions;
+}
+
+/** The rule the active tab describes, or null when the active tab describes none. */
+function activeRuleId(workbench: WorkbenchState): string | null {
+  const active = workbench.tabs.find((tab) => tab.id === workbench.activeTabId);
+  return active?.kind === "rules" ? active.path : null;
 }
 
 /** Builds the command list for the current context. */
@@ -127,6 +145,40 @@ export function buildCommands(context: CommandContext): Command[] {
       category: text.command.categoryView,
       when: () => true,
       run: () => workbenchDispatch({ type: "SHOW_PANEL", view: "output" }),
+    },
+    {
+      id: "view.showSettings",
+      title: text.command.showSettings,
+      category: text.command.categoryView,
+      when: () => true,
+      run: () => workbenchDispatch({ type: "OPEN_TAB", tab: settingsTab(text.settings.title) }),
+    },
+    {
+      id: "rules.toggleActive",
+      title: text.command.toggleRule,
+      category: text.command.categoryRules,
+      when: () => activeRuleId(workbench) !== null,
+      run: () => {
+        const id = activeRuleId(workbench);
+        const entry = project.rules.entries.find((candidate) => candidate.id === id);
+        if (id !== null && entry !== undefined) {
+          context.rulesActions.setRulesEnabled([id], !entry.enabled);
+        }
+      },
+    },
+    {
+      id: "rules.validateCustom",
+      title: text.command.validateCustomRules,
+      category: text.command.categoryRules,
+      when: () => workbench.activeTabId === CUSTOM_RULES_TAB_ID,
+      run: () => context.rulesActions.validateCustomRules(),
+    },
+    {
+      id: "rules.saveCustom",
+      title: text.command.saveCustomRules,
+      category: text.command.categoryRules,
+      when: () => workbench.activeTabId === CUSTOM_RULES_TAB_ID,
+      run: () => context.rulesActions.saveCustomRules(),
     },
     {
       id: "editor.closeTab",

@@ -7,6 +7,8 @@
  *   1. the shell is built from four regions (activity bar, side bar, editor area, panel)
  *   2. choosing a folder runs the analysis and fills the asset tree with kind badges
  *   5. the problems rows open the asset's tab
+ *   8. the rules view lists its toggles and a change round-trips through the rule file
+ *  15. the import dialog cuts the pasted columns and writes a source file into the asset folder
  *   9. a 200% zoom produces no horizontal scrollbar (never two scroll directions at once)
  *  10. the console carries no error and no CSP refusal ("Refused to ...")
  *  11. Ctrl+Shift+P opens the palette, typing filters it, and Enter runs the command
@@ -16,11 +18,9 @@
  * TODO 4: typing into the body raises the unsaved mark on that tab.
  * TODO 6: Cytoscape builds a canvas and paints nodes onto it (opaque pixels are present).
  * TODO 7: the execution-order list orders its children by the engine's seq.
- * TODO 8: the rules tab lists its toggles and a change round-trips through the rule file.
  * TODO 12: the fix diff shows the original beside the fixed text.
  * TODO 13: the report view renders the engine's HTML.
  * TODO 14: the transpile view lines the generated code up with the COBOL.
- * TODO 15: the import dialog writes a source file into the asset folder.
  *
  * Elements are selected by data-testid: selecting by visible text or class name would break this
  * smoke every time the wording or the styling changed. The engine is never launched — the preload is
@@ -142,6 +142,154 @@ async function checkFindings(win) {
     "the tab the row opened",
   );
   record("5. a problems row opens the asset's tab", rows >= 3 && opened === true, `${rows} rows`);
+}
+
+/**
+ * Check 8: the rules view. Its toggles are drawn from the engine's catalogue, and switching one off
+ * has to travel out through the rule file and back through the catalogue, not merely flip a
+ * checkbox on screen.
+ */
+async function checkRules(win) {
+  await waitUntil(win, clickTestId("activity-rules"), "the rules view");
+  const toggles = await waitUntil(win, countOf('[data-testid^="rule-toggle-"]'), "the rule toggles");
+  const severities = await evaluate(
+    win,
+    `document.querySelectorAll('[data-testid^="rule-severity-"]').length`,
+  );
+
+  await waitUntil(win, clickTestId("rule-toggle-R001"), "the toggle of R001");
+  const roundTripped = await waitUntil(
+    win,
+    `(() => {
+      const box = document.querySelector('[data-testid="rule-toggle-R001"]');
+      const written = window.cobolInsightSmoke.rulesFile().rules.R001;
+      if (box === null || written === undefined) return null;
+      return box.checked === false && written.enabled === false ? 'round-tripped' : null;
+    })()`,
+    "the toggle round trip through the rule file",
+  );
+  record(
+    "8. a rules toggle round-trips through the rule file",
+    toggles >= 3 && severities >= 3 && roundTripped === "round-tripped",
+    `${toggles} toggles, ${severities} severity selects`,
+  );
+
+  // Leave the side bar on the explorer, which the later checks expect to be there.
+  await waitUntil(win, clickTestId("activity-explorer"), "the explorer");
+  await delay(200);
+}
+
+/**
+ * The two editors the checks above never open: the custom-rule editor (its form is built from a
+ * union of three detection shapes) and the settings screen. Neither is in the plan's numbered list;
+ * this only proves they draw, since nothing else on this route would notice if they threw.
+ */
+async function checkRuleAndSettingsEditors(win) {
+  await waitUntil(win, clickTestId("activity-rules"), "the rules view");
+  await waitUntil(win, clickTestId("rules-open-custom"), "the custom-rule editor");
+  await waitUntil(win, clickTestId("custom-add"), "the button that adds a rule");
+  const form = await waitUntil(
+    win,
+    `document.querySelector('[data-testid="custom-rule-U001"]') !== null`,
+    "the form of the added rule",
+  );
+  await waitUntil(win, clickTestId("custom-pane-raw"), "the raw pane");
+  const raw = await waitUntil(
+    win,
+    `(() => {
+      const area = document.querySelector('[data-testid="custom-raw"]');
+      return area === null ? null : area.value;
+    })()`,
+    "the raw JSON of the custom rules",
+  );
+
+  await waitUntil(win, clickTestId("activity-explorer"), "the explorer");
+  await evaluate(
+    win,
+    `window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true, bubbles: true }))`,
+  );
+  await waitUntil(
+    win,
+    `(() => {
+      const input = document.querySelector('[data-testid="command-palette-input"]');
+      if (input === null) return false;
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      setter.call(input, '設定を開く');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    })()`,
+    "typing the settings command",
+  );
+  await evaluate(
+    win,
+    `document.querySelector('[data-testid="command-palette-input"]')
+       .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))`,
+  );
+  const settings = await waitUntil(
+    win,
+    `document.querySelector('[data-testid="settings-save"]') !== null`,
+    "the settings screen",
+  );
+
+  const parsedRaw = (() => {
+    try {
+      return JSON.parse(raw)[0].id === "U001";
+    } catch {
+      return false;
+    }
+  })();
+  record(
+    "the custom-rule editor and the settings screen render",
+    form === true && parsedRaw && settings === true,
+    parsedRaw ? "form and raw agree" : `raw pane held ${raw}`,
+  );
+}
+
+/** Sets a field's value the way a person typing into it would, so React sees the change. */
+function typeInto(testId, value, prototype) {
+  return `(() => {
+    const field = document.querySelector('[data-testid=${JSON.stringify(testId)}]');
+    if (field === null) return false;
+    const setter = Object.getOwnPropertyDescriptor(window.${prototype}.prototype, 'value').set;
+    setter.call(field, ${JSON.stringify(value)});
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  })()`;
+}
+
+/**
+ * Check 15: the terminal import. The pasted screen carries a line-number area the column range has
+ * to cut away, and the preview is what the user checks that against before saving.
+ */
+async function checkImportDialog(win) {
+  const pasted = ["000100 IDENTIFICATION DIVISION.", "000200 PROGRAM-ID. SYK900."].join("\n");
+  await waitUntil(win, clickTestId("explorer-import"), "the import dialog");
+  await waitUntil(win, typeInto("import-paste", pasted, "HTMLTextAreaElement"), "the pasted text");
+  await waitUntil(win, typeInto("import-column-from", "8", "HTMLInputElement"), "the first column");
+  await waitUntil(win, typeInto("import-column-to", "72", "HTMLInputElement"), "the last column");
+  await waitUntil(win, typeInto("import-filename", "SYK900.cbl", "HTMLInputElement"), "the name");
+  const preview = await waitUntil(
+    win,
+    `(() => {
+      const block = document.querySelector('[data-testid="import-preview"]');
+      return block === null ? null : block.textContent;
+    })()`,
+    "the preview of the cut text",
+  );
+
+  await waitUntil(win, clickTestId("import-save"), "the save button");
+  const saved = await waitUntil(
+    win,
+    `document.querySelector('[data-testid="import-saved"]') !== null`,
+    "the saved message",
+  );
+  await waitUntil(win, clickTestId("import-close"), "the close button");
+  await delay(200);
+  record(
+    "15. the import dialog cuts the columns and writes the file",
+    preview.includes("IDENTIFICATION DIVISION.") && !preview.includes("000100") && saved === true,
+    "the line-number area was cut away",
+  );
 }
 
 /**
@@ -288,6 +436,9 @@ async function main() {
     await checkShell(win);
     await checkAssetTree(win);
     await checkFindings(win);
+    await checkRules(win);
+    await checkRuleAndSettingsEditors(win);
+    await checkImportDialog(win);
     await checkCommandPalette(win);
     await checkZoomReflow(win);
     checkConsole();

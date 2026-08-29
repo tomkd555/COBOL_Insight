@@ -90,6 +90,24 @@ export function sourceTab(path: string, line: number | null = null): WorkbenchTa
   return { id: sourceTabId(path), kind: "source", title: name, path, line };
 }
 
+/** The tab id of the custom-rule editor. No rule can be called this: custom ids start with U. */
+export const CUSTOM_RULES_TAB_ID = "rules:custom";
+
+/** The description of one rule, as the engine wrote it. */
+export function ruleTab(ruleId: string): WorkbenchTab {
+  return { id: `rules:${ruleId}`, kind: "rules", title: ruleId, path: ruleId, line: null };
+}
+
+/** The custom-rule editor. */
+export function customRulesTab(title: string): WorkbenchTab {
+  return { id: CUSTOM_RULES_TAB_ID, kind: "rules", title, path: null, line: null };
+}
+
+/** The settings editor. */
+export function settingsTab(title: string): WorkbenchTab {
+  return { id: "settings", kind: "settings", title, path: null, line: null };
+}
+
 export type WorkbenchAction =
   | { type: "OPEN_TAB"; tab: WorkbenchTab }
   | { type: "CLOSE_TAB"; id: string }

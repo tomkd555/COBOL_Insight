@@ -61,6 +61,7 @@ describe("writeSettings", () => {
       severityThreshold: "high",
       defaultEncoding: "Shift_JIS",
       copybookPaths: ["C:/cpy"],
+      fixOutDir: "C:/out",
       lastInputDir: "C:/assets",
       paneSizes: { side: 320, panel: 240 },
     };

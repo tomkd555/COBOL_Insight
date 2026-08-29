@@ -5,6 +5,11 @@
  * Reading is deliberately forgiving: a missing, empty or corrupt file yields an empty configuration
  * rather than an error, because a rule file the GUI cannot read must not stop the application from
  * starting. What the engine makes of the same file is reported back through RuleCatalog.ruleErrors.
+ *
+ * A custom rule is carried across as it was written, with only its id checked. The engine is the
+ * validator (docs/rules.md); coercing the definitions here would either drop fields a newer engine
+ * understands or rewrite an author's rule into one that means something else — an empty
+ * `excludeRegex`, for instance, excludes every line.
  */
 
 /** The version the engine accepts. */
@@ -17,27 +22,69 @@ export interface RuleOverride {
   readonly severity?: string;
 }
 
+/** A regular expression over each line of decoded source. */
+export interface LineMatch {
+  readonly kind: "line";
+  /** Java regular expression. A line matching it anywhere in the scanned span is reported. */
+  readonly regex: string;
+  readonly ignoreCase?: boolean;
+  /** programArea skips comment lines and scans columns 8-72; wholeLine scans the raw line. */
+  readonly area?: "programArea" | "wholeLine";
+  /** A line also matching this is not reported. */
+  readonly excludeRegex?: string;
+}
+
+/** Statements of the named verbs that carry none of the named clauses. */
+export interface StatementMatch {
+  readonly kind: "statement";
+  readonly verb: readonly string[];
+  readonly missingClause?: readonly string[];
+  /** Only look inside paragraphs whose name this regular expression finds. */
+  readonly inParagraph?: string;
+}
+
+/** How far forward a `checked-after` rule follows the control flow. */
+export type CheckedAfterScope =
+  | "untilNextMatchingStatement"
+  | "untilParagraphEnd"
+  | "untilProgramEnd";
+
+/** A statement whose status has to be examined before the flow leaves the declared scope. */
+export interface CheckedAfterMatch {
+  readonly kind: "checked-after";
+  readonly after: { readonly verb: string; readonly textRegex?: string };
+  readonly checks: { readonly dataItem: readonly string[] };
+  readonly scope?: CheckedAfterScope;
+  /** Whether every forward path has to check, or one is enough. */
+  readonly onEveryPath?: boolean;
+}
+
+export type CustomMatch = LineMatch | StatementMatch | CheckedAfterMatch;
+
+/** The three detection shapes a custom rule can take. */
+export const CUSTOM_MATCH_KINDS: readonly CustomMatch["kind"][] = [
+  "line",
+  "statement",
+  "checked-after",
+];
+
 /** One user-defined rule. Ids start with U so they cannot collide with the built-ins (R, S). */
 export interface CustomRule {
   readonly id: string;
   readonly name: string;
-  readonly category: string;
-  readonly severity: string;
-  /** Asset kinds to scan (COBOL/COPYBOOK/JCL/BMS). */
-  readonly targets: readonly string[];
-  /** The regular expression to match (Java syntax). */
-  readonly pattern: string;
-  /** A line also matching this is not reported. Empty means no exclusion. */
-  readonly excludePattern: string;
-  readonly ignoreCase: boolean;
-  /** When false, COBOL sources are matched over columns 8-72 with comment lines skipped. */
-  readonly wholeLine: boolean;
   /** The finding message. ${match} is replaced by the matched text. */
   readonly message: string;
-  /** Why it matters. Empty lets the engine supply its default wording. */
-  readonly rationale: string;
-  /** How to fix it. Empty lets the engine supply its default wording. */
-  readonly remedy: string;
+  readonly match: CustomMatch;
+  /** HIGH/MEDIUM/LOW/ADVISORY. Absent means MEDIUM. */
+  readonly severity?: string;
+  /** Asset kinds to scan (COBOL/COPYBOOK/JCL/BMS). Absent means COBOL alone. */
+  readonly targets?: readonly string[];
+  /** Subcommands the rule runs under (LINT/SQL_LINT/REPORT/FIX/SCAN). */
+  readonly commands?: readonly string[];
+  readonly category?: string;
+  readonly summary?: string;
+  readonly rationale?: string;
+  readonly remedy?: string;
 }
 
 export interface RulesFile {
@@ -64,8 +111,11 @@ export function normalizeRulesFile(value: unknown): RulesFile {
   }
   const custom: CustomRule[] = [];
   for (const raw of Array.isArray(source["custom"]) ? source["custom"] : []) {
-    const rule = toCustomRule(raw);
-    if (rule !== null) custom.push(rule);
+    // A definition without an id cannot be addressed, so it is dropped rather than defaulted; the
+    // rest is carried across untouched for the engine to judge.
+    if (typeof asObject(raw)["id"] === "string" && asObject(raw)["id"] !== "") {
+      custom.push(raw as CustomRule);
+    }
   }
   return {
     version: typeof source["version"] === "number" ? source["version"] : RULES_FILE_VERSION,
@@ -74,37 +124,8 @@ export function normalizeRulesFile(value: unknown): RulesFile {
   };
 }
 
-/** A custom rule without an id cannot be addressed, so it is dropped rather than defaulted. */
-function toCustomRule(value: unknown): CustomRule | null {
-  const raw = asObject(value);
-  const id = typeof raw["id"] === "string" ? raw["id"] : "";
-  if (id === "") {
-    return null;
-  }
-  return {
-    id,
-    name: asString(raw["name"]),
-    category: asString(raw["category"]),
-    severity: asString(raw["severity"]) === "" ? "MEDIUM" : asString(raw["severity"]),
-    targets: Array.isArray(raw["targets"])
-      ? raw["targets"].filter((element): element is string => typeof element === "string")
-      : [],
-    pattern: asString(raw["pattern"]),
-    excludePattern: asString(raw["excludePattern"]),
-    ignoreCase: raw["ignoreCase"] === true,
-    wholeLine: raw["wholeLine"] === true,
-    message: asString(raw["message"]),
-    rationale: asString(raw["rationale"]),
-    remedy: asString(raw["remedy"]),
-  };
-}
-
 function asObject(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
-}
-
-function asString(value: unknown): string {
-  return typeof value === "string" ? value : "";
 }

@@ -20,6 +20,8 @@ export interface AppSettings {
   readonly defaultEncoding: string;
   /** Copybook search paths, passed to --copybook-path in this order. */
   readonly copybookPaths: readonly string[];
+  /** Where `fix apply` writes the corrected sources. Empty means the engine's own default. */
+  readonly fixOutDir: string;
   /** The asset folder last opened, so the shell can offer it again on the next start. */
   readonly lastInputDir: string;
   /** Shell pane sizes in pixels, keyed by pane id. Unknown keys are dropped on restore. */
@@ -37,6 +39,7 @@ export function emptyAppSettings(): AppSettings {
     severityThreshold: "",
     defaultEncoding: "",
     copybookPaths: [],
+    fixOutDir: "",
     lastInputDir: "",
     paneSizes: {},
   };
@@ -50,6 +53,7 @@ export function normalizeAppSettings(value: unknown): AppSettings {
     severityThreshold: asString(settings["severityThreshold"]),
     defaultEncoding: asString(settings["defaultEncoding"]),
     copybookPaths: asStringArray(settings["copybookPaths"]),
+    fixOutDir: asString(settings["fixOutDir"]),
     lastInputDir: asString(settings["lastInputDir"]),
     paneSizes: asNumberRecord(settings["paneSizes"]),
   };

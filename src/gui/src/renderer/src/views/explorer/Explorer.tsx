@@ -10,6 +10,7 @@ import {
   type TreeRow,
 } from "../../model/assetTree";
 import { codepageLabel } from "../../../../shared/codepage";
+import { ImportDialog } from "./ImportDialog";
 
 export interface ExplorerProps {
   onSelectFolder: () => void;
@@ -34,6 +35,7 @@ export function Explorer({ onSelectFolder, onOpenAsset }: ExplorerProps): ReactE
   const [typeFilter, setTypeFilter] = useState<AssetTypeFilter>("all");
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const [focusedPath, setFocusedPath] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
   const treeRef = useRef<HTMLDivElement | null>(null);
 
   const findingCounts = useMemo(
@@ -210,6 +212,16 @@ export function Explorer({ onSelectFolder, onOpenAsset }: ExplorerProps): ReactE
         >
           {project.inputDir === null ? text.explorer.selectFolder : text.explorer.changeFolder}
         </button>
+        <button
+          type="button"
+          className="ci-button"
+          disabled={project.inputDir === null}
+          title={project.inputDir === null ? text.import.noFolder : undefined}
+          onClick={() => setImporting(true)}
+          data-testid="explorer-import"
+        >
+          {text.import.open}
+        </button>
       </div>
       <div className="ci-explorer__filters">
         <input
@@ -236,6 +248,9 @@ export function Explorer({ onSelectFolder, onOpenAsset }: ExplorerProps): ReactE
         </select>
       </div>
       {body}
+      {importing && project.inputDir !== null ? (
+        <ImportDialog inputDir={project.inputDir} onClose={() => setImporting(false)} />
+      ) : null}
     </div>
   );
 }
