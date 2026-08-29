@@ -15,8 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * lint は bms/ を走査するため、不正な BMS ソースでも解析全体をクラッシュさせず、当該ファイルの
- * パース失敗を finding として報告して継続する。
+ * Since lint scans bms/, a malformed BMS source must not crash the whole analysis; instead, its
+ * parse failure is reported as a finding for that file and analysis continues.
  */
 class LintBmsRobustnessTest {
 

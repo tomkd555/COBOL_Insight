@@ -10,7 +10,7 @@ dependencies {
 }
 
 tasks.generateGrammarSource {
-    // 構文木は BmsModelBuilder が直接たどるため、リスナとビジタは生成しない。
+    // The parse tree is walked directly by BmsModelBuilder, so no listener or visitor is generated.
     arguments = arguments + listOf("-package", "jp.cobolinsight.frontend.bms.grammar", "-no-listener", "-no-visitor")
     outputDirectory = file(layout.buildDirectory.dir("generated-src/antlr/main/jp/cobolinsight/frontend/bms/grammar").get().asFile)
 }

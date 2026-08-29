@@ -4,9 +4,9 @@ import picocli.CommandLine;
 import picocli.CommandLine.Command;
 
 /**
- * `fix` サブコマンドの親。検出結果に対する定型的な修正案を扱う。差分の表示は子コマンド
- * {@code preview}、修正後ソースの出力は子コマンド {@code apply} が担う。子コマンド無しで
- * 呼ばれた場合は使用方法を表示する。
+ * Parent of the `fix` subcommand. Handles standardized fix proposals for detection results.
+ * Displaying the diff is handled by the child command {@code preview}, and outputting the fixed
+ * source is handled by the child command {@code apply}. Shows usage when invoked without a child command.
  */
 @Command(name = "fix", mixinStandardHelpOptions = true,
         description = "検出結果への修正案を差分表示(preview)・修正後ソース出力(apply)する",

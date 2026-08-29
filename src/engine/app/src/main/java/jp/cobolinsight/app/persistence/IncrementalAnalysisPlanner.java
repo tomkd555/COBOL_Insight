@@ -6,16 +6,17 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
- * ソースの内容ハッシュ比較により、再解析が必要なソースID集合を決定する。
- * 依存範囲は「当該コピー句を取り込むプログラム」と
- * 「当該プログラムを呼ぶJCL」の2種に限る。対象ソースのノードは NODE.id = SOURCE.id の規約で
- * 1件登録されている前提とし、2種の依存は CALL_EDGE.kind の値で区別する。
+ * Determines the set of source IDs that need reanalysis by comparing source content hashes.
+ * The dependency scope is limited to two kinds: "the program that imports this copybook" and
+ * "the JCL that calls this program." Each target source's node is assumed to be registered as
+ * exactly one entry under the NODE.id = SOURCE.id convention, and the two dependency kinds are
+ * distinguished by the CALL_EDGE.kind value.
  */
 public final class IncrementalAnalysisPlanner {
 
-    /** コピー句 → 取込プログラムの依存を表すCALL_EDGE.kindの値。 */
+    /** The CALL_EDGE.kind value representing a copybook -> importing-program dependency. */
     public static final String COPY_EDGE_KIND = "COPY";
-    /** 呼出JCL → プログラムの実行依存を表すCALL_EDGE.kindの値。 */
+    /** The CALL_EDGE.kind value representing a calling-JCL -> program execution dependency. */
     public static final String EXECUTION_EDGE_KIND = "EXECUTION";
 
     private final PersistenceDao dao;
@@ -24,7 +25,7 @@ public final class IncrementalAnalysisPlanner {
         this.dao = dao;
     }
 
-    /** 空集合は再解析不要を表す。非空の場合、変更ソース自身と直接の依存元・依存先を含む。 */
+    /** An empty set means no reanalysis is needed. Otherwise it includes the changed source itself plus its direct dependents and dependencies. */
     public Set<Long> determineReanalysisTargets(long sourceId, String newContentHash) {
         var existing = dao.findSource(sourceId);
         if (existing.isPresent() && existing.get().contentHash().equals(newContentHash)) {
@@ -38,8 +39,10 @@ public final class IncrementalAnalysisPlanner {
     }
 
     /**
-     * 当該ソースの変更・削除にともなって解析をやり直す必要がある他のソース。当該ソース自身は含まない。
-     * 資産フォルダから消えたソースは内容ハッシュを比較できないため、削除の伝播はこの問い合わせで行う。
+     * The other sources that need to be reanalyzed as a result of a change or deletion of this
+     * source. Does not include this source itself. A source that has disappeared from the asset
+     * folder has no content hash to compare, so propagating a deletion is handled through this
+     * query instead.
      */
     public Set<Long> dependentsOf(long sourceId) {
         Set<Long> dependents = new LinkedHashSet<>();

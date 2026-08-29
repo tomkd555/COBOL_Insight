@@ -18,8 +18,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 再パース検証ゲート。EngineWiring が組み立てる CobolParser 実装で
- * 修正後ソースを再パースし、成否を返すことを検証する。samples の無編集は成功し、壊れたソースは失敗する。
+ * The reparse verification gate. Verifies that it reparses the fixed source with the CobolParser
+ * implementation EngineWiring assembles and returns success or failure. An unmodified sample
+ * succeeds; a broken source fails.
  */
 class ReparseVerifierTest {
 
@@ -56,7 +57,7 @@ class ReparseVerifierTest {
 
     @Test
     void foldedR017HandlerReparsesSuccessfully() {
-        // 語境界で2行へ折り返した R017 ハンドラが、挿入後に正しい COBOL として再パースできることを確認する。
+        // Confirms that an R017 handler folded onto two lines at a word boundary reparses as correct COBOL after insertion.
         String handler =
                 "IF WS-ORDIN-STATUS NOT = '00' DISPLAY 'FILE ERROR: ORDIN ' WS-ORDIN-STATUS END-IF";
         List<String> handlerLines =

@@ -19,7 +19,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** 内容ハッシュによる増分解析の検証(変更メンバのみ再解析される)。 */
+/** Verifies incremental analysis driven by content hashing (only changed members are reanalyzed). */
 class ScanIncrementalTest {
 
     private static final Path SAMPLES = Path.of("..", "..", "..", "samples").toAbsolutePath().normalize();
@@ -40,7 +40,7 @@ class ScanIncrementalTest {
         assertEquals(16, first.analyzed().size());
         assertEquals(0, first.exitCode());
 
-        // コピー句の変更では、取り込むプログラム(SYK001〜SYK003)までを再解析の対象に含める
+        // A copybook change includes the importing programs (SYK001-SYK003) in the reanalysis scope
         appendCommentLine(assets.resolve("copybook").resolve("SYKCPY1.cpy"));
         ScanOutcome.Summary second = Pipelines.scan(assets, databaseFile,
                 List.of(assets.resolve("copybook")), Map.of()).summary();
@@ -50,7 +50,7 @@ class ScanIncrementalTest {
         assertEquals(0, second.exitCode());
         assertEdgeCounts(databaseFile, 6, 6);
 
-        // プログラムの変更では、それを呼ぶJCL(SYKD010・SYKD030)までを再解析の対象に含める
+        // A program change includes the JCL that calls it (SYKD010, SYKD030) in the reanalysis scope
         appendCommentLine(assets.resolve("cobol").resolve("SYK001.cbl"));
         ScanOutcome.Summary third = Pipelines.scan(assets, databaseFile,
                 List.of(assets.resolve("copybook")), Map.of()).summary();
@@ -59,7 +59,7 @@ class ScanIncrementalTest {
         assertEquals(0, third.exitCode());
         assertEdgeCounts(databaseFile, 6, 6);
 
-        // 削除されたソースは行とノードごと消える
+        // A deleted source disappears along with its rows and node
         Files.delete(assets.resolve("jcl").resolve("SYKD030.jcl"));
         ScanOutcome.Summary fourth = Pipelines.scan(assets, databaseFile,
                 List.of(assets.resolve("copybook")), Map.of()).summary();
@@ -78,7 +78,7 @@ class ScanIncrementalTest {
             long execution = 0;
             for (var source : dao.findAllSources()) {
                 for (var edge : dao.findEdgesFrom(source.id())) {
-                    // 呼出関係グラフ層(ID下限以上)は対象外。scanの増分用エッジのみ数える
+                    // Excludes the call-graph layer (ID at or above the lower bound); counts only scan's incremental edges
                     if (edge.id() >= Persist.GRAPH_ID_BASE) {
                         continue;
                     }

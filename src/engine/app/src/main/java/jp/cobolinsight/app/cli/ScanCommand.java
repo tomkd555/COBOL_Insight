@@ -11,9 +11,9 @@ import java.nio.file.Path;
 import java.util.concurrent.Callable;
 
 /**
- * `scan`。資産フォルダを走査して解析し、結果をSQLiteプロジェクトファイルへ永続化して処理サマリを
- * JSONで標準出力へ書く。任意で {@code --copy-expansion} により、COPY 文のインライン展開を
- * JSONで書き出す。
+ * `scan`. Scans and analyzes the asset folder, persists the results to a SQLite project file, and
+ * writes a processing summary to stdout as JSON. Optionally, with {@code --copy-expansion}, writes
+ * the inline expansion of COPY statements as JSON.
  */
 @Command(name = "scan", mixinStandardHelpOptions = true,
         description = "資産フォルダを解析し、結果をSQLiteへ永続化する")

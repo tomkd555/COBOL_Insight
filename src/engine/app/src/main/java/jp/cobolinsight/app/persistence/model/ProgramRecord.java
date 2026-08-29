@@ -1,6 +1,6 @@
 package jp.cobolinsight.app.persistence.model;
 
-/** PROGRAM表の1行(COBOLプログラム、PROGRAM-ID)。 */
+/** One row of the PROGRAM table (a COBOL program, its PROGRAM-ID). */
 public record ProgramRecord(long id, long sourceId, String programIdName) {
 
     public ProgramRecord {

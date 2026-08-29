@@ -13,18 +13,21 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * R021 CICS応答コード未検査の修正受入。samples の唯一の検出(SYK008:38)に対し、fix が END-EXEC の
- * 直前へ RESP オペランド行を、直後へ応答コードの判定文を挿入し、挿入行が固定形式の桁規則を保ち、
- * 修正後ソースが再パースに成功することを検証する。原本 samples は読み込むだけで変更しない。
+ * Acceptance test for the R021 (unchecked CICS response code) fix. For the samples' single
+ * detection (SYK008:38), verifies that fix inserts a RESP operand line immediately before
+ * END-EXEC and a response-code check statement immediately after it, that the inserted lines
+ * preserve the fixed-format column rules, and that the fixed source reparses successfully. The
+ * original samples are only read, never modified.
  *
- * <p>受け変数は WORKING-STORAGE 宣言済みで名前に RESP を含む PIC S9(08) COMP 相当の基本項目に
- * 限るため、SYK008 では 29 行の WS-RESPコード が選ばれる。
+ * <p>Since the receiving variable is limited to an elementary item already declared in
+ * WORKING-STORAGE, whose name contains RESP, and that is equivalent to PIC S9(08) COMP, SYK008
+ * selects line 29's WS-RESPコード.
  */
 class CicsResponseFixAcceptanceTest {
 
     private static final Path SAMPLES = Path.of("..", "..", "..", "samples").toAbsolutePath().normalize();
 
-    /** 挿入文の B領域起点。一連番号欄(6桁)+標識欄(1桁)+A領域(4桁)=11桁の空白。 */
+    /** Area B starting column of the inserted statement: 11 blank columns = sequence-number area (6 digits) + indicator area (1 digit) + area A (4 digits). */
     private static final String PAD = "           ";
 
     private static final String OPERAND = PAD + "RESP(WS-RESPコード)";
@@ -50,12 +53,12 @@ class CicsResponseFixAcceptanceTest {
 
         int at = lines.indexOf(OPERAND);
         assertTrue(at >= 0, "RESP オペランド行が無い: [" + OPERAND + "]");
-        // オペランド列の末尾(END-EXEC の直前)へ入ること。
+        // Must land at the end of the operand list (immediately before END-EXEC).
         assertEquals("END-EXEC", lines.get(at + 1).strip(), "直後の行が END-EXEC であること");
-        // 判定文は END-EXEC の直後へ続くこと。
+        // The check statement must continue immediately after END-EXEC.
         assertEquals(JUDGEMENT.get(0), lines.get(at + 2));
         assertEquals(JUDGEMENT.get(1), lines.get(at + 3));
-        // 直前の行は元のオペランド INTO(...) であること。
+        // The preceding line must be the original INTO(...) operand.
         assertEquals("INTO(WS-受注入力マップ)", lines.get(at - 1).strip());
 
         Charset charset = Charset.forName(fix.charsetName());

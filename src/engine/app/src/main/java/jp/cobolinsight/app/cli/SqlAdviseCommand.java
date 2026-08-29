@@ -14,9 +14,10 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 /**
- * `sql-lint` サブコマンド。資産フォルダの埋め込みSQLを解析し、指摘(S001・S002・S004)を
- * SARIF 2.1.0ファイルへ書き出して処理サマリをJSONで標準出力へ書く。終了コードは検出結果で
- * 分岐する(成功=0・警告あり=1・エラー=2)。バグ検出は lint サブコマンドが担う。
+ * The `sql-lint` subcommand. Analyzes embedded SQL in an asset folder, writes findings
+ * (S001, S002, S004) to a SARIF 2.1.0 file, and writes a processing summary as JSON to stdout. The
+ * exit code branches on the detection result (success=0, warnings=1, error=2). Bug detection is
+ * handled by the lint subcommand.
  */
 @Command(name = "sql-lint", mixinStandardHelpOptions = true,
         description = "資産フォルダの埋め込みSQLを解析し、指摘をSARIFへ出力する")

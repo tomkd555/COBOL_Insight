@@ -11,9 +11,9 @@ import java.nio.file.Path;
 import java.util.concurrent.Callable;
 
 /**
- * `call-graph`。資産フォルダを解析して呼出関係グラフを構築し、SQLiteの NODE・CALL_EDGE表へ
- * 保存したうえで、単一グラフモデルをJSON/DOTで出力する。SVG/PNGは graphviz-java(JVM内)で
- * 生成する。出力先の指定が無い場合はJSONを標準出力へ書く。
+ * `call-graph`. Analyzes the asset folder to build a call graph, persists it to SQLite's NODE and
+ * CALL_EDGE tables, and outputs the single graph model as JSON/DOT. SVG/PNG are generated with
+ * graphviz-java (in-JVM). If no output destination is given, writes JSON to stdout.
  */
 @Command(name = "call-graph", mixinStandardHelpOptions = true,
         description = "呼出関係グラフを構築してSQLiteへ保存し、JSON/DOT/SVG/PNGで出力する")

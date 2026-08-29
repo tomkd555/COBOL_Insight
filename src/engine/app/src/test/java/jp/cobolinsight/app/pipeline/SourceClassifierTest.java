@@ -16,8 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 内容からの種別逆算({@link SourceClassifier})の検証。ファイル入出力を持たない純関数なので、
- * samples の実バイト列と手で組んだバイト列の双方を直接与えて確かめる。
+ * Verification of classifying kind from content ({@link SourceClassifier}). Since it is a pure
+ * function with no file I/O, both real byte sequences from samples and hand-built byte sequences
+ * are fed to it directly.
  */
 class SourceClassifierTest {
 
@@ -60,8 +61,9 @@ class SourceClassifierTest {
     }
 
     /**
-     * 散文そのものからは種別が決まらないこと。COBOL の語を桁の内側へ書いた文書は
-     * {@code .md} を候補から外すことで断つ({@link SourceDiscovery} の除外拡張子)。
+     * Plain prose alone must not decide a kind. A document that happens to place COBOL words
+     * within the right columns is cut off by excluding {@code .md} from the candidates (the
+     * excluded extension in {@link SourceDiscovery}).
      */
     @Test
     void proseWithoutMarkersStaysUndecided() {
@@ -78,8 +80,8 @@ class SourceClassifierTest {
 
     @Test
     void commentOnlyProgramIdIsNotEvidence() {
-        // samples/cobol/SYK001.cbl の注記行と同じ形。7桁目が * の行を本文とみなすと、
-        // 注記だけで COBOL 判定が通ってしまう。
+        // Same shape as the comment lines in samples/cobol/SYK001.cbl. If a line whose column 7
+        // is * were treated as body text, comments alone would make it pass as COBOL.
         byte[] content = utf8("""
                       *================================================*
                       *  PROGRAM-ID : SYK001                           *
@@ -166,8 +168,9 @@ class SourceClassifierTest {
     }
 
     /**
-     * 「先頭 N 行まで」という上限が将来ふたたび混入したときに落ちる歯止め。注記のバナーが
-     * 数百行続いたのちに現れる {@code IDENTIFICATION DIVISION} を取りこぼさないこと。
+     * A safeguard that fails if a "first N lines only" cap creeps back in in the future. Must not
+     * miss an {@code IDENTIFICATION DIVISION} that appears after a comment banner running for
+     * hundreds of lines.
      */
     @Test
     void divisionAfterHundredsOfCommentLinesIsStillFound() {
@@ -180,7 +183,7 @@ class SourceClassifierTest {
         assertEquals(AssetKind.COBOL, kindOf(utf8(source.toString())));
     }
 
-    /** 同じ歯止めをコピー句側にも置く。レベル番号の判定も先頭の数行に限らないこと。 */
+    /** Places the same safeguard on the copybook side too. Level-number detection must not be limited to the first few lines either. */
     @Test
     void levelNumberAfterHundredsOfCommentLinesIsStillFound() {
         StringBuilder source = new StringBuilder();

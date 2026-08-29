@@ -9,13 +9,13 @@ import java.io.UncheckedIOException;
 import java.nio.file.Path;
 
 /**
- * DOTテキストからのSVG/PNG生成。graphviz-java(viz.jsのJVM内実行)のみで完結し、
- * 外部のネイティブGraphvizバイナリを要しない。
+ * Generates SVG/PNG from DOT text. This is entirely self-contained via graphviz-java (viz.js
+ * running in-JVM), and requires no external native Graphviz binary.
  */
 final class GraphRenderer {
 
     static {
-        // viz.jsの実行はクラスパス同梱のGraalJSが担う(本構成のJDK 21ではNashornは未使用)
+        // Running viz.js is handled by GraalJS bundled on the classpath (Nashorn is unused with the JDK 21 in this configuration)
         Graphviz.useEngine(new GraphvizJdkEngine());
     }
 

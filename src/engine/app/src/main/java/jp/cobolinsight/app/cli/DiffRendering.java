@@ -4,9 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * unified diff 行の表示整形。ANSI 端末向けの着色と、外部資産に依存しない自己完結 HTML への整形を
- * 担う。差分算出そのものは {@link jp.cobolinsight.app.fix.UnifiedDiffFormatter} の責務で、本クラスは
- * 素の unified diff 行を受け取って着色・HTML 化するだけである。
+ * Display formatting for unified diff lines. Handles ANSI coloring for terminals and formatting
+ * into self-contained HTML with no external asset dependency. Computing the diff itself is the
+ * responsibility of {@link jp.cobolinsight.app.fix.UnifiedDiffFormatter}; this class only takes
+ * plain unified diff lines and colors/HTML-ifies them.
  */
 final class DiffRendering {
 
@@ -16,14 +17,14 @@ final class DiffRendering {
     private static final String GREEN = "[32m";
     private static final String CYAN = "[36m";
 
-    /** 1ファイル分の差分。ラベルは原本の相対パス。 */
+    /** The diff for a single file. The label is the original file's relative path. */
     record FileDiff(String label, List<String> lines) {
     }
 
     private DiffRendering() {
     }
 
-    /** unified diff 行を ANSI 着色する。追加=緑・削除=赤・ハンク見出し=シアン・ファイル見出し=太字。 */
+    /** Colors unified diff lines with ANSI. Added=green, removed=red, hunk header=cyan, file header=bold. */
     static List<String> ansi(List<String> diffLines) {
         List<String> colored = new ArrayList<>(diffLines.size());
         for (String line : diffLines) {
@@ -49,8 +50,9 @@ final class DiffRendering {
     }
 
     /**
-     * 全ファイルの差分を1枚の自己完結 HTML(インライン CSS・外部参照なし)へ整形する。追加・削除・
-     * ハンク見出し・ファイル見出しを配色し、本文は HTML エスケープする。
+     * Formats the diffs of all files into a single self-contained HTML page (inline CSS, no
+     * external references). Colors added lines, removed lines, hunk headers, and file headers, and
+     * HTML-escapes the body text.
      */
     static String html(List<FileDiff> diffs) {
         StringBuilder sb = new StringBuilder();

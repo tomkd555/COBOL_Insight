@@ -38,17 +38,20 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 /**
- * `translate` の中核処理。資産フォルダの COBOL を復号・パースして {@link CobolSemanticModel} を得て、
- * 対象言語(Python/Java)へ逐語対訳し、生成ファイルを出力先へ(改行 LF・BOM なし UTF-8 で)書き、
- * COBOL 行と生成行の対応を LINE_MAP へ永続化する。対応先の COBOL ソースは本体だけでなくコピー句にも
- * 及ぶため、本体・コピー句の双方を SOURCE として登録してから外部キーを満たす形で LINE_MAP を書く。
- * 決定論とする: 生成物は逐語対訳器が決定論で出し、SOURCE.id はパスの辞書順、LINE_MAP.id は
- * ソース id ごとの安定順の連番、行対応の再実行はソース単位で消去してから書き直す。
- * 復号・パース失敗は error レベルの finding として扱い、終了コードへ反映する。
+ * The core processing behind `translate`. Decodes and parses the COBOL in the asset folder to
+ * obtain a {@link CobolSemanticModel}, translates it verbatim into the target language(s)
+ * (Python/Java), writes the generated files to the output directory (LF line endings, UTF-8
+ * without a BOM), and persists the mapping between COBOL lines and generated lines to LINE_MAP.
+ * The COBOL source a mapping resolves to spans not just the main program but copybooks too, so
+ * both the main program and copybooks are registered as SOURCE before LINE_MAP is written to
+ * satisfy the foreign key. This is deterministic: the transpiler emits its output deterministically,
+ * SOURCE.id follows lexicographic path order, LINE_MAP.id is a stable per-source sequence number,
+ * and re-running the mapping deletes and rewrites it per source. Decode/parse failures are treated
+ * as error-level findings and reflected in the exit code.
  */
 public final class TranspileRunner {
 
-    /** LINE_MAP の行 id 導出の刻み幅(ソース id×STRIDE+連番)。 */
+    /** The stride used to derive LINE_MAP row ids (source id x STRIDE + sequence number). */
     private static final long LINE_MAP_ID_STRIDE = 1_000_000L;
     private static final String DECODE_FAILURE_RULE_ID = "decode-failure";
 
@@ -132,7 +135,7 @@ public final class TranspileRunner {
                 ExitCodes.fromFindings(findings));
     }
 
-    // ---- 生成ファイルの出力 ----
+    // ---- Writing the generated files ----
 
     private static void writeGenerated(Path outputDir, GeneratedFile generated) {
         try {
@@ -144,12 +147,14 @@ public final class TranspileRunner {
         }
     }
 
-    // ---- 永続化(SOURCE 登録と LINE_MAP 書込)----
+    // ---- Persistence (SOURCE registration and LINE_MAP writing) ----
 
     /**
-     * 本体・コピー句を SOURCE へ get-or-create(既存 DB のパス一致は id を保つ)し、行対応の各エントリを
-     * その由来ソース(basename で解決)の id へ紐づけて LINE_MAP へ書く。再実行の冪等性のため、書き込む
-     * ソースの既存行を先に消去する。外部キーを満たせないエントリ(未登録の basename)は警告して飛ばす。
+     * Get-or-creates the main program and copybooks in SOURCE (an id is kept if the path already
+     * matches an existing DB row), then links each mapping entry to the id of its originating
+     * source (resolved by basename) and writes it to LINE_MAP. For idempotency across re-runs,
+     * existing rows for a source being written are deleted first. Entries that cannot satisfy the
+     * foreign key (an unregistered basename) are skipped with a warning.
      */
     private static int persist(Options options, SourceSet set, List<LineMappingEntry> entries) {
         try (PersistenceDatabase database = PersistenceDatabase.open(options.databaseFile())) {
@@ -186,7 +191,7 @@ public final class TranspileRunner {
             idByFileName.putIfAbsent(unit.fileName(), id);
         }
 
-        // 由来ソース(basename)ごとにエントリをまとめる。解決できない basename は外部キーを満たせないため飛ばす。
+        // Group entries by their originating source (basename). A basename that cannot be resolved is skipped, since it cannot satisfy the foreign key.
         Map<Long, List<LineMappingEntry>> entriesBySourceId = new TreeMap<>();
         for (LineMappingEntry entry : entries) {
             Long sourceId = idByFileName.get(entry.cobolSourceId());
@@ -217,7 +222,7 @@ public final class TranspileRunner {
         return total;
     }
 
-    /** ソース内で行対応 id を決定論的に振るための全順序(生成ファイル→生成行→COBOL行→アンカー)。 */
+    /** The total order used to deterministically assign mapping ids within a source (generated file -> generated line -> COBOL line -> anchor). */
     private static final Comparator<LineMappingEntry> ENTRY_ORDER =
             Comparator.comparing(LineMappingEntry::generatedFile)
                     .thenComparingInt(e -> e.generatedLines().startLine())

@@ -15,7 +15,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** トランザクション定義表CSV(INPUT_DIR/cics/*.csv)の読込の検証。 */
+/** Verification of loading the transaction definition table CSV (INPUT_DIR/cics/*.csv). */
 class ScanTransactionTableTest {
 
     @TempDir
@@ -44,7 +44,7 @@ class ScanTransactionTableTest {
     @Test
     void scanCompletesWhenTransactionCsvHasMalformedBytes() throws IOException {
         Path assets = createAssetsWithCicsProgram();
-        // UTF-8として不正なバイト列のCSV(辞書順で先に読まれる名前)と、正常なCSVを並べる
+        // Places a CSV with a byte sequence invalid as UTF-8 (named to sort first lexically) alongside a well-formed CSV
         Files.write(assets.resolve("cics").resolve("aaa-broken.csv"),
                 new byte[] {(byte) 0xFF, (byte) 0xFE, (byte) 0x80, 'S', 'Y', 'K'});
         Files.writeString(assets.resolve("cics").resolve("zzz-table.csv"), String.join("\n",
@@ -66,7 +66,7 @@ class ScanTransactionTableTest {
     @Test
     void firstCsvLineIsAlwaysSkippedAsHeader() throws IOException {
         Path assets = createAssetsWithCicsProgram();
-        // 1行目のヘッダが英語8文字以内(資産名の形式に合致)でもデータ行として誤採用されないこと
+        // Even when line 1's header is within 8 English characters (matching the shape of an asset name), it must not be mistakenly adopted as a data row
         Files.writeString(assets.resolve("cics").resolve("table.csv"), String.join("\n",
                 "TRANID,PROGRAM",
                 "SYK1,TRNHDR1",

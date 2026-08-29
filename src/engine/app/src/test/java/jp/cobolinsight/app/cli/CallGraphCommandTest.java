@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** `call-graph` サブコマンドのJSON/DOT/SVG/PNG出力の検証。 */
+/** Verification of the `call-graph` subcommand's JSON/DOT/SVG/PNG output. */
 class CallGraphCommandTest {
 
     private static final Path SAMPLES = Path.of("..", "..", "..", "samples").toAbsolutePath().normalize();
@@ -43,7 +43,7 @@ class CallGraphCommandTest {
         assertTrue(dotText.startsWith("digraph callgraph {"));
         assertTrue(dotText.contains("\"program:SYK002\" -> \"program:SYK004\""));
 
-        // SVG/PNGはgraphviz-java(JVM内)のみで生成される(外部ネイティブバイナリ不要)
+        // SVG/PNG are generated using only graphviz-java (in-JVM) - no external native binary needed
         String svgText = Files.readString(svg, StandardCharsets.UTF_8);
         assertTrue(svgText.contains("<svg"), "SVGが生成されること");
         assertTrue(svgText.contains("SYK001"), "SVGにノードラベルが含まれること");

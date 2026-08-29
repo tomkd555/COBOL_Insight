@@ -1,5 +1,6 @@
 /**
- * picocliサブコマンド群(scan / call-graph / lint / sql-lint / translate / fix / report)を置く。
- * APIファサードを駆動する薄いmain入口であり、jpackageによる内蔵JRE同梱app-image化の対象とする。
+ * Holds the picocli subcommands (scan / call-graph / lint / sql-lint / translate / fix / report).
+ * A thin main entry point that drives the API facade, and the target of app-image packaging with
+ * a bundled JRE via jpackage.
  */
 package jp.cobolinsight.app.cli;

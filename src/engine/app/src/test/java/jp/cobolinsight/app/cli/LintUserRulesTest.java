@@ -15,7 +15,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** 利用者定義ルールが lint の実行経路へ載ることの検証。 */
+/** Verifies that user-defined rules ride along the lint execution path. */
 class LintUserRulesTest {
 
     private static final String PROGRAM = """
@@ -103,8 +103,8 @@ class LintUserRulesTest {
     }
 
     /**
-     * statement 種別も targets に従う。同じ定義を COBOL 向けと COPYBOOK 向けで走らせ、
-     * COBOL 本体の ACCEPT が前者だけで出ることを見る。
+     * The statement kind also obeys targets. Runs the same definition targeting COBOL and targeting
+     * COPYBOOK, and checks that an ACCEPT in a COBOL program shows up only for the former.
      */
     @Test
     void statementRuleObeysTargets(@TempDir Path dir) throws IOException {
@@ -152,7 +152,7 @@ class LintUserRulesTest {
                 """.formatted(target);
     }
 
-    /** 利用者定義ルールの説明も SARIF の rules へ載り、読む側が指摘の意味を追える。 */
+    /** A user-defined rule's description also lands in SARIF's rules, so a reader can follow the finding's meaning. */
     @Test
     void userRuleAppearsInSarifRules(@TempDir Path dir) throws IOException {
         Path rules = prepare(dir, RULES_FILE);

@@ -14,10 +14,11 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 /**
- * `report` サブコマンド。scan 済み SQLite(--db)から資産インベントリ・呼出関係の
- * 要約・scan 由来 finding を読み、同じ資産フォルダに対し lint 検出と SQL 指摘をメモリ上で再実行して
- * 統合し、HTML とテキストの両形式でレポートを書き出す。処理サマリを JSON で標準出力へ書き、
- * 終了コードは統合した検出結果で分岐する(成功=0・警告あり=1・エラー=2)。
+ * `report` subcommand. Reads the asset inventory, call-relationship summary, and scan-derived
+ * findings from a scanned SQLite (--db), re-runs the lint detection and SQL findings in memory
+ * against the same asset folder, merges them, and writes a report in both HTML and text formats.
+ * Writes the processing summary to standard output as JSON, and the exit code branches on the
+ * merged detection results (success=0, warnings=1, errors=2).
  */
 @Command(name = "report", mixinStandardHelpOptions = true,
         description = "資産の走査結果・指摘・呼出関係グラフを統合し、HTML/テキストのレポートを生成する")

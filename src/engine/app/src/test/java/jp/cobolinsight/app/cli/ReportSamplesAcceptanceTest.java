@@ -18,12 +18,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * samples/ 全体の report 受入回帰テスト。samples を scan して SQLite を作り、
- * その DB と資産フォルダに対し report を実行して、統合レポートに次を含むことを突合する:
- * データフロー解析による7欠陥(expected-results.md No.1/2/3/5/9/13/14 = R001/R003/R004/R005)を lint 検出として、
- * SQL 指摘 S004(SYK006:145)を、呼出関係の要約(プログラム間の CALL 辺)を含み、
- * HTML とテキストの両形式を生成し、統合の終了コードが 2(samples は ERROR レベルの検出を含む)に
- * なること。
+ * The report acceptance regression test for the whole of samples/. Scans samples to build the
+ * SQLite database, runs report against that DB and the asset folder, and checks that the
+ * consolidated report includes the following: the 7 defects from data-flow analysis
+ * (expected-results.md No.1/2/3/5/9/13/14 = R001/R003/R004/R005) as lint findings; SQL advice
+ * S004 (SYK006:145); a call-graph summary (CALL edges between programs); both an HTML and a text
+ * rendering; and a consolidated exit code of 2 (because samples contains ERROR-level findings).
  */
 class ReportSamplesAcceptanceTest {
 
@@ -43,7 +43,7 @@ class ReportSamplesAcceptanceTest {
                 List.of(SAMPLES.resolve("copybook")), Map.of()));
     }
 
-    /** finding を "ルールID@ファイル:行" 形式の文字列集合へ変換する。 */
+    /** Converts findings into a set of strings in the form "ruleId@file:line". */
     private static Set<String> keyed(List<Finding> findings) {
         return findings.stream()
                 .map(f -> f.ruleId() + "@" + f.location().file() + ":" + f.location().line())

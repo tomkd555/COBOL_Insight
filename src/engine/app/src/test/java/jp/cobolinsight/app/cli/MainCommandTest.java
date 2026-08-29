@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** picocli配線と、ライセンスファイルの配布物への同梱の検証。 */
+/** Verification of picocli wiring and the license files bundling into the distribution. */
 class MainCommandTest {
 
     @TempDir

@@ -1,9 +1,9 @@
 package jp.cobolinsight.app.persistence.model;
 
 /**
- * SOURCE表の1行(COBOL本体・コピー句・JCLいずれかのソースファイル)。root は取込元の資産フォルダ、
- * path はその資産フォルダからの相対パスであり、1つのプロジェクトファイルは複数の資産フォルダの
- * 行を併せ持てる。
+ * One row of the SOURCE table (a source file that is COBOL, a copybook, or JCL). root is the
+ * asset folder it was ingested from, and path is the relative path from that asset folder; a
+ * single project file can hold rows from multiple asset folders.
  */
 public record SourceRecord(long id, String root, String path, String codepage, String contentHash,
         long byteSize) {

@@ -1,6 +1,6 @@
 package jp.cobolinsight.app.persistence.model;
 
-/** BMS_FIELD表の1行(DFHMDFが定義する項目)。 */
+/** One row of the BMS_FIELD table (a field defined by DFHMDF). */
 public record BmsFieldRecord(long id, long mapId, String name, int posRow, int posCol, int length,
         String attrb) {
 

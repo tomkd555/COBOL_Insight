@@ -18,28 +18,32 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 修正案生成の受入回帰テスト。samples を対象に fix(FixRunner=apply の中核)を実行し、次の
- * 5欠陥それぞれについて、期待するハンドラが該当位置へ挿入されること・挿入した物理行が固定形式の
- * 桁規則(一連番号欄1-6・標識欄7・B領域8-72・識別欄73-80)を保つこと・修正後ソースが再パースに
- * 成功することを検証する。原本 samples は読み込むだけで変更しない。
+ * Acceptance regression test for fix generation. Runs fix (FixRunner=apply's core) against
+ * samples and verifies, for each of the following 5 defects, that the expected handler is
+ * inserted at the correct position, that the inserted physical lines preserve the fixed-format
+ * column rules (sequence-number area 1-6, indicator area 7, area B 8-72, identification area
+ * 73-80), and that the fixed source reparses successfully. The original samples are only read,
+ * never modified.
  *
- * <p>対象5欠陥: No.14 R004(SYK007 COMPUTE→ON SIZE ERROR+END-COMPUTE)、No.4 R017(SYK001
- * READ ORDIN→FILE STATUS 検査)、No.6 R017(SYK002 REWRITE→FILE STATUS 検査)、No.12 R018
- * (SYK006 EXEC SQL UPDATE→SQLCODE 検査)、No.15 R018(SYK007 EXEC SQL UPDATE→SQLCODE 検査)。
+ * <p>Target 5 defects: No.14 R004 (SYK007 COMPUTE -> ON SIZE ERROR+END-COMPUTE), No.4 R017
+ * (SYK001 READ ORDIN -> FILE STATUS check), No.6 R017 (SYK002 REWRITE -> FILE STATUS check),
+ * No.12 R018 (SYK006 EXEC SQL UPDATE -> SQLCODE check), No.15 R018 (SYK007 EXEC SQL UPDATE
+ * -> SQLCODE check).
  *
- * <p>あわせて、囲む文(IF/PERFORM)の途中にある I/O へ付く R017 の修正案4件(SYK001:126・
- * SYK001:130・SYK002:107・SYK006:172)も対象とする。これらは終止ピリオドを持たないため、挿入する
- * IF もピリオドを付けず END-IF だけで閉じる。R017 は修正案生成の対象であるため、ブロック内の
- * I/O も修正案の対象である。
+ * <p>Also covers the 4 R017 fixes attached to I/O statements in the middle of an enclosing
+ * statement (IF/PERFORM) (SYK001:126, SYK001:130, SYK002:107, SYK006:172). Since these have no
+ * terminating period, the inserted IF is closed with just END-IF and no period. Because R017
+ * targets fix generation, I/O inside a block is also a target for the fix.
  */
 class FixSamplesAcceptanceTest {
 
     private static final Path SAMPLES = Path.of("..", "..", "..", "samples").toAbsolutePath().normalize();
 
-    /** 挿入文の B領域起点。一連番号欄(6桁)+標識欄(1桁)+A領域(4桁)=11桁の空白の後に本文が始まる。 */
+    /** Area B starting column of the inserted statement. The body starts after 11 blank columns
+     * (sequence-number area 6 digits + indicator area 1 digit + area A 4 digits). */
     private static final String PAD = "           ";
 
-    /** 各欠陥の期待挿入内容と挿入位置(直前物理行の条件)。 */
+    /** Expected insertion content and insertion position (condition on the preceding physical line) for each defect. */
     private record Defect(String no, String rule, String relPath, List<String> handlerLines,
             Predicate<String> precedingLine, String precedingDesc) {
     }
@@ -102,12 +106,13 @@ class FixSamplesAcceptanceTest {
             List<String> lines = fix.fixedText().lines().toList();
             List<String> handler = defect.handlerLines();
 
-            // ハンドラの全物理行が連続して現れること。ピリオドの有無だけが異なるハンドラが同一
-            // ファイル内に並ぶため、先頭行ではなくブロック全体で照合する。
+            // All physical lines of the handler must appear consecutively. Handlers that differ
+            // only in the presence of a period can appear side by side in the same file, so
+            // match against the whole block rather than just the first line.
             int at = indexOfBlock(lines, handler);
             assertTrue(at >= 0, defect.no() + " " + defect.rule()
                     + ": 期待ハンドラが無い: " + handler + " in " + defect.relPath());
-            // 挿入位置: 直前の物理行が期待する挿入位置の条件を満たすこと。
+            // Insertion position: the preceding physical line must satisfy the expected insertion condition.
             assertTrue(at >= 1, defect.no() + ": ハンドラの直前行が存在すること");
             String preceding = lines.get(at - 1).strip();
             assertTrue(defect.precedingLine().test(preceding),
@@ -120,9 +125,9 @@ class FixSamplesAcceptanceTest {
 
     @Test
     void everyDetectionOfTheFourFixableRulesYieldsEdits() {
-        // 修正案生成を持つ4ルール(R004・R017・R018・R021)の samples 検出は、R004 が1件・R017 が
-        // 9件・R018 が2件・R021 が1件である。R021 は RESP オペランドと判定文の2か所を編集するため、
-        // 編集の総数は 1+9+2+2=14 になる。
+        // Of the 4 rules that generate fixes (R004, R017, R018, R021), the samples detections
+        // are: R004 1, R017 9, R018 2, R021 1. R021 edits two spots (the RESP operand and the
+        // check statement), so the total edit count is 1+9+2+2=14.
         FixRunner.Result result = runFix();
         assertEquals(14, result.fixCount(), "編集の総数");
     }
@@ -145,8 +150,9 @@ class FixSamplesAcceptanceTest {
 
     @Test
     void computeReceivingLineLosesTerminatorSoPeriodMovesAfterEndCompute() {
-        // No.14 は COMPUTE の内容終端へ ON SIZE ERROR+END-COMPUTE を差し込み、終止ピリオドを
-        // END-COMPUTE の後へ回す。元の受信行末のピリオドが消え、次行が END-COMPUTE. で閉じること。
+        // No.14 inserts ON SIZE ERROR+END-COMPUTE at the end of the COMPUTE statement body and
+        // moves the terminating period to after END-COMPUTE. The period at the end of the
+        // original receiving line disappears, and the next line closes with END-COMPUTE.
         FixRunner.FileFix fix = fixOf(runFix(), "cobol/SYK007.cbl");
         assertTrue(fix.fixedText().contains(
                         "/ SYK3-在庫数量\n" + PAD + "ON SIZE ERROR DISPLAY 'SIZE ERROR: WS-引当率' END-COMPUTE."),
@@ -174,25 +180,26 @@ class FixSamplesAcceptanceTest {
                 "cobol/SYK008.cbl", Files.readAllBytes(SAMPLES.resolve("cobol/SYK008.cbl")));
     }
 
-    /** 挿入した各物理行が固定形式の桁規則を保つことを表明する。桁はファイル符号のバイト単位で数える。 */
+    /** Asserts that each inserted physical line preserves the fixed-format column rules. Columns are counted in bytes of the file's encoding. */
     private void assertColumnRules(Defect defect, String charsetName, List<String> handlerLines) {
         Charset charset = Charset.forName(charsetName);
         for (String line : handlerLines) {
             byte[] bytes = line.getBytes(charset);
-            // 識別欄(73-80桁)を割らない = 本文はB領域終端(72桁)以内に収まる。
+            // Must not break into the identification area (columns 73-80) = the body must fit
+            // within the end of area B (column 72).
             assertTrue(bytes.length <= 72,
                     defect.no() + ": 本文が72桁以内であること(識別欄不可侵)。len=" + bytes.length
                             + " [" + line + "]");
-            // 一連番号欄(1-6桁)は空白(挿入行は新規行のため必ず空白)。
+            // The sequence-number area (columns 1-6) is blank (inserted lines are new lines, so always blank).
             for (int i = 0; i < 6; i++) {
                 assertEquals((byte) ' ', bytes[i],
                         defect.no() + ": 一連番号欄(1-6桁)は空白であること [" + line + "]");
             }
-            // 標識欄(7桁)は空白。語境界の折り返しは継続印 '-' を用いない。
+            // The indicator area (column 7) is blank. Word-boundary wrapping does not use the '-' continuation mark.
             assertEquals((byte) ' ', bytes[6],
                     defect.no() + ": 標識欄(7桁)は空白であること(語境界折り返しは '-' を使わない) ["
                             + line + "]");
-            // 本文はB領域起点=12桁目から始まる。
+            // The body starts at the area B origin = column 12.
             assertEquals(11, firstNonSpace(line),
                     defect.no() + ": 本文はB領域起点(12桁目)から始まること [" + line + "]");
         }
@@ -207,7 +214,7 @@ class FixSamplesAcceptanceTest {
         return -1;
     }
 
-    /** 連続する物理行が block と完全一致する先頭位置(0始まり)。見つからなければ -1。 */
+    /** The 0-based starting position where consecutive physical lines exactly match block. -1 if not found. */
     private static int indexOfBlock(List<String> lines, List<String> block) {
         for (int i = 0; i + block.size() <= lines.size(); i++) {
             if (lines.subList(i, i + block.size()).equals(block)) {

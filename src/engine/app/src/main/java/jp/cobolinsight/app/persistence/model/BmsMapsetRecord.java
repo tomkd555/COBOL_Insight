@@ -1,6 +1,6 @@
 package jp.cobolinsight.app.persistence.model;
 
-/** BMS_MAPSET表の1行(DFHMSDが定義する、複数のマップをまとめる単位)。 */
+/** A row of the BMS_MAPSET table (the unit, defined by DFHMSD, that groups multiple maps together). */
 public record BmsMapsetRecord(long id, long sourceId, String name) {
 
     public BmsMapsetRecord {

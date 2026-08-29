@@ -6,13 +6,13 @@ plugins {
 }
 
 java {
-    // ビルド機の JAVA_HOME の版に依存させず、常に Java 21 でコンパイル・実行する。
+    // Always compile and run with Java 21, independent of the build machine's JAVA_HOME version.
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(21))
     }
 }
 
-// JUnit の版はBOMで一括して固定し、個別の依存にはバージョンを書かない。
+// Pin the JUnit version once via the BOM; do not write a version on individual dependencies.
 val junitBomVersion = "6.1.2"
 
 dependencies {
@@ -21,8 +21,8 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-// ソースとリソースは日本語を含む。実行環境の既定文字コードに左右されないよう、
-// コンパイル・Javadoc生成・リソース処理のすべてでUTF-8を明示する。
+// Sources and resources contain Japanese. To avoid being affected by the runtime environment's
+// default charset, explicitly set UTF-8 for compilation, Javadoc generation, and resource processing.
 tasks.withType<JavaCompile>().configureEach {
     options.encoding = "UTF-8"
 }

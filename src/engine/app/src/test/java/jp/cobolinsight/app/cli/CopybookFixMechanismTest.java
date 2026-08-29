@@ -21,10 +21,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * コピー句内修正の機構を表明する。自動修正の対象規則(R004/R017/R018)の finding は意味モデルの
- * sourceFile(=プログラム本体)へ紐づくため、samples ではコピー句由来の修正は発生しない。そこで
- * 機構が備わることを、実 samples に対する取り込みプログラム解決と、合成したコピー句修正の
- * 提示のみの適用(原本を書き換えず差分提示・取り込み一覧併記)で表明する。
+ * Demonstrates the copybook-internal fix mechanism. Because findings for the auto-fix target
+ * rules (R004/R017/R018) are tied to the semantic model's sourceFile (= the program body), the
+ * samples never produce a fix that originates from a copybook. So this test demonstrates that the
+ * mechanism is in place through importing-program resolution against the real samples, and a
+ * synthesized copybook fix applied in present-only mode (does not rewrite the original, presents
+ * the diff and lists the importers).
  */
 class CopybookFixMechanismTest {
 
@@ -54,15 +56,15 @@ class CopybookFixMechanismTest {
     @Test
     void resolvesImportingProgramsForEachCopybook() {
         Map<String, String> programs = programSources();
-        // SYKCPY1 は SYK001(REPLACING)・SYK002(REPLACING)・SYK003 が取り込む。
+        // SYKCPY1 is imported by SYK001 (REPLACING), SYK002 (REPLACING), and SYK003.
         assertEquals(List.of("cobol/SYK001.cbl", "cobol/SYK002.cbl", "cobol/SYK003.cbl"),
                 CopybookImporters.of("SYKCPY1", programs));
-        // SYKCPY2 は SYK002 のみ。
+        // SYKCPY2 is imported only by SYK002.
         assertEquals(List.of("cobol/SYK002.cbl"), CopybookImporters.of("SYKCPY2", programs));
-        // SYKCPY3 は SYK006・SYK007。
+        // SYKCPY3 is imported by SYK006 and SYK007.
         assertEquals(List.of("cobol/SYK006.cbl", "cobol/SYK007.cbl"),
                 CopybookImporters.of("SYKCPY3", programs));
-        // 取り込むプログラムが無いコピー句は空。
+        // A copybook with no importing program yields an empty list.
         assertTrue(CopybookImporters.of("NOSUCHCPY", programs).isEmpty());
     }
 
@@ -78,7 +80,7 @@ class CopybookFixMechanismTest {
         byte[] originalBytes = Files.readAllBytes(originalCopybook);
         String originalText = new String(originalBytes, StandardCharsets.UTF_8);
 
-        // コピー句へ検査文を挿入した合成の修正(実際の R004/R017/R018 は本体へ紐づくため合成する)。
+        // A synthesized fix that inserts a check statement into the copybook (synthesized because the real R004/R017/R018 ties to the body).
         String insertedLine = "           IF WS-SYNTH-STATUS NOT = '00' END-IF.";
         String fixedText = originalText + insertedLine + "\n";
         List<String> importers =
@@ -90,20 +92,20 @@ class CopybookFixMechanismTest {
         FixApplyCommand.ApplyOutcome outcome = FixApplyCommand.applyFixes(
                 List.of(copybookFix), out, EngineWiring.reparseVerifier(), List.of());
 
-        // 提示のみ: 出力先へ書き出さず、書き出したプログラム一覧にも載らない。
+        // Present-only: not written to the output destination, and not listed among the written programs.
         assertTrue(outcome.written().isEmpty(), "コピー句修正は書き出さないこと");
         assertFalse(Files.exists(out.resolve("copybook").resolve("SYKCPY1.cpy")),
                 "コピー句は出力先へ書き出されないこと");
-        // 取り込みプログラム一覧を併記して集約する。
+        // Aggregated with the list of importing programs attached.
         assertEquals(1, outcome.copybookFixes().size());
         FixApplyCommand.CopybookFix reported = outcome.copybookFixes().get(0);
         assertEquals("copybook/SYKCPY1.cpy", reported.relPath());
         assertEquals(importers, reported.importers());
-        // 原本コピー句は不変。
+        // The original copybook is unchanged.
         assertArrayEquals(originalBytes, Files.readAllBytes(originalCopybook),
                 "原本コピー句は書き換えないこと");
 
-        // 差分提示: 挿入行を含む unified diff が算出できること。
+        // Diff presentation: a unified diff containing the inserted line can be computed.
         List<String> diff = new UnifiedDiffFormatter()
                 .unifiedDiff(copybookFix.relPath(), originalText, fixedText);
         assertTrue(diff.stream().anyMatch(line -> line.equals("+" + insertedLine)),

@@ -1,4 +1,5 @@
 /**
- * 埋め込みSQLite(sqlite-jdbc)への永続化と、内容ハッシュによる増分解析を行う。
+ * Handles persistence to an embedded SQLite (sqlite-jdbc) and incremental analysis driven by
+ * content hashes.
  */
 package jp.cobolinsight.app.persistence;

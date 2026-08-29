@@ -13,8 +13,9 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * 再帰CTEによる到達性問い合わせ({@link PersistenceDao#reachableFrom})の検証。到達集合に始点自身が
- * 入るのは、始点へ戻る循環がある場合に限る。
+ * Verifies the reachability query implemented with a recursive CTE
+ * ({@link PersistenceDao#reachableFrom}). The start node itself appears in the reachable set only
+ * when there is a cycle back to the start node.
  */
 class CallGraphReachabilityTest {
 

@@ -6,7 +6,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** unified diff の ANSI 着色・自己完結 HTML 整形({@link DiffRendering})の検証。 */
+/** Verifies unified diff's ANSI coloring and self-contained HTML formatting ({@link DiffRendering}). */
 class DiffRenderingTest {
 
     private static final String RESET = "[0m";
@@ -25,7 +25,7 @@ class DiffRenderingTest {
         assertTrue(colored.get(2).startsWith(CYAN), colored.get(2));
         assertTrue(colored.get(3).equals(GREEN + "+added" + RESET), colored.get(3));
         assertTrue(colored.get(4).equals(RED + "-removed" + RESET), colored.get(4));
-        // 文脈行は着色しないが RESET は付す(前行の色を持ち越さない)。
+        // A context line is not colored, but RESET is still appended (does not carry the previous line's color).
         assertTrue(colored.get(5).equals(" context" + RESET), colored.get(5));
     }
 
@@ -38,7 +38,7 @@ class DiffRenderingTest {
         assertTrue(html.contains("<span class=\"del\">-OLD</span>"), html);
         assertTrue(html.contains("<span class=\"hunk\">@@ -1 +1 @@</span>"), html);
         assertTrue(html.contains("<h2>cobol/x.cbl</h2>"), html);
-        // 外部資産に依存しない自己完結 HTML であること。
+        // Should be self-contained HTML with no dependency on external assets.
         assertTrue(!html.contains("http://") && !html.contains("<script"), html);
     }
 }

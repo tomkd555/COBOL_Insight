@@ -30,8 +30,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * scan の受入回帰テスト。samples/ 全体の scan が成功し、SQLiteへ期待どおりの
- * 行が入ることを、expected-results.md 4・6・9章の値と突合して検証する。
+ * Acceptance regression test for scan. Verifies that scanning the entire samples/ succeeds and
+ * that the expected rows land in SQLite, by cross-checking against the values in
+ * expected-results.md chapters 4, 6, and 9.
  */
 class ScanSamplesAcceptanceTest {
 
@@ -230,7 +231,7 @@ class ScanSamplesAcceptanceTest {
         assertEquals(0, second.exitCode());
     }
 
-    // ---- 検証用の問い合わせ ----
+    // ---- queries for verification ----
 
     private Set<String> edgePairs(String kind) {
         Map<Long, String> pathById = dao.findAllSources().stream()
@@ -238,7 +239,7 @@ class ScanSamplesAcceptanceTest {
         Set<String> pairs = new TreeSet<>();
         for (SourceRecord source : dao.findAllSources()) {
             for (CallEdgeRecord edge : dao.findEdgesFrom(source.id())) {
-                // 呼出関係グラフ層(ID下限以上)は対象外。ここではscanの増分用エッジのみ数える
+                // Excludes the call-graph layer (id at or above the lower bound). Here we only count scan's incremental edges
                 if (edge.id() >= Persist.GRAPH_ID_BASE) {
                     continue;
                 }

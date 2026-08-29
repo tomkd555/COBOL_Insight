@@ -16,35 +16,37 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
- * 資産フォルダから解析対象のソースを発見する。{@link Discover} だけがこのクラスを呼ぶ。
+ * Discovers analysis-target sources from the asset folder. Only {@link Discover} calls this class.
  *
- * <p>走査はフォルダの形を問わない。INPUT_DIR 配下を再帰的にたどり、種別は
- * <b>ソースの内容から逆算</b>する({@link SourceClassifier})。拡張子が担うのは2つの補助だけで
- * ある。1つは候補の絞り込みで、テキストでないことが形式から確実な拡張子と本ツール自身が
- * 書き出す拡張子は1バイトも読まない。もう1つは内容で決まらなかったときの手掛かりで、既知の
- * 拡張子ならその種別を採る。拡張子と内容が食い違った場合は内容を採り、食い違いを報告する。
+ * <p>The walk does not care about the folder's shape. It recurses under INPUT_DIR, and the kind is
+ * <b>derived backwards from the source content</b> ({@link SourceClassifier}). The extension plays
+ * only two supporting roles. One is narrowing candidates: extensions that are certainly not text by
+ * format, and extensions this tool itself writes out, are never read even one byte. The other is a
+ * clue when content alone cannot decide: a known extension then determines the kind. When the
+ * extension and content disagree, content wins, and the disagreement is reported.
  *
- * <p>報告の優先順位は「黙って落としたもの＞黙って解釈を変えたもの＞打ち切り」である。
- * {@link Result#undecided()}・{@link Result#mismatches()}・{@link Result#unreadable()} は
- * いずれも全件を返し、件数を別に持たない(配列の長さが件数である)。件数と例示を別々に持つと、
- * ここで例示を打ち切る誘惑が残り、利用者は「他にもあるのか」を知る手段を失う。
+ * <p>The reporting priority is "silently dropped &gt; silently reinterpreted &gt; truncation."
+ * {@link Result#undecided()}, {@link Result#mismatches()}, and {@link Result#unreadable()} all
+ * return every entry and keep no separate count (the array length is the count). Keeping a count
+ * separate from the examples would tempt truncating the examples here, and the user would then have
+ * no way to know whether more exist.
  *
- * <p>再帰の歯止めは深さの数値ではなく、たどった実パス({@link Path#toRealPath})の記録で行う。
- * 深さの上限には根拠が無く、深い位置に資産を置いた利用者を黙って取りこぼす。上限が本当に
- * 要るのはディレクトリの循環(自分自身へのリンク)を断つためであり、それは訪問済みの実パスを
- * 持てば足りる。
+ * <p>The recursion guard is not a depth number but a record of the real paths walked
+ * ({@link Path#toRealPath}). A depth limit has no justification and would silently drop a user's
+ * asset placed deep in the tree. The only real need for a limit is to break directory cycles
+ * (a link back to itself), and tracking visited real paths is enough for that.
  */
 public final class SourceDiscovery {
 
-    /** 種別を決めた根拠。 */
+    /** The basis on which the kind was decided. */
     public enum Evidence {
-        /** ソースの内容から決めた。 */
+        /** Decided from the source content. */
         CONTENT,
-        /** 内容では決まらず、拡張子から決めた。 */
+        /** Content could not decide it, so decided from the extension. */
         EXTENSION
     }
 
-    /** 発見した1ファイル。relPath は INPUT_DIR からの相対パスで区切りは / へそろえる。 */
+    /** One discovered file. relPath is the path relative to INPUT_DIR, with separators normalized to /. */
     public record DiscoveredFile(String relPath, Path absPath, AssetKind kind, Evidence evidence) {
 
         public String fileName() {
@@ -52,13 +54,14 @@ public final class SourceDiscovery {
         }
     }
 
-    /** 拡張子と内容が食い違った1件。走査対象には内容の種別で入れる。 */
+    /** One case where the extension and content disagreed. The scan target is filed under the content's kind. */
     public record KindMismatch(String relPath, AssetKind byExtension, AssetKind byContent) {
     }
 
     /**
-     * 走査の結果。files は相対パスの辞書順で、この順が SOURCE.id をパス順に振る不変条件の前提に
-     * なる。transactionTables は CICS のトランザクション定義表とみなせた CSV の絶対パスである。
+     * The scan result. files is ordered lexicographically by relative path; this order is the
+     * premise behind the invariant that assigns SOURCE.id in path order. transactionTables holds the
+     * absolute paths of CSV files recognized as CICS transaction definition tables.
      */
     public record Result(List<DiscoveredFile> files, List<Path> transactionTables, boolean truncated,
             List<String> undecided, List<KindMismatch> mismatches, List<String> unreadable) {
@@ -71,15 +74,16 @@ public final class SourceDiscovery {
             unreadable = List.copyOf(unreadable);
         }
 
-        /** 指定した種別だけを取り出す。Runner ごとに要る種別が違うため呼び出し側で絞る。 */
+        /** Extracts only the specified kinds. Which kinds are needed differs per Runner, so callers narrow it. */
         public List<DiscoveredFile> filesOf(Set<AssetKind> kinds) {
             return files.stream().filter(f -> kinds.contains(f.kind())).toList();
         }
 
         /**
-         * 取りこぼしと解釈の変更を利用者へ伝える文言。scan はサマリ JSON へ、
-         * lint・sql-lint・translate・fix は標準エラーへ出す。文言をここへ集めるのは、
-         * 走査の入口が1つである以上、その報告の入口も1つであるべきだからである。
+         * Messages that convey dropped files and reinterpretations to the user. scan writes them into
+         * the summary JSON; lint, sql-lint, translate, and fix write them to standard error. Messages
+         * are gathered here because there is only one entry point for scanning, so there should also
+         * be only one entry point for reporting it.
          */
         public List<String> warnings() {
             List<String> messages = new ArrayList<>();
@@ -121,27 +125,28 @@ public final class SourceDiscovery {
     }
 
     /**
-     * 走査対象の件数上限。SOURCE.id が 1,000,000 未満という採番の不変条件
-     * ({@link Persist} のクラス Javadoc)に由来する外部の制約であり、本ツールが選んだ数値では
-     * ない。上限に達したときは {@link Result#truncated()} で必ず利用者へ伝える。
+     * The upper limit on the number of scanned files. This is an external constraint coming from the
+     * invariant that SOURCE.id stays under 1,000,000 ({@link Persist}'s class Javadoc), not a number
+     * this tool chose. When the limit is reached, {@link Result#truncated()} must convey it to the
+     * user.
      */
     public static final int MAX_FILES = 5_000;
 
-    /** 再帰走査で降りないディレクトリ名。名前が . で始まるものも併せて除く。 */
+    /** Directory names the recursive walk does not descend into. Names starting with . are also excluded. */
     private static final Set<String> EXCLUDED_DIRS =
             Set.of("node_modules", "build", "target", "out", "dist");
 
     /**
-     * 候補にしない拡張子。件数で決めず、2つの基準だけで定める。テキストでないことが形式から
-     * 確実なもの(画像・書庫・実行形式・SQLite の DB)と、資産ではなく資産についての文書である
-     * ことが形式から確実なもの(本ツールが書き出す SARIF・HTML・テキストのレポート・JSON と、
-     * 資産フォルダへ置かれる Markdown の説明書)である。基準の外にある拡張子は未知として扱い、
-     * 内容で判定する。
+     * Extensions never treated as candidates. Decided not by count but by exactly two criteria: ones
+     * certainly not text by format (images, archives, executables, SQLite DBs), and ones certainly a
+     * document about an asset rather than an asset itself by format (SARIF/HTML/text reports and JSON
+     * this tool writes out, and Markdown documentation placed in the asset folder). Extensions outside
+     * these criteria are treated as unknown and judged by content.
      *
-     * <p>.md を落とすのは、散文に PROGRAM-ID の語が現れるだけで解析対象へ化けるのを断つためで
-     * ある。{@code samples/expected-results.md} が実例で、資産の説明として COBOL の語を本文へ書く文書は
-     * 資産フォルダに置かれる。文書はどの種別の資産でもないので、判定できなかったものとしてでは
-     * なく候補の外として扱う。
+     * <p>.md is dropped because prose that merely contains the word PROGRAM-ID must not turn into an
+     * analysis target. {@code samples/expected-results.md} is a real example: a document describing an
+     * asset, written with COBOL terms in its body, is placed in the asset folder. Since a document is
+     * not any kind of asset, it is treated as outside the candidates rather than as unclassifiable.
      */
     private static final Set<String> EXCLUDED_EXTENSIONS = Set.of(
             ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".tif", ".tiff", ".webp",
@@ -149,20 +154,21 @@ public final class SourceDiscovery {
             ".exe", ".dll", ".so", ".dylib", ".class", ".o", ".obj", ".bin", ".pdf",
             ".sarif", ".html", ".txt", ".json", ".md", ".db");
 
-    /** トランザクション定義表の候補とする拡張子。 */
+    /** The extension treated as a candidate transaction definition table. */
     private static final String TRANSACTION_TABLE_EXTENSION = ".csv";
 
     /**
-     * トランザクション定義表の値の形式(資産名)。上限8桁と使用可能文字はメインフレームの
-     * メンバ名の規則に合わせる。表とみなすかの判定と、行の読み込み({@link Persist})が
-     * 同じ規則を見るよう、ここを唯一の正とする。
+     * The value format (asset name) for a transaction definition table. The 8-character limit and the
+     * allowed characters follow the mainframe member-name convention. This is kept as the single
+     * source of truth so that the judgment of whether something counts as a table and the row reading
+     * ({@link Persist}) see the same rule.
      */
     public static final Pattern MEMBER_NAME_PATTERN = Pattern.compile("[A-Za-z0-9@#$-]{1,8}");
 
     private SourceDiscovery() {
     }
 
-    /** 資産フォルダを走査する。存在しないフォルダを渡した場合は空の結果を返す。 */
+    /** Scans the asset folder. Returns an empty result if a nonexistent folder is passed. */
     public static Result discover(Path inputDir) {
         Walk walk = new Walk(inputDir);
         walk.walk(inputDir);
@@ -175,11 +181,11 @@ public final class SourceDiscovery {
                 walk.undecided, walk.mismatches, walk.unreadable);
     }
 
-    /** 再帰走査の作業状態。 */
+    /** Working state for the recursive walk. */
     private static final class Walk {
 
         private final Path inputDir;
-        /** 訪問済みディレクトリの実パス。シンボリックリンクによる循環をここで断つ。 */
+        /** Real paths of visited directories. Cycles caused by symbolic links are cut off here. */
         private final Set<Path> visited = new HashSet<>();
         private final List<DiscoveredFile> files = new ArrayList<>();
         private final List<Path> transactionTables = new ArrayList<>();
@@ -200,7 +206,8 @@ public final class SourceDiscovery {
             try {
                 real = dir.toRealPath();
             } catch (IOException e) {
-                // 実パスを取れないディレクトリは循環の判定ができない。降りずに取りこぼしを伝える。
+                // A directory whose real path cannot be obtained cannot be checked for cycles.
+                // Do not descend into it, and report it as a dropped item.
                 unreadable.add(relativize(dir));
                 return;
             }
@@ -255,8 +262,8 @@ public final class SourceDiscovery {
             AssetKind byExtension = AssetKind.ofExtension(extension);
             AssetKind byContent = verdict.kind();
             if (byContent == null && byExtension == null) {
-                // NUL を含むファイルは「テキストでない」と確定した結果であり、判定できなかった
-                // ものではない。取りこぼしではないので undecided へは載せない。
+                // A file containing NUL is a confirmed result of "not text," not something that
+                // could not be classified. It is not a dropped item, so it is not added to undecided.
                 if (!verdict.binary()) {
                     undecided.add(relativize(file));
                 }
@@ -275,18 +282,19 @@ public final class SourceDiscovery {
         }
 
         /**
-         * CICS のトランザクション定義表とみなせるか。1行目はヘッダとして読み飛ばし、2行目以降に
-         * 「2列とも資産名の形式に合う対」が1組でもあることを条件とする。無関係な CSV を表と
-         * みなす害は無い。{@code CallGraphLinker} は COBOL 側が実際に参照した ID だけを
-         * 問い合わせるため、余分な行はグラフへ寄与しないからである。
+         * Whether this can be treated as a CICS transaction definition table. The first line is
+         * skipped as a header, and the condition is that at least one pair from line two onward has
+         * "both columns matching the asset-name format." There is no harm in treating an unrelated
+         * CSV as a table, because {@code CallGraphLinker} only queries IDs the COBOL side actually
+         * referenced, so extra rows do not contribute to the graph.
          */
         private static boolean looksLikeTransactionTable(Path csv) {
             List<String> lines;
             try {
                 lines = Files.readAllLines(csv, StandardCharsets.UTF_8);
             } catch (IOException e) {
-                // UTF-8 で読めない CSV は本ツールが読む定義表ではない。資産のソースでもないため、
-                // 解析対象から外れることを利用者へ伝える必要も無い。
+                // A CSV that cannot be read as UTF-8 is not a definition table this tool reads. It is
+                // not an asset source either, so there is no need to tell the user it was excluded.
                 return false;
             }
             for (String line : lines.stream().skip(1).toList()) {

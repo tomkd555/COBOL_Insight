@@ -5,9 +5,10 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
- * コピー句を COPY 文で取り込むプログラムを解決する。コピー句由来の修正は原本コピー句を書き換えず
- * 差分提示に留めるため、影響範囲として当該コピー句を取り込む全プログラムを併記する必要がある。
- * その一覧を、復号済みプログラムソースの COPY 文走査で決定論的に求める。
+ * Resolves programs that import a copybook via a COPY statement. A fix originating from a copybook
+ * leaves the original copybook unmodified and stays at the diff-preview stage, so the impact scope
+ * must list every program that imports that copybook alongside it. This determines that list
+ * deterministically by scanning decoded program sources for COPY statements.
  */
 final class CopybookImporters {
 
@@ -15,13 +16,13 @@ final class CopybookImporters {
     }
 
     /**
-     * {@code copybookBaseName}(拡張子を除く基底名、大小無視)を COPY 文で取り込むプログラムの
-     * 相対パスを昇順で返す。{@code programSourcesByRel} はプログラム相対パス→復号済みソーステキスト。
-     * REPLACING を伴う COPY も対象とする。
+     * Returns, in ascending order, the relative paths of programs that import {@code copybookBaseName}
+     * (the base name without extension, case-insensitive) via a COPY statement. {@code programSourcesByRel}
+     * maps a program's relative path to its decoded source text. COPY statements with REPLACING are also covered.
      */
     static List<String> of(String copybookBaseName, Map<String, String> programSourcesByRel) {
-        // 直後が COBOL の語構成文字(英数字・ハイフン・下線・$・#)なら、より長い別名の前方一致
-        // でしかないため対象から外す。
+        // If the character immediately after is a COBOL word-constituent character (alphanumeric,
+        // hyphen, underscore, $, #), it is only a prefix match of a longer alias, so exclude it.
         Pattern copy = Pattern.compile(
                 "(?i)\\bCOPY\\s+" + Pattern.quote(copybookBaseName) + "(?![\\p{L}\\p{N}$#_-])");
         return programSourcesByRel.entrySet().stream()
@@ -31,7 +32,7 @@ final class CopybookImporters {
                 .toList();
     }
 
-    /** 相対パスから拡張子を除いた基底名(コピー句名)を取り出す。 */
+    /** Extracts the extension-less base name (the copybook name) from a relative path. */
     static String baseName(String relPath) {
         String name = relPath;
         int slash = Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\'));

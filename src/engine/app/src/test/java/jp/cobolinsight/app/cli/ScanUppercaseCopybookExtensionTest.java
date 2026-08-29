@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** コピー句の拡張子が大文字(.CPY)でも COPY エッジが生成されることの検証。 */
+/** Verifies that a COPY edge is generated even when a copybook's extension is uppercase (.CPY). */
 class ScanUppercaseCopybookExtensionTest {
 
     @TempDir

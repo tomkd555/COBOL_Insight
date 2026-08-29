@@ -16,10 +16,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * samples/ 全体の sql-lint 受入回帰テスト。埋め込みSQLを SqlParser SPI で SQL文モデルへ変換し、
- * SQL指摘(id が "S" のルール)のみを実行して、次のとおりに検出することを突合する。
- * SYK006 は S004 をカーソル宣言行(145)で検出し、それ以外の検出は無い。S001・S002 は samples に
- * 該当構文が無いため陰性である。SQL指摘の最上位は S004(中→警告)のため終了コードは1になる。
+ * Acceptance regression test for sql-lint against the entire samples/ folder. Converts embedded
+ * SQL to a SQL statement model via the SqlParser SPI, runs only the SQL advice rules (rules whose
+ * id starts with "S"), and checks that detection matches the following: SYK006 has S004 fire on
+ * the cursor declaration line (145) with no other detections. S001 and S002 are negative because
+ * samples has no matching syntax. Since the highest SQL advice level is S004 (medium -> warning),
+ * the exit code is 1.
  */
 class SqlAdviseSamplesAcceptanceTest {
 
@@ -78,7 +80,7 @@ class SqlAdviseSamplesAcceptanceTest {
                 "S004(中)は警告レベルであること");
     }
 
-    /** S004 だけが samples で陽性である。取り下げた S005・S006 が復活していないことも見る。 */
+    /** S004 is the only rule positive on samples. Also checks that withdrawn S005/S006 have not come back. */
     @Test
     void s004IsTheOnlyAdviceOnSamples() {
         assertEquals(Set.of("S004"), result.findings().stream().map(Finding::ruleId)

@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-/** 13表の挿入・取得、呼出関係グラフの到達性問い合わせ、ソース単位の全消去を行う。 */
+/** Inserts and fetches for all 13 tables, call-graph reachability queries, and full per-source deletion. */
 public final class PersistenceDao {
 
     private final Connection connection;
@@ -51,21 +51,22 @@ public final class PersistenceDao {
                 root, path);
     }
 
-    /** 指定の資産フォルダから取り込んだ行だけを返す。他の資産フォルダの行は含まない。 */
+    /** Returns only the rows imported from the given asset folder. Rows from other asset folders are excluded. */
     public List<SourceRecord> findSourcesByRoot(String root) {
         return queryList(SELECT_SOURCE + " WHERE root = ? ORDER BY id", PersistenceDao::mapSource,
                 root);
     }
 
-    /** 全資産フォルダを通じた SOURCE.id の最大値。新規行のID採番の起点にする。無ければ0。 */
+    /** The maximum SOURCE.id across all asset folders. Used as the starting point for numbering new rows. 0 if none exist. */
     public long maxSourceId() {
         return queryOne("SELECT COALESCE(MAX(id), 0) AS max_id FROM SOURCE",
                 rs -> rs.getLong("max_id")).orElse(0L);
     }
 
     /**
-     * 指定ソースの行と、これを参照する子表の行をまとめて消す。子表の削除はDDLの
-     * ON DELETE CASCADE に依るため、外部キー制約が有効な接続でのみ連鎖する。
+     * Deletes the given source's row together with the child-table rows that reference it. Child-row
+     * deletion relies on the DDL's ON DELETE CASCADE, so it only cascades on a connection with foreign
+     * key constraints enabled.
      */
     public void deleteSourceCascade(long sourceId) {
         update("DELETE FROM SOURCE WHERE id = ?", sourceId);
@@ -178,7 +179,7 @@ public final class PersistenceDao {
                 edge.toName(), edge.kind(), edge.line(), edge.seq());
     }
 
-    /** 指定プログラムの段落間の流れを、辺のID順(=段落の定義順・出辺の順)で返す。 */
+    /** Returns the flow between the given program's paragraphs, ordered by edge ID (= paragraph definition order / outgoing-edge order). */
     public List<ParagraphEdgeRecord> findParagraphEdgesByProgram(long programSourceId) {
         return queryList(SELECT_PARAGRAPH_EDGE + " WHERE program_source_id = ? ORDER BY id",
                 PersistenceDao::mapParagraphEdge, programSourceId);
@@ -242,7 +243,7 @@ public final class PersistenceDao {
         return queryList(SELECT_CALL_EDGE + " ORDER BY id", PersistenceDao::mapCallEdge);
     }
 
-    /** 指定ノードの出辺。順序は辺のID順であり、原本の順序は各辺の seq が表す。 */
+    /** Outgoing edges of the given node. Ordered by edge ID; the original order is carried by each edge's seq. */
     public List<CallEdgeRecord> findEdgesFrom(long nodeId) {
         return queryList(SELECT_CALL_EDGE + " WHERE from_node = ? ORDER BY id",
                 PersistenceDao::mapCallEdge, nodeId);
@@ -264,26 +265,28 @@ public final class PersistenceDao {
         update("DELETE FROM CALL_EDGE WHERE to_node = ? AND kind = ?", nodeId, kind);
     }
 
-    // NODE・CALL_EDGE・FINDING では、ソース単位の解析が書く行と、呼出関係グラフの構築が書く行とを
-    // IDの下限で分ける。前者は SOURCE.id を基点に採番し、後者は呼び出し側が定める下限以上に採番する。
-    // 下限以上をまとめて消してから入れ直せば、ソース単位の行を残したままグラフだけを作り直せる。
+    // For NODE, CALL_EDGE and FINDING, rows written by per-source analysis and rows written by
+    // call-graph construction are separated by an ID floor. The former are numbered starting from
+    // SOURCE.id, the latter are numbered at or above a floor set by the caller.
+    // Deleting everything at or above the floor and reinserting it lets the graph be rebuilt on its own
+    // while leaving the per-source rows intact.
 
-    /** 指定ID以上のノードを一括削除する。ソースに対応しないノード(ジョブステップ・データセット等)の入替に使う。 */
+    /** Bulk-deletes nodes with ID at or above the given value. Used to replace nodes with no matching source (job steps, datasets, etc.). */
     public void deleteNodesIdAtLeast(long idFloor) {
         update("DELETE FROM NODE WHERE id >= ?", idFloor);
     }
 
-    /** 指定ID以上のエッジを一括削除する。呼出関係グラフのエッジの入替に使う。 */
+    /** Bulk-deletes edges with ID at or above the given value. Used to replace call-graph edges. */
     public void deleteCallEdgesIdAtLeast(long idFloor) {
         update("DELETE FROM CALL_EDGE WHERE id >= ?", idFloor);
     }
 
-    /** 指定ID以上のfindingを一括削除する。呼出関係グラフの構築が生むfindingの入替に使う。 */
+    /** Bulk-deletes findings with ID at or above the given value. Used to replace findings produced by call-graph construction. */
     public void deleteFindingsIdAtLeast(long idFloor) {
         update("DELETE FROM FINDING WHERE id >= ?", idFloor);
     }
 
-    /** 再帰CTEにより、指定ノードから到達可能なノードID集合を返す(始点自身は循環時のみ含む)。 */
+    /** Uses a recursive CTE to return the set of node IDs reachable from the given node (the start node itself is included only when there is a cycle). */
     public Set<Long> reachableFrom(long nodeId) {
         String sql = """
                 WITH RECURSIVE reachable(id) AS (
@@ -383,7 +386,7 @@ public final class PersistenceDao {
                 PersistenceDao::mapLineMap, cobolSourceId);
     }
 
-    /** 指定ソースの行対応を全消去する(translate の再実行を冪等にするため書込前に呼ぶ)。 */
+    /** Deletes all line-map rows for the given source (called before writing, to make re-running translate idempotent). */
     public void deleteLineMapsBySource(long cobolSourceId) {
         update("DELETE FROM LINE_MAP WHERE cobol_source_id = ?", cobolSourceId);
     }
@@ -395,9 +398,9 @@ public final class PersistenceDao {
                 rs.getString("note"), rs.getString("anchor_id"));
     }
 
-    // ---- トランザクション ----
+    // ---- Transaction ----
 
-    /** 渡した処理の全体を単一のトランザクションとして実行し、実行時例外が出た場合はロールバックして投げ直す。 */
+    /** Runs the given work as a single transaction, rolling back and rethrowing if a runtime exception occurs. */
     public void inTransaction(Runnable work) {
         try {
             connection.setAutoCommit(false);
@@ -415,7 +418,7 @@ public final class PersistenceDao {
         }
     }
 
-    // ---- JDBCヘルパ ----
+    // ---- JDBC helpers ----
 
     @FunctionalInterface
     private interface RowMapper<T> {

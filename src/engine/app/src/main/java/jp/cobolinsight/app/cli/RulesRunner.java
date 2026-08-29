@@ -11,15 +11,16 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * `rules`。組み込みルールと利用者定義ルールを束ね、説明つきの一覧を返す。GUI はここが出す JSON を
- * ルールカタログの供給源とし、画面側でルール名や説明を持たない。
+ * `rules`. Bundles the builtin rules and user-defined rules and returns a list with descriptions.
+ * The GUI treats the JSON emitted here as the source of the rule catalogue and holds no rule names
+ * or descriptions on the screen side.
  */
 public final class RulesRunner {
 
     public record Options(RuleSet ruleSet, String ruleId) {
     }
 
-    /** detail は1件へ絞り込んだかどうか。端末向けの整形をここで切り替える。 */
+    /** Whether detail was narrowed down to a single entry. Switches the terminal-oriented formatting here. */
     public record Result(List<RuleSet.RuleEntry> rules, List<String> errors, boolean detail) {
 
         public Result {
@@ -27,7 +28,7 @@ public final class RulesRunner {
             errors = List.copyOf(errors);
         }
 
-        /** GUI が読む形式。ルールは id 昇順で、説明の全項目を持つ。 */
+        /** The format the GUI reads. Rules are in ascending id order and carry every description field. */
         public String toJson() {
             JsonWriter writer = new JsonWriter();
             writer.beginObject()
@@ -67,7 +68,7 @@ public final class RulesRunner {
             return writer.toString();
         }
 
-        /** 端末向けの一覧。1件へ絞り込んだ場合は説明の全文を示す。 */
+        /** The terminal-oriented listing. Shows the full description text when narrowed to a single entry. */
         public String toText() {
             if (detail && rules.size() == 1) {
                 return detailTextOf(rules.get(0));
@@ -140,7 +141,7 @@ public final class RulesRunner {
     private RulesRunner() {
     }
 
-    /** ruleId を指定した場合、その1件だけを返す(見つからなければ空)。 */
+    /** When ruleId is specified, returns only that one entry (empty if not found). */
     public static Result run(Options options) {
         List<RuleSet.RuleEntry> all = options.ruleSet().catalogue();
         String wanted = options.ruleId();

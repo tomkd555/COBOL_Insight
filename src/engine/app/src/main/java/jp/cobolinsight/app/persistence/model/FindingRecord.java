@@ -1,8 +1,8 @@
 package jp.cobolinsight.app.persistence.model;
 
 /**
- * FINDING表の1行(SARIF準拠の検出結果)。startLine・startColは1始まりで、byteOffsetは原バイト列上の
- * 位置を指し、不明な場合は-1を保持する。
+ * One row of the FINDING table (a SARIF-compliant detection result). startLine and startCol are
+ * 1-based, and byteOffset points to a position in the original byte sequence, holding -1 when unknown.
  */
 public record FindingRecord(long id, String ruleId, String level, long sourceId, int startLine,
         int startCol, long byteOffset, String message, String sarifJson) {

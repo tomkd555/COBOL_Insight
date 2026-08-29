@@ -30,19 +30,22 @@ import java.util.Optional;
 import java.util.concurrent.Callable;
 
 /**
- * `save` サブコマンド。画面で編集した本文を、原本と同じコードページ・改行様式で原本へ上書きする。
+ * The `save` subcommand. Writes the text edited in the GUI back over the original file, using the
+ * original file's code page and line-ending style.
  *
- * <p>本コマンドは「原本を書き換えない」という本ツールの原則の、意図した唯一の例外である。利用者が
- * 画面で編集した結果を保存する操作そのものであり、書き出し先を分ければ用を成さない。{@code fix apply}
- * は従来どおり原本へ触れない。
+ * <p>This command is the one deliberate exception to this tool's principle of "never rewrite the
+ * original file." It is precisely the operation of saving the result of editing in the GUI, and it
+ * would serve no purpose if it wrote to a separate location. {@code fix apply} continues to leave
+ * the original untouched, as before.
  *
- * <p>編集後の全文は UTF-8 のテキストファイル({@code --edited})で受け取る。Node は Shift_JIS や
- * EBCDIC(CP930/939)へ符号化できないため、コードページを保った書き戻しは engine 側が担う。原本と
- * 食い違う行だけを {@link MinimalLineEdit} が1つの編集へまとめ、触れていない行は原バイト列のまま
- * 持ち越す。
+ * <p>The full edited text is received as a UTF-8 text file ({@code --edited}). Node cannot encode
+ * to Shift_JIS or EBCDIC (CP930/939), so writing back while preserving the code page is the engine's
+ * responsibility. {@link MinimalLineEdit} collapses only the lines that differ from the original into
+ * a single edit; untouched lines are carried over as their original byte sequence.
  *
- * <p>書き出しの後に再パース検証を通す。パースできない内容でも書き戻しは取り消さない。作業途中の
- * 保存を妨げないためであり、検証結果は要約 JSON の {@code reparseErrors} で示す。
+ * <p>Reparse verification runs after the write. The write-back is not rolled back even if the
+ * content fails to parse, so as not to block saving work in progress; the verification result is
+ * reported in the {@code reparseErrors} field of the summary JSON.
  */
 @Command(name = "save", mixinStandardHelpOptions = true,
         description = "画面で編集した本文を原本のコードページのまま原本へ書き戻す")
@@ -74,7 +77,7 @@ public class SaveCommand implements Callable<Integer> {
         try {
             return save(target);
         } catch (IOException | UncheckedIOException | IllegalArgumentException e) {
-            // 書き戻す前の失敗。復号・符号化・入出力のいずれで失敗しても原本は元のままである。
+            // Failure before the write-back. Whether decoding, encoding, or I/O fails, the original file is left unchanged.
             System.out.println(summaryJson(target, false, 0, 0, List.of(), ExitCodes.ERRORS,
                     e.getMessage()));
             return ExitCodes.ERRORS;
@@ -97,8 +100,8 @@ public class SaveCommand implements Callable<Integer> {
         }
 
         replace(target, edit.bytes());
-        // ここから先はもう原本を置き換えた後である。失敗しても written は true として報告する。
-        // 置き換え済みの原本を「触れていない」と伝えると、利用者は残っていない元の内容を当てにする。
+        // From this point on, the original file has already been replaced. Even on failure, report written as true.
+        // Reporting the already-replaced original as "untouched" would make the user rely on original content that no longer exists.
         try {
             ReparseResult reparse = verifyReparse(target, edit.bytes(),
                     original.encodingInfo().codePage().charsetName());
@@ -116,7 +119,8 @@ public class SaveCommand implements Callable<Integer> {
     }
 
     /**
-     * 書き戻し後の再パース検証。試験が書き戻しの後の失敗を起こせるよう、ここで区切っている。
+     * Reparse verification performed after the write-back. This is factored out separately so
+     * tests can trigger a failure that occurs after the write-back.
      */
     ReparseResult verifyReparse(Path target, byte[] bytes, String charsetName) throws IOException {
         return EngineWiring.reparseVerifier().verify(target.toString(), bytes, charsetName,
@@ -124,9 +128,10 @@ public class SaveCommand implements Callable<Integer> {
     }
 
     /**
-     * 原本を置き換える。同じフォルダへ一時ファイルを書いてから移し替えるため、書き出しの途中で
-     * 失敗しても原本は元の内容のまま残る。原本を直接開いて書くと、失敗した時点で切り詰められた
-     * 中途半端な内容が原本として残る。
+     * Replaces the original file. A temporary file is written in the same folder and then moved
+     * into place, so if the write fails partway through, the original file is left with its
+     * original content intact. Opening and writing directly to the original would leave it
+     * truncated with incomplete content at the point of failure.
      */
     private void replace(Path target, byte[] bytes) throws IOException {
         Path temp = Files.createTempFile(target.getParent(), target.getFileName().toString(),
@@ -143,15 +148,16 @@ public class SaveCommand implements Callable<Integer> {
         }
     }
 
-    /** 一時ファイルへの書き出し。試験が書き戻しの途中の失敗を起こせるよう、ここで区切っている。 */
+    /** Writes to the temporary file. This is factored out separately so tests can trigger a failure partway through the write-back. */
     void writeTemp(Path temp, byte[] bytes) throws IOException {
         Files.write(temp, bytes);
     }
 
     /**
-     * 再パース検証で用いるコピー句探索パス。指定が無い場合は lint・report と同じ手順で、走査した
-     * 資産フォルダから見つける。指定が無いことを「コピー句が1つも無い」と扱うと、COPY を持つ
-     * 資産の保存が必ず再パースの誤りを伴う。
+     * The copybook search path used for reparse verification. When none is specified, it is
+     * found from the scanned asset folder using the same procedure as lint and report. Treating
+     * an unspecified path as "there are no copybooks at all" would make saving any asset that
+     * has a COPY statement always trigger a reparse error.
      */
     private List<Path> reparseCopybookPaths(Path target) {
         return copybookPaths.isEmpty()
@@ -160,8 +166,8 @@ public class SaveCommand implements Callable<Integer> {
     }
 
     /**
-     * コピー句を探す起点。プロジェクトファイルがあれば走査時の資産フォルダ(SOURCE.root)、
-     * 無ければ原本の置き場所とする。
+     * The starting point for locating copybooks. If a project file exists, this is the asset
+     * folder recorded at scan time (SOURCE.root); otherwise it is the original file's location.
      */
     private Path scanRoot(Path target) {
         if (databaseFile != null && Files.isRegularFile(databaseFile)) {
@@ -176,8 +182,9 @@ public class SaveCommand implements Callable<Integer> {
     }
 
     /**
-     * 復号に用いるコードページ名。手動指定を最優先とし、次にプロジェクトファイルが走査時に記録した
-     * 値、いずれも無ければ null を返して自動判別に委ねる({@code lint} などの解決順と同じ)。
+     * The code page name used for decoding. The manually specified value takes highest priority,
+     * then the value the project file recorded at scan time; if neither is available, returns
+     * null to leave it to auto-detection (the same resolution order as {@code lint} and others).
      */
     private String resolveCodepage(Path target) {
         if (codepage != null) {

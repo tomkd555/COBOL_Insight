@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** `rules` サブコマンドの出力の検証。GUI はこの JSON をルールカタログの供給源とする。 */
+/** Verifies the output of the `rules` subcommand. The GUI uses this JSON as the source of the rule catalog. */
 class RulesRunnerTest {
 
     private static final String CUSTOM_RULE = """
@@ -106,7 +106,7 @@ class RulesRunnerTest {
         assertTrue(result.toText().contains("警告"), result.toText());
     }
 
-    /** GUI はルールの説明と有効・無効を同じ JSON から読む。engine が唯一の供給源であるためである。 */
+    /** The GUI reads a rule's description and its enabled/disabled state from the same JSON, because the engine is the sole source. */
     @Test
     void disabledRulesAreMarkedInTheCatalog(@TempDir Path dir) throws IOException {
         RulesRunner.Result result = run(write(dir,
@@ -121,8 +121,9 @@ class RulesRunnerTest {
     }
 
     /**
-     * 設定が無ければ、既定で無効なルール以外はすべて有効である。R008 は計測の結果として既定で
-     * 無効であり(corpus/rule-hits.md)、設定ファイルが無い状態でもその1件だけは無効で出る。
+     * With no configuration, every rule is enabled except the ones disabled by default. R008 is
+     * disabled by default as a result of measurement (corpus/rule-hits.md), and it alone shows as
+     * disabled even with no rules file present.
      */
     @Test
     void onlyTheDefaultOffRuleIsDisabledWithoutRulesFile() {
@@ -135,7 +136,7 @@ class RulesRunnerTest {
                 .filter(entry -> !entry.getValue()).map(Map.Entry::getKey).sorted().toList());
     }
 
-    /** ルールを入れ替えた後に設定へ取り残されたIDは、指定を捨てずに警告で知らせる。 */
+    /** An id left behind in the configuration after rules were swapped out is reported as a warning instead of being silently dropped. */
     @Test
     void unknownRuleIdInTheFileIsReportedAsWarning(@TempDir Path dir) throws IOException {
         RulesRunner.Result result = run(write(dir,

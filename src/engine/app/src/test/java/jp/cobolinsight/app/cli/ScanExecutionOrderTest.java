@@ -25,9 +25,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 実行順の永続化の検証。JCLのステップ順が CALL_EDGE.seq として残ること、段落間の流れが
- * PARAGRAPH_EDGE として PERFORM・GO TO・流下の3種で残ること、呼出関係グラフのJSONが
- * seq を伴うことを、走査から一貫して確かめる。
+ * Verifies persistence of execution order. Confirms end-to-end, starting from scan, that the JCL
+ * step order is preserved as CALL_EDGE.seq, that the paragraph-to-paragraph flow is preserved as
+ * PARAGRAPH_EDGE across the three kinds PERFORM, GO TO, and fallthrough, and that the call-graph
+ * JSON carries a seq.
  */
 class ScanExecutionOrderTest {
 
@@ -60,7 +61,7 @@ class ScanExecutionOrderTest {
             "//SYSOUT   DD   SYSOUT=*",                  // 5
             "");
 
-    /** 同名の段落を持ち、GO TO で終わる段落を含むプログラム。 */
+    /** A program with duplicate paragraph names, including one paragraph that ends with GO TO. */
     private static final String DUPLICATE_NAMES = String.join("\n",
             "       IDENTIFICATION DIVISION.",             // 1
             "       PROGRAM-ID.  DUPPGM1.",                // 2
@@ -77,9 +78,10 @@ class ScanExecutionOrderTest {
             "");
 
     /**
-     * PERFORM文は書かれている段落だけに付き、GO TO で終わる段落からは流下の辺を出さないこと。
-     * 段落名で PERFORM を割り当てると、同名の段落へ互いの PERFORM が混ざる。制御が移る段落から
-     * 流下の辺を出すと、通らない経路が図と影響波及に現れる。
+     * A PERFORM statement must attach only to the paragraph where it is written, and no fallthrough
+     * edge must be emitted from a paragraph that ends with GO TO. Assigning PERFORM by paragraph
+     * name mixes PERFORMs from duplicate-named paragraphs together. Emitting a fallthrough edge from
+     * a paragraph that transfers control would make an unreachable path show up in diagrams and impact analysis.
      */
     @Test
     void performBelongsToItsOwnParagraphAndGoToEndsTheFallthrough() throws IOException {
@@ -127,7 +129,7 @@ class ScanExecutionOrderTest {
             long jobNode = sourceIdByPath.get("ORDJOB1.jcl");
             long programSourceId = sourceIdByPath.get("ORDPGM1.cbl");
 
-            // ジョブ→ステップの辺は原本のステップ順に並び、EXEC文の行を持つ
+            // Job-to-step edges are ordered by the original step order and carry the EXEC statement's line
             List<CallEdgeRecord> stepEdges = dao.findEdgesFrom(jobNode).stream()
                     .filter(e -> "EXECUTION".equals(e.kind()) && e.id() >= Persist.GRAPH_ID_BASE)
                     .sorted(Comparator.comparingInt(CallEdgeRecord::seq)).toList();
@@ -136,8 +138,8 @@ class ScanExecutionOrderTest {
             assertEquals(List.of("STEP010", "STEP020"), stepEdges.stream()
                     .map(e -> dao.findNode(e.toNode()).orElseThrow().label()).toList());
 
-            // 段落間の流れ: 0000-MAIN の PERFORM(8行目)・GO TO(10行目)・流下の順、
-            // 1000-INIT からは流下だけ、最後の 9000-END は出辺を持たない
+            // Paragraph-to-paragraph flow: from 0000-MAIN in the order PERFORM (line 8), GO TO
+            // (line 10), fallthrough; from 1000-INIT only fallthrough; the final 9000-END has no outgoing edge
             List<ParagraphEdgeRecord> edges = dao.findParagraphEdgesByProgram(programSourceId);
             assertEquals(List.of("PERFORM", "GOTO", "FALLTHROUGH", "FALLTHROUGH"),
                     edges.stream().map(ParagraphEdgeRecord::kind).toList(),
@@ -150,7 +152,7 @@ class ScanExecutionOrderTest {
             assertEquals(10, edges.get(1).line());
             assertNull(edges.get(2).line(), "流下は文に対応しないため行を持たない");
 
-            // 飛び先は PARAGRAPH の行IDで引けること
+            // The destination must be resolvable via the PARAGRAPH's row id
             for (ParagraphEdgeRecord edge : edges) {
                 assertEquals(edge.toName(),
                         dao.findParagraph(edge.toParagraph()).orElseThrow().name());

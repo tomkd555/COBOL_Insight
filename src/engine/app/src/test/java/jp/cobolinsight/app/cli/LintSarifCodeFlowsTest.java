@@ -21,8 +21,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * lint の SARIF が、汚染追跡由来の検出(R020・R027)へ codeFlows を付すことの検証。
- * 経路の各歩の位置も finding の位置と同じく入力フォルダ相対パスへ揃うことを併せて確認する。
+ * Verifies that lint's SARIF attaches codeFlows to detections originating from taint tracking
+ * (R020, R027). Also confirms that the position of every step along the path is aligned to the
+ * same input-folder-relative path as the finding's position.
  */
 class LintSarifCodeFlowsTest {
 
@@ -30,8 +31,9 @@ class LintSarifCodeFlowsTest {
     Path tempDir;
 
     /**
-     * 汚染追跡の検体。ACCEPT で受けた外部入力を STRING で連結して EXECUTE IMMEDIATE へ渡す経路
-     * (R020)と、末尾が -CARD-NO の機密項目をマスキングせず DISPLAY へ渡す経路(R027)を持つ。
+     * A specimen for taint tracking. Has a path that concatenates external input received via
+     * ACCEPT with STRING and passes it to EXECUTE IMMEDIATE (R020), and a path that passes a
+     * sensitive item ending in -CARD-NO to DISPLAY without masking it (R027).
      */
     private static final String TAINTED = String.join("\n",
             "       IDENTIFICATION DIVISION.",

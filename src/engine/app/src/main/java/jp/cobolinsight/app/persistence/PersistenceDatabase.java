@@ -7,7 +7,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-/** SQLiteデータベースファイルへの接続を保持し、初回オープン時にスキーマを作成する。 */
+/** Holds a connection to a SQLite database file and creates the schema on first open. */
 public final class PersistenceDatabase implements AutoCloseable {
 
     private final Connection connection;
@@ -20,8 +20,8 @@ public final class PersistenceDatabase implements AutoCloseable {
         try {
             Connection connection = DriverManager.getConnection("jdbc:sqlite:" + databaseFile);
             try (Statement st = connection.createStatement()) {
-                // SQLiteは接続ごとに外部キー制約が既定で無効である。ON DELETE CASCADE を
-                // 効かせるため、接続を開くたびに有効化する。
+                // SQLite disables foreign key constraints by default on every connection. To make
+                // ON DELETE CASCADE take effect, enable it each time a connection is opened.
                 st.execute("PRAGMA foreign_keys = ON");
             }
             initializeSchema(connection);
@@ -32,10 +32,11 @@ public final class PersistenceDatabase implements AutoCloseable {
     }
 
     /**
-     * スキーマの版数をSQLiteの user_version に記録し、これが {@link Schema#VERSION} 未満のファイル
-     * (新規作成直後は0)にだけDDLを実行する。同版のファイルは既存の表と行をそのまま使う。
-     * 版数の古いファイルは表を作り直す。プロジェクトファイルは資産フォルダから導く成果物であり、
-     * scan の再実行で全内容を再構築できる。
+     * Records the schema version in SQLite's user_version, and runs the DDL only on files where
+     * this is below {@link Schema#VERSION} (0 immediately after a fresh file is created). Files
+     * already at the current version keep their existing tables and rows as they are. Files at an
+     * older version have their tables recreated. The project file is a derived artifact built
+     * from the asset folder, and its entire content can be rebuilt by re-running scan.
      */
     private static void initializeSchema(Connection connection) throws SQLException {
         try (Statement st = connection.createStatement()) {
