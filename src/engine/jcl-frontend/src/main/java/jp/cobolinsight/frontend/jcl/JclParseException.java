@@ -1,13 +1,9 @@
 package jp.cobolinsight.frontend.jcl;
 
-/** JCL のパース失敗を表す。 */
+/** A JCL source that could not be understood. */
 public class JclParseException extends RuntimeException {
 
-	public JclParseException(String message) {
-		super(message);
-	}
-
-	public JclParseException(String message, Throwable cause) {
-		super(message, cause);
-	}
+    public JclParseException(String message) {
+        super(message);
+    }
 }
