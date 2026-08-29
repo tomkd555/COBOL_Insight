@@ -2,55 +2,38 @@ package jp.cobolinsight.frontend.sql;
 
 import jp.cobolinsight.core.sql.CursorSignals;
 import jp.cobolinsight.core.sql.SqlStructureSignals;
-import net.sf.jsqlparser.JSQLParserException;
-import net.sf.jsqlparser.parser.CCJSqlParserUtil;
-import net.sf.jsqlparser.statement.Statement;
-import net.sf.jsqlparser.statement.select.PlainSelect;
-import net.sf.jsqlparser.util.TablesNamesFinder;
+import jp.cobolinsight.frontend.sql.gen.DB2zSQLLexer;
+import jp.cobolinsight.frontend.sql.gen.DB2zSQLParser;
+import jp.cobolinsight.frontend.sql.gen.DB2zSQLParser.ColumnNameContext;
+import jp.cobolinsight.frontend.sql.gen.DB2zSQLParser.QueryContext;
+import jp.cobolinsight.frontend.sql.gen.DB2zSQLParser.SqlStatementContext;
+import jp.cobolinsight.frontend.sql.gen.DB2zSQLParser.TableNameContext;
+import org.antlr.v4.runtime.BaseErrorListener;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.RecognitionException;
+import org.antlr.v4.runtime.Recognizer;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * ホスト変数をマングリングしたSQLを JSqlParser で解析し、文種別・参照テーブル・
- * ホスト変数(原データ名へ復元済み)を取り出す。
- * OPEN/FETCH/CLOSE と DECLARE CURSOR の外形は JSqlParser の対象外のため正規表現で扱い、
- * DECLARE CURSOR は内側の SELECT を JSqlParser で解析する。
+ * Parses one embedded SQL statement with the MAPA Db2 for z/OS grammar and reads the statement
+ * kind, the referenced tables, the host variables (restored to their original data names) and
+ * the Db2 clauses off the parse tree.
+ *
+ * <p>Host variables are mangled to {@code :HVn} first, because the grammar's identifier token
+ * does not accept the Japanese data names this tool has to handle.</p>
  */
 public final class SqlStatementAnalyzer {
 
-    private static final Pattern DECLARE_CURSOR = Pattern.compile(
-            "^DECLARE\\s+(\\S+)\\s+CURSOR\\s+(?:WITH\\s+HOLD\\s+)?FOR\\s+(.+)$",
-            Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-    private static final Pattern OPEN_CURSOR = Pattern.compile(
-            "^OPEN\\s+(\\S+)$", Pattern.CASE_INSENSITIVE);
-    private static final Pattern CLOSE_CURSOR = Pattern.compile(
-            "^CLOSE\\s+(\\S+)$", Pattern.CASE_INSENSITIVE);
-    private static final Pattern FETCH = Pattern.compile(
-            "^FETCH\\s+(?:FROM\\s+)?(\\S+)\\s+INTO\\s+(.+)$",
-            Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-    private static final Pattern SELECT_INTO_CLAUSE = Pattern.compile(
-            "\\bINTO\\s+(:HV\\d+(?:\\s*,\\s*:HV\\d+)*)", Pattern.CASE_INSENSITIVE);
     private static final Pattern TOKEN = Pattern.compile(":(HV\\d+)");
-    private static final Pattern OPTIMIZE_FOR_CLAUSE = Pattern.compile(
-            "\\bOPTIMIZE\\s+FOR\\s+(?:\\d+|:HV\\d+)\\s+ROWS?\\b", Pattern.CASE_INSENSITIVE);
-    private static final Pattern WITH_UR_CLAUSE = Pattern.compile(
-            "\\bWITH\\s+UR\\b", Pattern.CASE_INSENSITIVE);
-    private static final Pattern FETCH_FIRST_CLAUSE = Pattern.compile(
-            "\\bFETCH\\s+FIRST\\s+(?:(?:\\d+|:HV\\d+)\\s+)?ROWS?\\s+ONLY\\b", Pattern.CASE_INSENSITIVE);
-    private static final Pattern FOR_READ_ONLY_CLAUSE = Pattern.compile(
-            "\\bFOR\\s+READ\\s+ONLY\\b", Pattern.CASE_INSENSITIVE);
-    private static final Pattern FOR_FETCH_ONLY_CLAUSE = Pattern.compile(
-            "\\bFOR\\s+FETCH\\s+ONLY\\b", Pattern.CASE_INSENSITIVE);
-    private static final Pattern FOR_UPDATE_OF_CLAUSE = Pattern.compile(
-            "\\bFOR\\s+UPDATE\\s+OF\\s+([A-Za-z0-9_.]+(?:\\s*,\\s*[A-Za-z0-9_.]+)*)",
-            Pattern.CASE_INSENSITIVE);
-    private static final Pattern FOR_UPDATE_CLAUSE = Pattern.compile(
-            "\\bFOR\\s+UPDATE\\b", Pattern.CASE_INSENSITIVE);
 
     private final HostVariableMangler mangler = new HostVariableMangler();
 
@@ -60,149 +43,111 @@ public final class SqlStatementAnalyzer {
             return notAnalyzable(notAnalyzable.reason(), null);
         }
         MangledSql mangled = ((MangleResult.Mangled) mangleResult).sql();
+        // The grammar ignores layout, but collapsing it keeps the predicate excerpts on one line.
         String sql = mangled.sql().replaceAll("\\s+", " ").trim();
-        try {
-            return dispatch(mangled, sql);
-        } catch (JSQLParserException e) {
-            return notAnalyzable("JSqlParser が解析できない: " + firstLine(e.getMessage()), mangled);
+        if (sql.isEmpty()) {
+            return notAnalyzable("SQL text is empty", mangled);
         }
+        ErrorCollector errors = new ErrorCollector();
+        DB2zSQLLexer lexer = new DB2zSQLLexer(CharStreams.fromString(sql));
+        lexer.removeErrorListeners();
+        lexer.addErrorListener(errors);
+        DB2zSQLParser parser = new DB2zSQLParser(new CommonTokenStream(lexer));
+        parser.removeErrorListeners();
+        parser.addErrorListener(errors);
+        List<SqlStatementContext> statements = parser.startRule().sqlStatement();
+        if (errors.firstMessage != null) {
+            return notAnalyzable("the Db2z grammar rejects the statement: " + errors.firstMessage,
+                    mangled);
+        }
+        if (statements.isEmpty()) {
+            return notAnalyzable("no SQL statement was recognised", mangled);
+        }
+        return dispatch(mangled, statements.get(0));
     }
 
-    private SqlAnalysisResult dispatch(MangledSql mangled, String sql)
-            throws JSQLParserException {
-        Matcher declare = DECLARE_CURSOR.matcher(sql);
-        if (declare.matches()) {
-            String cursorName = declare.group(1);
-            String body = declare.group(2);
-            String stripped = stripDb2Clauses(body);
-            CursorSignals cursor = cursorSignals(cursorName, body);
-            SqlStructureSignals signals = selectStructure(stripped, mangled, Optional.of(cursor), body);
-            return analyzed(mangled, SqlStatementKind.DECLARE_CURSOR,
-                    cursorName, tables(stripped), List.of(), signals);
+    private static SqlAnalysisResult dispatch(MangledSql mangled, SqlStatementContext statement) {
+        if (statement.declareCursorStatement() != null) {
+            CursorSignals cursor =
+                    SqlStructureInspector.cursorSignals(statement.declareCursorStatement());
+            return analyzed(mangled, SqlStatementKind.DECLARE_CURSOR, cursor.cursorName(),
+                    tables(statement), List.of(),
+                    SqlStructureInspector.signals(statement, mangled, Optional.of(cursor), true));
         }
-        Matcher open = OPEN_CURSOR.matcher(sql);
-        if (open.matches()) {
-            return analyzed(mangled, SqlStatementKind.OPEN_CURSOR,
-                    open.group(1), List.of(), List.of(), nonSelectStructure(sql));
+        if (statement.openStatement() != null) {
+            return cursorStatement(mangled, SqlStatementKind.OPEN_CURSOR, statement,
+                    statement.openStatement().cursorName().getText(), List.of());
         }
-        Matcher close = CLOSE_CURSOR.matcher(sql);
-        if (close.matches()) {
-            return analyzed(mangled, SqlStatementKind.CLOSE_CURSOR,
-                    close.group(1), List.of(), List.of(), nonSelectStructure(sql));
+        if (statement.closeStatement() != null) {
+            return cursorStatement(mangled, SqlStatementKind.CLOSE_CURSOR, statement,
+                    statement.closeStatement().cursorName().getText(), List.of());
         }
-        Matcher fetch = FETCH.matcher(sql);
-        if (fetch.matches()) {
-            return analyzed(mangled, SqlStatementKind.FETCH,
-                    fetch.group(1), List.of(), restoreTokens(mangled, fetch.group(2)),
-                    nonSelectStructure(sql));
+        if (statement.fetchStatement() != null) {
+            var fetch = statement.fetchStatement();
+            ParserRuleContext into = fetch.singleRowFetch() != null
+                    ? fetch.singleRowFetch() : fetch.multipleRowFetch();
+            return cursorStatement(mangled, SqlStatementKind.FETCH, statement,
+                    fetch.cursorName().getText(), hostVariableNames(mangled, into));
         }
-        String firstWord = firstWord(sql);
-        switch (firstWord) {
-            case "SELECT": {
-                Matcher into = SELECT_INTO_CLAUSE.matcher(sql);
-                if (into.find()) {
-                    List<String> intoTargets = restoreTokens(mangled, into.group(1));
-                    // INTO 句は埋め込みSQL固有でホスト変数の並びを取るため、取り出したうえで本文から外す。
-                    String withoutInto = into.replaceFirst(" ");
-                    String stripped = stripDb2Clauses(withoutInto);
-                    SqlStructureSignals signals =
-                            selectStructure(stripped, mangled, Optional.empty(), withoutInto);
-                    return analyzed(mangled, SqlStatementKind.SELECT_INTO,
-                            null, tables(stripped), intoTargets, signals);
-                }
-                String stripped = stripDb2Clauses(sql);
-                SqlStructureSignals signals =
-                        selectStructure(stripped, mangled, Optional.empty(), sql);
-                return analyzed(mangled, SqlStatementKind.SELECT,
-                        null, tables(stripped), List.of(), signals);
+        QueryContext query = statement.query();
+        if (query != null) {
+            if (query.selectIntoStatement() != null) {
+                List<String> intoTargets = hostVariableNames(mangled,
+                        query.selectIntoStatement().intoClause());
+                return analyzed(mangled, SqlStatementKind.SELECT_INTO, null, tables(statement),
+                        intoTargets,
+                        SqlStructureInspector.signals(statement, mangled, Optional.empty(), true));
             }
-            case "INSERT":
-                return analyzed(mangled, SqlStatementKind.INSERT,
-                        null, tables(sql), List.of(), nonSelectStructure(sql));
-            case "UPDATE":
-                return analyzed(mangled, SqlStatementKind.UPDATE,
-                        null, tables(sql), List.of(), nonSelectStructure(sql));
-            case "DELETE":
-                return analyzed(mangled, SqlStatementKind.DELETE,
-                        null, tables(stripDb2Clauses(sql)), List.of(), nonSelectStructure(sql));
-            default:
-                return analyzed(mangled, SqlStatementKind.OTHER,
-                        null, List.of(), List.of(), nonSelectStructure(sql));
+            return analyzed(mangled, SqlStatementKind.SELECT, null, tables(statement), List.of(),
+                    SqlStructureInspector.signals(statement, mangled, Optional.empty(), true));
         }
+        if (statement.insertStatement() != null) {
+            return dml(mangled, SqlStatementKind.INSERT, statement);
+        }
+        if (statement.updateStatement() != null) {
+            return dml(mangled, SqlStatementKind.UPDATE, statement);
+        }
+        if (statement.deleteStatement() != null) {
+            return dml(mangled, SqlStatementKind.DELETE, statement);
+        }
+        return analyzed(mangled, SqlStatementKind.OTHER, null, List.of(), List.of(),
+                SqlStructureInspector.signals(statement, mangled, Optional.empty(), false));
+    }
+
+    private static SqlAnalysisResult dml(MangledSql mangled, SqlStatementKind kind,
+            SqlStatementContext statement) {
+        return analyzed(mangled, kind, null, tables(statement), List.of(),
+                SqlStructureInspector.signals(statement, mangled, Optional.empty(), false));
+    }
+
+    private static SqlAnalysisResult cursorStatement(MangledSql mangled, SqlStatementKind kind,
+            SqlStatementContext statement, String cursorName, List<String> intoTargets) {
+        return analyzed(mangled, kind, cursorName, List.of(), intoTargets,
+                SqlStructureInspector.signals(statement, mangled, Optional.empty(), false));
     }
 
     /**
-     * SELECT本体を構文木で走査し、Db2固有句を正規表現で検出して構造シグナルを組み立てる。
-     * selectSql はDb2固有句を除いた構文木用のテキスト、db2Source は句の検出用に除去前のテキストを受ける。
+     * The tables the statement reads or writes. A {@code tableName} that qualifies a column
+     * (as in {@code Z.SOKO_CD}) names a correlation, not a table, so it is left out.
      */
-    private static SqlStructureSignals selectStructure(String selectSql, MangledSql mangled,
-            Optional<CursorSignals> cursor, String db2Source) throws JSQLParserException {
-        Statement statement = CCJSqlParserUtil.parse(selectSql);
-        boolean selectStar = false;
-        List<String> nonSargable = List.of();
-        List<String> functionOnColumn = List.of();
-        if (statement instanceof PlainSelect select) {
-            selectStar = SqlStructureInspector.hasSelectStar(select);
-            nonSargable = SqlStructureInspector.nonSargablePredicates(select, mangled);
-            functionOnColumn = SqlStructureInspector.functionOnColumnPredicates(select, mangled);
-        }
-        String masked = SqlTextScanner.maskStringLiterals(db2Source);
-        return new SqlStructureSignals(selectStar, nonSargable, functionOnColumn, cursor,
-                FETCH_FIRST_CLAUSE.matcher(masked).find(),
-                OPTIMIZE_FOR_CLAUSE.matcher(masked).find(),
-                WITH_UR_CLAUSE.matcher(masked).find());
-    }
-
-    /** SELECT系以外の文の構造シグナル。Db2固有句のみを正規表現で検出する。 */
-    private static SqlStructureSignals nonSelectStructure(String sql) {
-        String masked = SqlTextScanner.maskStringLiterals(sql);
-        return new SqlStructureSignals(false, List.of(), List.of(), Optional.empty(),
-                FETCH_FIRST_CLAUSE.matcher(masked).find(),
-                OPTIMIZE_FOR_CLAUSE.matcher(masked).find(),
-                WITH_UR_CLAUSE.matcher(masked).find());
-    }
-
-    /** DECLARE CURSOR の FOR READ ONLY / FOR FETCH ONLY / FOR UPDATE OF を正規表現で検出する。 */
-    private static CursorSignals cursorSignals(String cursorName, String body) {
-        String masked = SqlTextScanner.maskStringLiterals(body);
-        List<String> columns = new ArrayList<>();
-        Matcher of = FOR_UPDATE_OF_CLAUSE.matcher(masked);
-        if (of.find()) {
-            for (String column : of.group(1).split(",")) {
-                String trimmed = column.trim();
-                if (!trimmed.isEmpty()) {
-                    columns.add(trimmed);
-                }
+    private static List<String> tables(SqlStatementContext statement) {
+        Set<String> names = new LinkedHashSet<>();
+        for (TableNameContext table
+                : SqlStructureInspector.descendants(statement, TableNameContext.class)) {
+            if (!(table.getParent() instanceof ColumnNameContext)) {
+                names.add(table.getText());
             }
         }
-        return new CursorSignals(cursorName,
-                FOR_READ_ONLY_CLAUSE.matcher(masked).find(),
-                FOR_FETCH_ONLY_CLAUSE.matcher(masked).find(),
-                FOR_UPDATE_CLAUSE.matcher(masked).find(),
-                List.copyOf(columns));
+        return List.copyOf(names);
     }
 
-    private static List<String> tables(String sql) throws JSQLParserException {
-        return List.copyOf(TablesNamesFinder.findTables(sql));
-    }
-
-    /**
-     * JSqlParser が構文木に落とさない Db2 固有句を、解析前にテキストから除く。
-     * FOR UPDATE OF は列並び(OF あり)を先に除いてから、素の FOR UPDATE を除く。
-     */
-    private static String stripDb2Clauses(String sql) {
-        String stripped = OPTIMIZE_FOR_CLAUSE.matcher(sql).replaceAll(" ");
-        stripped = WITH_UR_CLAUSE.matcher(stripped).replaceAll(" ");
-        stripped = FOR_UPDATE_OF_CLAUSE.matcher(stripped).replaceAll(" ");
-        stripped = FOR_UPDATE_CLAUSE.matcher(stripped).replaceAll(" ");
-        stripped = FOR_READ_ONLY_CLAUSE.matcher(stripped).replaceAll(" ");
-        stripped = FOR_FETCH_ONLY_CLAUSE.matcher(stripped).replaceAll(" ");
-        return stripped.trim();
-    }
-
-    private static List<String> restoreTokens(MangledSql mangled, String clause) {
+    /** The original data names of the host variables under the given clause, in source order. */
+    private static List<String> hostVariableNames(MangledSql mangled, ParserRuleContext clause) {
+        if (clause == null) {
+            return List.of();
+        }
         List<String> names = new ArrayList<>();
-        Matcher m = TOKEN.matcher(clause);
+        Matcher m = TOKEN.matcher(clause.getText());
         while (m.find()) {
             String token = m.group(1);
             mangled.hostVariables().stream()
@@ -211,20 +156,6 @@ public final class SqlStatementAnalyzer {
                     .ifPresent(ref -> names.add(ref.dataName()));
         }
         return List.copyOf(names);
-    }
-
-    private static String firstWord(String sql) {
-        int space = sql.indexOf(' ');
-        String word = space < 0 ? sql : sql.substring(0, space);
-        return word.toUpperCase(Locale.ROOT);
-    }
-
-    private static String firstLine(String message) {
-        if (message == null) {
-            return "原因不明";
-        }
-        int lineBreak = message.indexOf('\n');
-        return lineBreak < 0 ? message : message.substring(0, lineBreak).trim();
     }
 
     private static SqlAnalysisResult analyzed(MangledSql mangled, SqlStatementKind kind,
@@ -240,5 +171,19 @@ public final class SqlStatementAnalyzer {
                 mangled == null ? List.of() : mangled.hostVariables(), List.of(),
                 mangled == null ? null : mangled.sql(),
                 SqlStructureSignals.empty());
+    }
+
+    /** Keeps the first syntax error and keeps ANTLR from writing to the console. */
+    private static final class ErrorCollector extends BaseErrorListener {
+
+        private String firstMessage;
+
+        @Override
+        public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line,
+                int charPositionInLine, String msg, RecognitionException e) {
+            if (firstMessage == null) {
+                firstMessage = "column " + charPositionInLine + ": " + msg;
+            }
+        }
     }
 }

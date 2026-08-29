@@ -119,7 +119,7 @@ class SqlStatementAnalyzerTest {
     }
 
     @Test
-    void jsqlparserが構文エラーとする文は解析対象外として報告する() {
+    void 文法が構文エラーとする文は解析対象外として報告する() {
         SqlAnalysisResult result = analyzer.analyze(block(
                 "SELECT * FROM", SqlBlockKind.EXECUTABLE));
         assertEquals(AnalysisStatus.NOT_ANALYZABLE, result.status());

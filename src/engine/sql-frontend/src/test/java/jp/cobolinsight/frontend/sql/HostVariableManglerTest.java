@@ -1,9 +1,7 @@
 package jp.cobolinsight.frontend.sql;
 
-import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -95,11 +93,14 @@ class HostVariableManglerTest {
     }
 
     @Test
-    void マングリング済みSQLはJSqlParserで解析できる() {
+    void マングリング済みSQLはDb2z文法で解析できる() {
         String sql = "SELECT ZAIKO_SU FROM SYKDB.ZAIKOM"
                 + " WHERE SHOHIN_CD = :HOST-商品コード AND SOKO_CD = :HOST-倉庫コード";
         MangledSql result = mangled(sql);
-        assertDoesNotThrow(() -> CCJSqlParserUtil.parse(result.sql()));
+        SqlAnalysisResult analyzed = new SqlStatementAnalyzer().analyze(
+                new SqlBlock(sql, SqlBlockKind.EXECUTABLE,
+                        new SourcePosition(1, 12), new SourcePosition(1, 20)));
+        assertEquals(AnalysisStatus.ANALYZED, analyzed.status());
         assertEquals(sql, result.restore());
     }
 
