@@ -16,9 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** engine-api の SqlParser SPI への変換の検証。 */
-class JsqlSqlParserTest {
+class Db2zSqlParserTest {
 
-    private final JsqlSqlParser parser = new JsqlSqlParser();
+    private final Db2zSqlParser parser = new Db2zSqlParser();
 
     private static EmbeddedBlock sqlBlock(String text) {
         SourcePosition start = new SourcePosition("SYK006.cbl", 100, 12, -1);

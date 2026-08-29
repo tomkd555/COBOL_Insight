@@ -11,7 +11,7 @@ import jp.cobolinsight.core.source.SourceRange;
 import jp.cobolinsight.core.spi.AnalysisContext;
 import jp.cobolinsight.core.spi.ParseOutcome;
 import jp.cobolinsight.core.sql.SqlStatementModel;
-import jp.cobolinsight.frontend.sql.JsqlSqlParser;
+import jp.cobolinsight.frontend.sql.Db2zSqlParser;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -25,7 +25,7 @@ import java.util.Optional;
 
 /**
  * SQL指摘(Sルール)テストの補助。合成SQL・samples の埋め込みSQLを、本番と同じ SqlParser SPI
- * (sql-frontend の {@link JsqlSqlParser})で {@link SqlStatementModel} へ変換し、それを
+ * (sql-frontend の {@link Db2zSqlParser})で {@link SqlStatementModel} へ変換し、それを
  * {@code sqlStatements} に載せた AnalysisContext を組む。sql-frontend が算出した構造シグナルを
  * 消費側ルールへそのまま流す点は、本番経路(ScanRunner.persistSqlStatements)と同じである。
  */
@@ -33,7 +33,7 @@ final class SqlAdviceFixtures {
 
     static final Path SAMPLES = Path.of("..", "..", "..", "samples").toAbsolutePath().normalize();
     private static final String SYNTHETIC_FILE = "synthetic.cbl";
-    private static final JsqlSqlParser SQL_PARSER = new JsqlSqlParser();
+    private static final Db2zSqlParser SQL_PARSER = new Db2zSqlParser();
 
     private SqlAdviceFixtures() {
     }

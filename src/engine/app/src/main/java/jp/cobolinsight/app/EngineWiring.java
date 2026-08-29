@@ -10,7 +10,7 @@ import jp.cobolinsight.core.spi.SqlParser;
 import jp.cobolinsight.frontend.bms.BmsSourceParser;
 import jp.cobolinsight.frontend.cobol.Che4zCobolParser;
 import jp.cobolinsight.frontend.jcl.MapaJclParser;
-import jp.cobolinsight.frontend.sql.JsqlSqlParser;
+import jp.cobolinsight.frontend.sql.Db2zSqlParser;
 import jp.cobolinsight.rules.BuiltinRules;
 
 import java.util.List;
@@ -38,7 +38,7 @@ public final class EngineWiring {
     }
 
     public static SqlParser sqlParser() {
-        return new JsqlSqlParser();
+        return new Db2zSqlParser();
     }
 
     public static BmsSourceParser bmsParser() {

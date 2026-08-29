@@ -16,7 +16,7 @@ import java.util.Optional;
  * engine-api の {@link SqlParser} 実装。{@link SqlStatementAnalyzer} の解析結果
  * (マングリング・文種別・参照テーブル・ホスト変数)を engine-api のSQL文モデルへ変換する。
  */
-public final class JsqlSqlParser implements SqlParser {
+public final class Db2zSqlParser implements SqlParser {
 
     private final SqlStatementAnalyzer analyzer = new SqlStatementAnalyzer();
 
