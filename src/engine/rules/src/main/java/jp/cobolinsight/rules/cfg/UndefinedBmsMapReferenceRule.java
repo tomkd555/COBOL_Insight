@@ -7,11 +7,13 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.EmbeddedBlock;
 import jp.cobolinsight.core.semantic.EmbeddedBlockKind;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.core.spi.RuleDoc;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,39 +28,30 @@ public final class UndefinedBmsMapReferenceRule implements Rule {
 
     private static final Pattern MAP_OPERAND = Pattern.compile("(?i)\\bMAP\\s*\\(");
 
-    @Override
-    public String id() {
-        return "R031";
-    }
+    private static final RuleMeta META = RuleMeta.named("R031", "存在しないBMSマップ・フィールドの参照", "CICS")
+            .summary("BMS のマップ定義に無いマップセット・マップを参照する"
+                    + "EXEC CICS SEND/RECEIVE MAP を検出します。")
+            .rationale("定義の無いマップを指す送受信は実行時に失敗し、"
+                    + "画面が表示されないまま異常終了します。")
+            .detection("SEND MAP・RECEIVE MAP の MAP・MAPSET を BMS マップモデルと"
+                    + "突き合わせ、マップセットが存在しない、"
+                    + "またはマップがそのマップセットに定義されていないものを検出します。")
+            .remedy("マップ名・マップセット名の綴りを BMS 定義と揃えるか、"
+                    + "不足しているマップを BMS へ定義します。")
+            .example("""
+                    EXEC CICS SEND MAP('MAPXX') MAPSET('MAPSET1') END-EXEC.
+                    """, """
+                    EXEC CICS SEND MAP('MAP01') MAPSET('MAPSET1') END-EXEC.
+                    """)
+            .severity(Severity.HIGH)
+            .commands(Command.LINT, Command.REPORT)
+            .targets(AssetKind.COBOL, AssetKind.BMS)
+            .needs(Needs.SEMANTIC, Needs.BMS)
+            .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("存在しないBMSマップ・フィールドの参照", "CICS")
-                .summary("BMS のマップ定義に無いマップセット・マップを参照する"
-                        + "EXEC CICS SEND/RECEIVE MAP を検出します。")
-                .rationale("定義の無いマップを指す送受信は実行時に失敗し、"
-                        + "画面が表示されないまま異常終了します。")
-                .detection("SEND MAP・RECEIVE MAP の MAP・MAPSET を BMS マップモデルと"
-                        + "突き合わせ、マップセットが存在しない、"
-                        + "またはマップがそのマップセットに定義されていないものを検出します。")
-                .remedy("マップ名・マップセット名の綴りを BMS 定義と揃えるか、"
-                        + "不足しているマップを BMS へ定義します。")
-                .example("""
-                        EXEC CICS SEND MAP('MAPXX') MAPSET('MAPSET1') END-EXEC.
-                        """, """
-                        EXEC CICS SEND MAP('MAP01') MAPSET('MAPSET1') END-EXEC.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.HIGH;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.CONTROL_FLOW;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override
@@ -79,7 +72,7 @@ public final class UndefinedBmsMapReferenceRule implements Rule {
                 if (isDefined(mapsets, map, mapset)) {
                     continue;
                 }
-                findings.add(Finding.of(id(), defaultSeverity().toLevel(),
+                findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         "参照するマップ " + map
                                 + (mapset == null ? "" : "(マップセット " + mapset + ")")
                                 + " は BMS マップ定義に存在しない。",

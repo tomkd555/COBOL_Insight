@@ -8,11 +8,13 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.core.spi.RuleDoc;
 import jp.cobolinsight.rules.SourceTextIndex;
 
 import java.util.ArrayList;
@@ -37,41 +39,33 @@ public final class StringOverflowRule implements Rule {
                     + "|(?i)\\bWITH\\s+POINTER\\s+[\\p{L}\\p{N}$#_-]+"
                     + "|(?i)\\bTALLYING\\s+IN\\s+[\\p{L}\\p{N}$#_-]+");
 
-    @Override
-    public String id() {
-        return "R016";
-    }
+    private static final RuleMeta META =
+            RuleMeta.named("R016", "STRING/UNSTRING文の受信領域あふれ", "データ移動")
+                    .summary("STRING の連結結果が受信項目に収まらない、または UNSTRING の"
+                            + "送信項目が受信項目群に収まらない構成を検出します。")
+                    .rationale("収まらない分が切り捨てられ、"
+                            + "連結した文字列や分割した結果が途中で欠けます。")
+                    .detection("送信側の合計長と受信側の長さをバイト長で突き合わせ、"
+                            + "超えるものを検出します。長さを解決できない項目を含む文は対象外とします。")
+                    .remedy("受信項目の長さを広げるか、ON OVERFLOW 句であふれ時の処理を書きます。")
+                    .example("""
+                            01  WS-OUT  PIC X(10).
+                                STRING WS-A WS-B DELIMITED BY SIZE INTO WS-OUT.
+                            """, """
+                            01  WS-OUT  PIC X(30).
+                                STRING WS-A WS-B DELIMITED BY SIZE INTO WS-OUT
+                                    ON OVERFLOW PERFORM OVERFLOW-SHORI
+                                END-STRING.
+                            """)
+                    .severity(Severity.HIGH)
+                    .commands(Command.LINT, Command.REPORT)
+                    .targets(AssetKind.COBOL)
+                    .needs(Needs.SEMANTIC, Needs.CFG, Needs.SOURCE_TEXT)
+                    .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("STRING/UNSTRING文の受信領域あふれ", "データ移動")
-                .summary("STRING の連結結果が受信項目に収まらない、または UNSTRING の"
-                        + "送信項目が受信項目群に収まらない構成を検出します。")
-                .rationale("収まらない分が切り捨てられ、"
-                        + "連結した文字列や分割した結果が途中で欠けます。")
-                .detection("送信側の合計長と受信側の長さをバイト長で突き合わせ、"
-                        + "超えるものを検出します。長さを解決できない項目を含む文は対象外とします。")
-                .remedy("受信項目の長さを広げるか、ON OVERFLOW 句であふれ時の処理を書きます。")
-                .example("""
-                        01  WS-OUT  PIC X(10).
-                            STRING WS-A WS-B DELIMITED BY SIZE INTO WS-OUT.
-                        """, """
-                        01  WS-OUT  PIC X(30).
-                            STRING WS-A WS-B DELIMITED BY SIZE INTO WS-OUT
-                                ON OVERFLOW PERFORM OVERFLOW-SHORI
-                            END-STRING.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.HIGH;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.DATA_FLOW;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override
@@ -103,7 +97,7 @@ public final class StringOverflowRule implements Rule {
                     : "UNSTRING".equals(verb) ? checkUnstring(simple.text(), support)
                     : null;
             if (message != null) {
-                findings.add(Finding.of(id(), defaultSeverity().toLevel(), message,
+                findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(), message,
                         new SourcePosition(model.sourceFile(), simple.range().start().line(), 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
             }

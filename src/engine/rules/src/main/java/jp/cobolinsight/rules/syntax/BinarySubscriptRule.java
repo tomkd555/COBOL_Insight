@@ -6,11 +6,13 @@ import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.CompoundStatement;
 import jp.cobolinsight.core.semantic.DataItem;
 import jp.cobolinsight.core.semantic.SimpleStatement;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourceRange;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.core.spi.RuleDoc;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -36,39 +38,30 @@ public final class BinarySubscriptRule implements Rule {
     private static final Set<String> BINARY_USAGES = Set.of("COMP", "COMP-4", "COMP-5",
             "COMPUTATIONAL", "COMPUTATIONAL-4", "COMPUTATIONAL-5", "BINARY", "INDEX");
 
-    @Override
-    public String id() {
-        return "R006";
-    }
+    private static final RuleMeta META = RuleMeta.named("R006", "添字への二進項目未使用", "添字・指標")
+            .summary("表の添字に USAGE BINARY 以外のデータ項目を使っている参照を検出します。")
+            .rationale("DISPLAY 形式の添字は参照のたびに二進数へ変換されるため、"
+                    + "表を繰り返し参照する処理の実行時間が伸びます。")
+            .detection("文テキスト上の「名前(添字)」形式のうち、添字がデータ項目で、"
+                    + "その USAGE が BINARY(COMP)でないものを検出します。"
+                    + "INDEXED BY の指標名とリテラルの添字は対象外とします。")
+            .remedy("添字に使う項目を USAGE BINARY(COMP)で宣言するか、INDEXED BY の指標を使います。")
+            .example("""
+                    01  WS-IDX  PIC 9(4).
+                        MOVE WS-TBL(WS-IDX) TO WS-OUT.
+                    """, """
+                    01  WS-IDX  PIC 9(4) USAGE BINARY.
+                        MOVE WS-TBL(WS-IDX) TO WS-OUT.
+                    """)
+            .severity(Severity.LOW)
+            .commands(Command.LINT, Command.REPORT)
+            .targets(AssetKind.COBOL)
+            .needs(Needs.SEMANTIC)
+            .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("添字への二進項目未使用", "添字・指標")
-                .summary("表の添字に USAGE BINARY 以外のデータ項目を使っている参照を検出します。")
-                .rationale("DISPLAY 形式の添字は参照のたびに二進数へ変換されるため、"
-                        + "表を繰り返し参照する処理の実行時間が伸びます。")
-                .detection("文テキスト上の「名前(添字)」形式のうち、添字がデータ項目で、"
-                        + "その USAGE が BINARY(COMP)でないものを検出します。"
-                        + "INDEXED BY の指標名とリテラルの添字は対象外とします。")
-                .remedy("添字に使う項目を USAGE BINARY(COMP)で宣言するか、INDEXED BY の指標を使います。")
-                .example("""
-                        01  WS-IDX  PIC 9(4).
-                            MOVE WS-TBL(WS-IDX) TO WS-OUT.
-                        """, """
-                        01  WS-IDX  PIC 9(4) USAGE BINARY.
-                            MOVE WS-TBL(WS-IDX) TO WS-OUT.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.LOW;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.SYNTAX;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override

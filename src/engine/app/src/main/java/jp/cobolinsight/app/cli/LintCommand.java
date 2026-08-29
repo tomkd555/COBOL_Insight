@@ -1,27 +1,23 @@
 package jp.cobolinsight.app.cli;
 
-import picocli.CommandLine;
+import jp.cobolinsight.app.pipeline.Paths;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
-import picocli.CommandLine.Spec;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Callable;
 
 /**
- * `lint` サブコマンド。資産フォルダを構文段階のルールで静的解析し、SARIF 2.1.0ファイルを
- * 書き出して処理サマリをJSONで標準出力へ書く。終了コードは検出結果で分岐する
- * (成功=0・警告あり=1・エラー=2)。
+ * `lint`。資産フォルダをルールで静的解析し、SARIF 2.1.0ファイルを書き出して処理サマリをJSONで
+ * 標準出力へ書く。終了コードは検出結果で分岐する(成功=0・警告あり=1・エラー=2)。
+ *
+ * <p>{@code --file} を与えると、その1本と、そこから解決するコピー句だけを対象とする。
  */
 @Command(name = "lint", mixinStandardHelpOptions = true,
         description = "資産フォルダをルールで静的解析し、SARIFを出力する")
@@ -29,6 +25,10 @@ public final class LintCommand implements Callable<Integer> {
 
     @Parameters(index = "0", paramLabel = "INPUT_DIR", description = "資産フォルダ")
     Path inputDir;
+
+    @Option(names = "--file", paramLabel = "FILE",
+            description = "この1本だけを解析する(コピー句は探索パスから解決する)")
+    Path singleFile;
 
     @Option(names = "--sarif", paramLabel = "FILE", defaultValue = "cobol-insight.sarif",
             description = "指摘の一覧を書き出すファイル(SARIF 2.1.0形式)(既定: ${DEFAULT-VALUE})")
@@ -42,29 +42,15 @@ public final class LintCommand implements Callable<Integer> {
             description = "ファイル単位のコードページ手動指定(相対パスまたはファイル名=コードページ)。自動判別に優先する")
     Map<String, String> codepageOverrides = new LinkedHashMap<>();
 
-    @Option(names = "--rule-config", paramLabel = "FILE",
-            description = "ルールの有効・無効を書いた設定ファイル(JSON)")
-    Path ruleConfigFile;
-
-    @Option(names = "--user-rules", paramLabel = "FILE",
-            description = "利用者定義ルールの定義ファイル(JSON)。無い場合は組み込みルールだけを実行する")
-    Path userRulesFile;
-
-    @Spec
-    CommandLine.Model.CommandSpec spec;
+    @Mixin
+    RuleOptions ruleOptions;
 
     @Override
     public Integer call() {
         List<Path> searchPaths = CommonScanOptions.resolveCopybookPaths(inputDir, copybookPaths);
-        Set<String> disabled = RuleConfig.resolveDisabled(spec, ruleConfigFile);
-        LintRunner.Result result = LintRunner.run(
-                new LintRunner.Options(inputDir, searchPaths, codepageOverrides, disabled,
-                        userRulesFile));
-        try {
-            Files.writeString(sarifFile, result.sarifJson(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+        LintRunner.Result result = LintRunner.run(new LintRunner.Options(inputDir, searchPaths,
+                codepageOverrides, ruleOptions.reportingRuleSet(), singleFile));
+        Paths.writeString(sarifFile, result.sarifJson());
         System.out.println(result.summaryJson(sarifFile.toString()));
         return result.exitCode();
     }

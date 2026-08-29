@@ -1,34 +1,21 @@
 package jp.cobolinsight.app.cli;
 
-import jp.cobolinsight.analysis.dataflow.CfgBuilder;
-import jp.cobolinsight.analysis.dataflow.DataFlowEngine;
+import jp.cobolinsight.app.pipeline.Pipelines;
+import jp.cobolinsight.app.pipeline.SourceSet;
+import jp.cobolinsight.app.pipeline.SourceUnit;
 import jp.cobolinsight.core.encoding.CodePage;
 import jp.cobolinsight.core.encoding.SourceDecoder;
-import jp.cobolinsight.core.cfg.ControlFlowGraph;
-import jp.cobolinsight.core.cfg.ControlFlowGraphs;
-import jp.cobolinsight.core.dataflow.DataFlowFacts;
 import jp.cobolinsight.core.finding.Finding;
 import jp.cobolinsight.core.finding.FindingLevel;
 import jp.cobolinsight.core.finding.FixSuggestion;
 import jp.cobolinsight.core.finding.TextEdit;
-import jp.cobolinsight.core.pipeline.AnalysisServices;
-import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.fix.ByteSpliceApplier;
+import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.DecodedSource;
-import jp.cobolinsight.core.source.SourcePosition;
-import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
-import jp.cobolinsight.core.spi.CharsetProvider;
-import jp.cobolinsight.core.spi.CobolParser;
-import jp.cobolinsight.core.spi.FixProducer;
-import jp.cobolinsight.core.spi.ParseOutcome;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.rules.SourceTextIndex;
+import jp.cobolinsight.rules.RuleSet;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -36,48 +23,48 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Stream;
 
 /**
- * `fix` の中核処理。資産フォルダの COBOL を復号・パースして制御フローグラフとデータフロー事実を組み、
- * 構文・制御フロー・データフローの各段階のルールを評価して findings を得る。各 finding のルールが
- * {@link Rule#fixProducer()} を持てば {@link FixProducer#produce} で修正案を取得し、原本ファイル別に
- * {@link TextEdit} 群を集約する。集約した編集をバイトスプライスで原本へ適用し、修正後バイト列・
- * 原本テキスト・修正後テキストを {@link FileFix} として返す。挿入行の固定形式整形は FixProducer が
- * 済ませている前提とし、本処理は範囲昇順・非重複の適用だけを担う(重複は適用器が拒否する)。
+ * {@code fix}. Evaluates the rules that carry a canned fix, collects their edits per original file
+ * and splices them into the bytes of that file.
  *
- * <p>解析経路は engine-api の {@link CharsetProvider}/{@link CobolParser}(ServiceLoader 解決)を
- * 用い、バイトスプライスの桁引き・再符号化は原本を {@link SourceDecoder} で再復号した
- * {@link jp.cobolinsight.core.encoding.DecodedSource}(ByteOffsetTable 付き)で行う。原本ファイルは
- * 一切変更しない。
+ * <p>Editing is done on bytes rather than characters: a fixed-format source keeps its columns only
+ * if the code page stays out of the way. Insertions are already laid out in fixed format by the
+ * rule's fix producer; this runner only applies them in ascending, non-overlapping order, and the
+ * applier rejects an overlap.
+ *
+ * <p>Original files are never written. {@code fix preview} shows a diff and {@code fix apply}
+ * writes to an output folder.
  */
 public final class FixRunner {
 
-    private static final String DECODE_FAILURE_RULE_ID = "decode-failure";
-
     public record Options(Path inputDir, List<Path> copybookSearchPaths,
-            Map<String, String> codepageOverrides) {
+            Map<String, String> codepageOverrides, RuleSet ruleSet) {
 
         public Options {
             copybookSearchPaths = List.copyOf(copybookSearchPaths);
             codepageOverrides = Map.copyOf(codepageOverrides);
         }
+
+        /** The default rule set: every built-in rule, no configuration file. */
+        public Options(Path inputDir, List<Path> copybookSearchPaths,
+                Map<String, String> codepageOverrides) {
+            this(inputDir, copybookSearchPaths, codepageOverrides, RuleSet.load((Path) null));
+        }
     }
 
     /**
-     * 1ファイルの修正結果。原本の相対パス・確定コードページ名・原本テキスト・修正後テキスト・
-     * 修正後バイト列と、適用した修正案の説明群を持つ。修正後バイト列は原本と同一のコードページで
-     * 符号化済みで、そのまま出力先へ書き出せる。
+     * One file's fix: its relative path, settled code page, original and fixed text, the fixed
+     * bytes (already encoded in the original's code page) and the descriptions applied.
      *
-     * <p>{@code copybook} が真のとき、この修正はコピー句由来である。コピー句は複数プログラムへ
-     * 展開されるため原本を書き換えず差分提示に留め、{@code importers} に当該コピー句を取り込む
-     * プログラムの相対パス(昇順)を併記する。プログラム本体の修正では {@code copybook} は偽、
-     * {@code importers} は空。
+     * <p>When {@code copybook} is true the fix came from a copybook. A copybook is expanded into
+     * several programs, so its original is left alone and only shown as a diff, with
+     * {@code importers} naming the programs that copy it, in ascending order. For a program's own
+     * fix, {@code copybook} is false and {@code importers} empty.
      */
     public record FileFix(String relPath, String charsetName, String originalText, String fixedText,
-            byte[] fixedBytes, List<String> descriptions, boolean copybook, List<String> importers) {
+            byte[] fixedBytes, List<String> descriptions, boolean copybook,
+            List<String> importers) {
 
         public FileFix {
             descriptions = List.copyOf(descriptions);
@@ -97,208 +84,73 @@ public final class FixRunner {
         }
     }
 
-    private enum FixKind {
-        COBOL, COPYBOOK
-    }
-
-    private record FixFile(String relPath, Path absPath, FixKind kind) {
-
-        String sourcePath() {
-            return absPath.toString();
-        }
-    }
-
     private final SourceDecoder sourceDecoder = new SourceDecoder();
-    private final jp.cobolinsight.core.fix.ByteSpliceApplier applier =
-            new jp.cobolinsight.core.fix.ByteSpliceApplier();
+    private final ByteSpliceApplier applier = new ByteSpliceApplier();
 
     public Result run(Options options) {
-        AnalysisServices services = AnalysisServices.load();
-        CharsetProvider charsetProvider = first(services.charsetProviders(), "CharsetProvider");
-        CobolParser cobolParser = first(services.cobolParsers(), "CobolParser");
+        SourceSet s = Pipelines.fix(options.inputDir(), options.copybookSearchPaths(),
+                options.codepageOverrides(), options.ruleSet());
+        LintRunner.reportWarnings(s);
 
-        List<FixFile> files = discover(options);
-        List<Finding> analysisFindings = new ArrayList<>();
-        Map<String, byte[]> bytesByRel = new LinkedHashMap<>();
-        Map<String, DecodedSource> decodedByRel = new LinkedHashMap<>();
-        Map<String, String> textByPath = new LinkedHashMap<>();
-        Map<String, FixFile> fileBySourcePath = new LinkedHashMap<>();
-
-        for (FixFile file : files) {
-            byte[] bytes = readBytes(file.absPath());
-            bytesByRel.put(file.relPath(), bytes);
-            String override = overrideOf(options, file);
-            try {
-                DecodedSource decoded = override == null
-                        ? charsetProvider.decode(file.sourcePath(), bytes)
-                        : charsetProvider.decode(file.sourcePath(), bytes, override);
-                decodedByRel.put(file.relPath(), decoded);
-                textByPath.put(decoded.path(), decoded.text());
-                fileBySourcePath.put(decoded.path(), file);
-            } catch (IllegalArgumentException e) {
-                if (file.kind() == FixKind.COBOL) {
-                    analysisFindings.add(Finding.of(DECODE_FAILURE_RULE_ID, FindingLevel.ERROR,
-                            "復号に失敗した: " + e.getMessage(),
-                            SourcePosition.fileStart(file.relPath())));
-                }
-            }
-        }
-
-        List<CobolSemanticModel> models = new ArrayList<>();
-        for (FixFile file : files) {
-            DecodedSource decoded = decodedByRel.get(file.relPath());
-            if (file.kind() != FixKind.COBOL || decoded == null) {
-                continue;
-            }
-            ParseOutcome<CobolSemanticModel> outcome =
-                    cobolParser.parse(decoded, options.copybookSearchPaths());
-            if (outcome instanceof ParseOutcome.Failure<CobolSemanticModel> failure) {
-                analysisFindings.add(failure.finding());
-                continue;
-            }
-            models.add(outcome.value().orElseThrow());
-        }
-
-        List<ControlFlowGraph> graphs = models.stream().map(CfgBuilder::build).toList();
-        ControlFlowGraphs cfgs = new ControlFlowGraphs(graphs);
-        DataFlowFacts dataFlowFacts = DataFlowEngine.analyzeAll(models, cfgs);
-        AnalysisContext context = AnalysisContext.of(models, List.of(), List.of(), List.of(),
-                Optional.empty(),
-                Map.of(SourceTextIndex.class, new SourceTextIndex(textByPath),
-                        ControlFlowGraphs.class, cfgs,
-                        DataFlowFacts.class, dataFlowFacts));
-
-        List<Rule> activeRules = Stream.of(
-                        services.rules(AnalysisPhase.SYNTAX),
-                        services.rules(AnalysisPhase.CONTROL_FLOW),
-                        services.rules(AnalysisPhase.DATA_FLOW))
-                .flatMap(List::stream)
-                .filter(rule -> rule.id().startsWith("R"))
-                .toList();
-
-        // fixProducer を持つルールだけを評価し、その finding から編集を集約する。ルール由来の finding は
-        // 修正案の材料であり、その重大度は fix の成否と無関係のため analysisFindings へは載せない
-        // (analysisFindings は復号・パース失敗=解析不能を表す pipeline のエラーだけを保持する)。
-        // finding.location().file() は意味モデルの sourceFile(=復号時に渡した原本パス文字列)と一致する。
-        Map<String, List<TextEdit>> editsBySource = new LinkedHashMap<>();
-        Map<String, LinkedHashSet<String>> descBySource = new LinkedHashMap<>();
-        for (Rule rule : activeRules) {
-            FixProducer producer = rule.fixProducer().orElse(null);
-            if (producer == null) {
-                continue;
-            }
-            List<Finding> ruleFindings = rule.evaluate(context);
-            for (Finding finding : ruleFindings) {
-                FixSuggestion suggestion = producer.produce(finding, context).orElse(null);
-                if (suggestion == null) {
-                    continue;
-                }
-                String source = finding.location().file();
-                editsBySource.computeIfAbsent(source, k -> new ArrayList<>())
-                        .addAll(suggestion.edits());
-                descBySource.computeIfAbsent(source, k -> new LinkedHashSet<>())
-                        .add(suggestion.description());
-            }
-        }
-
-        // コピー句由来の修正の影響範囲併記に用いる、プログラム相対パス→復号済みソースの索引。
+        Map<String, SourceUnit> unitBySourcePath = new LinkedHashMap<>();
         Map<String, String> programSourcesByRel = new LinkedHashMap<>();
-        for (FixFile file : files) {
-            if (file.kind() == FixKind.COBOL) {
-                DecodedSource decoded = decodedByRel.get(file.relPath());
-                if (decoded != null) {
-                    programSourcesByRel.put(file.relPath(), decoded.text());
-                }
+        for (SourceUnit unit : s.units()) {
+            DecodedSource decoded = s.decoded().get(unit.relPath());
+            if (decoded == null) {
+                continue;
+            }
+            unitBySourcePath.put(decoded.path(), unit);
+            if (unit.kind() == AssetKind.COBOL) {
+                programSourcesByRel.put(unit.relPath(), decoded.text());
+            }
+        }
+
+        // A rule's finding is the raw material of a fix; its severity says nothing about whether
+        // the fix worked, so it stays out of analysisFindings. That list holds only what the
+        // pipeline could not decode or parse — the sources it could not analyse at all.
+        Map<String, List<TextEdit>> editsBySource = new LinkedHashMap<>();
+        Map<String, LinkedHashSet<String>> descriptionsBySource = new LinkedHashMap<>();
+        for (Finding finding : s.ruleFindings(Command.FIX)) {
+            for (FixSuggestion suggestion : finding.fixes()) {
+                String source = finding.location().file();
+                editsBySource.computeIfAbsent(source, key -> new ArrayList<>())
+                        .addAll(suggestion.edits());
+                descriptionsBySource.computeIfAbsent(source, key -> new LinkedHashSet<>())
+                        .add(suggestion.description());
             }
         }
 
         List<FileFix> fileFixes = new ArrayList<>();
         int fixCount = 0;
         for (Map.Entry<String, List<TextEdit>> entry : editsBySource.entrySet()) {
-            FixFile file = fileBySourcePath.get(entry.getKey());
-            if (file == null) {
+            SourceUnit unit = unitBySourcePath.get(entry.getKey());
+            if (unit == null) {
                 continue;
             }
             List<TextEdit> edits = entry.getValue();
-            byte[] bytes = bytesByRel.get(file.relPath());
-            String override = overrideOf(options, file);
+            byte[] bytes = s.bytes().get(unit.relPath());
+            String override = options.codepageOverrides().get(unit.relPath()) != null
+                    ? options.codepageOverrides().get(unit.relPath())
+                    : options.codepageOverrides().get(unit.fileName());
             jp.cobolinsight.core.encoding.DecodedSource decoded = override == null
                     ? sourceDecoder.decode(bytes)
                     : sourceDecoder.decode(bytes, CodePage.fromName(override));
             byte[] fixedBytes = applier.apply(decoded, edits);
             Charset charset = decoded.encodingInfo().codePage().charset();
-            boolean copybook = file.kind() == FixKind.COPYBOOK;
+            boolean copybook = unit.kind() == AssetKind.COPYBOOK;
             List<String> importers = copybook
-                    ? CopybookImporters.of(CopybookImporters.baseName(file.relPath()),
+                    ? CopybookImporters.of(CopybookImporters.baseName(unit.relPath()),
                             programSourcesByRel)
                     : List.of();
-            fileFixes.add(new FileFix(file.relPath(),
+            fileFixes.add(new FileFix(unit.relPath(),
                     decoded.encodingInfo().codePage().charsetName(),
                     decoded.text(), new String(fixedBytes, charset), fixedBytes,
-                    new ArrayList<>(descBySource.get(entry.getKey())), copybook, importers));
+                    new ArrayList<>(descriptionsBySource.get(entry.getKey())), copybook,
+                    importers));
             fixCount += edits.size();
         }
         fileFixes.sort(Comparator.comparing(FileFix::relPath));
 
-        return new Result(fileFixes, analysisFindings, fixCount);
-    }
-
-    /**
-     * scan と同じ走査で COBOL 本体を、コピー句探索パス配下からコピー句を発見する(相対パスの
-     * 辞書順)。コピー句は入力フォルダの外を指せるため、走査ではなく探索パスを起点とする
-     * ({@link CopybookScan})。走査の取りこぼしと解釈の変更は標準エラーへ出す。
-     */
-    private static List<FixFile> discover(Options options) {
-        SourceDiscovery.Result discovery = SourceDiscovery.discover(options.inputDir());
-        LintRunner.reportDiscoveryWarnings(discovery);
-        Map<String, FixFile> byRel = new LinkedHashMap<>();
-        for (SourceDiscovery.DiscoveredFile file : discovery.filesOf(Set.of(AssetKind.COBOL))) {
-            byRel.putIfAbsent(file.relPath(),
-                    new FixFile(file.relPath(), file.absPath(), FixKind.COBOL));
-        }
-        for (Path dir : options.copybookSearchPaths()) {
-            for (Path copybook : CopybookScan.collect(dir)) {
-                String relPath = relativize(options.inputDir(), copybook);
-                byRel.putIfAbsent(relPath, new FixFile(relPath, copybook, FixKind.COPYBOOK));
-            }
-        }
-        List<FixFile> files = new ArrayList<>(byRel.values());
-        files.sort(Comparator.comparing(FixFile::relPath));
-        return files;
-    }
-
-    /** 入力フォルダ配下なら相対パス、そうでなければ「親ディレクトリ名/ファイル名」を相対パスとする。 */
-    private static String relativize(Path inputDir, Path file) {
-        Path base = inputDir.toAbsolutePath().normalize();
-        Path abs = file.toAbsolutePath().normalize();
-        if (abs.startsWith(base)) {
-            return base.relativize(abs).toString().replace('\\', '/');
-        }
-        Path parent = abs.getParent();
-        String dirName = parent == null ? "" : parent.getFileName().toString();
-        return (dirName.isEmpty() ? "" : dirName + "/") + abs.getFileName();
-    }
-
-    private static String overrideOf(Options options, FixFile file) {
-        String override = options.codepageOverrides().get(file.relPath());
-        if (override == null) {
-            override = options.codepageOverrides().get(file.absPath().getFileName().toString());
-        }
-        return override;
-    }
-
-    private static <T> T first(List<T> implementations, String contractName) {
-        if (implementations.isEmpty()) {
-            throw new IllegalStateException(contractName + " の実装が実行時クラスパスに無い");
-        }
-        return implementations.get(0);
-    }
-
-    private static byte[] readBytes(Path file) {
-        try {
-            return Files.readAllBytes(file);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+        return new Result(fileFixes, List.copyOf(s.findings()), fixCount);
     }
 }

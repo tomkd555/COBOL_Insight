@@ -1,21 +1,16 @@
 package jp.cobolinsight.app.cli;
 
-import picocli.CommandLine;
+import jp.cobolinsight.app.pipeline.Paths;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
-import picocli.CommandLine.Spec;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Callable;
 
 /**
@@ -42,24 +37,15 @@ public final class SqlAdviseCommand implements Callable<Integer> {
             description = "ファイル単位のコードページ手動指定(相対パスまたはファイル名=コードページ)。自動判別に優先する")
     Map<String, String> codepageOverrides = new LinkedHashMap<>();
 
-    @Option(names = "--rule-config", paramLabel = "FILE",
-            description = "ルールの有効・無効を書いた設定ファイル(JSON)")
-    Path ruleConfigFile;
-
-    @Spec
-    CommandLine.Model.CommandSpec spec;
+    @Mixin
+    RuleOptions ruleOptions;
 
     @Override
     public Integer call() {
         List<Path> searchPaths = CommonScanOptions.resolveCopybookPaths(inputDir, copybookPaths);
-        Set<String> disabled = RuleConfig.resolveDisabled(spec, ruleConfigFile);
-        SqlAdviseRunner.Result result = SqlAdviseRunner.run(
-                new SqlAdviseRunner.Options(inputDir, searchPaths, codepageOverrides, disabled));
-        try {
-            Files.writeString(sarifFile, result.sarifJson(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+        SqlAdviseRunner.Result result = SqlAdviseRunner.run(new SqlAdviseRunner.Options(inputDir,
+                searchPaths, codepageOverrides, ruleOptions.reportingRuleSet()));
+        Paths.writeString(sarifFile, result.sarifJson());
         System.out.println(result.summaryJson(sarifFile.toString()));
         return result.exitCode();
     }

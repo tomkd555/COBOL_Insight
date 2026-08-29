@@ -4,10 +4,12 @@ import jp.cobolinsight.core.finding.Finding;
 import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.Procedure;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.core.spi.RuleDoc;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -22,43 +24,34 @@ import java.util.Map;
  */
 public final class DuplicateProcedureNameRule implements Rule {
 
-    @Override
-    public String id() {
-        return "R023";
-    }
+    private static final RuleMeta META = RuleMeta.named("R023", "パラグラフ・セクション名の重複", "制御フロー")
+            .summary("同一プログラム内で同じ名前のパラグラフまたはセクションが"
+                    + "重ねて宣言されている箇所を検出します。")
+            .rationale("PERFORM や GO TO の遷移先が一意に定まらず、"
+                    + "意図した側とは別の宣言へ制御が移ることがあります。")
+            .detection("所属セクションと名前の組で判定し、2件目以降の宣言位置で報告します。"
+                    + "異なるセクションにある同名パラグラフは合法のため検出しません。")
+            .remedy("いずれかの名前を改め、参照している側も併せて直します。")
+            .example("""
+                    CALC-TAX.
+                        COMPUTE WS-TAX = WS-AMT * 0.10.
+                    CALC-TAX.
+                        COMPUTE WS-TAX = WS-AMT * 0.08.
+                    """, """
+                    CALC-TAX-STD.
+                        COMPUTE WS-TAX = WS-AMT * 0.10.
+                    CALC-TAX-REDUCED.
+                        COMPUTE WS-TAX = WS-AMT * 0.08.
+                    """)
+            .severity(Severity.MEDIUM)
+            .commands(Command.LINT, Command.REPORT)
+            .targets(AssetKind.COBOL)
+            .needs(Needs.SEMANTIC)
+            .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("パラグラフ・セクション名の重複", "制御フロー")
-                .summary("同一プログラム内で同じ名前のパラグラフまたはセクションが"
-                        + "重ねて宣言されている箇所を検出します。")
-                .rationale("PERFORM や GO TO の遷移先が一意に定まらず、"
-                        + "意図した側とは別の宣言へ制御が移ることがあります。")
-                .detection("所属セクションと名前の組で判定し、2件目以降の宣言位置で報告します。"
-                        + "異なるセクションにある同名パラグラフは合法のため検出しません。")
-                .remedy("いずれかの名前を改め、参照している側も併せて直します。")
-                .example("""
-                        CALC-TAX.
-                            COMPUTE WS-TAX = WS-AMT * 0.10.
-                        CALC-TAX.
-                            COMPUTE WS-TAX = WS-AMT * 0.08.
-                        """, """
-                        CALC-TAX-STD.
-                            COMPUTE WS-TAX = WS-AMT * 0.10.
-                        CALC-TAX-REDUCED.
-                            COMPUTE WS-TAX = WS-AMT * 0.08.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.MEDIUM;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.SYNTAX;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override

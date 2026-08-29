@@ -1,47 +1,30 @@
 package jp.cobolinsight.app.cli;
 
 import jp.cobolinsight.core.json.JsonWriter;
-import jp.cobolinsight.core.pipeline.AnalysisServices;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.core.spi.RuleDoc;
-import jp.cobolinsight.rules.user.UserRuleLoader;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
+import jp.cobolinsight.rules.RuleSet;
 
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
- * `rules` の中核処理。組み込みルールと利用者定義ルールを束ね、説明つきの一覧を返す。
- * GUI はここが出す JSON をルールカタログの供給源とし、画面側でルール名や説明を持たない。
+ * `rules`。組み込みルールと利用者定義ルールを束ね、説明つきの一覧を返す。GUI はここが出す JSON を
+ * ルールカタログの供給源とし、画面側でルール名や説明を持たない。
  */
 public final class RulesRunner {
 
-    /** 利用者定義ルールの ID 接頭辞。組み込み(R・S)と出所を見分ける唯一の手掛かりである。 */
-    private static final String USER_RULE_PREFIX = "U";
-
-    /** disabledRuleIds は設定ファイル由来の無効化指定。一覧の enabled はこれで決まる。 */
-    public record Options(Path userRulesFile, String ruleId, Set<String> disabledRuleIds) {
-
-        public Options(Path userRulesFile, String ruleId) {
-            this(userRulesFile, ruleId, Set.of());
-        }
+    public record Options(RuleSet ruleSet, String ruleId) {
     }
 
     /** detail は1件へ絞り込んだかどうか。端末向けの整形をここで切り替える。 */
-    public record Result(List<Rule> rules, List<String> userRuleErrors, boolean detail,
-            Set<String> disabledRuleIds, List<String> ruleConfigWarnings) {
+    public record Result(List<RuleSet.RuleEntry> rules, List<String> errors, boolean detail) {
 
         public Result {
             rules = List.copyOf(rules);
-            userRuleErrors = List.copyOf(userRuleErrors);
-            disabledRuleIds = Set.copyOf(disabledRuleIds);
-            ruleConfigWarnings = List.copyOf(ruleConfigWarnings);
-        }
-
-        private boolean isEnabled(Rule rule) {
-            return !disabledRuleIds.contains(rule.id());
+            errors = List.copyOf(errors);
         }
 
         /** GUI が読む形式。ルールは id 昇順で、説明の全項目を持つ。 */
@@ -50,32 +33,35 @@ public final class RulesRunner {
             writer.beginObject()
                     .name("ruleCount").value(rules.size())
                     .name("rules").beginArray();
-            for (Rule rule : rules) {
-                RuleDoc doc = rule.doc();
+            for (RuleSet.RuleEntry entry : rules) {
+                RuleMeta meta = entry.meta();
                 writer.beginObject()
-                        .name("id").value(rule.id())
-                        .name("name").value(doc.name())
-                        .name("category").value(doc.category())
-                        .name("severity").value(rule.defaultSeverity().name())
-                        .name("phase").value(rule.phase().name())
-                        .name("hasFix").value(rule.fixProducer().isPresent())
-                        .name("source").value(sourceOf(rule))
-                        .name("enabled").value(isEnabled(rule))
-                        .name("summary").value(doc.summary())
-                        .name("rationale").value(doc.rationale())
-                        .name("detection").value(doc.detection())
-                        .name("remedy").value(doc.remedy())
-                        .name("badExample").value(doc.badExample())
-                        .name("goodExample").value(doc.goodExample())
-                        .endObject();
+                        .name("id").value(meta.id())
+                        .name("name").value(meta.name())
+                        .name("category").value(meta.category())
+                        .name("severity").value(entry.severity().name())
+                        .name("defaultSeverity").value(meta.defaultSeverity().name())
+                        .name("hasFix").value(entry.hasFix())
+                        .name("source").value(sourceOf(entry))
+                        .name("enabled").value(entry.enabled())
+                        .name("defaultEnabled").value(meta.defaultEnabled())
+                        .name("summary").value(meta.summary())
+                        .name("rationale").value(meta.rationale())
+                        .name("detection").value(meta.detection())
+                        .name("remedy").value(meta.remedy())
+                        .name("badExample").value(meta.badExample())
+                        .name("goodExample").value(meta.goodExample());
+                writeNames(writer, "commands", meta.commands().stream().map(Command::name)
+                        .sorted().toList());
+                writeNames(writer, "targets", meta.targets().stream().map(AssetKind::name)
+                        .sorted().toList());
+                writeNames(writer, "needs", meta.needs().stream().map(Needs::name)
+                        .sorted().toList());
+                writer.endObject();
             }
-            writer.endArray().name("userRuleErrors").beginArray();
-            for (String error : userRuleErrors) {
+            writer.endArray().name("ruleErrors").beginArray();
+            for (String error : errors) {
                 writer.value(error);
-            }
-            writer.endArray().name("ruleConfigWarnings").beginArray();
-            for (String warning : ruleConfigWarnings) {
-                writer.value(warning);
             }
             writer.endArray().endObject();
             return writer.toString();
@@ -89,45 +75,43 @@ public final class RulesRunner {
             StringBuilder out = new StringBuilder();
             out.append(String.format(Locale.ROOT, "%-6s %-4s %-14s %s%n",
                     "ID", "重大度", "カテゴリ", "名称"));
-            for (Rule rule : rules) {
+            for (RuleSet.RuleEntry entry : rules) {
                 out.append(String.format(Locale.ROOT, "%-6s %-4s %-14s %s%n",
-                        rule.id(), rule.defaultSeverity().label(), rule.doc().category(),
-                        rule.doc().name()));
+                        entry.id(), entry.severity().label(), entry.meta().category(),
+                        entry.meta().name()));
             }
-            long userCount = rules.stream().filter(r -> r.id().startsWith(USER_RULE_PREFIX))
-                    .count();
+            long customCount = rules.stream()
+                    .filter(entry -> entry.source() == RuleSet.Source.CUSTOM).count();
             out.append(String.format(Locale.ROOT, "%n合計 %d 件(組み込み %d・利用者定義 %d)",
-                    rules.size(), rules.size() - userCount, userCount));
-            long disabledCount = rules.stream().filter(rule -> !isEnabled(rule)).count();
+                    rules.size(), rules.size() - customCount, customCount));
+            long disabledCount = rules.stream().filter(entry -> !entry.enabled()).count();
             if (disabledCount > 0) {
                 out.append(String.format(Locale.ROOT, " うち無効 %d 件", disabledCount));
             }
             out.append(System.lineSeparator());
-            for (String error : userRuleErrors) {
-                out.append("警告: 利用者定義ルールの定義に誤りがある: ").append(error).append('\n');
-            }
-            for (String warning : ruleConfigWarnings) {
-                out.append("警告: ルール設定: ").append(warning).append('\n');
+            for (String error : errors) {
+                out.append("警告: ルール設定: ").append(error).append('\n');
             }
             return out.toString();
         }
 
-        private static String detailTextOf(Rule rule) {
-            RuleDoc doc = rule.doc();
+        private static String detailTextOf(RuleSet.RuleEntry entry) {
+            RuleMeta meta = entry.meta();
             StringBuilder out = new StringBuilder();
-            out.append(rule.id()).append(' ').append(doc.name()).append('\n')
-                    .append("カテゴリ: ").append(doc.category())
-                    .append(" / 重大度: ").append(rule.defaultSeverity().label())
-                    .append(" / 解析段階: ").append(rule.phase().label())
-                    .append(" / 修正案: ").append(rule.fixProducer().isPresent() ? "あり" : "なし")
+            out.append(meta.id()).append(' ').append(meta.name()).append('\n')
+                    .append("カテゴリ: ").append(meta.category())
+                    .append(" / 重大度: ").append(entry.severity().label())
+                    .append(" / 対象コマンド: ").append(meta.commands().stream()
+                            .map(Command::name).sorted().reduce((a, b) -> a + "・" + b).orElse(""))
+                    .append(" / 修正案: ").append(entry.hasFix() ? "あり" : "なし")
                     .append("\n\n");
-            appendSection(out, "何を検出するか", doc.summary());
-            appendSection(out, "なぜ問題か", doc.rationale());
-            appendSection(out, "検出条件", doc.detection());
-            appendSection(out, "どう直すか", doc.remedy());
-            if (doc.hasExample()) {
-                appendSection(out, "該当する例", doc.badExample());
-                appendSection(out, "直した例", doc.goodExample());
+            appendSection(out, "何を検出するか", meta.summary());
+            appendSection(out, "なぜ問題か", meta.rationale());
+            appendSection(out, "検出条件", meta.detection());
+            appendSection(out, "どう直すか", meta.remedy());
+            if (meta.hasExample()) {
+                appendSection(out, "該当する例", meta.badExample());
+                appendSection(out, "直した例", meta.goodExample());
             }
             return out.toString();
         }
@@ -140,8 +124,16 @@ public final class RulesRunner {
             out.append('\n');
         }
 
-        private static String sourceOf(Rule rule) {
-            return rule.id().startsWith(USER_RULE_PREFIX) ? "user" : "builtin";
+        private static void writeNames(JsonWriter writer, String name, List<String> values) {
+            writer.name(name).beginArray();
+            for (String value : values) {
+                writer.value(value);
+            }
+            writer.endArray();
+        }
+
+        private static String sourceOf(RuleSet.RuleEntry entry) {
+            return entry.source() == RuleSet.Source.CUSTOM ? "user" : "builtin";
         }
     }
 
@@ -150,27 +142,12 @@ public final class RulesRunner {
 
     /** ruleId を指定した場合、その1件だけを返す(見つからなければ空)。 */
     public static Result run(Options options) {
-        UserRuleLoader.LoadResult userRules = UserRuleLoader.load(options.userRulesFile());
-        List<Rule> all = AnalysisServices.load(userRules.rules()).rules();
+        List<RuleSet.RuleEntry> all = options.ruleSet().catalogue();
         String wanted = options.ruleId();
         boolean detail = wanted != null && !wanted.isBlank();
-        List<Rule> selected = detail
-                ? all.stream().filter(r -> r.id().equalsIgnoreCase(wanted.strip())).toList()
+        List<RuleSet.RuleEntry> selected = detail
+                ? all.stream().filter(entry -> entry.id().equalsIgnoreCase(wanted.strip())).toList()
                 : all;
-        return new Result(selected, userRules.errors(), detail, options.disabledRuleIds(),
-                unknownIdWarnings(all, options.disabledRuleIds()));
-    }
-
-    /**
-     * カタログに無いルールIDの無効化指定を警告にする。設定ファイルを消さずにルールを入れ替えた
-     * ときの取り残しを利用者へ示すためであり、指定そのものは捨てない。カタログ全体を持つのは
-     * この経路だけのため、照合もここだけで行う。
-     */
-    private static List<String> unknownIdWarnings(List<Rule> all, Set<String> disabledRuleIds) {
-        Set<String> known = all.stream().map(Rule::id).collect(Collectors.toSet());
-        return disabledRuleIds.stream()
-                .filter(id -> !known.contains(id))
-                .map(id -> "無効化の指定にあるルールIDがカタログに無い: " + id)
-                .toList();
+        return new Result(selected, options.ruleSet().errors(), detail);
     }
 }

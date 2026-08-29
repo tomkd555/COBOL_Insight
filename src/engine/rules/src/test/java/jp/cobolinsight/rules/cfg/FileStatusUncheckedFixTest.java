@@ -33,7 +33,7 @@ class FileStatusUncheckedFixTest {
         String file = CfgFixtures.samplesFile("SYK001.cbl");
         Finding finding = finding(context, file, 85);
 
-        FixSuggestion suggestion = new FileStatusUncheckedRule().fixProducer().orElseThrow()
+        FixSuggestion suggestion = new FileStatusUncheckedRule().fix().orElseThrow()
                 .produce(finding, context).orElseThrow(() -> new AssertionError("R017 の修正案が返ること"));
         assertEquals(1, suggestion.edits().size());
         TextEdit edit = suggestion.edits().get(0);
@@ -58,7 +58,7 @@ class FileStatusUncheckedFixTest {
         String file = CfgFixtures.samplesFile("SYK001.cbl");
         Finding finding = finding(context, file, 126);
 
-        FixSuggestion suggestion = new FileStatusUncheckedRule().fixProducer().orElseThrow()
+        FixSuggestion suggestion = new FileStatusUncheckedRule().fix().orElseThrow()
                 .produce(finding, context)
                 .orElseThrow(() -> new AssertionError("ブロック途中の WRITE にも修正案が返ること"));
         TextEdit edit = suggestion.edits().get(0);
@@ -78,7 +78,7 @@ class FileStatusUncheckedFixTest {
         String file = CfgFixtures.samplesFile("SYK001.cbl");
         Finding finding = finding(context, file, 130);
 
-        FixSuggestion suggestion = new FileStatusUncheckedRule().fixProducer().orElseThrow()
+        FixSuggestion suggestion = new FileStatusUncheckedRule().fix().orElseThrow()
                 .produce(finding, context).orElseThrow();
         TextEdit edit = suggestion.edits().get(0);
         assertEquals(131, edit.range().start().line());
@@ -98,7 +98,7 @@ class FileStatusUncheckedFixTest {
         String file = CfgFixtures.samplesFile("SYK002.cbl");
         Finding finding = finding(context, file, 107);
 
-        FixSuggestion suggestion = new FileStatusUncheckedRule().fixProducer().orElseThrow()
+        FixSuggestion suggestion = new FileStatusUncheckedRule().fix().orElseThrow()
                 .produce(finding, context).orElseThrow();
         TextEdit edit = suggestion.edits().get(0);
         assertEquals(111, edit.range().start().line());
@@ -116,7 +116,7 @@ class FileStatusUncheckedFixTest {
         String file = CfgFixtures.samplesFile("SYK002.cbl");
         Finding finding = finding(context, file, 130);
 
-        FixSuggestion suggestion = new FileStatusUncheckedRule().fixProducer().orElseThrow()
+        FixSuggestion suggestion = new FileStatusUncheckedRule().fix().orElseThrow()
                 .produce(finding, context).orElseThrow();
         TextEdit edit = suggestion.edits().get(0);
         assertEquals(131, edit.range().start().line());

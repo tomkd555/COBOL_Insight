@@ -10,12 +10,14 @@ import jp.cobolinsight.core.finding.TextEdit;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.CompoundStatement;
 import jp.cobolinsight.core.semantic.SimpleStatement;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
 import jp.cobolinsight.core.spi.FixProducer;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.core.spi.RuleDoc;
 import jp.cobolinsight.rules.FixEdits;
 import jp.cobolinsight.rules.SourceTextIndex;
 
@@ -53,42 +55,33 @@ public final class FileStatusUncheckedRule implements Rule {
 
     private static final Set<String> IO_VERBS = Set.of("READ", "WRITE", "REWRITE", "DELETE");
 
-    @Override
-    public String id() {
-        return "R017";
-    }
+    private static final RuleMeta META = RuleMeta.named("R017", "ファイル状態(FILE STATUS)未検査", "例外処理")
+            .summary("入出力文の後、次の同一ファイルの入出力に達するまでに"
+                    + "FILE STATUS を検査しない箇所を検出します。")
+            .rationale("入出力の失敗を検知しないまま後続が進み、"
+                    + "読めなかったレコードの内容を使うなど、誤った結果をそのまま出します。")
+            .detection("READ・WRITE・REWRITE・DELETE の実行後、前方経路で当該 FD の"
+                    + "FILE STATUS 変数を条件参照しないものを検出します。AT END・INVALID KEY 句は"
+                    + "特定の事象しか捉えないため、検査とみなしません。")
+            .remedy("入出力の直後に FILE STATUS を判定し、正常値以外を異常として処理します。")
+            .example("""
+                    READ CUST-FILE INTO WS-REC.
+                    MOVE WS-REC TO WS-OUT.
+                    """, """
+                    READ CUST-FILE INTO WS-REC.
+                    IF CUST-STATUS NOT = "00"
+                        PERFORM FILE-ERROR
+                    END-IF.
+                    """)
+            .severity(Severity.HIGH)
+            .commands(Command.LINT, Command.REPORT, Command.FIX)
+            .targets(AssetKind.COBOL)
+            .needs(Needs.SEMANTIC, Needs.CFG, Needs.SOURCE_TEXT)
+            .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("ファイル状態(FILE STATUS)未検査", "例外処理")
-                .summary("入出力文の後、次の同一ファイルの入出力に達するまでに"
-                        + "FILE STATUS を検査しない箇所を検出します。")
-                .rationale("入出力の失敗を検知しないまま後続が進み、"
-                        + "読めなかったレコードの内容を使うなど、誤った結果をそのまま出します。")
-                .detection("READ・WRITE・REWRITE・DELETE の実行後、前方経路で当該 FD の"
-                        + "FILE STATUS 変数を条件参照しないものを検出します。AT END・INVALID KEY 句は"
-                        + "特定の事象しか捉えないため、検査とみなしません。")
-                .remedy("入出力の直後に FILE STATUS を判定し、正常値以外を異常として処理します。")
-                .example("""
-                        READ CUST-FILE INTO WS-REC.
-                        MOVE WS-REC TO WS-OUT.
-                        """, """
-                        READ CUST-FILE INTO WS-REC.
-                        IF CUST-STATUS NOT = "00"
-                            PERFORM FILE-ERROR
-                        END-IF.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.HIGH;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.CONTROL_FLOW;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override
@@ -139,7 +132,7 @@ public final class FileStatusUncheckedRule implements Rule {
                     other -> referencesStatusVar(other, var));
             if (!checked) {
                 SimpleStatement io = (SimpleStatement) node.statement().orElseThrow();
-                findings.add(Finding.of(id(), defaultSeverity().toLevel(),
+                findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         CfgSupport.upper(io.verb()) + " " + fd
                                 + " の実行後、FILE STATUS 変数 " + var + " を検査していない。"
                                 + "入出力異常が後続処理で検知されない。",
@@ -150,7 +143,7 @@ public final class FileStatusUncheckedRule implements Rule {
     }
 
     @Override
-    public Optional<FixProducer> fixProducer() {
+    public Optional<FixProducer> fix() {
         return Optional.of(new FileStatusFixProducer());
     }
 

@@ -31,7 +31,7 @@ class SqlAdviseSamplesAcceptanceTest {
     @BeforeAll
     static void adviseSamples() {
         result = SqlAdviseRunner.run(new SqlAdviseRunner.Options(SAMPLES,
-                List.of(SAMPLES.resolve("copybook")), Map.of(), Set.of()));
+                List.of(SAMPLES.resolve("copybook")), Map.of()));
     }
 
     private static List<Finding> byRule(String ruleId) {
@@ -116,7 +116,7 @@ class SqlAdviseSamplesAcceptanceTest {
                 "位置のURIが入力フォルダ相対のスラッシュ区切りであること");
 
         SqlAdviseRunner.Result second = SqlAdviseRunner.run(new SqlAdviseRunner.Options(SAMPLES,
-                List.of(SAMPLES.resolve("copybook")), Map.of(), Set.of()));
+                List.of(SAMPLES.resolve("copybook")), Map.of()));
         assertEquals(sarif, second.sarifJson(), "同一入力で同一のSARIFテキストになること(決定論)");
     }
 }

@@ -1,32 +1,22 @@
 package jp.cobolinsight.app.cli;
 
 import jp.cobolinsight.core.pipeline.ExitCodes;
-import picocli.CommandLine;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
-import picocli.CommandLine.Spec;
 
-import java.nio.file.Path;
 import java.util.concurrent.Callable;
 
 /**
- * `rules` サブコマンド。組み込みルールと利用者定義ルールの一覧・説明を表示する。
- * 資産フォルダを取らない唯一のサブコマンドであり、解析は行わない。
+ * `rules`。組み込みルールと利用者定義ルールの一覧・説明を表示する。資産フォルダを取らない唯一の
+ * サブコマンドであり、解析は行わない。
  */
 @Command(name = "rules", mixinStandardHelpOptions = true,
         description = "検出ルールの一覧と説明を表示する")
 public final class RulesCommand implements Callable<Integer> {
 
-    @Option(names = "--user-rules", paramLabel = "FILE",
-            description = "利用者定義ルールの定義ファイル(JSON)。一覧へ併せて載せる")
-    Path userRulesFile;
-
-    @Option(names = "--rule-config", paramLabel = "FILE",
-            description = "ルールの有効・無効を書いた設定ファイル(JSON)。各ルールの有効・無効へ反映する")
-    Path ruleConfigFile;
-
-    @Spec
-    CommandLine.Model.CommandSpec spec;
+    @Mixin
+    RuleOptions ruleOptions;
 
     @Option(names = "--json", description = "JSONで出力する(GUIが読む形式)")
     boolean json;
@@ -37,8 +27,9 @@ public final class RulesCommand implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        RulesRunner.Result result = RulesRunner.run(new RulesRunner.Options(userRulesFile, ruleId,
-                RuleConfig.resolveDisabled(spec, ruleConfigFile)));
+        // 設定の誤りは一覧そのものへ ruleErrors として載せるため、ここでは標準エラーへ出さない。
+        RulesRunner.Result result =
+                RulesRunner.run(new RulesRunner.Options(ruleOptions.ruleSet(), ruleId));
         if (result.detail() && result.rules().isEmpty()) {
             System.err.println("該当するルールが無い: " + ruleId);
             return ExitCodes.ERRORS;

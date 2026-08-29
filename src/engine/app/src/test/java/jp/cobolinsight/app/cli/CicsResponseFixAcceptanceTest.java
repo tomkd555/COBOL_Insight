@@ -1,7 +1,7 @@
 package jp.cobolinsight.app.cli;
 
+import jp.cobolinsight.app.EngineWiring;
 import jp.cobolinsight.core.fix.ReparseResult;
-import jp.cobolinsight.core.fix.ReparseVerifier;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.Charset;
@@ -75,7 +75,7 @@ class CicsResponseFixAcceptanceTest {
     void fixedSyk008ReparsesSuccessfully() {
         FixRunner.FileFix fix = syk008Fix();
         List<Path> copybookPaths = CommonScanOptions.resolveCopybookPaths(SAMPLES, List.of());
-        ReparseResult reparse = new ReparseVerifier()
+        ReparseResult reparse = EngineWiring.reparseVerifier()
                 .verify(fix.relPath(), fix.fixedBytes(), fix.charsetName(), copybookPaths);
         assertTrue(reparse.errorFinding().isEmpty(),
                 "R021 修正後ソースが再パースに成功すること: "

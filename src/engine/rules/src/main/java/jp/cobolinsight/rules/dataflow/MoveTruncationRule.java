@@ -9,11 +9,13 @@ import jp.cobolinsight.core.picture.PictureType;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.core.spi.RuleDoc;
 import jp.cobolinsight.rules.SourceTextIndex;
 
 import java.util.ArrayList;
@@ -33,43 +35,34 @@ public final class MoveTruncationRule implements Rule {
     private static final Pattern NAME_TOKEN =
             Pattern.compile("[\\p{L}\\p{N}$#_-]*\\p{L}[\\p{L}\\p{N}$#_-]*");
 
-    @Override
-    public String id() {
-        return "R003";
-    }
+    private static final RuleMeta META = RuleMeta.named("R003", "MOVEによる桁落ち・切り捨て", "データ移動")
+            .summary("受信項目の桁数・文字長が送信項目より小さい MOVE を検出します。")
+            .rationale("数値では上位桁が、英数字では末尾の文字が失われます。"
+                    + "実行時の異常にはならないため、金額や識別子が黙って別の値になります。")
+            .detection("送受信の PICTURE を解決し、数値項目どうしで受信の整数部または小数部が"
+                    + "送信より短いもの、英数字項目どうしで送信が受信より長いものを検出します。"
+                    + "図形定数・文字列リテラル・集団項目・参照修飾を送信に含む MOVE と、"
+                    + "送受信の種別が異なる MOVE は対象外とします。")
+            .remedy("受信項目の PICTURE を送信項目以上に広げます。"
+                    + "切り捨てが意図なら、参照修飾で切り出す範囲を明示します。")
+            .example("""
+                    01  WS-AMT-IN   PIC 9(9).
+                    01  WS-AMT-OUT  PIC 9(5).
+                        MOVE WS-AMT-IN TO WS-AMT-OUT.
+                    """, """
+                    01  WS-AMT-IN   PIC 9(9).
+                    01  WS-AMT-OUT  PIC 9(9).
+                        MOVE WS-AMT-IN TO WS-AMT-OUT.
+                    """)
+            .severity(Severity.HIGH)
+            .commands(Command.LINT, Command.REPORT)
+            .targets(AssetKind.COBOL)
+            .needs(Needs.SEMANTIC, Needs.CFG, Needs.SOURCE_TEXT)
+            .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("MOVEによる桁落ち・切り捨て", "データ移動")
-                .summary("受信項目の桁数・文字長が送信項目より小さい MOVE を検出します。")
-                .rationale("数値では上位桁が、英数字では末尾の文字が失われます。"
-                        + "実行時の異常にはならないため、金額や識別子が黙って別の値になります。")
-                .detection("送受信の PICTURE を解決し、数値項目どうしで受信の整数部または小数部が"
-                        + "送信より短いもの、英数字項目どうしで送信が受信より長いものを検出します。"
-                        + "図形定数・文字列リテラル・集団項目・参照修飾を送信に含む MOVE と、"
-                        + "送受信の種別が異なる MOVE は対象外とします。")
-                .remedy("受信項目の PICTURE を送信項目以上に広げます。"
-                        + "切り捨てが意図なら、参照修飾で切り出す範囲を明示します。")
-                .example("""
-                        01  WS-AMT-IN   PIC 9(9).
-                        01  WS-AMT-OUT  PIC 9(5).
-                            MOVE WS-AMT-IN TO WS-AMT-OUT.
-                        """, """
-                        01  WS-AMT-IN   PIC 9(9).
-                        01  WS-AMT-OUT  PIC 9(9).
-                            MOVE WS-AMT-IN TO WS-AMT-OUT.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.HIGH;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.DATA_FLOW;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override
@@ -99,7 +92,7 @@ public final class MoveTruncationRule implements Rule {
             }
             String truncated = truncatingReceiver(simple.text(), support);
             if (truncated != null) {
-                findings.add(Finding.of(id(), defaultSeverity().toLevel(),
+                findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         "MOVE で送信項目より桁数の小さい受信項目 " + truncated
                                 + " へ移送している。桁落ち・切り捨てが起こる。",
                         new SourcePosition(model.sourceFile(), simple.range().start().line(), 1,

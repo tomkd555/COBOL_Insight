@@ -1,5 +1,6 @@
 package jp.cobolinsight.app.fix;
 
+import jp.cobolinsight.app.EngineWiring;
 import jp.cobolinsight.core.fix.*;
 
 import jp.cobolinsight.core.finding.Finding;
@@ -17,14 +18,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 再パース検証ゲート。AnalysisServices.load() が ServiceLoader で束ねる CobolParser 実装で
+ * 再パース検証ゲート。EngineWiring が組み立てる CobolParser 実装で
  * 修正後ソースを再パースし、成否を返すことを検証する。samples の無編集は成功し、壊れたソースは失敗する。
  */
 class ReparseVerifierTest {
 
     private static final Path SAMPLES = Path.of("..", "..", "..", "samples");
 
-    private final ReparseVerifier verifier = new ReparseVerifier();
+    private final ReparseVerifier verifier = EngineWiring.reparseVerifier();
 
     @Test
     void unmodifiedSampleReparsesSuccessfully() throws IOException {

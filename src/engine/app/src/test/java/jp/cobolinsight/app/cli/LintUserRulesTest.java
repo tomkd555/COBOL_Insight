@@ -1,6 +1,7 @@
 package jp.cobolinsight.app.cli;
 
 import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.rules.RuleSet;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -10,7 +11,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -27,29 +27,45 @@ class LintUserRulesTest {
                GOBACK.
             """;
 
-    private static final String USER_RULES = """
-            {
-              "version": 1,
-              "rules": [
+    private static final String CUSTOM_RULE = """
                 {
                   "id": "U001",
                   "name": "コンソール入力の使用",
                   "category": "社内規約",
+                  "summary": "ACCEPT FROM CONSOLE を使っている。",
                   "severity": "HIGH",
+                  "commands": ["LINT"],
                   "targets": ["COBOL"],
-                  "pattern": "FROM\\\\s+CONSOLE",
+                  "match": { "kind": "line", "regex": "FROM\\\\s+CONSOLE" },
                   "message": "コンソール入力は運用規約で禁止されている"
                 }
-              ]
-            }
             """;
 
-    private static Path prepare(Path dir) throws IOException {
+    private static final String RULES_FILE = """
+            {
+              "version": 2,
+              "custom": [
+            %s
+              ]
+            }
+            """.formatted(CUSTOM_RULE);
+
+    private static final String RULES_FILE_DISABLED = """
+            {
+              "version": 2,
+              "rules": { "U001": { "enabled": false } },
+              "custom": [
+            %s
+              ]
+            }
+            """.formatted(CUSTOM_RULE);
+
+    private static Path prepare(Path dir, String rulesJson) throws IOException {
         Path cobol = dir.resolve("cobol");
         Files.createDirectories(cobol);
         Files.writeString(cobol.resolve("USERRULE.cbl"), PROGRAM, StandardCharsets.UTF_8);
-        Path rules = dir.resolve("user-rules.json");
-        Files.writeString(rules, USER_RULES, StandardCharsets.UTF_8);
+        Path rules = dir.resolve("rules.json");
+        Files.writeString(rules, rulesJson, StandardCharsets.UTF_8);
         return rules;
     }
 
@@ -57,12 +73,15 @@ class LintUserRulesTest {
         return result.findings().stream().filter(f -> f.ruleId().startsWith("U")).toList();
     }
 
+    private static LintRunner.Result lint(Path dir, Path rules) {
+        return LintRunner.run(new LintRunner.Options(
+                dir, List.of(), Map.of(), RuleSet.load(rules)));
+    }
+
     @Test
     void userRuleProducesFinding(@TempDir Path dir) throws IOException {
-        Path rules = prepare(dir);
-        LintRunner.Result result = LintRunner.run(new LintRunner.Options(
-                dir, List.of(), Map.of(), Set.of(), rules));
-        List<Finding> findings = userFindings(result);
+        Path rules = prepare(dir, RULES_FILE);
+        List<Finding> findings = userFindings(lint(dir, rules));
         assertEquals(1, findings.size());
         assertEquals("U001", findings.get(0).ruleId());
         assertEquals("コンソール入力は運用規約で禁止されている", findings.get(0).message());
@@ -71,26 +90,23 @@ class LintUserRulesTest {
 
     @Test
     void userRuleIsAbsentWithoutDefinitionFile(@TempDir Path dir) throws IOException {
-        prepare(dir);
+        prepare(dir, RULES_FILE);
         LintRunner.Result result = LintRunner.run(new LintRunner.Options(
-                dir, List.of(), Map.of(), Set.of()));
+                dir, List.of(), Map.of()));
         assertEquals(List.of(), userFindings(result));
     }
 
     @Test
     void disableRuleSuppressesUserRule(@TempDir Path dir) throws IOException {
-        Path rules = prepare(dir);
-        LintRunner.Result result = LintRunner.run(new LintRunner.Options(
-                dir, List.of(), Map.of(), Set.of("U001"), rules));
-        assertEquals(List.of(), userFindings(result));
+        Path rules = prepare(dir, RULES_FILE_DISABLED);
+        assertEquals(List.of(), userFindings(lint(dir, rules)));
     }
 
     /** 利用者定義ルールの説明も SARIF の rules へ載り、読む側が指摘の意味を追える。 */
     @Test
     void userRuleAppearsInSarifRules(@TempDir Path dir) throws IOException {
-        Path rules = prepare(dir);
-        LintRunner.Result result = LintRunner.run(new LintRunner.Options(
-                dir, List.of(), Map.of(), Set.of(), rules));
+        Path rules = prepare(dir, RULES_FILE);
+        LintRunner.Result result = lint(dir, rules);
         assertTrue(result.sarifJson().contains("\"id\":\"U001\""), result.sarifJson());
         assertTrue(result.sarifJson().contains("コンソール入力の使用"), result.sarifJson());
     }

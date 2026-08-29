@@ -13,11 +13,13 @@ import jp.cobolinsight.core.semantic.Procedure;
 import jp.cobolinsight.core.semantic.ProcedureKind;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.core.spi.RuleDoc;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -32,40 +34,31 @@ import java.util.Set;
  */
 public final class UnreachableCodeRule implements Rule {
 
-    @Override
-    public String id() {
-        return "R011";
-    }
+    private static final RuleMeta META = RuleMeta.named("R011", "到達不能コード", "制御フロー")
+            .summary("制御が届かない文と、どこからも呼ばれない段落を検出します。")
+            .rationale("実行されない記述が残ると、読む者が生きた処理と取り違え、"
+                    + "改修を効かない場所へ加えます。")
+            .detection("(a) 制御フローグラフで入口から到達できない文と、"
+                    + "(b) PERFORM・GO TO のいずれからも参照されず流下経路上にもない段落の"
+                    + "2つを検出します。(b) は流下辺が過大に見積もられるため、"
+                    + "到達性ではなく意味モデルで判定します。")
+            .remedy("不要なら削ります。必要な処理なら、呼び出しか分岐を加えて到達させます。")
+            .example("""
+                        GOBACK.
+                        MOVE WS-A TO WS-B.
+                    """, """
+                        MOVE WS-A TO WS-B.
+                        GOBACK.
+                    """)
+            .severity(Severity.MEDIUM)
+            .commands(Command.LINT, Command.REPORT)
+            .targets(AssetKind.COBOL)
+            .needs(Needs.SEMANTIC, Needs.CFG)
+            .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("到達不能コード", "制御フロー")
-                .summary("制御が届かない文と、どこからも呼ばれない段落を検出します。")
-                .rationale("実行されない記述が残ると、読む者が生きた処理と取り違え、"
-                        + "改修を効かない場所へ加えます。")
-                .detection("(a) 制御フローグラフで入口から到達できない文と、"
-                        + "(b) PERFORM・GO TO のいずれからも参照されず流下経路上にもない段落の"
-                        + "2つを検出します。(b) は流下辺が過大に見積もられるため、"
-                        + "到達性ではなく意味モデルで判定します。")
-                .remedy("不要なら削ります。必要な処理なら、呼び出しか分岐を加えて到達させます。")
-                .example("""
-                            GOBACK.
-                            MOVE WS-A TO WS-B.
-                        """, """
-                            MOVE WS-A TO WS-B.
-                            GOBACK.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.MEDIUM;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.CONTROL_FLOW;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override
@@ -89,8 +82,8 @@ public final class UnreachableCodeRule implements Rule {
             if (node.kind() != CfgNodeKind.STATEMENT || reachable.contains(node)) {
                 continue;
             }
-            node.statement().ifPresent(statement -> findings.add(Finding.of(id(),
-                    defaultSeverity().toLevel(),
+            node.statement().ifPresent(statement -> findings.add(Finding.of(META.id(),
+                    META.defaultSeverity().toLevel(),
                     "この文は制御フロー上どの経路からも到達せず、実行されることがない。",
                     new SourcePosition(model.sourceFile(), statement.range().start().line(), 1,
                             SourcePosition.UNKNOWN_BYTE_OFFSET))));
@@ -119,7 +112,7 @@ public final class UnreachableCodeRule implements Rule {
                     || mainline.contains(name)) {
                 continue;
             }
-            findings.add(Finding.of(id(), defaultSeverity().toLevel(),
+            findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                     "段落 " + procedure.name()
                             + " はどの PERFORM・GO TO からも参照されず、本流の流下経路上にもない。",
                     new SourcePosition(model.sourceFile(), procedure.range().start().line(), 1,

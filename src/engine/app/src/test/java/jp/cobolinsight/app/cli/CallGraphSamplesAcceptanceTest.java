@@ -1,5 +1,8 @@
 package jp.cobolinsight.app.cli;
 
+import jp.cobolinsight.app.pipeline.Pipelines;
+import jp.cobolinsight.app.pipeline.ScanOutcome;
+import jp.cobolinsight.app.pipeline.Persist;
 import jp.cobolinsight.core.callgraph.CallGraphEdge;
 import jp.cobolinsight.core.callgraph.CallGraphNode;
 import jp.cobolinsight.core.callgraph.EdgeKind;
@@ -42,15 +45,15 @@ class CallGraphSamplesAcceptanceTest {
     @TempDir
     static Path tempDir;
 
-    private static ScanRunner.Result result;
+    private static ScanOutcome result;
     private static PersistenceDatabase database;
     private static PersistenceDao dao;
 
     @BeforeAll
     static void scanSamples() {
         Path databaseFile = tempDir.resolve("m2.db");
-        result = ScanRunner.runWithGraph(new ScanRunner.Options(SAMPLES, databaseFile,
-                List.of(SAMPLES.resolve("copybook")), Map.of()));
+        result = Pipelines.scan(SAMPLES, databaseFile,
+                List.of(SAMPLES.resolve("copybook")), Map.of());
         database = PersistenceDatabase.open(databaseFile);
         dao = new PersistenceDao(database.connection());
     }
@@ -176,7 +179,7 @@ class CallGraphSamplesAcceptanceTest {
                 .filter(n -> n.kind() != NodeKind.PROGRAM && n.kind() != NodeKind.JOB).count();
         assertEquals(19, graphNodes);
         for (long i = 0; i < graphNodes; i++) {
-            NodeRecord node = dao.findNode(ScanRunner.GRAPH_ID_BASE + i).orElseThrow();
+            NodeRecord node = dao.findNode(Persist.GRAPH_ID_BASE + i).orElseThrow();
             assertTrue(Set.of("STEP", "DATASET", "DB2_TABLE", "TRANSACTION", "BMS_MAP")
                     .contains(node.type()), node.type());
         }
@@ -187,7 +190,7 @@ class CallGraphSamplesAcceptanceTest {
         int graphEdgeCount = 0;
         boolean dynamicEdgeFound = false;
         for (int i = 0; i < result.callGraph().edges().size(); i++) {
-            CallEdgeRecord edge = dao.findCallEdge(ScanRunner.GRAPH_ID_BASE + i).orElseThrow();
+            CallEdgeRecord edge = dao.findCallEdge(Persist.GRAPH_ID_BASE + i).orElseThrow();
             graphEdgeCount++;
             if (edge.fromNode() == syk002 && edge.toNode() == syk004
                     && "CALL".equals(edge.kind())) {
@@ -200,7 +203,7 @@ class CallGraphSamplesAcceptanceTest {
         assertTrue(dynamicEdgeFound, "動的CALL辺がNODE.id=SOURCE.id規約のノードIDで保存されること");
 
         // linker finding: SYK002のソースIDに紐づくNOTEが保存されること
-        FindingRecord findingRecord = dao.findFinding(ScanRunner.GRAPH_ID_BASE).orElseThrow();
+        FindingRecord findingRecord = dao.findFinding(Persist.GRAPH_ID_BASE).orElseThrow();
         assertEquals(CallGraphLinker.DYNAMIC_CALL_RESOLVED_RULE_ID, findingRecord.ruleId());
         assertEquals("NOTE", findingRecord.level());
         assertEquals(syk002, findingRecord.sourceId());
@@ -214,7 +217,7 @@ class CallGraphSamplesAcceptanceTest {
         Set<String> copyEdges = new TreeSet<>();
         for (SourceRecord source : dao.findAllSources()) {
             for (CallEdgeRecord edge : dao.findEdgesFrom(source.id())) {
-                if (edge.id() >= ScanRunner.GRAPH_ID_BASE) {
+                if (edge.id() >= Persist.GRAPH_ID_BASE) {
                     continue;
                 }
                 String key = pathById.get(edge.fromNode()) + "->" + pathById.get(edge.toNode());
@@ -234,8 +237,8 @@ class CallGraphSamplesAcceptanceTest {
         // 共有DB(m2.db)は他テストが参照するため、rescanは専用の複製へ書き込む
         Path rescanDb = tempDir.resolve("m2-rescan.db");
         Files.copy(tempDir.resolve("m2.db"), rescanDb);
-        ScanRunner.Result second = ScanRunner.runWithGraph(new ScanRunner.Options(SAMPLES,
-                rescanDb, List.of(SAMPLES.resolve("copybook")), Map.of()));
+        ScanOutcome second = Pipelines.scan(SAMPLES,
+                rescanDb, List.of(SAMPLES.resolve("copybook")), Map.of());
         assertEquals(List.of(), second.summary().analyzed(), "変更が無ければ再解析しないこと");
         assertEquals(20, second.summary().skipped().size());
         assertEquals(0, second.summary().exitCode());
@@ -245,18 +248,18 @@ class CallGraphSamplesAcceptanceTest {
         try (PersistenceDatabase reopened = PersistenceDatabase.open(rescanDb)) {
             PersistenceDao dao2 = new PersistenceDao(reopened.connection());
             for (int i = 0; i < result.callGraph().edges().size(); i++) {
-                assertTrue(dao2.findCallEdge(ScanRunner.GRAPH_ID_BASE + i).isPresent());
+                assertTrue(dao2.findCallEdge(Persist.GRAPH_ID_BASE + i).isPresent());
             }
             assertTrue(dao2.findCallEdge(
-                            ScanRunner.GRAPH_ID_BASE + result.callGraph().edges().size()).isEmpty(),
+                            Persist.GRAPH_ID_BASE + result.callGraph().edges().size()).isEmpty(),
                     "グラフ層エッジが重複蓄積しないこと");
         }
     }
 
     @Test
     void separateDatabaseYieldsIdenticalGraphJsonAndDot() {
-        ScanRunner.Result second = ScanRunner.runWithGraph(new ScanRunner.Options(SAMPLES,
-                tempDir.resolve("m2-second.db"), List.of(SAMPLES.resolve("copybook")), Map.of()));
+        ScanOutcome second = Pipelines.scan(SAMPLES,
+                tempDir.resolve("m2-second.db"), List.of(SAMPLES.resolve("copybook")), Map.of());
         assertEquals(result.callGraph().toJson(), second.callGraph().toJson(),
                 "同一入力からのJSONがバイト単位で一致すること(決定論)");
         assertEquals(result.callGraph().toDot(), second.callGraph().toDot(),

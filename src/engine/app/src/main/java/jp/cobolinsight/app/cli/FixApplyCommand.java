@@ -4,6 +4,7 @@ import jp.cobolinsight.core.finding.Finding;
 import jp.cobolinsight.core.json.JsonWriter;
 import jp.cobolinsight.core.pipeline.ExitCodes;
 import jp.cobolinsight.core.fix.ReparseResult;
+import jp.cobolinsight.app.EngineWiring;
 import jp.cobolinsight.core.fix.ReparseVerifier;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
@@ -33,6 +34,9 @@ public final class FixApplyCommand implements Callable<Integer> {
     @Mixin
     FixCommonOptions options;
 
+    @Mixin
+    RuleOptions ruleOptions;
+
     @Option(names = "--out", paramLabel = "DIR", defaultValue = "fix",
             description = "修正後ソースの出力先(元の相対パス構成を保持。既定: ${DEFAULT-VALUE})")
     Path outputDir;
@@ -48,8 +52,10 @@ public final class FixApplyCommand implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        FixRunner.Result result = new FixRunner().run(options.toRunnerOptions());
-        ApplyOutcome outcome = applyFixes(result.fileFixes(), outputDir, new ReparseVerifier(),
+        FixRunner.Result result =
+                new FixRunner().run(options.toRunnerOptions(ruleOptions.reportingRuleSet()));
+        ApplyOutcome outcome = applyFixes(result.fileFixes(), outputDir,
+                EngineWiring.reparseVerifier(),
                 options.resolvedCopybookPaths());
 
         List<Finding> combined = new ArrayList<>(result.analysisFindings());

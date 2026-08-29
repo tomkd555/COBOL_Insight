@@ -2,7 +2,7 @@ package jp.cobolinsight.rules.dataflow;
 
 import jp.cobolinsight.core.finding.Finding;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.Rule;
+import jp.cobolinsight.core.rule.Rule;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -74,7 +74,7 @@ class DataFlowSamplesAcceptanceTest {
                 new RedefinesMismatchRule(), new StringOverflowRule(), new IdenticalOperandsRule())) {
             assertEquals(Map.of(), rule.evaluate(context).stream()
                     .collect(Collectors.groupingBy(f -> f.ruleId(), Collectors.counting())),
-                    () -> rule.id() + " は samples で検出を出さないこと");
+                    () -> rule.meta().id() + " は samples で検出を出さないこと");
         }
     }
 }

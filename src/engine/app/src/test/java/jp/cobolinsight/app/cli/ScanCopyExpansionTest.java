@@ -1,5 +1,7 @@
 package jp.cobolinsight.app.cli;
 
+import jp.cobolinsight.app.pipeline.Pipelines;
+import jp.cobolinsight.app.pipeline.ScanOutcome;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import picocli.CommandLine;
@@ -26,14 +28,14 @@ class ScanCopyExpansionTest {
     @TempDir
     Path tempDir;
 
-    private ScanRunner.CopyExpansions runScan() {
-        return ScanRunner.runWithGraph(new ScanRunner.Options(SAMPLES,
-                        tempDir.resolve("scan.db"), List.of(SAMPLES.resolve("copybook")), Map.of()))
+    private ScanOutcome.CopyExpansions runScan() {
+        return Pipelines.scan(SAMPLES,
+                        tempDir.resolve("scan.db"), List.of(SAMPLES.resolve("copybook")), Map.of())
                 .copyExpansions();
     }
 
-    private static ScanRunner.CopyExpansions.ProgramExpansion programOf(
-            ScanRunner.CopyExpansions expansions, String relPath) {
+    private static ScanOutcome.CopyExpansions.ProgramExpansion programOf(
+            ScanOutcome.CopyExpansions expansions, String relPath) {
         return expansions.programs().stream()
                 .filter(program -> program.relPath().equals(relPath))
                 .findFirst()
@@ -58,9 +60,9 @@ class ScanCopyExpansionTest {
 
     @Test
     void programsAreSortedAndOnlyThoseWithCopyStatementsAppear() {
-        ScanRunner.CopyExpansions expansions = runScan();
+        ScanOutcome.CopyExpansions expansions = runScan();
         List<String> paths = expansions.programs().stream()
-                .map(ScanRunner.CopyExpansions.ProgramExpansion::relPath).toList();
+                .map(ScanOutcome.CopyExpansions.ProgramExpansion::relPath).toList();
         assertEquals(paths.stream().sorted().toList(), paths, "相対パス昇順であること");
         assertFalse(paths.contains("cobol/SYK008.cbl"), "COPY 文を持たないプログラムは載せないこと");
     }
@@ -82,7 +84,7 @@ class ScanCopyExpansionTest {
 
     @Test
     void summaryOmitsTheKeyWhenNoFileIsRequested() {
-        ScanRunner.Summary summary = new ScanRunner.Summary(List.of(), List.of(), List.of(), 0, 0);
+        ScanOutcome.Summary summary = new ScanOutcome.Summary(List.of(), List.of(), List.of(), 0, 0);
         assertFalse(summary.toJson("p.db", null).contains("copyExpansionFile"));
         assertTrue(summary.toJson("p.db", "e.json").contains("\"copyExpansionFile\":\"e.json\""));
     }

@@ -39,7 +39,7 @@ class LintSamplesAcceptanceTest {
     @BeforeAll
     static void lintSamples() {
         result = LintRunner.run(new LintRunner.Options(SAMPLES,
-                List.of(SAMPLES.resolve("copybook")), Map.of(), Set.of()));
+                List.of(SAMPLES.resolve("copybook")), Map.of()));
     }
 
     private static List<Finding> byRule(String ruleId) {
@@ -235,7 +235,7 @@ class LintSamplesAcceptanceTest {
                 "位置のURIが入力フォルダ相対のスラッシュ区切りであること");
 
         LintRunner.Result second = LintRunner.run(new LintRunner.Options(SAMPLES,
-                List.of(SAMPLES.resolve("copybook")), Map.of(), Set.of()));
+                List.of(SAMPLES.resolve("copybook")), Map.of()));
         assertEquals(sarif, second.sarifJson(), "同一入力で同一のSARIFテキストになること(決定論)");
     }
 }

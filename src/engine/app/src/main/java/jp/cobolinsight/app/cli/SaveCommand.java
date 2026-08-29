@@ -8,6 +8,7 @@ import jp.cobolinsight.core.json.JsonWriter;
 import jp.cobolinsight.core.pipeline.ExitCodes;
 import jp.cobolinsight.core.fix.MinimalLineEdit;
 import jp.cobolinsight.core.fix.ReparseResult;
+import jp.cobolinsight.app.EngineWiring;
 import jp.cobolinsight.core.fix.ReparseVerifier;
 import jp.cobolinsight.app.persistence.PersistenceDao;
 import jp.cobolinsight.app.persistence.PersistenceDatabase;
@@ -118,7 +119,7 @@ public class SaveCommand implements Callable<Integer> {
      * 書き戻し後の再パース検証。試験が書き戻しの後の失敗を起こせるよう、ここで区切っている。
      */
     ReparseResult verifyReparse(Path target, byte[] bytes, String charsetName) throws IOException {
-        return new ReparseVerifier().verify(target.toString(), bytes, charsetName,
+        return EngineWiring.reparseVerifier().verify(target.toString(), bytes, charsetName,
                 reparseCopybookPaths(target));
     }
 

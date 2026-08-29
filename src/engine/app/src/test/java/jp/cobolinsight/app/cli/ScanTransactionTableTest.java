@@ -1,5 +1,7 @@
 package jp.cobolinsight.app.cli;
 
+import jp.cobolinsight.app.pipeline.Pipelines;
+import jp.cobolinsight.app.pipeline.ScanOutcome;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -50,8 +52,8 @@ class ScanTransactionTableTest {
                 "SYK1,TRNHDR1",
                 ""), StandardCharsets.UTF_8);
 
-        ScanRunner.Result result = ScanRunner.runWithGraph(new ScanRunner.Options(assets,
-                tempDir.resolve("scan-broken.db"), List.of(), Map.of()));
+        ScanOutcome result = Pipelines.scan(assets,
+                tempDir.resolve("scan-broken.db"), List.of(), Map.of());
 
         assertEquals(0, result.summary().exitCode(), "不正バイト列CSVがあってもscanが完走すること");
         assertTrue(result.callGraph().edges().stream().anyMatch(e ->
@@ -70,8 +72,8 @@ class ScanTransactionTableTest {
                 "SYK1,TRNHDR1",
                 ""), StandardCharsets.UTF_8);
 
-        ScanRunner.Result result = ScanRunner.runWithGraph(new ScanRunner.Options(assets,
-                tempDir.resolve("scan-header.db"), List.of(), Map.of()));
+        ScanOutcome result = Pipelines.scan(assets,
+                tempDir.resolve("scan-header.db"), List.of(), Map.of());
 
         assertTrue(result.callGraph().edges().stream().noneMatch(e ->
                         e.fromId().equals("transaction:TRANID")),

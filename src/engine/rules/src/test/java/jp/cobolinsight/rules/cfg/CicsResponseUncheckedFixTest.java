@@ -39,7 +39,7 @@ class CicsResponseUncheckedFixTest {
         String file = CfgFixtures.samplesFile("SYK008.cbl");
         Finding finding = finding(context, file, 38);
 
-        FixSuggestion suggestion = new CicsResponseUncheckedRule().fixProducer().orElseThrow()
+        FixSuggestion suggestion = new CicsResponseUncheckedRule().fix().orElseThrow()
                 .produce(finding, context)
                 .orElseThrow(() -> new AssertionError("R021 の修正案が返ること"));
         assertEquals(2, suggestion.edits().size());
@@ -91,7 +91,7 @@ class CicsResponseUncheckedFixTest {
         CicsResponseUncheckedRule rule = new CicsResponseUncheckedRule();
         Finding finding = rule.evaluate(context).get(0);
 
-        assertTrue(rule.fixProducer().orElseThrow().produce(finding, context).isEmpty(),
+        assertTrue(rule.fix().orElseThrow().produce(finding, context).isEmpty(),
                 "受け変数が無ければ修正案を出さないこと");
     }
 
@@ -123,7 +123,7 @@ class CicsResponseUncheckedFixTest {
         CicsResponseUncheckedRule rule = new CicsResponseUncheckedRule();
         Finding finding = rule.evaluate(context).get(0);
 
-        FixSuggestion suggestion = rule.fixProducer().orElseThrow().produce(finding, context)
+        FixSuggestion suggestion = rule.fix().orElseThrow().produce(finding, context)
                 .orElseThrow();
         // RESP2 を含む名前は RESP の受け変数として選ばない。
         assertEquals("           RESP(WS-RESPコード)\n",

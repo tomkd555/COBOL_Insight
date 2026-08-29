@@ -1,9 +1,13 @@
 package jp.cobolinsight.app.cli;
 
+import jp.cobolinsight.app.pipeline.Persist;
+import jp.cobolinsight.app.pipeline.Pipelines;
+import jp.cobolinsight.app.pipeline.SourceSet;
 import jp.cobolinsight.core.finding.Finding;
 import jp.cobolinsight.core.finding.FindingLevel;
 import jp.cobolinsight.core.json.JsonWriter;
 import jp.cobolinsight.core.pipeline.ExitCodes;
+import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.app.persistence.PersistenceDao;
 import jp.cobolinsight.app.persistence.PersistenceDatabase;
@@ -11,6 +15,7 @@ import jp.cobolinsight.app.persistence.model.CallEdgeRecord;
 import jp.cobolinsight.app.persistence.model.FindingRecord;
 import jp.cobolinsight.app.persistence.model.NodeRecord;
 import jp.cobolinsight.app.persistence.model.SourceRecord;
+import jp.cobolinsight.rules.RuleSet;
 import jp.cobolinsight.rules.sarif.SarifWriter;
 
 import java.nio.file.Files;
@@ -20,13 +25,12 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 
 /**
  * `report` の中核処理。scan 済み SQLite を入力に、資産インベントリ・呼出関係の
  * 要約・scan 由来 finding を DB から読む。lint 検出(id が "R")と SQL 指摘(id が "S")は scan が
- * 永続化しないため、DB と同じ資産フォルダに対し {@link LintRunner}・{@link SqlAdviseRunner} を
+ * 永続化しないため、DB と同じ資産フォルダに対し report のパイプラインを
  * メモリ上で再実行して収集する。統合結果を HTML とテキストの両形式へ整形し、CI 向け終了コードを
  * {@link ExitCodes#fromFindings} で返す。
  */
@@ -34,19 +38,18 @@ public final class ReportRunner {
 
     /**
      * DB の FINDING 行のうち、この ID 未満は scan 由来(復号・パース失敗)、以上は呼出関係グラフ層
-     * (linker 由来の解決根拠 finding)。{@link ScanRunner#GRAPH_ID_BASE} と一致させる。
+     * (linker 由来の解決根拠 finding)。{@link Persist#GRAPH_ID_BASE} と一致させる。
      */
-    private static final long GRAPH_ID_BASE = ScanRunner.GRAPH_ID_BASE;
+    private static final long GRAPH_ID_BASE = Persist.GRAPH_ID_BASE;
 
-    /** userRulesFile は lint 段へそのまま渡す。指定が無い(null)場合は組み込みだけを使う。 */
     public record Options(Path inputDir, Path databaseFile, List<Path> copybookSearchPaths,
-            Map<String, String> codepageOverrides, Set<String> disabledRuleIds,
-            Path userRulesFile) {
+            Map<String, String> codepageOverrides, RuleSet ruleSet) {
 
+        /** The default rule set: every built-in rule, no configuration file. */
         public Options(Path inputDir, Path databaseFile, List<Path> copybookSearchPaths,
-                Map<String, String> codepageOverrides, Set<String> disabledRuleIds) {
-            this(inputDir, databaseFile, copybookSearchPaths, codepageOverrides, disabledRuleIds,
-                    null);
+                Map<String, String> codepageOverrides) {
+            this(inputDir, databaseFile, copybookSearchPaths, codepageOverrides,
+                    RuleSet.load((Path) null));
         }
     }
 
@@ -119,24 +122,27 @@ public final class ReportRunner {
             callGraph = readCallGraph(dao);
         }
 
-        LintRunner.Result lint = LintRunner.run(new LintRunner.Options(options.inputDir(),
-                options.copybookSearchPaths(), options.codepageOverrides(),
-                options.disabledRuleIds(), options.userRulesFile()));
-        SqlAdviseRunner.Result advice = SqlAdviseRunner.run(new SqlAdviseRunner.Options(
-                options.inputDir(), options.copybookSearchPaths(), options.codepageOverrides(),
-                options.disabledRuleIds()));
+        // One pass over the assets serves both halves of the report: the bug detection and the
+        // SQL advice see the same parse, and their findings stay in their own sections.
+        SourceSet analysis = Pipelines.report(options.inputDir(), options.copybookSearchPaths(),
+                options.codepageOverrides(), options.ruleSet());
+        LintRunner.reportWarnings(analysis);
+        List<Finding> lintFindings = new ArrayList<>(analysis.findings());
+        lintFindings.addAll(analysis.ruleFindings(Command.REPORT));
+        lintFindings.sort(SarifWriter.findingOrder());
+        List<Finding> adviceFindings = List.copyOf(analysis.ruleFindings(Command.SQL_LINT));
 
         List<Finding> forExitCode = new ArrayList<>();
         forExitCode.addAll(scanFindings);
-        forExitCode.addAll(lint.findings());
-        forExitCode.addAll(advice.findings());
+        forExitCode.addAll(lintFindings);
+        forExitCode.addAll(adviceFindings);
         int exitCode = ExitCodes.fromFindings(forExitCode);
 
-        String html = ReportRenderer.toHtml(inventory, scanFindings, lint.findings(),
-                advice.findings(), callGraph);
-        String text = ReportRenderer.toText(inventory, scanFindings, lint.findings(),
-                advice.findings(), callGraph, exitCode);
-        return new Result(inventory, scanFindings, lint.findings(), advice.findings(),
+        String html = ReportRenderer.toHtml(inventory, scanFindings, lintFindings,
+                adviceFindings, callGraph);
+        String text = ReportRenderer.toText(inventory, scanFindings, lintFindings,
+                adviceFindings, callGraph, exitCode);
+        return new Result(inventory, scanFindings, lintFindings, adviceFindings,
                 callGraph, html, text, exitCode);
     }
 

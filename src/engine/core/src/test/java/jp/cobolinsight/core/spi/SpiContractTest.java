@@ -4,7 +4,6 @@ import jp.cobolinsight.core.bms.BmsMapset;
 import jp.cobolinsight.core.callgraph.CallGraph;
 import jp.cobolinsight.core.finding.Finding;
 import jp.cobolinsight.core.finding.FindingLevel;
-import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.source.SourcePosition;
 import org.junit.jupiter.api.Test;
@@ -44,47 +43,6 @@ class SpiContractTest {
         Finding warning = Finding.of("R009", FindingLevel.WARNING, "smell",
                 SourcePosition.fileStart("A.cbl"));
         assertThrows(IllegalArgumentException.class, () -> ParseOutcome.failure(warning));
-    }
-
-    @Test
-    void ruleFixProducerDefaultsToEmpty() {
-        Rule rule = new Rule() {
-            @Override
-            public String id() {
-                return "R999";
-            }
-
-            @Override
-            public RuleDoc doc() {
-                return RuleDoc.named("契約検査用", "テスト")
-                        .summary("既定の実装だけを持つルールである。")
-                        .rationale("修正案を持たないルールの既定値を確かめる。")
-                        .detection("常に検出なし。")
-                        .remedy("対処は不要である。")
-                        .build();
-            }
-
-            @Override
-            public Severity defaultSeverity() {
-                return Severity.LOW;
-            }
-
-            @Override
-            public AnalysisPhase phase() {
-                return AnalysisPhase.SYNTAX;
-            }
-
-            @Override
-            public List<Finding> evaluate(AnalysisContext context) {
-                return List.of();
-            }
-        };
-        assertTrue(rule.fixProducer().isEmpty());
-    }
-
-    @Test
-    void analysisPhaseCoversThreePhases() {
-        assertEquals(3, AnalysisPhase.values().length);
     }
 
     @Test

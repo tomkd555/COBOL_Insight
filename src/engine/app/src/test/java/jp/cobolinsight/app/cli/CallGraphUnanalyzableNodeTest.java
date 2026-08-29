@@ -1,5 +1,7 @@
 package jp.cobolinsight.app.cli;
 
+import jp.cobolinsight.app.pipeline.Pipelines;
+import jp.cobolinsight.app.pipeline.ScanOutcome;
 import jp.cobolinsight.core.callgraph.CallGraphEdge;
 import jp.cobolinsight.core.callgraph.CallGraphNode;
 import jp.cobolinsight.core.callgraph.NodeKind;
@@ -49,16 +51,16 @@ class CallGraphUnanalyzableNodeTest {
         return tempDir.resolve("scan.db");
     }
 
-    private ScanRunner.Result scanFixture() throws IOException {
+    private ScanOutcome scanFixture() throws IOException {
         Path assets = tempDir.resolve("assets");
         Files.createDirectories(assets.resolve("cobol"));
         Files.writeString(assets.resolve("cobol/GOOD.cbl"), GOOD_SOURCE, StandardCharsets.UTF_8);
         Files.writeString(assets.resolve("cobol/BROKEN.cbl"), BROKEN_SOURCE, StandardCharsets.UTF_8);
-        return ScanRunner.runWithGraph(new ScanRunner.Options(assets,
-                databaseFile(), List.of(), Map.of()));
+        return Pipelines.scan(assets,
+                databaseFile(), List.of(), Map.of());
     }
 
-    private static CallGraphNode unanalyzableNode(ScanRunner.Result result) {
+    private static CallGraphNode unanalyzableNode(ScanOutcome result) {
         List<CallGraphNode> nodes = result.callGraph().nodes().stream()
                 .filter(node -> node.kind() == NodeKind.UNANALYZABLE)
                 .toList();
@@ -68,7 +70,7 @@ class CallGraphUnanalyzableNodeTest {
 
     @Test
     void unparsableProgramBecomesUnanalyzableNode() throws IOException {
-        ScanRunner.Result result = scanFixture();
+        ScanOutcome result = scanFixture();
         CallGraphNode node = unanalyzableNode(result);
 
         assertEquals("BROKEN.cbl", node.label(), "ラベルは拡張子付きのファイル名であること");
@@ -84,7 +86,7 @@ class CallGraphUnanalyzableNodeTest {
 
     @Test
     void unanalyzableNodeIsIsolatedAndUniquelyIdentified() throws IOException {
-        ScanRunner.Result result = scanFixture();
+        ScanOutcome result = scanFixture();
         CallGraphNode node = unanalyzableNode(result);
 
         for (CallGraphEdge edge : result.callGraph().edges()) {
@@ -119,7 +121,7 @@ class CallGraphUnanalyzableNodeTest {
 
     @Test
     void jsonCarriesKindPathAndReason() throws IOException {
-        ScanRunner.Result result = scanFixture();
+        ScanOutcome result = scanFixture();
         String json = result.callGraph().toJson();
 
         assertTrue(json.contains("\"kind\":\"UNANALYZABLE\""), json);

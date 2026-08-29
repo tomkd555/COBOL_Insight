@@ -38,7 +38,7 @@ class OnSizeErrorMissingFixTest {
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("SYK007 の R004 検出が前提"));
 
-        FixSuggestion suggestion = rule.fixProducer().orElseThrow().produce(finding, context)
+        FixSuggestion suggestion = rule.fix().orElseThrow().produce(finding, context)
                 .orElseThrow(() -> new AssertionError("R004 の修正案が返ること"));
         assertEquals(1, suggestion.edits().size());
         TextEdit edit = suggestion.edits().get(0);
@@ -81,7 +81,7 @@ class OnSizeErrorMissingFixTest {
                 DataFlowFixtures.context(List.of(model), Map.of(model.sourceFile(), text));
         OnSizeErrorMissingRule rule = new OnSizeErrorMissingRule();
         Finding finding = rule.evaluate(context).get(0);
-        FixSuggestion suggestion = rule.fixProducer().orElseThrow().produce(finding, context)
+        FixSuggestion suggestion = rule.fix().orElseThrow().produce(finding, context)
                 .orElseThrow();
         assertEquals(61, "ON SIZE ERROR DISPLAY 'SIZE ERROR: WS-引当率X' END-COMPUTE"
                 .getBytes(StandardCharsets.UTF_8).length, "挿入文はB領域の予算61バイトに等しい");
@@ -120,7 +120,7 @@ class OnSizeErrorMissingFixTest {
                 DataFlowFixtures.context(List.of(model), Map.of(model.sourceFile(), text));
         OnSizeErrorMissingRule rule = new OnSizeErrorMissingRule();
         Finding finding = rule.evaluate(context).get(0);
-        FixSuggestion suggestion = rule.fixProducer().orElseThrow().produce(finding, context)
+        FixSuggestion suggestion = rule.fix().orElseThrow().produce(finding, context)
                 .orElseThrow();
         String replacement = suggestion.edits().get(0).replacement();
         assertTrue(replacement.contains("END-MULTIPLY"), replacement);

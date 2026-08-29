@@ -6,8 +6,8 @@ import jp.cobolinsight.core.finding.Finding;
 import jp.cobolinsight.core.finding.FixSuggestion;
 import jp.cobolinsight.core.finding.TextEdit;
 import jp.cobolinsight.core.json.JsonWriter;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.core.spi.RuleDoc;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -45,7 +45,7 @@ public final class SarifWriter {
 
     public static String toJson(List<Rule> rules, List<Finding> findings) {
         List<Rule> sortedRules = new ArrayList<>(rules);
-        sortedRules.sort(Comparator.comparing(Rule::id));
+        sortedRules.sort(Comparator.comparing(rule -> rule.meta().id()));
         List<Finding> sortedFindings = new ArrayList<>(findings);
         sortedFindings.sort(findingOrder());
 
@@ -59,20 +59,20 @@ public final class SarifWriter {
                 .name("version").value(TOOL_VERSION)
                 .name("rules").beginArray();
         for (Rule rule : sortedRules) {
-            RuleDoc doc = rule.doc();
+            RuleMeta meta = rule.meta();
             writer.beginObject()
-                    .name("id").value(rule.id())
-                    .name("name").value(doc.name())
+                    .name("id").value(meta.id())
+                    .name("name").value(meta.name())
                     .name("shortDescription").beginObject()
-                    .name("text").value(doc.summary()).endObject()
+                    .name("text").value(meta.summary()).endObject()
                     .name("fullDescription").beginObject()
-                    .name("text").value(fullDescriptionOf(doc)).endObject()
+                    .name("text").value(fullDescriptionOf(meta)).endObject()
                     .name("help").beginObject()
-                    .name("text").value(helpTextOf(doc)).endObject()
+                    .name("text").value(helpTextOf(meta)).endObject()
                     .name("properties").beginObject()
-                    .name("category").value(doc.category()).endObject()
+                    .name("category").value(meta.category()).endObject()
                     .name("defaultConfiguration").beginObject()
-                    .name("level").value(rule.defaultSeverity().toLevel().sarifName())
+                    .name("level").value(meta.defaultSeverity().toLevel().sarifName())
                     .endObject()
                     .endObject();
         }
@@ -111,16 +111,16 @@ public final class SarifWriter {
      * 直列化する。1本の経路は単一の実行の流れであり、1つの threadFlow で表す。
      */
     /** 検出内容の全文。要約・理由・検出条件を、この順で1つのテキストへまとめる。 */
-    private static String fullDescriptionOf(RuleDoc doc) {
-        return doc.summary() + "\n\n" + doc.rationale() + "\n\n" + doc.detection();
+    private static String fullDescriptionOf(RuleMeta meta) {
+        return meta.summary() + "\n\n" + meta.rationale() + "\n\n" + meta.detection();
     }
 
     /** SARIF を読む側(IDE・レビュー基盤)が指摘の隣へ出す助け。対処と、あれば対比の例を載せる。 */
-    private static String helpTextOf(RuleDoc doc) {
-        StringBuilder out = new StringBuilder("対処: ").append(doc.remedy());
-        if (doc.hasExample()) {
-            out.append("\n\n該当する例:\n").append(doc.badExample())
-                    .append("\n\n直した例:\n").append(doc.goodExample());
+    private static String helpTextOf(RuleMeta meta) {
+        StringBuilder out = new StringBuilder("対処: ").append(meta.remedy());
+        if (meta.hasExample()) {
+            out.append("\n\n該当する例:\n").append(meta.badExample())
+                    .append("\n\n直した例:\n").append(meta.goodExample());
         }
         return out.toString();
     }
@@ -201,7 +201,7 @@ public final class SarifWriter {
 
     private static int indexOf(List<Rule> rules, String ruleId) {
         for (int i = 0; i < rules.size(); i++) {
-            if (rules.get(i).id().equals(ruleId)) {
+            if (rules.get(i).meta().id().equals(ruleId)) {
                 return i;
             }
         }

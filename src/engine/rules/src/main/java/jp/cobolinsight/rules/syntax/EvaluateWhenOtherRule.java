@@ -6,10 +6,12 @@ import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.CompoundStatement;
 import jp.cobolinsight.core.semantic.ControlKind;
 import jp.cobolinsight.core.semantic.StatementBlock;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.core.spi.RuleDoc;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,43 +24,34 @@ import java.util.List;
  */
 public final class EvaluateWhenOtherRule implements Rule {
 
-    @Override
-    public String id() {
-        return "R013";
-    }
+    private static final RuleMeta META = RuleMeta.named("R013", "EVALUATE文のWHEN OTHER欠如", "制御フロー")
+            .summary("WHEN OTHER 句を持たない EVALUATE 文を検出します。")
+            .rationale("どの WHEN にも一致しない値が何の処理も受けずに素通りするため、"
+                    + "想定外の入力が記録も通知もされないまま無視されます。")
+            .detection("分岐の複合文のうち EVALUATE 文を対象とし、"
+                    + "ラベル OTHER のブロックを持たないものを検出します。IF 文は対象外とします。")
+            .remedy("WHEN OTHER 句を置き、想定外の値に対する処理(異常扱い・既定値の設定)を書きます。")
+            .example("""
+                    EVALUATE WS-KBN
+                        WHEN "1" PERFORM SHINKI-SHORI
+                        WHEN "2" PERFORM HENKO-SHORI
+                    END-EVALUATE.
+                    """, """
+                    EVALUATE WS-KBN
+                        WHEN "1" PERFORM SHINKI-SHORI
+                        WHEN "2" PERFORM HENKO-SHORI
+                        WHEN OTHER PERFORM ERROR-SHORI
+                    END-EVALUATE.
+                    """)
+            .severity(Severity.MEDIUM)
+            .commands(Command.LINT, Command.REPORT)
+            .targets(AssetKind.COBOL)
+            .needs(Needs.SEMANTIC)
+            .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("EVALUATE文のWHEN OTHER欠如", "制御フロー")
-                .summary("WHEN OTHER 句を持たない EVALUATE 文を検出します。")
-                .rationale("どの WHEN にも一致しない値が何の処理も受けずに素通りするため、"
-                        + "想定外の入力が記録も通知もされないまま無視されます。")
-                .detection("分岐の複合文のうち EVALUATE 文を対象とし、"
-                        + "ラベル OTHER のブロックを持たないものを検出します。IF 文は対象外とします。")
-                .remedy("WHEN OTHER 句を置き、想定外の値に対する処理(異常扱い・既定値の設定)を書きます。")
-                .example("""
-                        EVALUATE WS-KBN
-                            WHEN "1" PERFORM SHINKI-SHORI
-                            WHEN "2" PERFORM HENKO-SHORI
-                        END-EVALUATE.
-                        """, """
-                        EVALUATE WS-KBN
-                            WHEN "1" PERFORM SHINKI-SHORI
-                            WHEN "2" PERFORM HENKO-SHORI
-                            WHEN OTHER PERFORM ERROR-SHORI
-                        END-EVALUATE.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.MEDIUM;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.SYNTAX;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override

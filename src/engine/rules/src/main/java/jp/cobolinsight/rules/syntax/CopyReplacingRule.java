@@ -3,11 +3,13 @@ package jp.cobolinsight.rules.syntax;
 import jp.cobolinsight.core.finding.Finding;
 import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.core.spi.RuleDoc;
 import jp.cobolinsight.rules.SourceTextIndex;
 
 import java.util.ArrayList;
@@ -44,37 +46,28 @@ public final class CopyReplacingRule implements Rule {
      */
     private static final int MAX_STATEMENT_LINES = 20;
 
-    @Override
-    public String id() {
-        return "R024";
-    }
+    private static final RuleMeta META = RuleMeta.named("R024", "COPY REPLACINGによる置換漏れ", "データ定義")
+            .summary("COPY 文の REPLACING で指定した置換対象が、取り込むコピー句に"
+                    + "一度も現れない箇所を検出します。")
+            .rationale("置換が起きないため、取り込んだ項目の名前が意図した名前にならず、"
+                    + "接頭辞の付け替えを前提にした後続の参照が解決できません。")
+            .detection("REPLACING の置換対象文字列を、対象コピー句の内容(注記行を除く)と"
+                    + "突き合わせ、出現が 0 件のものを検出します。")
+            .remedy("置換対象の綴りをコピー句の記述と揃えます。不要になった REPLACING は削ります。")
+            .example("""
+                    COPY CUSTREC REPLACING ==:PFX:== BY ==CUST==.
+                    """, """
+                    COPY CUSTREC REPLACING ==:PRE:== BY ==CUST==.
+                    """)
+            .severity(Severity.MEDIUM)
+            .commands(Command.LINT, Command.REPORT)
+            .targets(AssetKind.COBOL, AssetKind.COPYBOOK)
+            .needs(Needs.SEMANTIC, Needs.SOURCE_TEXT)
+            .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("COPY REPLACINGによる置換漏れ", "データ定義")
-                .summary("COPY 文の REPLACING で指定した置換対象が、取り込むコピー句に"
-                        + "一度も現れない箇所を検出します。")
-                .rationale("置換が起きないため、取り込んだ項目の名前が意図した名前にならず、"
-                        + "接頭辞の付け替えを前提にした後続の参照が解決できません。")
-                .detection("REPLACING の置換対象文字列を、対象コピー句の内容(注記行を除く)と"
-                        + "突き合わせ、出現が 0 件のものを検出します。")
-                .remedy("置換対象の綴りをコピー句の記述と揃えます。不要になった REPLACING は削ります。")
-                .example("""
-                        COPY CUSTREC REPLACING ==:PFX:== BY ==CUST==.
-                        """, """
-                        COPY CUSTREC REPLACING ==:PRE:== BY ==CUST==.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.MEDIUM;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.SYNTAX;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override

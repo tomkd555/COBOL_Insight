@@ -13,16 +13,15 @@ import jp.cobolinsight.core.finding.FindingLevel;
 import jp.cobolinsight.core.finding.FixSuggestion;
 import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.finding.TextEdit;
-import jp.cobolinsight.core.pipeline.AnalysisServices;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.source.DecodedSource;
 import jp.cobolinsight.core.source.EncodingInfo;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.source.SourceRange;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
 import jp.cobolinsight.core.spi.ParseOutcome;
-import jp.cobolinsight.core.spi.Rule;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.rules.BuiltinRules;
 import jp.cobolinsight.rules.SourceTextIndex;
 import org.junit.jupiter.api.Test;
 
@@ -59,7 +58,7 @@ class SarifSchemaValidationTest {
 
     @Test
     void syntheticFindingsProduceSchemaValidSarif() {
-        List<Rule> rules = AnalysisServices.load().rules(AnalysisPhase.SYNTAX);
+        List<Rule> rules = BuiltinRules.all();
         // 1件目のファイル名には空白・#・非ASCII文字を含める。URI へ変換したうえでスキーマへ
         // 適合することまで確認する。
         List<Finding> findings = List.of(
@@ -96,7 +95,7 @@ class SarifSchemaValidationTest {
     /** 汚染経路付きの finding が codeFlows(threadFlows → locations)としてスキーマへ適合すること。 */
     @Test
     void codeFlowFindingsProduceSchemaValidSarif() {
-        List<Rule> rules = AnalysisServices.load().rules(AnalysisPhase.SYNTAX);
+        List<Rule> rules = BuiltinRules.all();
         List<Finding> findings = List.of(
                 new Finding("R020", FindingLevel.ERROR, "動的SQLへの外部入力の組込",
                         new SourcePosition("cobol/A.cbl", 30, 12,
@@ -118,7 +117,7 @@ class SarifSchemaValidationTest {
 
     @Test
     void samplesLintResultProducesSchemaValidSarif() {
-        List<Rule> rules = AnalysisServices.load().rules(AnalysisPhase.SYNTAX);
+        List<Rule> rules = BuiltinRules.all();
         Map<String, String> texts = new LinkedHashMap<>();
         List<CobolSemanticModel> models = new ArrayList<>();
         for (Path file : listFiles(SAMPLES.resolve("copybook"), ".cpy")) {

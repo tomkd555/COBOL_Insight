@@ -42,7 +42,7 @@ class SqlCodeUncheckedFixTest {
         String file = CfgFixtures.samplesFile("SYK006.cbl");
         Finding finding = finding(context, file, 119);
 
-        FixSuggestion suggestion = new SqlCodeUncheckedRule().fixProducer().orElseThrow()
+        FixSuggestion suggestion = new SqlCodeUncheckedRule().fix().orElseThrow()
                 .produce(finding, context).orElseThrow(() -> new AssertionError("R018 の修正案が返ること"));
         assertEquals(1, suggestion.edits().size());
         TextEdit edit = suggestion.edits().get(0);
@@ -64,7 +64,7 @@ class SqlCodeUncheckedFixTest {
         String file = CfgFixtures.samplesFile("SYK007.cbl");
         Finding finding = finding(context, file, 89);
 
-        FixSuggestion suggestion = new SqlCodeUncheckedRule().fixProducer().orElseThrow()
+        FixSuggestion suggestion = new SqlCodeUncheckedRule().fix().orElseThrow()
                 .produce(finding, context).orElseThrow();
         TextEdit edit = suggestion.edits().get(0);
         assertEquals(90, edit.range().start().line());
@@ -102,7 +102,7 @@ class SqlCodeUncheckedFixTest {
         SqlCodeUncheckedRule rule = new SqlCodeUncheckedRule();
         Finding finding = rule.evaluate(context).stream().findFirst()
                 .orElseThrow(() -> new AssertionError("ブロック内 INSERT の R018 検出が前提"));
-        FixSuggestion suggestion = rule.fixProducer().orElseThrow().produce(finding, context)
+        FixSuggestion suggestion = rule.fix().orElseThrow().produce(finding, context)
                 .orElseThrow(() -> new AssertionError("ブロック途中の INSERT にも修正案が返ること"));
         assertEquals("           IF SQLCODE NOT = 0 DISPLAY 'SQL ERROR: ' SQLCODE END-IF\n",
                 suggestion.edits().get(0).replacement());

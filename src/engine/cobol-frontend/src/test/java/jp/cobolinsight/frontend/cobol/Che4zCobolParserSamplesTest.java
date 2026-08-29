@@ -7,7 +7,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-import java.util.ServiceLoader;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -34,13 +33,6 @@ class Che4zCobolParserSamplesTest {
         CobolSemanticModel model = outcome.value().orElseThrow();
         assertEquals(programId, model.programId());
         assertTrue(model.sourceFile().endsWith(fileName));
-    }
-
-    @Test
-    void parserIsRegisteredAsService() {
-        boolean found = ServiceLoader.load(CobolParser.class).stream()
-                .anyMatch(p -> p.type() == Che4zCobolParser.class);
-        assertTrue(found, "META-INF/services に Che4zCobolParser が登録されていること");
     }
 
     @Test

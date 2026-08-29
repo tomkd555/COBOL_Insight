@@ -3,9 +3,8 @@ package jp.cobolinsight.app.cli;
 import jp.cobolinsight.core.finding.Finding;
 import jp.cobolinsight.core.finding.FixSuggestion;
 import jp.cobolinsight.core.finding.TextEdit;
-import jp.cobolinsight.core.pipeline.AnalysisServices;
-import jp.cobolinsight.core.spi.AnalysisPhase;
-import jp.cobolinsight.core.spi.Rule;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.rules.BuiltinRules;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -15,7 +14,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -24,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * lint の SARIF が、FixProducer を持つルールの検出へ fixes(artifactChanges のソース範囲置換)を
  * 付すことの検証。FixProducer を持つルールの集合は
- * 実行時に {@link Rule#fixProducer()} へ問い合わせて求め、テスト側で固定値として持たない。
+ * 実行時に {@link Rule#fix()} へ問い合わせて求め、テスト側で固定値として持たない。
  */
 class LintSarifFixesTest {
 
@@ -35,19 +33,15 @@ class LintSarifFixesTest {
     @BeforeAll
     static void lintSamples() {
         result = LintRunner.run(new LintRunner.Options(SAMPLES,
-                List.of(SAMPLES.resolve("copybook")), Map.of(), Set.of()));
+                List.of(SAMPLES.resolve("copybook")), Map.of()));
     }
 
     /** lint が実行するルールのうち FixProducer を持つものの id(実行時問い合わせ)。 */
     private static Set<String> ruleIdsWithFixProducer() {
-        AnalysisServices services = AnalysisServices.load();
-        return Stream.of(services.rules(AnalysisPhase.SYNTAX),
-                        services.rules(AnalysisPhase.CONTROL_FLOW),
-                        services.rules(AnalysisPhase.DATA_FLOW))
-                .flatMap(List::stream)
-                .filter(rule -> rule.id().startsWith("R"))
-                .filter(rule -> rule.fixProducer().isPresent())
-                .map(Rule::id)
+        return BuiltinRules.all().stream()
+                .filter(rule -> rule.meta().id().startsWith("R"))
+                .filter(rule -> rule.fix().isPresent())
+                .map(rule -> rule.meta().id())
                 .collect(Collectors.toCollection(TreeSet::new));
     }
 
