@@ -1,79 +1,113 @@
-/*
- * 基盤スタイルとアニメーション。トークンを参照して html/body の下地を整え、
- * シェル・共通コンポーネントが用いるキーフレームを定義する。
- */
+/* Element defaults and the shared controls. Component rules live in shell.css. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
 
 html,
-body {
-  margin: 0;
-  padding: 0;
-  background: var(--color-background);
-  color: var(--color-foreground);
-  font-family: var(--font-body);
-  font-size: var(--ci-fs-base);
-}
-
+body,
 #root {
-  height: 100vh;
+  height: 100%;
+  margin: 0;
 }
 
-/* 視覚的には隠すが読み上げには残す(見出し階層を保つための隠し見出しに使う)。 */
+body {
+  background: var(--ci-bg-app);
+  color: var(--ci-fg);
+  font-family: var(--ci-font-ui);
+  font-size: var(--ci-size-md);
+  line-height: var(--ci-line);
+  /*
+   * The window never scrolls as a whole; each region scrolls on its own. Combined with the shell's
+   * min-width being a preference rather than a floor, this is what keeps a 200% zoom from producing
+   * a horizontal scrollbar alongside the vertical ones (WCAG 1.4.10).
+   */
+  overflow: hidden;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/*
+ * The focus ring is drawn only for keyboard focus, and never removed. It is offset inwards so it
+ * stays visible on a control sitting flush against the edge of its region.
+ */
+:focus-visible {
+  outline: 2px solid var(--ci-focus);
+  outline-offset: -2px;
+}
+
+/* Present to assistive technology, absent from the layout. */
 .ci-visually-hidden {
   position: absolute;
   width: 1px;
   height: 1px;
-  margin: -1px;
   padding: 0;
+  margin: -1px;
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
 }
 
-a {
-  color: var(--color-primary);
-}
-a:hover {
-  color: var(--ci-accent-hover);
-}
-
-/* タイトルバーの実行中スピナー */
-@keyframes ci-spin {
-  to {
-    transform: rotate(360deg);
-  }
+.ci-button {
+  padding: var(--ci-space-1) var(--ci-space-3);
+  background: var(--ci-bg-raised);
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius);
+  cursor: pointer;
 }
 
-/*
- * 進捗バー・待機縞の流れ。移動距離 28px は縞タイルの幅(Shell.css の .ci-progress の
- * background-size)と同じであり、1周ごとに元と同じ描画へ戻るため縞が継ぎ目なく循環する。
- */
-@keyframes ci-bar {
-  0% {
-    background-position: 0 0;
-  }
-  100% {
-    background-position: 28px 0;
-  }
+.ci-button:hover:not(:disabled) {
+  background: var(--ci-bg-hover);
 }
 
-/* トーストの出現(pop) */
-@keyframes ci-pop {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(6px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0) scale(1);
-  }
+.ci-button:disabled {
+  color: var(--ci-fg-dim);
+  cursor: default;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-  }
+.ci-button--primary {
+  background: var(--ci-focus);
+  border-color: var(--ci-focus);
+  color: var(--ci-fg-strong);
+}
+
+.ci-button--danger {
+  background: var(--ci-danger-bg);
+  border-color: var(--ci-danger);
+  color: var(--ci-fg-strong);
+}
+
+.ci-button--quiet {
+  background: transparent;
+  border-color: transparent;
+}
+
+.ci-input,
+.ci-select {
+  min-width: 0;
+  padding: var(--ci-space-1) var(--ci-space-2);
+  background: var(--ci-bg-raised);
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius);
+}
+
+.ci-input::placeholder {
+  color: var(--ci-fg-dim);
+}
+
+kbd {
+  padding: 0 var(--ci-space-1);
+  background: var(--ci-bg-raised);
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius);
+  font-family: var(--ci-font-code);
+  font-size: var(--ci-size-sm);
 }

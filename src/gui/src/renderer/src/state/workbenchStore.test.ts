@@ -1,190 +1,203 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  BOTTOM_PANEL_LIMITS,
-  SIDE_PANEL_LIMITS,
+  PANEL_LIMITS,
+  SIDE_LIMITS,
   activeTabOf,
   draftOf,
   initialWorkbenchState,
   isTabDirty,
-  singletonTab,
   sourceTab,
+  sourceTabId,
   workbenchReducer,
   type WorkbenchAction,
   type WorkbenchState,
 } from "./workbenchStore";
 
-/** 一連の action を初期状態へ順に当てる。 */
-function apply(...actions: readonly WorkbenchAction[]): WorkbenchState {
-  return actions.reduce(workbenchReducer, initialWorkbenchState);
+function apply(state: WorkbenchState, ...actions: WorkbenchAction[]): WorkbenchState {
+  return actions.reduce(workbenchReducer, state);
 }
 
 const A = sourceTab("cobol/A.cbl");
 const B = sourceTab("cobol/B.cbl");
+const C = sourceTab("cobol/C.cbl");
 
-describe("タブを開く", () => {
-  it("開いたタブを選択中にする", () => {
-    const state = apply({ type: "OPEN_TAB", tab: A });
-    expect(state.tabs.map((tab) => tab.id)).toEqual(["source:cobol/A.cbl"]);
-    expect(activeTabOf(state)?.path).toBe("cobol/A.cbl");
-  });
-
-  it("資産のタブの見出しはファイル名である", () => {
-    expect(sourceTab("src/cobol/A.cbl").title).toBe("A.cbl");
-  });
-
-  it("同じ資産は 2 枚開かず、選び直すだけである", () => {
-    const state = apply({ type: "OPEN_TAB", tab: A }, { type: "OPEN_TAB", tab: B }, {
-      type: "OPEN_TAB",
-      tab: A,
+describe("sourceTab", () => {
+  it("titles the tab with the file name and keeps the path", () => {
+    expect(A).toEqual({
+      id: sourceTabId("cobol/A.cbl"),
+      kind: "source",
+      title: "A.cbl",
+      path: "cobol/A.cbl",
+      line: null,
     });
-    expect(state.tabs).toHaveLength(2);
-    expect(state.activeTabId).toBe("source:cobol/A.cbl");
-  });
-
-  it("開いてあるタブを行の指定つきで開くと、その行へ移る", () => {
-    const state = apply({ type: "OPEN_TAB", tab: A }, { type: "OPEN_TAB", tab: sourceTab("cobol/A.cbl", 42) });
-    expect(activeTabOf(state)?.line).toBe(42);
-  });
-
-  it("種類ごとのタブは 1 枚だけ開く", () => {
-    const state = apply(
-      { type: "OPEN_TAB", tab: singletonTab("graph") },
-      { type: "OPEN_TAB", tab: singletonTab("graph") },
-    );
-    expect(state.tabs).toHaveLength(1);
-    expect(state.tabs[0].title).toBe("呼出関係図");
   });
 });
 
-describe("タブを閉じる", () => {
-  const opened = apply(
-    { type: "OPEN_TAB", tab: A },
-    { type: "OPEN_TAB", tab: B },
-    { type: "OPEN_TAB", tab: singletonTab("rules") },
-  );
-
-  it("閉じたタブが選択中なら、次のタブを選ぶ", () => {
-    const state = workbenchReducer({ ...opened, activeTabId: B.id }, {
-      type: "CLOSE_TAB",
-      id: B.id,
-    });
-    expect(state.activeTabId).toBe("rules");
+describe("tabs", () => {
+  it("opens a tab and selects it", () => {
+    const state = apply(initialWorkbenchState, { type: "OPEN_TAB", tab: A });
+    expect(state.tabs).toHaveLength(1);
+    expect(activeTabOf(state)).toEqual(A);
   });
 
-  it("末尾を閉じたときは手前を選ぶ", () => {
-    const state = workbenchReducer(opened, { type: "CLOSE_TAB", id: "rules" });
+  it("does not open the same asset twice, only updates the requested line", () => {
+    const state = apply(
+      initialWorkbenchState,
+      { type: "OPEN_TAB", tab: A },
+      { type: "OPEN_TAB", tab: B },
+      { type: "OPEN_TAB", tab: sourceTab("cobol/A.cbl", 42) },
+    );
+    expect(state.tabs).toHaveLength(2);
+    expect(activeTabOf(state)?.line).toBe(42);
+  });
+
+  it("selects the following tab when the active one closes", () => {
+    const state = apply(
+      initialWorkbenchState,
+      { type: "OPEN_TAB", tab: A },
+      { type: "OPEN_TAB", tab: B },
+      { type: "OPEN_TAB", tab: C },
+      { type: "ACTIVATE_TAB", id: B.id },
+      { type: "CLOSE_TAB", id: B.id },
+    );
+    expect(state.activeTabId).toBe(C.id);
+  });
+
+  it("selects the preceding tab when the last one closes", () => {
+    const state = apply(
+      initialWorkbenchState,
+      { type: "OPEN_TAB", tab: A },
+      { type: "OPEN_TAB", tab: B },
+      { type: "CLOSE_TAB", id: B.id },
+    );
+    expect(state.activeTabId).toBe(A.id);
+  });
+
+  it("leaves the selection alone when an inactive tab closes", () => {
+    const state = apply(
+      initialWorkbenchState,
+      { type: "OPEN_TAB", tab: A },
+      { type: "OPEN_TAB", tab: B },
+      { type: "CLOSE_TAB", id: A.id },
+    );
     expect(state.activeTabId).toBe(B.id);
   });
 
-  it("選択中でないタブを閉じても選択は動かない", () => {
-    const state = workbenchReducer(opened, { type: "CLOSE_TAB", id: A.id });
-    expect(state.activeTabId).toBe("rules");
-  });
-
-  it("最後の 1 枚を閉じると選択が無くなる", () => {
-    const state = apply({ type: "OPEN_TAB", tab: A }, { type: "CLOSE_TAB", id: A.id });
-    expect(state.tabs).toEqual([]);
+  it("selects nothing once the last tab is gone", () => {
+    const state = apply(
+      initialWorkbenchState,
+      { type: "OPEN_TAB", tab: A },
+      { type: "CLOSE_TAB", id: A.id },
+    );
     expect(state.activeTabId).toBeNull();
     expect(activeTabOf(state)).toBeNull();
   });
 
-  it("開いていないタブを閉じても状態は変わらない", () => {
-    expect(workbenchReducer(opened, { type: "CLOSE_TAB", id: "settings" })).toBe(opened);
+  it("wraps around at either end when stepping", () => {
+    const open = apply(
+      initialWorkbenchState,
+      { type: "OPEN_TAB", tab: A },
+      { type: "OPEN_TAB", tab: B },
+    );
+    expect(apply(open, { type: "STEP_TAB", step: 1 }).activeTabId).toBe(A.id);
+    expect(apply(open, { type: "STEP_TAB", step: -1 }).activeTabId).toBe(A.id);
   });
 
-  it("閉じたタブの編集後の本文を残さない", () => {
-    const edited = workbenchReducer(opened, { type: "SET_DRAFT", id: A.id, text: "編集後" });
-    expect(workbenchReducer(edited, { type: "CLOSE_TAB", id: A.id }).drafts).toEqual({});
-  });
-});
-
-describe("タブを選ぶ", () => {
-  const opened = apply({ type: "OPEN_TAB", tab: A }, { type: "OPEN_TAB", tab: B });
-
-  it("開いてあるタブを選べる", () => {
-    expect(workbenchReducer(opened, { type: "ACTIVATE_TAB", id: A.id }).activeTabId).toBe(A.id);
-  });
-
-  it("開いていないタブは選べない", () => {
-    expect(workbenchReducer(opened, { type: "ACTIVATE_TAB", id: "graph" })).toBe(opened);
-  });
-
-  it("前後へ送り、端では反対の端へ回す", () => {
-    expect(workbenchReducer(opened, { type: "STEP_TAB", step: 1 }).activeTabId).toBe(A.id);
-    expect(workbenchReducer(opened, { type: "STEP_TAB", step: -1 }).activeTabId).toBe(A.id);
-    const first = workbenchReducer(opened, { type: "ACTIVATE_TAB", id: A.id });
-    expect(workbenchReducer(first, { type: "STEP_TAB", step: 1 }).activeTabId).toBe(B.id);
-    expect(workbenchReducer(first, { type: "STEP_TAB", step: -1 }).activeTabId).toBe(B.id);
-  });
-
-  it("1 枚も開いていなければ送り先が無い", () => {
-    expect(workbenchReducer(initialWorkbenchState, { type: "STEP_TAB", step: 1 })).toBe(
+  it("ignores a step and an activation when nothing matches", () => {
+    expect(apply(initialWorkbenchState, { type: "STEP_TAB", step: 1 })).toBe(initialWorkbenchState);
+    expect(apply(initialWorkbenchState, { type: "ACTIVATE_TAB", id: "nope" })).toBe(
       initialWorkbenchState,
     );
   });
 });
 
-describe("編集後の本文", () => {
-  it("持たせて外せる。持っているあいだが未保存である", () => {
-    const set = apply({ type: "OPEN_TAB", tab: A }, { type: "SET_DRAFT", id: A.id, text: "編集後" });
-    expect(draftOf(set, A.id)).toBe("編集後");
-    expect(isTabDirty(set, A.id)).toBe(true);
-    const cleared = workbenchReducer(set, { type: "SET_DRAFT", id: A.id, text: null });
-    expect(cleared.drafts).toEqual({});
-    expect(isTabDirty(cleared, A.id)).toBe(false);
-  });
-
-  it("同じ本文を重ねても状態は変わらない", () => {
-    const set = apply({ type: "OPEN_TAB", tab: A }, { type: "SET_DRAFT", id: A.id, text: "編集後" });
-    expect(workbenchReducer(set, { type: "SET_DRAFT", id: A.id, text: "編集後" })).toBe(set);
-  });
-
-  it("タブごとに別の本文を持つ", () => {
-    const set = apply(
+describe("drafts", () => {
+  it("marks a tab dirty once it holds edited text", () => {
+    const state = apply(
+      initialWorkbenchState,
       { type: "OPEN_TAB", tab: A },
-      { type: "OPEN_TAB", tab: B },
-      { type: "SET_DRAFT", id: A.id, text: "A の編集" },
-      { type: "SET_DRAFT", id: B.id, text: "B の編集" },
+      { type: "SET_DRAFT", id: A.id, draft: "EDITED" },
     );
-    expect(draftOf(set, A.id)).toBe("A の編集");
-    expect(draftOf(set, B.id)).toBe("B の編集");
+    expect(isTabDirty(state, A.id)).toBe(true);
+    expect(draftOf(state, A.id)).toBe("EDITED");
+  });
+
+  it("clears the dirty mark when the draft is dropped", () => {
+    const state = apply(
+      initialWorkbenchState,
+      { type: "OPEN_TAB", tab: A },
+      { type: "SET_DRAFT", id: A.id, draft: "EDITED" },
+      { type: "SET_DRAFT", id: A.id, draft: null },
+    );
+    expect(isTabDirty(state, A.id)).toBe(false);
+  });
+
+  it("discards the draft along with the tab", () => {
+    const state = apply(
+      initialWorkbenchState,
+      { type: "OPEN_TAB", tab: A },
+      { type: "SET_DRAFT", id: A.id, draft: "EDITED" },
+      { type: "CLOSE_TAB", id: A.id },
+    );
+    expect(state.drafts).toEqual({});
+  });
+
+  it("returns the same state when the draft has not changed", () => {
+    const edited = apply(
+      initialWorkbenchState,
+      { type: "OPEN_TAB", tab: A },
+      { type: "SET_DRAFT", id: A.id, draft: "EDITED" },
+    );
+    expect(apply(edited, { type: "SET_DRAFT", id: A.id, draft: "EDITED" })).toBe(edited);
   });
 });
 
-describe("パネルの開閉と寸法", () => {
-  it("側パネルは同じ面を選び直すと畳む", () => {
-    const hidden = workbenchReducer(initialWorkbenchState, {
-      type: "SHOW_SIDE",
-      view: "explorer",
-    });
-    expect(hidden.sideVisible).toBe(false);
-    expect(workbenchReducer(hidden, { type: "SHOW_SIDE", view: "explorer" }).sideVisible).toBe(true);
+describe("layout", () => {
+  it("collapses the side bar when the current view is chosen again", () => {
+    const state = apply(initialWorkbenchState, { type: "SHOW_SIDE", view: "explorer" });
+    expect(state.sideVisible).toBe(false);
   });
 
-  it("下部パネルは面を選び直すと畳み、別の面を選ぶと開く", () => {
-    const log = workbenchReducer(initialWorkbenchState, { type: "SHOW_BOTTOM", view: "log" });
-    expect(log.bottomVisible).toBe(true);
-    expect(log.bottomView).toBe("log");
-    expect(workbenchReducer(log, { type: "SHOW_BOTTOM", view: "log" }).bottomVisible).toBe(false);
+  it("switches to another view rather than collapsing", () => {
+    const state = apply(initialWorkbenchState, { type: "SHOW_SIDE", view: "rules" });
+    expect(state).toMatchObject({ sideVisible: true, sideView: "rules" });
   });
 
-  it("保存した寸法を戻し、下限を割る値は下限で丸める", () => {
-    const state = workbenchReducer(initialWorkbenchState, {
-      type: "RESTORE_SIZES",
-      sideWidth: 10,
-      bottomHeight: 420.4,
-    });
-    expect(state.sideWidth).toBe(SIDE_PANEL_LIMITS.min);
-    expect(state.bottomHeight).toBe(420);
+  it("reopens the side bar on the view that was chosen while it was hidden", () => {
+    const state = apply(
+      initialWorkbenchState,
+      { type: "TOGGLE_SIDE" },
+      { type: "SHOW_SIDE", view: "explorer" },
+    );
+    expect(state).toMatchObject({ sideVisible: true, sideView: "explorer" });
   });
 
-  it("保存が無い欄は現在の寸法を保つ", () => {
-    const state = workbenchReducer(initialWorkbenchState, { type: "RESTORE_SIZES" });
-    expect(state.sideWidth).toBe(SIDE_PANEL_LIMITS.initial);
-    expect(state.bottomHeight).toBe(BOTTOM_PANEL_LIMITS.initial);
+  it("collapses the panel when the current view is chosen again", () => {
+    expect(apply(initialWorkbenchState, { type: "SHOW_PANEL", view: "problems" }).panelVisible).toBe(
+      false,
+    );
   });
 
-  it("寸法の操作の完了を数える(保存の合図にする)", () => {
-    expect(workbenchReducer(initialWorkbenchState, { type: "COMMIT_SIZE" }).sizeCommitCount).toBe(1);
+  it("counts only finished resizes, which is what triggers a save", () => {
+    const state = apply(
+      initialWorkbenchState,
+      { type: "SET_SIDE_WIDTH", width: 300 },
+      { type: "SET_SIDE_WIDTH", width: 301 },
+      { type: "COMMIT_SIZE" },
+    );
+    expect(state.sizeCommitCount).toBe(1);
+    expect(state.sideWidth).toBe(301);
+  });
+
+  it("clamps restored sizes to their minimum and keeps the current one where none was stored", () => {
+    const state = apply(initialWorkbenchState, { type: "RESTORE_SIZES", sideWidth: 10 });
+    expect(state.sideWidth).toBe(SIDE_LIMITS.min);
+    expect(state.panelHeight).toBe(PANEL_LIMITS.initial);
+  });
+
+  it("rounds a fractional restored size", () => {
+    expect(apply(initialWorkbenchState, { type: "RESTORE_SIZES", panelHeight: 240.6 }).panelHeight).toBe(
+      241,
+    );
   });
 });

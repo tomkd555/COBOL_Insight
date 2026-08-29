@@ -1,82 +1,57 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { AppSettings } from "../shared/appSettings";
 import {
-  ENGINE_CHANNELS,
-  type CallgraphRequest,
+  CHANNELS,
   type CobolInsightApi,
-  type FixApplyRequest,
-  type FixPreviewRequest,
-  type FixResultRequest,
+  type DecodeSourceRequest,
+  type EngineInvocation,
+  type FixDiffRequest,
   type ImportSourceRequest,
-  type LintRequest,
-  type ReportRequest,
-  type RuleConfigFile,
+  type ReportArtifactRequest,
   type RulesRequest,
   type SaveSourceRequest,
-  type ScanRequest,
-  type SourceTextRequest,
-  type SqlAdviseRequest,
-  type TranspileArtifactsRequest,
+  type StatRequest,
   type TranspileRequest,
-  type UserRulesFile,
-} from "../shared/engine-api";
+} from "../shared/ipc";
+import type { AppSettings } from "../shared/settings";
+import type { RulesFile } from "../shared/rulesFile";
 
 /**
- * preload。contextIsolation・sandbox 下で、renderer→main の型付き API を contextBridge で公開する。
- * renderer から Node・child_process・fs へ直接触れさせず、engine CLI の起動と成果物読取はすべて
- * ipcRenderer.invoke で main へ委ねる。
+ * The preload. Under contextIsolation and sandbox it publishes the typed renderer-to-main API
+ * through contextBridge. The renderer never touches Node, child_process or fs: every engine launch
+ * and artefact read goes to main through ipcRenderer.invoke.
  *
- * 公開するのはここに並べた関数だけであり、ipcRenderer 自身は渡さない。チャネル名は
- * ENGINE_CHANNELS の固定値をこの層で与えるため、renderer が任意のチャネルへ invoke することはない。
- * IPC を渡る引数と戻り値は構造化複製できる値に限る(関数・クラスのインスタンスは渡せない)。
+ * Only the functions listed here are exposed; ipcRenderer itself is not. Channel names are supplied
+ * at this layer from the CHANNELS constants, so the renderer can never invoke an arbitrary channel.
+ * Arguments and return values must be structured-cloneable (no functions, no class instances).
  */
 const api: CobolInsightApi = {
-  runScan: (request: ScanRequest) => ipcRenderer.invoke(ENGINE_CHANNELS.runScan, request),
-  runCallgraph: (request: CallgraphRequest) =>
-    ipcRenderer.invoke(ENGINE_CHANNELS.runCallgraph, request),
-  runLint: (request: LintRequest) => ipcRenderer.invoke(ENGINE_CHANNELS.runLint, request),
-  runSqlLint: (request: SqlAdviseRequest) =>
-    ipcRenderer.invoke(ENGINE_CHANNELS.runSqlLint, request),
-  runReport: (request: ReportRequest) => ipcRenderer.invoke(ENGINE_CHANNELS.runReport, request),
-  runTranspile: (request: TranspileRequest) =>
-    ipcRenderer.invoke(ENGINE_CHANNELS.runTranspile, request),
-  runFixPreview: (request: FixPreviewRequest) =>
-    ipcRenderer.invoke(ENGINE_CHANNELS.runFixPreview, request),
-  runFixApply: (request: FixApplyRequest) =>
-    ipcRenderer.invoke(ENGINE_CHANNELS.runFixApply, request),
-  cancelRun: () => ipcRenderer.invoke(ENGINE_CHANNELS.cancelRun),
-  selectInputFolder: () => ipcRenderer.invoke(ENGINE_CHANNELS.selectInputFolder),
-  checkDirectoryExists: (path: string) =>
-    ipcRenderer.invoke(ENGINE_CHANNELS.checkDirectoryExists, path),
-  getOutputPaths: () => ipcRenderer.invoke(ENGINE_CHANNELS.getOutputPaths),
-  readSarif: (path: string) => ipcRenderer.invoke(ENGINE_CHANNELS.readSarif, path),
-  readFixResult: (request: FixResultRequest) =>
-    ipcRenderer.invoke(ENGINE_CHANNELS.readFixResult, request),
-  readReportHtml: (path: string) => ipcRenderer.invoke(ENGINE_CHANNELS.readReportHtml, path),
-  readReportText: (path: string) => ipcRenderer.invoke(ENGINE_CHANNELS.readReportText, path),
-  readAssetInventory: (dbPath: string) =>
-    ipcRenderer.invoke(ENGINE_CHANNELS.readAssetInventory, dbPath),
-  readSourceText: (request: SourceTextRequest) =>
-    ipcRenderer.invoke(ENGINE_CHANNELS.readSourceText, request),
-  saveSource: (request: SaveSourceRequest) =>
-    ipcRenderer.invoke(ENGINE_CHANNELS.saveSource, request),
-  readGraph: (dbPath: string) => ipcRenderer.invoke(ENGINE_CHANNELS.readGraph, dbPath),
-  readTranspileArtifacts: (request: TranspileArtifactsRequest) =>
-    ipcRenderer.invoke(ENGINE_CHANNELS.readTranspileArtifacts, request),
-  readCopyExpansion: (path: string) => ipcRenderer.invoke(ENGINE_CHANNELS.readCopyExpansion, path),
-  importSource: (request: ImportSourceRequest) =>
-    ipcRenderer.invoke(ENGINE_CHANNELS.importSource, request),
-  listRules: (request: RulesRequest) => ipcRenderer.invoke(ENGINE_CHANNELS.listRules, request),
-  readUserRules: (path: string) => ipcRenderer.invoke(ENGINE_CHANNELS.readUserRules, path),
-  writeUserRules: (path: string, file: UserRulesFile) =>
-    ipcRenderer.invoke(ENGINE_CHANNELS.writeUserRules, path, file),
-  readRuleConfig: (path: string) => ipcRenderer.invoke(ENGINE_CHANNELS.readRuleConfig, path),
-  writeRuleConfig: (path: string, file: RuleConfigFile) =>
-    ipcRenderer.invoke(ENGINE_CHANNELS.writeRuleConfig, path, file),
-  readSettings: () => ipcRenderer.invoke(ENGINE_CHANNELS.readSettings),
-  writeSettings: (settings: AppSettings) =>
-    ipcRenderer.invoke(ENGINE_CHANNELS.writeSettings, settings),
-  // renderer には process が無いため、版数は preload の時点で読んだ値を複製して渡す。
+  run: (invocation: EngineInvocation) => ipcRenderer.invoke(CHANNELS.engineRun, invocation),
+  cancel: () => ipcRenderer.invoke(CHANNELS.engineCancel),
+  decode: (request: DecodeSourceRequest) => ipcRenderer.invoke(CHANNELS.engineDecode, request),
+  save: (request: SaveSourceRequest) => ipcRenderer.invoke(CHANNELS.engineSave, request),
+  rules: (request: RulesRequest) => ipcRenderer.invoke(CHANNELS.engineRules, request),
+  validateRules: (raw: string) => ipcRenderer.invoke(CHANNELS.engineValidateRules, raw),
+
+  readInventory: (dbPath: string) => ipcRenderer.invoke(CHANNELS.artifactInventory, dbPath),
+  readSarif: (path: string) => ipcRenderer.invoke(CHANNELS.artifactSarif, path),
+  readGraph: (dbPath: string) => ipcRenderer.invoke(CHANNELS.artifactGraph, dbPath),
+  readCopyExpansion: (path: string) => ipcRenderer.invoke(CHANNELS.artifactCopyExpansion, path),
+  readFixDiff: (request: FixDiffRequest) => ipcRenderer.invoke(CHANNELS.artifactFixDiff, request),
+  readTranspile: (request: TranspileRequest) => ipcRenderer.invoke(CHANNELS.artifactTranspile, request),
+  readReport: (request: ReportArtifactRequest) => ipcRenderer.invoke(CHANNELS.artifactReport, request),
+
+  outputPaths: () => ipcRenderer.invoke(CHANNELS.fsOutputPaths),
+  selectFolder: () => ipcRenderer.invoke(CHANNELS.fsSelectFolder),
+  dirExists: (path: string) => ipcRenderer.invoke(CHANNELS.fsDirExists, path),
+  stat: (request: StatRequest) => ipcRenderer.invoke(CHANNELS.fsStat, request),
+  importSource: (request: ImportSourceRequest) => ipcRenderer.invoke(CHANNELS.fsImportSource, request),
+
+  readSettings: () => ipcRenderer.invoke(CHANNELS.settingsRead),
+  writeSettings: (settings: AppSettings) => ipcRenderer.invoke(CHANNELS.settingsWrite, settings),
+  readRules: (path: string) => ipcRenderer.invoke(CHANNELS.rulesRead, path),
+  writeRules: (path: string, file: RulesFile) => ipcRenderer.invoke(CHANNELS.rulesWrite, path, file),
+
+  // The renderer has no `process`, so the versions are copied out here at preload time.
   versions: {
     chrome: process.versions.chrome,
     node: process.versions.node,

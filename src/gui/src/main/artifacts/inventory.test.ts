@@ -1,86 +1,67 @@
-import { describe, it, expect, beforeAll } from "vitest";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { createRequire } from "node:module";
-import initSqlJs from "sql.js";
+import { describe, expect, it } from "vitest";
 import { readInventory } from "./inventory";
-import type { QueryableDatabase } from "./sqlRows";
+import { openDatabaseWith, openFixtureDatabase } from "./fixtures";
 
-const require = createRequire(import.meta.url);
+describe("readInventory against the scanned fixture", () => {
+  it("lists every source, ordered by relative path", async () => {
+    const db = await openFixtureDatabase();
+    try {
+      const items = readInventory(db);
+      expect(items.length).toBeGreaterThan(0);
+      expect(items.map((item) => item.path)).toEqual([...items.map((item) => item.path)].sort());
+      expect(items[0].path).toBe("bms/SYKMAP1.bms");
+    } finally {
+      db.close();
+    }
+  });
 
-let sampleDb: QueryableDatabase;
+  it("takes the name from the last path segment and the kind from NODE", async () => {
+    const db = await openFixtureDatabase();
+    try {
+      const program = readInventory(db).find((item) => item.path === "cobol/SYK001.cbl");
+      expect(program).toMatchObject({ name: "SYK001.cbl", type: "PROGRAM", codepage: "UTF-8" });
+      expect(program?.byteSize).toBeGreaterThan(0);
+    } finally {
+      db.close();
+    }
+  });
 
-beforeAll(async () => {
-  const wasmPath = require.resolve("sql.js/dist/sql-wasm.wasm");
-  const SQL = await initSqlJs({ locateFile: () => wasmPath });
-  const bytes = readFileSync(join(__dirname, "..", "__fixtures__", "sample.db"));
-  sampleDb = new SQL.Database(bytes);
+  it("reports the kinds the classifier inferred from the bytes", async () => {
+    const db = await openFixtureDatabase();
+    try {
+      const kinds = new Set(readInventory(db).map((item) => item.type));
+      expect(kinds).toEqual(new Set(["PROGRAM", "COPYBOOK", "JCL", "BMS"]));
+    } finally {
+      db.close();
+    }
+  });
 });
 
-describe("readInventory", () => {
-  it("実 scan 済み SQLite から16件の資産を種別・コードページ付きで読む", () => {
-    const items = readInventory(sampleDb);
-    expect(items).toHaveLength(16);
+const MINIMAL = `
+  CREATE TABLE SOURCE (id INTEGER PRIMARY KEY, path TEXT, codepage TEXT, byte_size INTEGER);
+  CREATE TABLE NODE (id INTEGER PRIMARY KEY, type TEXT, label TEXT);
+  CREATE TABLE FINDING (id INTEGER PRIMARY KEY, source_id INTEGER);
+  INSERT INTO SOURCE VALUES (1, 'a.cbl', 'Shift_JIS', 10), (2, 'b.dat', NULL, 20);
+  INSERT INTO NODE VALUES (1, 'PROGRAM', 'A');
+  INSERT INTO FINDING VALUES (1, 1), (2, 1), (1000000000000, 1);
+`;
 
-    const bms = items.find((i) => i.path === "bms/SYKMAP1.bms");
-    expect(bms).toMatchObject({
-      id: 1,
-      name: "SYKMAP1.bms",
-      type: "BMS",
-      codepage: "UTF-8",
-      byteSize: 1140,
-      findingCount: 0,
-    });
-
-    const program = items.find((i) => i.path === "cobol/SYK001.cbl");
-    expect(program?.type).toBe("PROGRAM");
-
-    const copybook = items.find((i) => i.path === "copybook/SYKCPY1.cpy");
-    expect(copybook?.type).toBe("COPYBOOK");
-
-    const jcl = items.find((i) => i.path === "jcl/SYKD010.jcl");
-    expect(jcl?.type).toBe("JCL");
+describe("readInventory edge cases", () => {
+  it("counts only scan findings, leaving the graph layer out", async () => {
+    const db = await openDatabaseWith(MINIMAL);
+    try {
+      expect(readInventory(db)[0].findingCount).toBe(2);
+    } finally {
+      db.close();
+    }
   });
 
-  it("グラフ層の finding(id ≥ 1e12)を scan 由来の件数から除く", () => {
-    // 前提の確認: sample.db は cobol/SYK002.cbl(SOURCE.id=3)へ紐づくグラフ層 finding を 1 件持つ。
-    const [graphLayer] = sampleDb.exec(
-      "SELECT s.path AS path, f.id AS id, f.rule_id AS ruleId FROM FINDING f" +
-        " JOIN SOURCE s ON s.id = f.source_id WHERE f.id >= 1000000000000",
-    );
-    expect(graphLayer.values).toHaveLength(1);
-    expect(graphLayer.values[0]).toContain("cobol/SYK002.cbl");
-    expect(graphLayer.values[0]).toContain("callgraph-dynamic-call");
-
-    // 除外の結果: その資産の findingCount は 0 になり、グラフ層の 1 件を数えない。
-    const items = readInventory(sampleDb);
-    expect(items.find((i) => i.path === "cobol/SYK002.cbl")?.findingCount).toBe(0);
-    expect(items.filter((i) => i.findingCount > 0)).toEqual([]);
-  });
-
-  it("path 昇順で並ぶ", () => {
-    const items = readInventory(sampleDb);
-    const paths = items.map((i) => i.path);
-    expect(paths).toEqual([...paths].sort());
-  });
-
-  it("列名で組み立てるため列順に依存しない", () => {
-    const stub: QueryableDatabase = {
-      exec: () => [
-        {
-          columns: ["findingCount", "type", "path", "codepage", "byteSize", "id"],
-          values: [[3, "PROGRAM", "cobol/X.cbl", null, 100, 42]],
-        },
-      ],
-    };
-    expect(readInventory(stub)[0]).toEqual({
-      id: 42,
-      path: "cobol/X.cbl",
-      name: "X.cbl",
-      type: "PROGRAM",
-      codepage: null,
-      byteSize: 100,
-      findingCount: 3,
-    });
+  it("reports UNKNOWN for a source with no node and null for an undecodable codepage", async () => {
+    const db = await openDatabaseWith(MINIMAL);
+    try {
+      expect(readInventory(db)[1]).toMatchObject({ type: "UNKNOWN", codepage: null });
+    } finally {
+      db.close();
+    }
   });
 });

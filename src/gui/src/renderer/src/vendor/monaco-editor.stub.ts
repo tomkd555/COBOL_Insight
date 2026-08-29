@@ -1,43 +1,50 @@
 /**
- * Vitest 専用の monaco-editor スタブ。vitest.config.ts の alias が monaco-editor の全サブパスを
- * この1本へ差し替える。
+ * The monaco-editor stub used by Vitest. The alias in vitest.config.ts redirects every monaco-editor
+ * subpath to this one file.
  *
- * 差し替える理由は2つある。第1に Monaco は Web Worker と実 DOM の寸法計測を要し jsdom では動かない
- * ため、単体テストは vendor/monacoEditor をモックして動かす。第2に本体は約 10MB の ESM で、
- * Worker を base64 で埋め込む取り込み(?worker&inline)はテスト実行時に別のバンドルを組むため、
- * 実体を読み込むと画面を描くだけのテストまで極端に遅くなる。
+ * There are two reasons. Monaco needs a Web Worker and real DOM measurement, neither of which jsdom
+ * provides, so unit tests mock vendor/monacoEditor rather than run the real thing. And the real
+ * package is roughly 10MB of ESM whose worker import (?worker&inline) builds a second bundle at test
+ * time, which would slow down even tests that merely render a screen.
  *
- * したがってスタブは「読み込めるが使えない」形にし、実際に呼ばれた場合は理由の判る例外を投げる。
- * 型はテストではなく tsc が本物の型定義から解決するため、ここでは実行時の形だけをそろえる。
+ * The stub is therefore loadable but not usable: anything actually called throws with the reason.
+ * Types come from the real declarations through tsc, so only the runtime shape matters here.
  */
 
 function unavailable(name: string): never {
-  throw new Error(`Monaco の ${name} は Vitest では使えない。vendor/monacoEditor をモックする。`);
+  throw new Error(`Monaco's ${name} is unavailable under Vitest; mock vendor/monacoEditor instead.`);
 }
 
-/** monaco-editor/editor/editor.worker?worker&inline の既定輸出(Worker の構築子)の代わり。 */
+/** Stands in for the default export of monaco-editor/editor/editor.worker?worker&inline. */
 export default class StubWorker {
   constructor() {
     unavailable("Worker");
   }
 }
 
-/** monaco.editor 名前空間の代わり。 */
+/** Stands in for the monaco.editor namespace. */
 export const editor = {
   create: () => unavailable("editor.create"),
   createDiffEditor: () => unavailable("editor.createDiffEditor"),
   defineTheme: () => undefined,
   setTheme: () => undefined,
   setModelLanguage: () => undefined,
+  getEditors: () => [],
 };
 
-/** monaco.languages 名前空間の代わり。 */
+/** Stands in for the monaco.languages namespace. */
 export const languages = {
   register: () => undefined,
   setMonarchTokensProvider: () => undefined,
   setLanguageConfiguration: () => undefined,
 };
 
-/** 生成物の言語定義(languages/definitions 配下の python.js・java.js)の輸出の代わり。 */
-export const conf = {};
-export const language = { tokenizer: { root: [] } };
+/** Stands in for the monaco.Range constructor. */
+export class Range {
+  constructor(
+    readonly startLineNumber: number,
+    readonly startColumn: number,
+    readonly endLineNumber: number,
+    readonly endColumn: number,
+  ) {}
+}

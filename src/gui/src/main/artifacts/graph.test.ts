@@ -1,141 +1,86 @@
-import { describe, it, expect, beforeAll } from "vitest";
-import { createRequire } from "node:module";
-import initSqlJs, { type Database } from "sql.js";
+import { describe, expect, it } from "vitest";
 import { readGraph } from "./graph";
-import type { QueryableDatabase } from "./sqlRows";
-
-const require = createRequire(import.meta.url);
-
-/** グラフ層の ID 下限(engine の ScanRunner.GRAPH_ID_BASE)。 */
-const GRAPH_ID_BASE = 1_000_000_000_000;
-
-/** schema v3 のうち、呼出関係の読取が触れる表だけを起こす。 */
-const DDL = `
-  CREATE TABLE NODE (id INTEGER PRIMARY KEY, type TEXT NOT NULL, label TEXT NOT NULL);
-  CREATE TABLE CALL_EDGE (
-    id INTEGER PRIMARY KEY, from_node INTEGER NOT NULL, to_node INTEGER NOT NULL,
-    kind TEXT NOT NULL, resolution TEXT, host_var TEXT,
-    seq INTEGER NOT NULL DEFAULT 0, line INTEGER
-  );
-  CREATE TABLE PROGRAM (id INTEGER PRIMARY KEY, source_id INTEGER NOT NULL,
-    program_id_name TEXT NOT NULL);
-  CREATE TABLE PARAGRAPH (id INTEGER PRIMARY KEY, program_id INTEGER NOT NULL,
-    name TEXT NOT NULL, start_line INTEGER NOT NULL, end_line INTEGER NOT NULL);
-  CREATE TABLE PARAGRAPH_EDGE (
-    id INTEGER PRIMARY KEY, program_source_id INTEGER NOT NULL,
-    from_paragraph INTEGER NOT NULL, to_paragraph INTEGER, to_name TEXT NOT NULL,
-    kind TEXT NOT NULL, line INTEGER, seq INTEGER NOT NULL
-  );
-`;
+import { openDatabaseWith } from "./fixtures";
 
 /**
- * 行の投入順を実行順とわざとずらして入れる。並び替えを SQL 側が行っていることを確かめるためである。
- * ジョブ(1000...)・ステップ・プログラムはグラフ層、資産に対応するノードは SOURCE.id と同じ小さい ID。
+ * The checked-in scanned fixture predates PARAGRAPH_EDGE and CALL_EDGE.seq, so the ordering rules
+ * are pinned against a database built here with exactly the rows they concern.
  */
-const ROWS = `
-  INSERT INTO NODE (id, type, label) VALUES
-    (2, 'PROGRAM', 'SYK001'),
-    (3, 'PROGRAM', 'SYK002'),
-    (${GRAPH_ID_BASE + 1}, 'JOB', 'SYKJOB1'),
-    (${GRAPH_ID_BASE + 2}, 'STEP', 'STEP01'),
-    (${GRAPH_ID_BASE + 3}, 'STEP', 'STEP02');
-  INSERT INTO CALL_EDGE (id, from_node, to_node, kind, resolution, seq, line) VALUES
-    (11, ${GRAPH_ID_BASE + 1}, ${GRAPH_ID_BASE + 3}, 'EXECUTION', 'CONSTANT', 2, 40),
-    (12, ${GRAPH_ID_BASE + 1}, ${GRAPH_ID_BASE + 2}, 'EXECUTION', 'CONSTANT', 1, 20),
-    (13, 2, 3, 'CALL', 'DATAFLOW', 0, NULL),
-    (14, 2, 3, 'CALL', 'CONSTANT', 1, 60);
-  INSERT INTO PROGRAM (id, source_id, program_id_name) VALUES (7, 2, 'SYK001');
-  INSERT INTO PARAGRAPH (id, program_id, name, start_line, end_line) VALUES
-    (22, 7, '主処理', 100, 140),
-    (21, 7, '初期処理', 30, 90);
-  INSERT INTO PARAGRAPH_EDGE
-    (id, program_source_id, from_paragraph, to_paragraph, to_name, kind, line, seq) VALUES
-    (32, 2, 21, NULL, '存在しない段落', 'GOTO', 88, 2),
-    (31, 2, 21, 22, '主処理', 'PERFORM', 55, 1);
+const GRAPH_DB = `
+  CREATE TABLE NODE (id INTEGER PRIMARY KEY, type TEXT, label TEXT);
+  CREATE TABLE CALL_EDGE (
+    id INTEGER PRIMARY KEY, from_node INTEGER, to_node INTEGER,
+    kind TEXT, resolution TEXT, seq INTEGER, line INTEGER);
+  CREATE TABLE PROGRAM (id INTEGER PRIMARY KEY, source_id INTEGER);
+  CREATE TABLE PARAGRAPH (
+    id INTEGER PRIMARY KEY, program_id INTEGER, name TEXT, start_line INTEGER, end_line INTEGER);
+  CREATE TABLE PARAGRAPH_EDGE (
+    id INTEGER PRIMARY KEY, program_source_id INTEGER, from_paragraph INTEGER,
+    to_paragraph INTEGER, to_name TEXT, kind TEXT, line INTEGER, seq INTEGER);
+
+  INSERT INTO NODE VALUES (2, 'PROGRAM', 'SYK001'), (1000000000001, 'JOB', 'SYKD010');
+  INSERT INTO CALL_EDGE VALUES
+    (1, 1000000000001, 2, 'REFERENCE', NULL, 0, NULL),
+    (2, 1000000000001, 2, 'EXECUTION', 'CONSTANT', 2, 30),
+    (3, 1000000000001, 2, 'EXECUTION', 'CONSTANT', 1, 20);
+  INSERT INTO PROGRAM VALUES (100, 2);
+  INSERT INTO PARAGRAPH VALUES
+    (22, 100, 'READ-ORDER', 20, 25), (21, 100, 'MAIN-PROC', 10, 19);
+  INSERT INTO PARAGRAPH_EDGE VALUES
+    (1, 2, 21, 22, 'READ-ORDER', 'PERFORM', 12, 1),
+    (2, 2, 21, NULL, 'MISSING-PARA', 'GOTO', 13, 2);
 `;
 
-let graphDb: QueryableDatabase;
-
-beforeAll(async () => {
-  const wasmPath = require.resolve("sql.js/dist/sql-wasm.wasm");
-  const SQL = await initSqlJs({ locateFile: () => wasmPath });
-  const database: Database = new SQL.Database();
-  database.run(DDL);
-  database.run(ROWS);
-  graphDb = database;
-});
-
 describe("readGraph", () => {
-  it("資産のノードとグラフ層のノードを併せて返す", () => {
-    const { nodes } = readGraph(graphDb);
-    expect(nodes.map((node) => node.label)).toEqual([
-      "SYK001",
-      "SYK002",
-      "SYKJOB1",
-      "STEP01",
-      "STEP02",
-    ]);
-    expect(nodes[2]).toEqual({ id: GRAPH_ID_BASE + 1, type: "JOB", label: "SYKJOB1" });
+  it("orders edges by execution order and pushes the unordered ones last", async () => {
+    const db = await openDatabaseWith(GRAPH_DB);
+    try {
+      expect(readGraph(db).edges.map((edge) => edge.seq)).toEqual([1, 2, 0]);
+    } finally {
+      db.close();
+    }
   });
 
-  /** ジョブの中のステップは実行順に並ぶ。行の投入順ではない。 */
-  it("辺を起点ごとに実行順で並べ、行番号を添える", () => {
-    const { edges } = readGraph(graphDb);
-    const steps = edges.filter((edge) => edge.from === GRAPH_ID_BASE + 1);
-    expect(steps.map((edge) => edge.seq)).toEqual([1, 2]);
-    expect(steps[0]).toEqual({
-      from: GRAPH_ID_BASE + 1,
-      to: GRAPH_ID_BASE + 2,
-      kind: "EXECUTION",
-      resolution: "CONSTANT",
-      seq: 1,
-      line: 20,
-    });
+  it("keeps a null resolution and a null line as null rather than defaulting them", async () => {
+    const db = await openDatabaseWith(GRAPH_DB);
+    try {
+      const unordered = readGraph(db).edges[2];
+      expect(unordered.resolution).toBeNull();
+      expect(unordered.line).toBeNull();
+    } finally {
+      db.close();
+    }
   });
 
-  /** 実行順を決められない辺は seq 0 のまま残る。順序の付いた辺の前へ割り込ませない。 */
-  it("実行順の無い辺を起点の後ろへ回し、行番号は null で返す", () => {
-    const calls = readGraph(graphDb).edges.filter((edge) => edge.from === 2);
-    expect(calls.map((edge) => edge.seq)).toEqual([1, 0]);
-    expect(calls[1]).toEqual({
-      from: 2,
-      to: 3,
-      kind: "CALL",
-      resolution: "DATAFLOW",
-      seq: 0,
-      line: null,
-    });
+  it("returns both the asset nodes and the graph-layer nodes", async () => {
+    const db = await openDatabaseWith(GRAPH_DB);
+    try {
+      expect(readGraph(db).nodes.map((node) => node.type)).toEqual(["PROGRAM", "JOB"]);
+    } finally {
+      db.close();
+    }
   });
 
-  it("段落を資産(SOURCE.id)へ結び付け、開始行の順に返す", () => {
-    const { paragraphs } = readGraph(graphDb);
-    expect(paragraphs).toEqual([
-      { id: 21, programSourceId: 2, name: "初期処理", startLine: 30, endLine: 90 },
-      { id: 22, programSourceId: 2, name: "主処理", startLine: 100, endLine: 140 },
-    ]);
+  it("attaches paragraphs to their asset through PROGRAM, in source order", async () => {
+    const db = await openDatabaseWith(GRAPH_DB);
+    try {
+      const paragraphs = readGraph(db).paragraphs;
+      expect(paragraphs.map((paragraph) => paragraph.name)).toEqual(["MAIN-PROC", "READ-ORDER"]);
+      expect(paragraphs[0].programSourceId).toBe(2);
+    } finally {
+      db.close();
+    }
   });
 
-  it("段落の流れを出現順に返し、解決できない行き先は名前だけ残す", () => {
-    const { paragraphEdges } = readGraph(graphDb);
-    expect(paragraphEdges).toEqual([
-      {
-        programSourceId: 2,
-        from: 21,
-        to: 22,
-        toName: "主処理",
-        kind: "PERFORM",
-        line: 55,
-        seq: 1,
-      },
-      {
-        programSourceId: 2,
-        from: 21,
-        to: null,
-        toName: "存在しない段落",
-        kind: "GOTO",
-        line: 88,
-        seq: 2,
-      },
-    ]);
+  it("keeps the target name of an unresolved paragraph edge", async () => {
+    const db = await openDatabaseWith(GRAPH_DB);
+    try {
+      const unresolved = readGraph(db).paragraphEdges[1];
+      expect(unresolved.to).toBeNull();
+      expect(unresolved.toName).toBe("MISSING-PARA");
+      expect(unresolved.kind).toBe("GOTO");
+    } finally {
+      db.close();
+    }
   });
 });

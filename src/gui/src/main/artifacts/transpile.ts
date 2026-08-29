@@ -1,23 +1,18 @@
 /**
- * translate 成果物の読取。生成物は TranspileRunner が出力先直下へ平坦に書き(TranspileRunner.java:233)、
- * COBOL 行と生成行の対応は SQLite の LINE_MAP 表が持つ(Schema.java:120-133)。
- * 生成ファイル名は PROGRAM-ID とレコード名から決まり COBOL のファイル名とは一致しないため、
- * ある COBOL ソースの対訳がどのファイルかは LINE_MAP の gen_file だけが示す。
+ * Reads the translate artefacts. The runner writes its generated files flat under the output
+ * directory, and the correspondence between COBOL lines and generated lines lives in the LINE_MAP
+ * table. Generated file names derive from the PROGRAM-ID and record names and do not match the COBOL
+ * file name, so LINE_MAP.gen_file is the only thing that says which file translates which source.
  */
 
 import { join } from "node:path";
-import type {
-  LineMapEntry,
-  TranspileGeneratedFile,
-  TranspileLanguage,
-} from "../../shared/engine-api";
+import type { LineMapEntry, TranspileGeneratedFile, TranspileLanguage } from "../../shared/ipc";
 import { mapRows, type QueryableDatabase } from "./sqlRows";
 
-/** 生成物の一覧取得と本文読取に要する最小のファイルシステム。main が fs/promises を束ねて渡す。 */
+/** Listing a directory and reading UTF-8 text is all this needs. */
 export interface GeneratedFileSystem {
-  /** ディレクトリ直下のファイル名(パスを含まない)を返す。 */
+  /** File names directly under the directory, without their path. */
   list(dir: string): Promise<string[]>;
-  /** UTF-8 のテキストとして読む。 */
   readText(absPath: string): Promise<string>;
 }
 
@@ -38,8 +33,9 @@ const LINE_MAP_QUERY = `
 `;
 
 /**
- * 指定した COBOL ソース(SOURCE.path と同形の相対パス)の行対応を、生成ファイル・生成開始行の順で返す。
- * 空の note は注記なし、非空は直訳できなかった箇所の注記である。
+ * Returns the line correspondence for one COBOL source (SOURCE.path form), ordered by generated file
+ * and generated start line. An empty note means nothing was lost; a non-empty one records what could
+ * not be translated literally.
  */
 export function readLineMap(db: QueryableDatabase, cobolRelPath: string): LineMapEntry[] {
   return mapRows(db.exec(LINE_MAP_QUERY, { $path: cobolRelPath }), (row) => ({
@@ -55,22 +51,18 @@ export function readLineMap(db: QueryableDatabase, cobolRelPath: string): LineMa
   }));
 }
 
-/** 生成物のファイル名から対象言語を決める。対訳の対象外(ランタイム以外の付随物)は null。 */
+/** Derives the language from the generated file's name; anything else is not a translation. */
 export function generatedLanguage(fileName: string): TranspileLanguage | null {
   const lower = fileName.toLowerCase();
-  if (lower.endsWith(".py")) {
-    return "python";
-  }
-  if (lower.endsWith(".java")) {
-    return "java";
-  }
+  if (lower.endsWith(".py")) return "python";
+  if (lower.endsWith(".java")) return "java";
   return null;
 }
 
 /**
- * 対応表が参照する生成物を出力先直下から読む。名前順で決定論的に並べる。
- * 出力先に存在しない参照(過去の出力先に対する対応表が DB に残っている場合)は飛ばすため、
- * 呼び出し側は files が lineMap の gen_file を網羅しないことを前提に描く。
+ * Reads the generated files the line map references, sorted by name for a deterministic order.
+ * References the output directory no longer holds (a line map left over from an earlier output
+ * directory) are skipped, so callers must not assume `files` covers every gen_file in `lineMap`.
  */
 export async function readGeneratedFiles(
   fs: GeneratedFileSystem,

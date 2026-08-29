@@ -3,19 +3,22 @@ import {
   type EngineCommonOptions,
   type EngineInvocation,
   type EngineOutputs,
-} from "../../shared/engine-api";
+} from "../../shared/ipc";
 
 /**
- * engine CLI サブコマンドの引数を、型付きリクエストから決定論的に組み立てる純関数。
- * サブコマンドごとに受理するオプションが異なる(lint/sql-lint/fix は --db を持たない)ため、
- * 共通部と個別部を分けて扱う。picocli の位置引数 INPUT_DIR を先頭に置く。
+ * Assembles the engine CLI arguments deterministically from a typed request.
+ *
+ * Subcommands do not all accept the same options (lint, sql-lint and fix have no --db), so the
+ * shared part and the per-subcommand part are kept separate. The positional INPUT_DIR comes first.
+ *
+ * Rule configuration is one file passed as `--rules` to every subcommand that consults rules.
  */
 export function buildEngineArgs(invocation: EngineInvocation): string[] {
   switch (invocation.subcommand) {
     case "scan": {
       const r = invocation.request;
-      // COPY 展開の対応表は常に書かせる。ソースビューアのインライン展開がこれを唯一の供給源とする。
-      // 出力先の指定が無い場合だけ、engine が既定の SQLite を置く場所(作業ディレクトリ)へ委ねる。
+      // The COPY expansion table is always written: the inline expansion in the source view has no
+      // other source. Only when no destination is given does the engine's own default apply.
       return [
         "scan",
         ...common(r),
@@ -38,22 +41,11 @@ export function buildEngineArgs(invocation: EngineInvocation): string[] {
     }
     case "lint": {
       const r = invocation.request;
-      return [
-        "lint",
-        ...common(r),
-        ...opt("--sarif", r.sarifFile),
-        ...opt("--rule-config", r.ruleConfigFile),
-        ...opt("--user-rules", r.userRulesFile),
-      ];
+      return ["lint", ...common(r), ...opt("--sarif", r.sarifFile)];
     }
     case "sql-lint": {
       const r = invocation.request;
-      return [
-        "sql-lint",
-        ...common(r),
-        ...opt("--sarif", r.sarifFile),
-        ...opt("--rule-config", r.ruleConfigFile),
-      ];
+      return ["sql-lint", ...common(r), ...opt("--sarif", r.sarifFile)];
     }
     case "report": {
       const r = invocation.request;
@@ -63,32 +55,6 @@ export function buildEngineArgs(invocation: EngineInvocation): string[] {
         ...opt("--db", r.db),
         ...opt("--html", r.htmlFile),
         ...opt("--text", r.textFile),
-        ...opt("--rule-config", r.ruleConfigFile),
-        ...opt("--user-rules", r.userRulesFile),
-      ];
-    }
-    case "rules": {
-      // 資産フォルダを取らないため common を挟まない。出力は常に JSON とし、画面が読む形へ揃える。
-      const r = invocation.request;
-      return [
-        "rules",
-        "--json",
-        ...opt("--user-rules", r.userRulesFile),
-        ...opt("--rule-config", r.ruleConfigFile),
-      ];
-    }
-    case "save": {
-      // 資産フォルダの位置引数を取らず、書き戻す原本を --file で直に受ける唯一のサブコマンドである。
-      const r = invocation.request;
-      return [
-        "save",
-        "--file",
-        r.file,
-        "--edited",
-        r.editedFile,
-        ...opt("--codepage", r.codepage),
-        ...repeated("--copybook-path", r.copybookPaths),
-        ...opt("--db", r.db),
       ];
     }
     case "translate": {
@@ -109,27 +75,61 @@ export function buildEngineArgs(invocation: EngineInvocation): string[] {
       const r = invocation.request;
       return ["fix", "apply", ...common(r), ...opt("--out", r.outDir)];
     }
+    case "rules": {
+      // The only subcommand without an asset folder, so `common` does not apply. The output is always
+      // JSON, which is the shape the screens read.
+      const r = invocation.request;
+      return ["rules", "--json", ...opt("--rules", r.rulesFile)];
+    }
+    case "save": {
+      // The only subcommand that takes the file to write directly rather than an asset folder.
+      const r = invocation.request;
+      return [
+        "save",
+        "--file",
+        r.file,
+        "--edited",
+        r.editedFile,
+        ...opt("--codepage", r.codepage),
+        ...repeated("--copybook-path", r.copybookPaths),
+        ...opt("--db", r.db),
+      ];
+    }
+    case "decode": {
+      const r = invocation.request;
+      return [
+        "decode",
+        "--file",
+        r.file,
+        ...opt("--codepage", r.codepage),
+        ...opt("--db", r.db),
+        "--out",
+        r.outFile,
+      ];
+    }
   }
 }
 
 /**
- * 起動で書かれる出力先ファイル/ディレクトリを {@link EngineOutputs} へ集約する純関数。
- * リクエストで明示指定したものと、サブコマンドが常に書くもの(scan の COPY 展開)を併せる。
- * renderer はここで返るパスを起点に成果物ファイルを読む。
+ * Collects the files and directories an invocation writes into {@link EngineOutputs}: what the
+ * request named explicitly, plus what a subcommand always writes (scan's COPY expansion table).
+ * The renderer reads its artefacts from these paths.
  */
 export function collectRequestedOutputs(invocation: EngineInvocation): EngineOutputs {
-  // save は原本を書き戻すだけで成果物ファイルを作らない(--db は読むためだけに渡す)。
-  if (invocation.subcommand === "save") {
+  // save overwrites an original and decode writes a scratch file; neither produces an artefact the
+  // renderer reads through EngineOutputs.
+  if (invocation.subcommand === "save" || invocation.subcommand === "decode") {
     return {};
   }
   const r = invocation.request;
   const outputs: EngineOutputs = {};
   if (invocation.subcommand === "scan") {
-    // 引数へ渡した位置と同じ値を返す。片方だけ絶対パス化すると、書かれた位置と読む位置がずれる。
+    // Return exactly the value that went into the arguments. Making one side absolute would put the
+    // written location and the read location out of step.
     outputs.copyExpansion =
-      ("copyExpansion" in r && r.copyExpansion !== undefined
+      "copyExpansion" in r && r.copyExpansion !== undefined
         ? r.copyExpansion
-        : COPY_EXPANSION_FILE_NAME);
+        : COPY_EXPANSION_FILE_NAME;
   }
   if ("db" in r && r.db !== undefined) outputs.db = r.db;
   if ("jsonFile" in r && r.jsonFile !== undefined) outputs.json = r.jsonFile;
@@ -143,7 +143,7 @@ export function collectRequestedOutputs(invocation: EngineInvocation): EngineOut
   return outputs;
 }
 
-/** 位置引数 INPUT_DIR とコピー句探索パス・コードページ手動指定を組み立てる。 */
+/** The positional INPUT_DIR plus the copybook paths, codepage overrides and rule file. */
 function common(options: EngineCommonOptions): string[] {
   const args: string[] = [options.inputDir];
   for (const path of options.copybookPaths ?? []) {
@@ -151,6 +151,9 @@ function common(options: EngineCommonOptions): string[] {
   }
   for (const [file, charset] of Object.entries(options.codepageOverrides ?? {})) {
     args.push("--codepage", `${file}=${charset}`);
+  }
+  if (options.rulesFile !== undefined) {
+    args.push("--rules", options.rulesFile);
   }
   return args;
 }

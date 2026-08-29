@@ -1,93 +1,48 @@
 import type { ReactElement } from "react";
-import { codepageLabel } from "../data/encodings";
-import { artifactCount, artifactItems, useProject } from "../state/projectStore";
-import { activeTabOf, useWorkbench, useWorkbenchDispatch } from "../state/workbenchStore";
+import { text } from "../text";
+import { artifactCount, useProject } from "../state/projectStore";
+import { useWorkbenchDispatch } from "../state/workbenchStore";
 
-export interface StatusBarProps {
-  /** 本文領域のカーソル位置。資産を開いていないときは null。 */
-  cursor: { readonly line: number; readonly column: number } | null;
-}
-
-/** 成果物の件数。取得済みは件数、それ以外(実行中・未取得・失敗)は「―」。 */
-function countText(count: number | null, running: boolean): string {
-  return running || count === null ? "―" : String(count);
-}
-
-/** 下部パネルが数えているのと同じ合計。どちらかが未取得なら合計も出さない。 */
-function totalText(findings: string, sqlAdvice: string): string {
-  return findings === "―" || sqlAdvice === "―" ? "―" : String(Number(findings) + Number(sqlAdvice));
-}
-
-/** 保存した時刻。時と分だけを出す。 */
-function savedAtText(at: number): string {
-  return new Date(at).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
-}
-
-/** 解析の状態を1語で示す。 */
-function modeText(mode: string): string {
-  switch (mode) {
-    case "running":
-      return "解析実行中";
-    case "results":
-      return "解析完了";
-    case "error":
-      return "一部の解析に失敗";
-    default:
-      return "解析待ち";
-  }
+/** A count, or a dash when the artefact was never fetched or could not be read. */
+function countText(count: number | null): string {
+  return count === null ? "—" : `${count}${text.status.unit}`;
 }
 
 /**
- * 最下部のステータスバー。左にプロジェクトの場所と解析の状態、右に開いている資産の文字コード・
- * カーソル位置と件数の集計を出す。下部パネルの開閉もここから行う。
+ * The status bar. It carries the counts of the three artefacts, and pressing the finding counts
+ * opens the problems panel, so the numbers are a route to the detail rather than decoration.
  */
-export function StatusBar({ cursor }: StatusBarProps): ReactElement {
+export function StatusBar(): ReactElement {
   const project = useProject();
-  const workbench = useWorkbench();
   const dispatch = useWorkbenchDispatch();
-  const running = project.mode === "running";
-
-  const tab = activeTabOf(workbench);
-  const item =
-    tab?.path === undefined || tab.path === null
-      ? null
-      : (artifactItems(project.inventory).find((candidate) => candidate.path === tab.path) ?? null);
-
-  const assets = countText(artifactCount(project.inventory), running);
-  const findings = countText(artifactCount(project.findings), running);
-  const sqlAdvice = countText(artifactCount(project.sqlAdvice), running);
+  const showProblems = (): void => dispatch({ type: "SHOW_PANEL", view: "problems" });
 
   return (
-    <footer className="ci-statusbar" aria-label="ステータス">
-      <span className="ci-statusbar__item" title={project.inputDir ?? undefined}>
-        {project.inputDir ?? "資産フォルダ未選択"}
+    <footer className="ci-statusbar" aria-label={text.status.label} data-testid="statusbar">
+      <span className="ci-statusbar__item" data-testid="status-assets">
+        {text.status.assets} {countText(artifactCount(project.inventory))}
       </span>
-      <span className="ci-statusbar__item">{modeText(project.mode)}</span>
-      <span className="ci-statusbar__spacer" />
-      {workbench.lastSave !== null ? (
-        <span className="ci-statusbar__item" title={workbench.lastSave.path}>
-          最終保存 {savedAtText(workbench.lastSave.at)}
-        </span>
-      ) : null}
-      {item !== null ? (
-        <span className="ci-statusbar__item">{codepageLabel(item.codepage)}</span>
-      ) : null}
-      {cursor !== null ? (
-        <span className="ci-statusbar__item">
-          行 {cursor.line}、列 {cursor.column}
-        </span>
-      ) : null}
       <button
         type="button"
-        className="ci-statusbar__button"
-        aria-pressed={workbench.bottomVisible}
-        title={`コード ${findings}・SQL ${sqlAdvice}`}
-        onClick={() => dispatch({ type: "TOGGLE_BOTTOM" })}
+        className="ci-statusbar__item ci-statusbar__item--button"
+        onClick={showProblems}
+        data-testid="status-findings"
       >
-        指摘 {totalText(findings, sqlAdvice)}
+        <span className="codicon codicon-warning" aria-hidden="true" />
+        {text.status.findings} {countText(artifactCount(project.findings))}
       </button>
-      <span className="ci-statusbar__item">資産 {assets}</span>
-      <span className="ci-statusbar__item">v{project.version}</span>
+      <button
+        type="button"
+        className="ci-statusbar__item ci-statusbar__item--button"
+        onClick={showProblems}
+        data-testid="status-sql-findings"
+      >
+        {text.status.sqlFindings} {countText(artifactCount(project.sqlFindings))}
+      </button>
+      <div className="ci-statusbar__spacer" />
+      <span className="ci-statusbar__item ci-statusbar__item--dim">
+        {project.inputDir ?? text.status.noFolder}
+      </span>
     </footer>
   );
 }

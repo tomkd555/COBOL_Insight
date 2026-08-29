@@ -1,146 +1,119 @@
-import { describe, it, expect } from "vitest";
-import { EventEmitter } from "node:events";
-import { runEngine, type EngineProcess, type EngineSpawn } from "./run";
-import type { EngineInvocation } from "../../shared/engine-api";
+import { describe, expect, it, vi } from "vitest";
+import type { EngineProcess, EngineSpawn } from "./run";
+import { runEngine } from "./run";
 
-/**
- * stdout/stderr を1回発火して close するモック spawn を作る。起動時の command/args と、
- * kill の呼出回数を記録する。
- */
-function fakeSpawn(script: {
-  stdout?: string;
-  stderr?: string;
-  code?: number;
+/** A fake child that replays canned stdout/stderr chunks and then closes with the given code. */
+function fakeChild(script: {
+  stdout?: (Buffer | string)[];
+  stderr?: (Buffer | string)[];
+  code?: number | null;
   error?: Error;
-}): {
-  spawn: EngineSpawn;
-  calls: { command: string; args: string[] }[];
-  killed: { count: number };
-} {
-  const calls: { command: string; args: string[] }[] = [];
-  const killed = { count: 0 };
-  const spawn: EngineSpawn = (command, args) => {
-    calls.push({ command, args });
-    const proc = new EventEmitter() as unknown as EventEmitter & {
-      stdout: EventEmitter;
-      stderr: EventEmitter;
-      kill: () => boolean;
-    };
-    proc.stdout = new EventEmitter();
-    proc.stderr = new EventEmitter();
-    proc.kill = () => {
-      killed.count += 1;
-      return true;
-    };
-    setImmediate(() => {
-      if (script.error !== undefined) {
-        proc.emit("error", script.error);
-        return;
-      }
-      if (script.stdout !== undefined) proc.stdout.emit("data", script.stdout);
-      if (script.stderr !== undefined) proc.stderr.emit("data", script.stderr);
-      proc.emit("close", script.code ?? 0);
-    });
-    return proc as unknown as ReturnType<EngineSpawn>;
+}): EngineProcess {
+  const listeners: Record<string, ((value: never) => void)[]> = {};
+  const stream = (chunks: (Buffer | string)[]) => ({
+    on(_event: "data", listener: (chunk: Buffer | string) => void) {
+      queueMicrotask(() => chunks.forEach(listener));
+      return this;
+    },
+  });
+  const child: EngineProcess = {
+    stdout: stream(script.stdout ?? []),
+    stderr: stream(script.stderr ?? []),
+    on(event: "close" | "error", listener: (value: never) => void) {
+      (listeners[event] ??= []).push(listener);
+      return this;
+    },
+    kill: () => true,
   };
-  return { spawn, calls, killed };
+  // Fire terminal events after the data listeners have been attached and drained.
+  queueMicrotask(() => {
+    queueMicrotask(() => {
+      if (script.error !== undefined) {
+        listeners["error"]?.forEach((listener) => listener(script.error as never));
+      } else {
+        // `code: null` means "killed by a signal", so it must not collapse into 0.
+        const code = "code" in script ? script.code : 0;
+        listeners["close"]?.forEach((listener) => listener(code as never));
+      }
+    });
+  });
+  return child;
 }
 
-const launch = { command: "java", prefixArgs: ["-cp", "lib/*", "Main"] };
-
 describe("runEngine", () => {
-  it("prefixArgs にサブコマンド引数を続けて起動する", async () => {
-    const { spawn, calls } = fakeSpawn({ stdout: '{"exitCode":0}' });
-    const inv: EngineInvocation = {
-      subcommand: "scan",
-      request: { inputDir: "assets", db: "p.db" },
-    };
-    await runEngine({ spawn }, launch, inv);
-    expect(calls).toHaveLength(1);
-    expect(calls[0].command).toBe("java");
-    expect(calls[0].args).toEqual([
-      "-cp",
-      "lib/*",
-      "Main",
-      "scan",
-      "assets",
-      "--db",
-      "p.db",
-      "--copy-expansion",
-      "cobol-insight-copy-expansion.json",
-    ]);
+  it("passes the launch prefix in front of the subcommand arguments", async () => {
+    const spawn = vi.fn<EngineSpawn>(() => fakeChild({ code: 0 }));
+    await runEngine(
+      { spawn },
+      { command: "java", prefixArgs: ["-classpath", "lib/*", "Main"] },
+      { subcommand: "rules", request: {} },
+    );
+    expect(spawn).toHaveBeenCalledWith(
+      "java",
+      ["-classpath", "lib/*", "Main", "rules", "--json"],
+      expect.anything(),
+    );
   });
 
-  it("stdout 末尾のサマリ JSON をパースし終了コードを返す", async () => {
-    const { spawn } = fakeSpawn({
-      stdout:
-        "logback noise line\n" +
-        '{"analyzed":["cobol/A.cbl"],"skipped":[],"removed":[],"findingCount":0,"exitCode":0}',
-      code: 0,
+  it("merges the requested outputs with the ones the summary reports", async () => {
+    const spawn: EngineSpawn = () =>
+      fakeChild({ stdout: ['{"sarifFile":"C:/actual.sarif"}\n'], code: 1 });
+    const result = await runEngine({ spawn }, { command: "e", prefixArgs: [] }, {
+      subcommand: "lint",
+      request: { inputDir: "C:/a", sarifFile: "C:/requested.sarif" },
     });
-    const result = await runEngine(
-      { spawn },
-      launch,
-      { subcommand: "scan", request: { inputDir: "assets" } },
-    );
-    expect(result.exitCode).toBe(0);
-    expect(result.summary?.["analyzed"]).toEqual(["cobol/A.cbl"]);
-    expect(result.subcommand).toBe("scan");
+    // The summary wins where both name the same artefact: it says where the file actually landed.
+    expect(result.outputs.sarif).toBe("C:/actual.sarif");
+    expect(result.summary).toEqual({ sarifFile: "C:/actual.sarif" });
   });
 
-  it("明示指定の出力先とサマリ報告の出力先を併合する(lint)", async () => {
-    const { spawn } = fakeSpawn({
-      stdout: '{"findingCount":3,"sarifFile":"out/lint.sarif","exitCode":1}',
-      code: 1,
+  it("resolves rather than rejects on a non-zero exit code, which carries severity", async () => {
+    const spawn: EngineSpawn = () => fakeChild({ code: 2 });
+    const result = await runEngine({ spawn }, { command: "e", prefixArgs: [] }, {
+      subcommand: "lint",
+      request: { inputDir: "C:/a" },
     });
-    const result = await runEngine(
-      { spawn },
-      launch,
-      { subcommand: "lint", request: { inputDir: "assets", sarifFile: "out/lint.sarif" } },
-    );
-    expect(result.exitCode).toBe(1);
-    expect(result.outputs.sarif).toBe("out/lint.sarif");
-  });
-
-  it("非ゼロ終了でも解決し、exitCode を保つ", async () => {
-    const { spawn } = fakeSpawn({ stdout: '{"exitCode":2}', code: 2 });
-    const result = await runEngine(
-      { spawn },
-      launch,
-      { subcommand: "lint", request: { inputDir: "assets" } },
-    );
     expect(result.exitCode).toBe(2);
   });
 
-  it("サマリ JSON が無い(call-graph ファイル出力)なら summary は null", async () => {
-    const { spawn } = fakeSpawn({ stdout: "logback only, no json", code: 0 });
-    const result = await runEngine(
-      { spawn },
-      launch,
-      { subcommand: "call-graph", request: { inputDir: "assets", jsonFile: "out/cg.json" } },
-    );
-    expect(result.summary).toBeNull();
-    expect(result.outputs.json).toBe("out/cg.json");
+  it("reports -1 when the process was killed and gave no exit code", async () => {
+    const spawn: EngineSpawn = () => fakeChild({ code: null });
+    const result = await runEngine({ spawn }, { command: "e", prefixArgs: [] }, {
+      subcommand: "scan",
+      request: { inputDir: "C:/a" },
+    });
+    expect(result.exitCode).toBe(-1);
   });
 
-  it("onStart へ子プロセスを渡し、呼び手が停止できるようにする", async () => {
-    const { spawn, killed } = fakeSpawn({ stdout: '{"exitCode":0}' });
-    let started: EngineProcess | null = null;
-    await runEngine(
-      { spawn, onStart: (child) => (started = child) },
-      launch,
-      { subcommand: "scan", request: { inputDir: "assets" } },
-    );
-    expect(started).not.toBeNull();
-    expect(killed.count).toBe(0);
-    started!.kill();
-    expect(killed.count).toBe(1);
-  });
-
-  it("spawn の error を reject する", async () => {
-    const { spawn } = fakeSpawn({ error: new Error("ENOENT java") });
+  it("rejects when the process cannot be started at all", async () => {
+    const spawn: EngineSpawn = () => fakeChild({ error: new Error("ENOENT") });
     await expect(
-      runEngine({ spawn }, launch, { subcommand: "scan", request: { inputDir: "assets" } }),
-    ).rejects.toThrow("ENOENT java");
+      runEngine({ spawn }, { command: "missing", prefixArgs: [] }, {
+        subcommand: "rules",
+        request: {},
+      }),
+    ).rejects.toThrow("ENOENT");
+  });
+
+  it("decodes a multi-byte character split across two chunks", async () => {
+    const text = Buffer.from("受注データ\n", "utf8");
+    const spawn: EngineSpawn = () =>
+      fakeChild({ stdout: [text.subarray(0, 4), text.subarray(4)], code: 0 });
+    const result = await runEngine({ spawn }, { command: "e", prefixArgs: [] }, {
+      subcommand: "scan",
+      request: { inputDir: "C:/a" },
+    });
+    expect(result.stdout).toBe("受注データ\n");
+  });
+
+  it("hands the started child to onStart so the caller can cancel it", async () => {
+    const started: EngineProcess[] = [];
+    const spawn: EngineSpawn = () => fakeChild({ code: 0 });
+    await runEngine(
+      { spawn, onStart: (child) => started.push(child) },
+      { command: "e", prefixArgs: [] },
+      { subcommand: "rules", request: {} },
+    );
+    expect(started).toHaveLength(1);
   });
 });

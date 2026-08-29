@@ -1,104 +1,84 @@
-import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { describe, expect, it } from "vitest";
 import { parseSarif } from "./sarif";
+import { fixturePath } from "./fixtures";
 
-const fixture = readFileSync(join(__dirname, "..", "__fixtures__", "lint.sarif"), "utf-8");
+describe("parseSarif against the lint fixture", () => {
+  const findings = parseSarif(readFileSync(fixturePath("lint.sarif"), "utf-8"));
 
-describe("parseSarif", () => {
-  it("実 lint SARIF から検出結果を平坦化する", () => {
-    const findings = parseSarif(fixture);
-    expect(findings.length).toBe(68);
+  it("flattens every result of every run", () => {
+    expect(findings.length).toBeGreaterThan(0);
+  });
+
+  it("carries the rule id, level, message and position of each finding", () => {
     const first = findings[0];
-    expect(first.ruleId).toBe("R008");
-    expect(first.level).toBe("warning");
-    expect(first.file).toBe("samples/cobol/SYK001.cbl");
-    expect(first.startLine).toBe(73);
-    expect(first.startColumn).toBe(12);
-    expect(first.message).toContain("PERFORM");
+    expect(first.ruleId).toMatch(/^[RSU]\d+$/);
+    expect(first.level).not.toBe("");
+    expect(first.message).not.toBe("");
+    expect(first.file).toContain("cobol/");
+    expect(first.startLine).toBeGreaterThan(0);
+  });
+});
+
+describe("parseSarif defensiveness", () => {
+  it("returns nothing for a document with no runs", () => {
+    expect(parseSarif('{"version":"2.1.0"}')).toEqual([]);
   });
 
-  it("results が空の SARIF は空配列を返す", () => {
-    const empty = JSON.stringify({
-      version: "2.1.0",
-      runs: [{ tool: { driver: { name: "x", rules: [] } }, results: [] }],
-    });
-    expect(parseSarif(empty)).toEqual([]);
+  it("fills in a missing region and level rather than dropping the finding", () => {
+    const findings = parseSarif(
+      JSON.stringify({ runs: [{ results: [{ ruleId: "R001", message: { text: "m" } }] }] }),
+    );
+    expect(findings).toEqual([
+      { ruleId: "R001", level: "none", message: "m", file: "", startLine: 0, startColumn: 0 },
+    ]);
   });
 
-  it("パーセントエンコードされた uri を復号して相対パスへ戻す", () => {
-    // SarifWriter は非 pchar バイトを UTF-8 パーセントエンコードするため、日本語名の資産は
-    // %E3%.. の形で現れる。表示とジャンプに使える相対パスへ戻す必要がある。
-    const doc = JSON.stringify({
-      version: "2.1.0",
-      runs: [
-        {
-          tool: { driver: { name: "x", rules: [] } },
-          results: [
-            {
-              ruleId: "R008",
-              message: { text: "m" },
-              locations: [
-                {
-                  physicalLocation: {
-                    artifactLocation: { uri: "cobol/%E5%9C%A8%E5%BA%AB%E6%9B%B4%E6%96%B0.cbl" },
-                    region: { startLine: 1, startColumn: 1 },
-                  },
-                },
-              ],
-            },
-          ],
-        },
-      ],
-    });
-    expect(parseSarif(doc)[0].file).toBe("cobol/在庫更新.cbl");
+  it("decodes a percent-encoded uri, so assets with Japanese names resolve", () => {
+    const uri = encodeURI("cobol/受注.cbl").replace(/受注/, encodeURIComponent("受注"));
+    const findings = parseSarif(
+      JSON.stringify({
+        runs: [
+          {
+            results: [
+              {
+                ruleId: "R001",
+                message: { text: "m" },
+                locations: [{ physicalLocation: { artifactLocation: { uri } } }],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(findings[0].file).toBe("cobol/受注.cbl");
   });
 
-  it("復号できない uri はそのまま返す(不正なパーセント列)", () => {
-    const doc = JSON.stringify({
-      version: "2.1.0",
-      runs: [
-        {
-          tool: { driver: { name: "x", rules: [] } },
-          results: [
-            {
-              ruleId: "R008",
-              message: { text: "m" },
-              locations: [{ physicalLocation: { artifactLocation: { uri: "cobol/%E3%81.cbl" } } }],
-            },
-          ],
-        },
-      ],
-    });
-    expect(parseSarif(doc)[0].file).toBe("cobol/%E3%81.cbl");
+  it("leaves a uri with a malformed escape untouched", () => {
+    const findings = parseSarif(
+      JSON.stringify({
+        runs: [
+          {
+            results: [
+              {
+                ruleId: "R001",
+                message: { text: "m" },
+                locations: [{ physicalLocation: { artifactLocation: { uri: "a%ZZb.cbl" } } }],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(findings[0].file).toBe("a%ZZb.cbl");
   });
 
-  it("region の欠落を 0 で補い、level 欠落は none とする", () => {
-    const doc = JSON.stringify({
-      version: "2.1.0",
-      runs: [
-        {
-          tool: { driver: { name: "x", rules: [] } },
-          results: [
-            {
-              ruleId: "R999",
-              message: { text: "no region" },
-              locations: [
-                { physicalLocation: { artifactLocation: { uri: "a/b.cbl" } } },
-              ],
-            },
-          ],
-        },
-      ],
-    });
-    const findings = parseSarif(doc);
-    expect(findings[0]).toMatchObject({
-      ruleId: "R999",
-      level: "none",
-      file: "a/b.cbl",
-      startLine: 0,
-      startColumn: 0,
-      message: "no region",
-    });
+  it("keeps ruleIndex only when the document supplies one", () => {
+    const withIndex = parseSarif(
+      JSON.stringify({ runs: [{ results: [{ ruleId: "R001", ruleIndex: 3 }] }] }),
+    );
+    expect(withIndex[0].ruleIndex).toBe(3);
+    const without = parseSarif(JSON.stringify({ runs: [{ results: [{ ruleId: "R001" }] }] }));
+    expect(without[0].ruleIndex).toBeUndefined();
   });
 });

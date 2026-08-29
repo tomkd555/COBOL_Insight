@@ -1,15 +1,14 @@
-import type { SarifFinding } from "../../shared/engine-api";
+import type { SarifFinding } from "../../shared/ipc";
 
 /**
- * SARIF 2.1.0 テキストを、画面が要する平坦な検出結果一覧へ変換する純関数。lint・sql-lint の
- * --sarif 出力を入力とする。未知構造には防御的に当たり、region 欠落は行・列を 0、level 欠落は
- * none で補う。
+ * Flattens SARIF 2.1.0 text (the --sarif output of lint and sql-lint) into the finding list the
+ * screens read. Unknown structure is handled defensively: a missing region becomes line and column
+ * 0, a missing level becomes "none".
  */
 export function parseSarif(text: string): SarifFinding[] {
   const doc: unknown = JSON.parse(text);
   const findings: SarifFinding[] = [];
-  const runs = asArray(prop(doc, "runs"));
-  for (const run of runs) {
+  for (const run of asArray(prop(doc, "runs"))) {
     for (const result of asArray(prop(run, "results"))) {
       findings.push(toFinding(result));
     }
@@ -37,9 +36,9 @@ function toFinding(result: unknown): SarifFinding {
 }
 
 /**
- * artifactLocation.uri を相対パスへ戻す。SarifWriter が非 pchar バイトを UTF-8 パーセント
- * エンコードするため、日本語名の資産は %E3%.. の形で届く。表示とソースジャンプは復号後の
- * パスを要する。パーセント列が不正な uri は復号せずそのまま返す。
+ * Turns artifactLocation.uri back into a relative path. The SARIF writer percent-encodes non-pchar
+ * bytes as UTF-8, so assets with Japanese names arrive as %E3%.. sequences, and both the display and
+ * the jump to source need the decoded path. A uri with a malformed escape is returned unchanged.
  */
 function decodeUri(uri: string): string {
   if (!uri.includes("%")) {
