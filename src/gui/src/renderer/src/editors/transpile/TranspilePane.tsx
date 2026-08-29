@@ -61,6 +61,9 @@ export function TranspilePane({ path }: TranspilePaneProps): ReactElement {
 
   useEffect(() => {
     if (inputDir === null || dbPath === null || dbPath === undefined || outDir === "") {
+      // Nothing has been scanned yet, so there is nowhere to translate into and nothing to line up
+      // against. Saying so beats a spinner that never resolves.
+      setLoad({ status: "empty" });
       return;
     }
     let cancelled = false;
@@ -112,6 +115,9 @@ export function TranspilePane({ path }: TranspilePaneProps): ReactElement {
   );
   // The run may have produced only one of the two languages; show one it actually wrote.
   const shown = offered.includes(language) ? language : (offered[0] ?? language);
+  /** Nothing is ruled out until a run has said what it produced. */
+  const unavailable = (candidate: TranspileLanguage): boolean =>
+    offered.length > 0 && !offered.includes(candidate);
   const file = artifacts === null ? null : fileOf(artifacts.files, shown);
   const entries = useMemo(
     () => (artifacts === null || file === null ? [] : entriesOf(artifacts.lineMap, file.name)),
@@ -129,8 +135,13 @@ export function TranspilePane({ path }: TranspilePaneProps): ReactElement {
             onChange={(event) => setLanguage(event.target.value as TranspileLanguage)}
             data-testid="transpile-language"
           >
-            <option value="python">{text.transpileView.python}</option>
-            <option value="java">{text.transpileView.java}</option>
+            {/* A language the run produced no file in cannot be shown, so it cannot be picked. */}
+            <option value="python" disabled={unavailable("python")}>
+              {text.transpileView.python}
+            </option>
+            <option value="java" disabled={unavailable("java")}>
+              {text.transpileView.java}
+            </option>
           </select>
         </label>
         {load.status === "ready" && entries.length === 0 ? (

@@ -27,10 +27,16 @@ interface Links {
 }
 
 const OPTIONS: monacoApi.editor.IStandaloneEditorConstructionOptions = {
+  // Without this the editor creates a model of its own, which the first model effect would then
+  // dispose a second time after `setModel` had already disposed it.
+  model: null,
   theme: COBOL_INSIGHT_THEME,
   automaticLayout: true,
   readOnly: true,
   domReadOnly: true,
+  // The synchronisation below relies on a scroll landing within the call that asked for it, which an
+  // animated scroll does not.
+  smoothScrolling: false,
   minimap: { enabled: false },
   fontFamily: "'BIZ UDGothic','MS Gothic',monospace",
   fontSize: 12,
@@ -109,7 +115,8 @@ export function SideBySide({
         }
         sync(() => {
           target.setPosition({ lineNumber: line, column: 1 });
-          target.revealLineInCenter(line);
+          // ScrollType.Immediate (1): the default is Smooth, which would scroll outside the guard.
+          target.revealLineInCenter(line, 1);
         });
       }),
       source.onDidScrollChange(() => {
@@ -151,8 +158,9 @@ export function SideBySide({
     }
     const previous = editor.getModel();
     editor.setModel(monacoEditor().editor.createModel(left, leftLanguageId));
+    editor.updateOptions({ ariaLabel: leftLabel });
     previous?.dispose();
-  }, [left, leftLanguageId]);
+  }, [left, leftLanguageId, leftLabel]);
 
   useEffect(() => {
     const editor = rightEditor.current;
@@ -161,8 +169,10 @@ export function SideBySide({
     }
     const previous = editor.getModel();
     editor.setModel(monacoEditor().editor.createModel(right, rightLanguageId));
+    // The label names the generated file, which the language selector changes.
+    editor.updateOptions({ ariaLabel: rightLabel });
     previous?.dispose();
-  }, [right, rightLanguageId]);
+  }, [right, rightLanguageId, rightLabel]);
 
   return (
     <div className="ci-sidebyside">

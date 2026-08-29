@@ -13,6 +13,8 @@
  */
 
 // The generated code of the transpile pane. Side-effect imports: each registers one language.
+// Monaco's Python definition claims the .cpy extension, which here belongs to copybooks. Nothing is
+// opened by extension — every model is created with an explicit language id — so the claim is inert.
 import "monaco-editor/languages/definitions/python/register";
 import "monaco-editor/languages/definitions/java/register";
 import {

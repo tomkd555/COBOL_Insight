@@ -118,6 +118,7 @@ describe("languageIdFor", () => {
   it("picks the language from the extension and falls back to COBOL", () => {
     expect(languageIdFor("jcl/SYKD010.jcl")).toBe(LANGUAGE_ID.jcl);
     expect(languageIdFor("bms/SYKMAP1.bms")).toBe(LANGUAGE_ID.bms);
+    expect(languageIdFor("data/rules.json")).toBe(LANGUAGE_ID.json);
     expect(languageIdFor("cobol/SYK001.cbl")).toBe(LANGUAGE_ID.cobol);
     expect(languageIdFor("copybook/SYKCPY1.cpy")).toBe(LANGUAGE_ID.cobol);
     expect(languageIdFor("NOEXTENSION")).toBe(LANGUAGE_ID.cobol);

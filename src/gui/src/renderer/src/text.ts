@@ -150,6 +150,7 @@ export const text = {
     expand: "開く",
     collapse: "閉じる",
     toggleLabel: (name: string): string => `${name} の展開の開閉`,
+    action: "カーソル行の COPY の展開を開閉する",
     glyphHint: "この COPY の展開を開閉します。",
   },
 

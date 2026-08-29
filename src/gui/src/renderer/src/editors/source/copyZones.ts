@@ -7,8 +7,10 @@
  * being edited and must never reach a save.
  *
  * The zones belong to the editor, not to the model, so they are torn down and rebuilt whenever the
- * editor is pointed at another tab. Within one tab Monaco moves a zone with the lines above it, so an
- * edit does not need to rebuild them.
+ * editor is pointed at another tab. Within one tab they follow the edits: Monaco moves a zone and a
+ * decoration with the lines above them, and the glyph decoration is what this module reads the COPY
+ * statement's current line back from. The line the scan recorded is only ever the starting point —
+ * after an insertion above it, it names the wrong statement.
  */
 
 import { useEffect, useState } from "react";
@@ -17,10 +19,22 @@ import type { CopyExpansion } from "../../../../shared/ipc";
 import { api } from "../../api";
 import { text } from "../../text";
 import { useProject } from "../../state/projectStore";
+import { monacoEditor } from "../../vendor/monacoEditor";
 
 /** What the caller holds on to so the zones can be taken down again. */
 export interface CopyZonesHandle {
   dispose(): void;
+}
+
+/** One expansion as it stands on screen: its own elements, and the zone Monaco lays out. */
+interface Zone {
+  readonly expansion: CopyExpansion;
+  readonly toggle: HTMLButtonElement;
+  readonly lines: HTMLElement;
+  readonly delegate: monacoApi.editor.IViewZone;
+  /** The id the view-zone accessor gave it, empty until it has been added. */
+  id: string;
+  collapsed: boolean;
 }
 
 /** The header line of a zone plus one line per copybook line. */
@@ -28,12 +42,11 @@ function zoneHeight(expansion: CopyExpansion, collapsed: boolean): number {
   return collapsed ? 1 : 1 + expansion.lines.length;
 }
 
-/** The zone's contents: the toggle, the copybook's name and path, and the expanded lines. */
-function zoneNode(
-  expansion: CopyExpansion,
-  collapsed: boolean,
-  onToggle: () => void,
-): HTMLElement {
+/**
+ * Builds one expansion's elements once. Collapsing hides the lines rather than rebuilding them, so
+ * the control the reader just pressed is still there — and still focused — afterwards.
+ */
+function buildZone(expansion: CopyExpansion, onToggle: () => void): Zone {
   const root = document.createElement("div");
   root.className = "ci-copy";
   root.dataset.testid = `copy-zone-${expansion.copyStatementLine}`;
@@ -44,8 +57,6 @@ function zoneNode(
   const toggle = document.createElement("button");
   toggle.type = "button";
   toggle.className = "ci-copy__toggle";
-  toggle.textContent = collapsed ? text.copyExpansion.expand : text.copyExpansion.collapse;
-  toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
   toggle.setAttribute("aria-label", text.copyExpansion.toggleLabel(expansion.copybookName));
   toggle.dataset.testid = `copy-zone-toggle-${expansion.copyStatementLine}`;
   toggle.addEventListener("click", onToggle);
@@ -61,72 +72,71 @@ function zoneNode(
   path.textContent = expansion.copybookPath;
   header.appendChild(path);
 
-  root.appendChild(header);
-
-  if (!collapsed) {
-    const list = document.createElement("div");
-    list.className = "ci-copy__lines";
-    for (const line of expansion.lines) {
-      const row = document.createElement("div");
-      row.className = "ci-copy__line";
-      const number = document.createElement("span");
-      number.className = "ci-copy__number";
-      number.textContent = String(line.copybookLine);
-      const body = document.createElement("span");
-      body.className = "ci-copy__text";
-      body.textContent = line.text;
-      row.appendChild(number);
-      row.appendChild(body);
-      list.appendChild(row);
-    }
-    root.appendChild(list);
+  const lines = document.createElement("div");
+  lines.className = "ci-copy__lines";
+  for (const line of expansion.lines) {
+    const row = document.createElement("div");
+    row.className = "ci-copy__line";
+    const number = document.createElement("span");
+    number.className = "ci-copy__number";
+    number.textContent = String(line.copybookLine);
+    const body = document.createElement("span");
+    body.className = "ci-copy__text";
+    body.textContent = line.text;
+    row.appendChild(number);
+    row.appendChild(body);
+    lines.appendChild(row);
   }
-  return root;
+
+  root.appendChild(header);
+  root.appendChild(lines);
+
+  const zone: Zone = {
+    expansion,
+    toggle,
+    lines,
+    delegate: {
+      afterLineNumber: expansion.copyStatementLine,
+      heightInLines: zoneHeight(expansion, false),
+      domNode: root,
+    },
+    id: "",
+    collapsed: false,
+  };
+  paint(zone);
+  return zone;
+}
+
+/** Puts the zone's own state onto its elements. */
+function paint(zone: Zone): void {
+  zone.toggle.textContent = zone.collapsed ? text.copyExpansion.expand : text.copyExpansion.collapse;
+  zone.toggle.setAttribute("aria-expanded", zone.collapsed ? "false" : "true");
+  zone.lines.hidden = zone.collapsed;
 }
 
 /**
  * Draws one asset's expansions into the editor and returns the handle that removes them again.
  *
- * A zone can be collapsed either from its own button or from the glyph margin of the COPY line it
- * hangs under, which is where a reader's eye already is.
+ * A zone can be collapsed from its own button, from the glyph margin of the COPY line it hangs
+ * under, or from the keyboard: Monaco takes every keystroke through a hidden textarea and will not
+ * hand focus to a control inside a view zone, so the toggle is also registered as an editor action
+ * that acts on the line the caret is on.
  */
 export function showCopyZones(
   editor: monacoApi.editor.IStandaloneCodeEditor,
   expansions: readonly CopyExpansion[],
 ): CopyZonesHandle {
-  const collapsed = new Set<number>();
-  let zoneIds: string[] = [];
+  const monaco = monacoEditor();
   let disposed = false;
 
-  const render = (): void => {
-    if (disposed) {
-      return;
-    }
-    editor.changeViewZones((accessor) => {
-      for (const id of zoneIds) {
-        accessor.removeZone(id);
-      }
-      zoneIds = expansions.map((expansion) => {
-        const isCollapsed = collapsed.has(expansion.copyStatementLine);
-        return accessor.addZone({
-          afterLineNumber: expansion.copyStatementLine,
-          heightInLines: zoneHeight(expansion, isCollapsed),
-          domNode: zoneNode(expansion, isCollapsed, () => toggle(expansion.copyStatementLine)),
-        });
-      });
-    });
-  };
+  const zones: Zone[] = expansions.map((expansion, index) =>
+    buildZone(expansion, () => toggleAt(index)),
+  );
 
-  const toggle = (line: number): void => {
-    if (collapsed.has(line)) {
-      collapsed.delete(line);
-    } else {
-      collapsed.add(line);
-    }
-    render();
-  };
-
-  const copyLines = new Set(expansions.map((expansion) => expansion.copyStatementLine));
+  /*
+   * The COPY statement's line as it stands now. The decorations collection moves its ranges with the
+   * edits, so it — not the number the scan recorded — is what says where a zone belongs.
+   */
   const glyphs = editor.createDecorationsCollection(
     expansions.map((expansion) => ({
       range: {
@@ -142,27 +152,67 @@ export function showCopyZones(
     })),
   );
 
+  const lineOf = (index: number): number =>
+    glyphs.getRange(index)?.startLineNumber ?? zones[index].expansion.copyStatementLine;
+
+  const toggleAt = (index: number): void => {
+    const zone = zones[index];
+    if (disposed || zone === undefined) {
+      return;
+    }
+    zone.collapsed = !zone.collapsed;
+    paint(zone);
+    zone.delegate.afterLineNumber = lineOf(index);
+    zone.delegate.heightInLines = zoneHeight(zone.expansion, zone.collapsed);
+    // Only the one zone is laid out again; rebuilding them all would drop the focused control.
+    editor.changeViewZones((accessor) => accessor.layoutZone(zone.id));
+  };
+
+  editor.changeViewZones((accessor) => {
+    zones.forEach((zone, index) => {
+      zone.delegate.afterLineNumber = lineOf(index);
+      zone.id = accessor.addZone(zone.delegate);
+    });
+  });
+
   const mouse = editor.onMouseDown((event) => {
     const line = event.target.position?.lineNumber;
     // MouseTargetType.GUTTER_GLYPH_MARGIN is 2; naming it would mean importing Monaco's runtime.
-    if (event.target.type === 2 && line !== undefined && copyLines.has(line)) {
-      toggle(line);
+    if (event.target.type !== 2 || line === undefined) {
+      return;
+    }
+    const index = zones.findIndex((_zone, at) => lineOf(at) === line);
+    if (index >= 0) {
+      toggleAt(index);
     }
   });
 
-  render();
+  const action = editor.addAction({
+    id: "cobolInsight.toggleCopyExpansion",
+    label: text.copyExpansion.action,
+    keybindings: [monaco.KeyMod.Alt | monaco.KeyCode.KeyC],
+    run: (target) => {
+      const line = target.getPosition()?.lineNumber;
+      const index = zones.findIndex((_zone, at) => lineOf(at) === line);
+      if (index >= 0) {
+        toggleAt(index);
+      }
+    },
+  });
 
   return {
     dispose: (): void => {
+      disposed = true;
+      action.dispose();
       mouse.dispose();
       glyphs.clear();
       editor.changeViewZones((accessor) => {
-        for (const id of zoneIds) {
-          accessor.removeZone(id);
+        for (const zone of zones) {
+          if (zone.id !== "") {
+            accessor.removeZone(zone.id);
+          }
         }
       });
-      zoneIds = [];
-      disposed = true;
     },
   };
 }

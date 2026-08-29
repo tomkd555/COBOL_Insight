@@ -675,8 +675,8 @@ On failure the output file is still written, with empty fields and the message i
 - `soSiPresent` — whether shift-out / shift-in bytes were seen.
 - `lines[].byteLength` — the line's length in bytes, its terminator included: one
   byte for LF, two for CRLF. Shift-out and shift-in bytes count as well, since they
-  occupy byte columns even though no character maps to them. The last line runs to
-  the end of the file, so trailing bytes that produced no character land on it.
+  occupy byte columns even though no character maps to them. The last line of the
+  file runs to the end of the file.
 - `lines[].boundaries` — four values, for byte columns 7, 8, 12 and 73 (one-based):
   the start of the indicator, A, B and identification areas. Each value is the
   zero-based UTF-16 character offset within the line where that byte column

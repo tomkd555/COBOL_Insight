@@ -352,5 +352,8 @@ export function languageIdFor(path: string): string {
   if (extension === "bms" || extension === "map") {
     return LANGUAGE_ID.bms;
   }
+  if (extension === "json") {
+    return LANGUAGE_ID.json;
+  }
   return LANGUAGE_ID.cobol;
 }

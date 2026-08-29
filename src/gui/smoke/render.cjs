@@ -237,7 +237,8 @@ async function checkCopyExpansion(win) {
       const toggle = document.querySelector('[data-testid="copy-zone-toggle-5"]');
       const node = document.querySelector('[data-testid="copy-zone-5"]');
       if (toggle === null || node === null) return null;
-      const hidden = node.querySelector('.ci-copy__lines') === null;
+      const lines = node.querySelector('.ci-copy__lines');
+      const hidden = lines !== null && lines.hidden === true;
       return toggle.getAttribute('aria-expanded') === 'false' && hidden ? 'collapsed' : null;
     })()`,
     "the collapsed expansion",
@@ -245,9 +246,51 @@ async function checkCopyExpansion(win) {
   // Leave it open again, so the checks that follow see the editor as the ones before them left it.
   await waitUntil(win, clickTestId("copy-zone-toggle-5"), "the expand control");
 
+  /*
+   * The anchor has to follow the edits. Inserting a line at the top moves the COPY statement from
+   * line 5 to line 6, and the editor action — which is also the keyboard's only way in, since Monaco
+   * will not hand focus to a control inside a view zone — has to find the zone at its new line. An
+   * anchor left on the scan's line number would toggle nothing here.
+   */
+  await waitUntil(
+    win,
+    `(() => {
+      const editor = ${EDITOR};
+      if (editor === undefined) return false;
+      editor.setPosition({ lineNumber: 1, column: 1 });
+      editor.trigger('smoke', 'type', { text: '\\n' });
+      editor.setPosition({ lineNumber: 6, column: 1 });
+      const action = editor.getAction('cobolInsight.toggleCopyExpansion');
+      if (action === null || action === undefined) return false;
+      action.run();
+      return true;
+    })()`,
+    "the toggle action on the line the COPY statement moved to",
+  );
+  const followed = await waitUntil(
+    win,
+    `(() => {
+      const toggle = document.querySelector('[data-testid="copy-zone-toggle-5"]');
+      if (toggle === null) return null;
+      return toggle.getAttribute('aria-expanded') === 'false' ? 'followed' : null;
+    })()`,
+    "the expansion the action collapsed at its new line",
+  );
+  // Undo the inserted line and open the expansion again, back to the state this check started from.
+  await evaluate(win, `${EDITOR}.getAction('cobolInsight.toggleCopyExpansion').run()`);
+  await evaluate(win, `${EDITOR}.trigger('smoke', 'undo', null)`);
+  await waitUntil(
+    win,
+    `document.querySelector('[data-testid="dirty-source:cobol/SYK001.cbl"]') === null ? 'clean' : null`,
+    "the inserted line undone",
+  );
+
   record(
     "19. a COPY statement carries its expansion as a collapsible view zone",
-    zone.text.includes("SYK-ORDER-REC") && zone.inModel === false && collapsed === "collapsed",
+    zone.text.includes("SYK-ORDER-REC") &&
+      zone.inModel === false &&
+      collapsed === "collapsed" &&
+      followed === "followed",
     `zone held ${JSON.stringify(zone.text.slice(0, 48))}`,
   );
 }

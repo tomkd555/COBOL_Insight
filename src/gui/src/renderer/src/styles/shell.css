@@ -834,7 +834,7 @@
   height: 100%;
   overflow: auto;
   border-left: 2px solid var(--ci-kind-copybook);
-  background: rgb(197 134 192 / 8%);
+  background: color-mix(in srgb, var(--ci-kind-copybook) 8%, transparent);
   font-family: var(--ci-font-code);
   font-size: var(--ci-size-sm);
 }
@@ -890,6 +890,11 @@
   color: var(--ci-fg-dim);
   text-align: right;
   user-select: none;
+}
+
+/* The copybook's own line, as the engine preprocessed it. */
+.ci-copy__text {
+  color: var(--ci-fg);
 }
 
 /* The glyph that opens and closes the expansion, on the COPY statement's own line. */
