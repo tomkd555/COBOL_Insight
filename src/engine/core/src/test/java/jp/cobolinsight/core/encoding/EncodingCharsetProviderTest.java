@@ -1,13 +1,11 @@
 package jp.cobolinsight.core.encoding;
 
-import jp.cobolinsight.core.spi.CharsetProvider;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ServiceLoader;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -75,12 +73,5 @@ class EncodingCharsetProviderTest {
     void unknownCharsetNameIsRejected() {
         assertThrows(IllegalArgumentException.class,
                 () -> provider.decode("x.txt", new byte[] {0x41}, "EUC-KR"));
-    }
-
-    @Test
-    void serviceLoaderDiscoversTheProvider() {
-        boolean found = ServiceLoader.load(CharsetProvider.class).stream()
-                .anyMatch(p -> p.type() == EncodingCharsetProvider.class);
-        assertTrue(found, "META-INF/services に EncodingCharsetProvider が登録されていること");
     }
 }

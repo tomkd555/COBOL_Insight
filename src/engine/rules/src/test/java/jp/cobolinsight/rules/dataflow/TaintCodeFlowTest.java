@@ -4,7 +4,7 @@ import jp.cobolinsight.core.finding.CodeFlow;
 import jp.cobolinsight.core.finding.CodeFlowStep;
 import jp.cobolinsight.core.finding.Finding;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
-import jp.cobolinsight.core.spi.Rule;
+import jp.cobolinsight.core.rule.Rule;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

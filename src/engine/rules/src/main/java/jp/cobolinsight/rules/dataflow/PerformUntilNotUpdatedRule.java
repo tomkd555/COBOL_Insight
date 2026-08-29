@@ -12,11 +12,13 @@ import jp.cobolinsight.core.semantic.CompoundStatement;
 import jp.cobolinsight.core.semantic.ControlKind;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.core.spi.RuleDoc;
 import jp.cobolinsight.rules.SourceTextIndex;
 
 import java.util.ArrayDeque;
@@ -48,44 +50,36 @@ public final class PerformUntilNotUpdatedRule implements Rule {
             "ZERO", "ZEROS", "ZEROES", "SPACE", "SPACES", "HIGH-VALUE", "HIGH-VALUES",
             "LOW-VALUE", "LOW-VALUES", "QUOTE", "QUOTES", "NULL", "NULLS", "TRUE", "FALSE", "ALL");
 
-    @Override
-    public String id() {
-        return "R012";
-    }
+    private static final RuleMeta META = RuleMeta
+            .named("R012", "終了条件が更新されないPERFORM UNTILループ", "制御フロー")
+            .summary("終了条件に使う変数が、ループ本体のどこでも更新されない"
+                    + "PERFORM UNTIL を検出します。")
+            .rationale("条件が変わらないためループから抜けられず、処理が止まります。")
+            .detection("UNTIL 条件の変数が、ループ本体のどの文からも更新されず"
+                    + "本体テキストにも現れないものを検出します。88レベル条件名は親項目へ解決し、"
+                    + "SQLCODE などの特殊レジスタと VARYING の制御変数は更新済みとみなします。")
+            .remedy("ループ本体で条件変数を更新します。読み取り終端など外部の事象で終わる場合は、"
+                    + "その結果を条件変数へ反映します。")
+            .example("""
+                    PERFORM UNTIL WS-EOF = "Y"
+                        READ CUST-FILE INTO WS-REC
+                    END-PERFORM.
+                    """, """
+                    PERFORM UNTIL WS-EOF = "Y"
+                        READ CUST-FILE INTO WS-REC
+                            AT END MOVE "Y" TO WS-EOF
+                        END-READ
+                    END-PERFORM.
+                    """)
+            .severity(Severity.HIGH)
+            .commands(Command.LINT, Command.REPORT)
+            .targets(AssetKind.COBOL)
+            .needs(Needs.SEMANTIC, Needs.CFG, Needs.DATAFLOW, Needs.SOURCE_TEXT)
+            .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("終了条件が更新されないPERFORM UNTILループ", "制御フロー")
-                .summary("終了条件に使う変数が、ループ本体のどこでも更新されない"
-                        + "PERFORM UNTIL を検出します。")
-                .rationale("条件が変わらないためループから抜けられず、処理が止まります。")
-                .detection("UNTIL 条件の変数が、ループ本体のどの文からも更新されず"
-                        + "本体テキストにも現れないものを検出します。88レベル条件名は親項目へ解決し、"
-                        + "SQLCODE などの特殊レジスタと VARYING の制御変数は更新済みとみなします。")
-                .remedy("ループ本体で条件変数を更新します。読み取り終端など外部の事象で終わる場合は、"
-                        + "その結果を条件変数へ反映します。")
-                .example("""
-                        PERFORM UNTIL WS-EOF = "Y"
-                            READ CUST-FILE INTO WS-REC
-                        END-PERFORM.
-                        """, """
-                        PERFORM UNTIL WS-EOF = "Y"
-                            READ CUST-FILE INTO WS-REC
-                                AT END MOVE "Y" TO WS-EOF
-                            END-READ
-                        END-PERFORM.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.HIGH;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.DATA_FLOW;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override
@@ -132,7 +126,7 @@ public final class PerformUntilNotUpdatedRule implements Rule {
             }
             if (!terminable) {
                 int line = statement.range().start().line();
-                findings.add(Finding.of(id(), defaultSeverity().toLevel(),
+                findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         "PERFORM UNTIL の終了条件に用いる " + String.join(", ", condVars)
                                 + " がループ本体で更新されない。無限ループになり得る。",
                         new SourcePosition(model.sourceFile(), line, 1,

@@ -5,10 +5,12 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.ConditionName;
 import jp.cobolinsight.core.semantic.DataItem;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.core.spi.RuleDoc;
 import jp.cobolinsight.rules.SourceTextIndex;
 
 import java.nio.file.Path;
@@ -41,41 +43,32 @@ public final class UnusedDataItemRule implements Rule {
     private static final Pattern COPY_NAME = Pattern.compile(
             "(?i)(?<![\\p{L}\\p{N}-])COPY\\s+([\\p{L}\\p{N}][\\p{L}\\p{N}-]*)");
 
-    @Override
-    public String id() {
-        return "R002";
-    }
+    private static final RuleMeta META = RuleMeta.named("R002", "未使用データ項目", "データフロー")
+            .summary("WORKING-STORAGE・LOCAL-STORAGE で宣言され、"
+                    + "手続き部のどの文からも参照されないデータ項目を検出します。")
+            .rationale("使われない宣言は記憶域を占めるだけでなく、"
+                    + "読む者に生きている項目と取り違えさせ、改修の判断を誤らせます。")
+            .detection("集団項目は子孫の参照を、子孫は祖先の参照をもって使用済みとみなします。"
+                    + "LINKAGE 節・FILE 節の項目、環境部で名前が現れる項目、"
+                    + "88レベル条件名を宣言する項目は対象外とします。")
+            .remedy("宣言を削ります。将来の使用を見込んで残すなら、その理由を注記に書きます。")
+            .example("""
+                    01  WS-WORK-AREA.
+                        05  WS-TOTAL      PIC 9(7).
+                        05  WS-OLD-TOTAL  PIC 9(7).
+                    """, """
+                    01  WS-WORK-AREA.
+                        05  WS-TOTAL      PIC 9(7).
+                    """)
+            .severity(Severity.LOW)
+            .commands(Command.LINT, Command.REPORT)
+            .targets(AssetKind.COBOL, AssetKind.COPYBOOK)
+            .needs(Needs.SEMANTIC, Needs.SOURCE_TEXT)
+            .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("未使用データ項目", "データフロー")
-                .summary("WORKING-STORAGE・LOCAL-STORAGE で宣言され、"
-                        + "手続き部のどの文からも参照されないデータ項目を検出します。")
-                .rationale("使われない宣言は記憶域を占めるだけでなく、"
-                        + "読む者に生きている項目と取り違えさせ、改修の判断を誤らせます。")
-                .detection("集団項目は子孫の参照を、子孫は祖先の参照をもって使用済みとみなします。"
-                        + "LINKAGE 節・FILE 節の項目、環境部で名前が現れる項目、"
-                        + "88レベル条件名を宣言する項目は対象外とします。")
-                .remedy("宣言を削ります。将来の使用を見込んで残すなら、その理由を注記に書きます。")
-                .example("""
-                        01  WS-WORK-AREA.
-                            05  WS-TOTAL      PIC 9(7).
-                            05  WS-OLD-TOTAL  PIC 9(7).
-                        """, """
-                        01  WS-WORK-AREA.
-                            05  WS-TOTAL      PIC 9(7).
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.LOW;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.SYNTAX;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override

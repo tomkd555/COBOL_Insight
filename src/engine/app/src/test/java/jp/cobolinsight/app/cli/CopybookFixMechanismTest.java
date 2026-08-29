@@ -1,6 +1,6 @@
 package jp.cobolinsight.app.cli;
 
-import jp.cobolinsight.core.fix.ReparseVerifier;
+import jp.cobolinsight.app.EngineWiring;
 import jp.cobolinsight.app.fix.UnifiedDiffFormatter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -88,7 +88,7 @@ class CopybookFixMechanismTest {
                 List.of("FILE STATUS 検査を挿入する"), true, importers);
 
         FixApplyCommand.ApplyOutcome outcome = FixApplyCommand.applyFixes(
-                List.of(copybookFix), out, new ReparseVerifier(), List.of());
+                List.of(copybookFix), out, EngineWiring.reparseVerifier(), List.of());
 
         // 提示のみ: 出力先へ書き出さず、書き出したプログラム一覧にも載らない。
         assertTrue(outcome.written().isEmpty(), "コピー句修正は書き出さないこと");

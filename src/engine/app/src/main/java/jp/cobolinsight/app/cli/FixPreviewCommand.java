@@ -29,13 +29,17 @@ public final class FixPreviewCommand implements Callable<Integer> {
     @Mixin
     FixCommonOptions options;
 
+    @Mixin
+    RuleOptions ruleOptions;
+
     @Option(names = "--html", paramLabel = "FILE",
             description = "diff を自己完結HTMLで書き出す")
     Path htmlFile;
 
     @Override
     public Integer call() {
-        FixRunner.Result result = new FixRunner().run(options.toRunnerOptions());
+        FixRunner.Result result =
+                new FixRunner().run(options.toRunnerOptions(ruleOptions.reportingRuleSet()));
         UnifiedDiffFormatter formatter = new UnifiedDiffFormatter();
         boolean color = System.console() != null;
 

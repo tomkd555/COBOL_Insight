@@ -1,5 +1,8 @@
 package jp.cobolinsight.app.cli;
 
+import jp.cobolinsight.app.pipeline.Pipelines;
+import jp.cobolinsight.app.pipeline.ScanOutcome;
+import jp.cobolinsight.app.pipeline.Persist;
 import jp.cobolinsight.app.persistence.PersistenceDao;
 import jp.cobolinsight.app.persistence.PersistenceDatabase;
 import org.junit.jupiter.api.Test;
@@ -43,8 +46,8 @@ class ScanLowercaseProgramIdTest {
                 ""), StandardCharsets.UTF_8);
 
         Path databaseFile = tempDir.resolve("scan.db");
-        ScanRunner.Result result = ScanRunner.runWithGraph(new ScanRunner.Options(assets,
-                databaseFile, List.of(), Map.of()));
+        ScanOutcome result = Pipelines.scan(assets,
+                databaseFile, List.of(), Map.of());
 
         long programNodes = result.callGraph().nodes().stream()
                 .filter(n -> n.label().equalsIgnoreCase("LOWPGM1")).count();
@@ -60,8 +63,8 @@ class ScanLowercaseProgramIdTest {
             // グラフ層に永続化されるソース非対応ノードはステップ1件のみで、プログラムノードは
             // NODE.id=SOURCE.id 規約の既存行へ対応づけられること
             assertEquals("STEP",
-                    dao.findNode(ScanRunner.GRAPH_ID_BASE).orElseThrow().type());
-            assertTrue(dao.findNode(ScanRunner.GRAPH_ID_BASE + 1).isEmpty(),
+                    dao.findNode(Persist.GRAPH_ID_BASE).orElseThrow().type());
+            assertTrue(dao.findNode(Persist.GRAPH_ID_BASE + 1).isEmpty(),
                     "プログラムノードがグラフ層IDで二重に永続化されないこと");
         }
     }

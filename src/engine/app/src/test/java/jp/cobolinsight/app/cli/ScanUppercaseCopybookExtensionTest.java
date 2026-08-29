@@ -1,5 +1,7 @@
 package jp.cobolinsight.app.cli;
 
+import jp.cobolinsight.app.pipeline.Pipelines;
+import jp.cobolinsight.app.pipeline.ScanOutcome;
 import jp.cobolinsight.app.persistence.PersistenceDao;
 import jp.cobolinsight.app.persistence.PersistenceDatabase;
 import jp.cobolinsight.app.persistence.model.SourceRecord;
@@ -45,8 +47,8 @@ class ScanUppercaseCopybookExtensionTest {
                 ""), StandardCharsets.UTF_8);
 
         Path databaseFile = tempDir.resolve("scan.db");
-        ScanRunner.Summary summary = ScanRunner.run(new ScanRunner.Options(assets, databaseFile,
-                List.of(assets.resolve("copybook")), Map.of()));
+        ScanOutcome.Summary summary = Pipelines.scan(assets, databaseFile,
+                List.of(assets.resolve("copybook")), Map.of()).summary();
         assertEquals(0, summary.exitCode());
         assertEquals(2, summary.analyzed().size());
 

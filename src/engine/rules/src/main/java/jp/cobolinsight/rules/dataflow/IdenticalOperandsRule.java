@@ -9,12 +9,13 @@ import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.CompoundStatement;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.core.spi.RuleDoc;
-import jp.cobolinsight.rules.SourceTextIndex;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -45,41 +46,33 @@ public final class IdenticalOperandsRule implements Rule {
     private static final String WORD_BOUNDARY_BEFORE = "(?<![\\p{L}\\p{N}$#_-])";
     private static final String WORD_BOUNDARY_AFTER = "(?![\\p{L}\\p{N}$#_-])";
 
-    @Override
-    public String id() {
-        return "R025";
-    }
+    private static final RuleMeta META =
+            RuleMeta.named("R025", "二項演算子の両辺が同一の式", "データフロー")
+                    .summary("条件式の両辺が同じ、または COMPUTE 右辺が A - A・A / A の"
+                            + "形になっている箇所を検出します。")
+                    .rationale("条件が常に真か常に偽になり、演算は定数になります。"
+                            + "多くは、別の項目を指すつもりだった書き間違いです。")
+                    .detection("比較・論理演算子の両辺が単一のオペランド(変数・定数・リテラル)として"
+                            + "字句一致するもの、および COMPUTE 右辺の A - A・A / A を検出します。")
+                    .remedy("意図した項目名へ直します。意図どおりなら定数へ置き換えます。")
+                    .example("""
+                            IF WS-TOTAL = WS-TOTAL
+                                PERFORM SHORI
+                            END-IF.
+                            """, """
+                            IF WS-TOTAL = WS-LIMIT
+                                PERFORM SHORI
+                            END-IF.
+                            """)
+                    .severity(Severity.ADVISORY)
+                    .commands(Command.LINT, Command.REPORT)
+                    .targets(AssetKind.COBOL)
+                    .needs(Needs.SEMANTIC, Needs.CFG)
+                    .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("二項演算子の両辺が同一の式", "データフロー")
-                .summary("条件式の両辺が同じ、または COMPUTE 右辺が A - A・A / A の"
-                        + "形になっている箇所を検出します。")
-                .rationale("条件が常に真か常に偽になり、演算は定数になります。"
-                        + "多くは、別の項目を指すつもりだった書き間違いです。")
-                .detection("比較・論理演算子の両辺が単一のオペランド(変数・定数・リテラル)として"
-                        + "字句一致するもの、および COMPUTE 右辺の A - A・A / A を検出します。")
-                .remedy("意図した項目名へ直します。意図どおりなら定数へ置き換えます。")
-                .example("""
-                        IF WS-TOTAL = WS-TOTAL
-                            PERFORM SHORI
-                        END-IF.
-                        """, """
-                        IF WS-TOTAL = WS-LIMIT
-                            PERFORM SHORI
-                        END-IF.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.ADVISORY;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.DATA_FLOW;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override
@@ -124,7 +117,7 @@ public final class IdenticalOperandsRule implements Rule {
             String left = tokens.get(i - 1);
             String right = tokens.get(i + 1);
             if (isOperand(left) && isOperand(right) && left.equalsIgnoreCase(right)) {
-                findings.add(Finding.of(id(), defaultSeverity().toLevel(),
+                findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         "二項演算子の両辺が同一のオペランドである。常真・常偽、または無意味な演算になる。",
                         new SourcePosition(model.sourceFile(), statement.range().start().line(), 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));

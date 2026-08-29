@@ -3,7 +3,7 @@ package jp.cobolinsight.core.spi;
 import jp.cobolinsight.core.source.DecodedSource;
 
 /**
- * 文字コード判別・復号の契約。encoding モジュールが実装し、ServiceLoader で発見する。
+ * 文字コード判別・復号の契約。encoding モジュールが実装し、app の EngineWiring が組み立てる。
  */
 public interface CharsetProvider {
 

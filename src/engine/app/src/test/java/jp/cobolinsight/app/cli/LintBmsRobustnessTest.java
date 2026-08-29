@@ -10,7 +10,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -29,7 +28,7 @@ class LintBmsRobustnessTest {
                 "!@#$%^&*() garbage tokens 123\n", StandardCharsets.UTF_8);
 
         LintRunner.Result result = LintRunner.run(new LintRunner.Options(
-                inputDir, List.of(), Map.of(), Set.of()));
+                inputDir, List.of(), Map.of()));
 
         assertTrue(result.findings().stream()
                         .anyMatch(f -> f.ruleId().equals(Finding.PARSE_FAILURE_RULE_ID)

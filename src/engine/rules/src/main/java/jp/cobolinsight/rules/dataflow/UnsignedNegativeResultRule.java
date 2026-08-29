@@ -11,11 +11,13 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.core.spi.RuleDoc;
 import jp.cobolinsight.rules.SourceTextIndex;
 
 import java.util.ArrayList;
@@ -33,40 +35,32 @@ public final class UnsignedNegativeResultRule implements Rule {
 
     private static final Set<String> ARITHMETIC_VERBS = Set.of("SUBTRACT", "COMPUTE");
 
-    @Override
-    public String id() {
-        return "R028";
-    }
+    private static final RuleMeta META =
+            RuleMeta.named("R028", "符号なし前提の数値項目への負値算出", "データ移動")
+                    .summary("PICTURE に S を持たない項目へ、"
+                            + "負になり得る演算結果を格納する箇所を検出します。")
+                    .rationale("符号なし項目は符号を保持しないため、"
+                            + "負の結果が絶対値として格納され、以後の比較と集計が誤ります。")
+                    .detection("SUBTRACT・COMPUTE の受信項目のうち、算術文の後続位置での区間値域が"
+                            + "負を含み得るもので、受信項目の PICTURE に S が無いものを検出します。")
+                    .remedy("受信項目の PICTURE へ S を付けます。"
+                            + "負にならない前提なら、その条件を演算前に検査します。")
+                    .example("""
+                            01  WS-DIFF  PIC 9(5).
+                                COMPUTE WS-DIFF = WS-A - WS-B.
+                            """, """
+                            01  WS-DIFF  PIC S9(5).
+                                COMPUTE WS-DIFF = WS-A - WS-B.
+                            """)
+                    .severity(Severity.MEDIUM)
+                    .commands(Command.LINT, Command.REPORT)
+                    .targets(AssetKind.COBOL)
+                    .needs(Needs.SEMANTIC, Needs.CFG, Needs.DATAFLOW, Needs.SOURCE_TEXT)
+                    .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("符号なし前提の数値項目への負値算出", "データ移動")
-                .summary("PICTURE に S を持たない項目へ、"
-                        + "負になり得る演算結果を格納する箇所を検出します。")
-                .rationale("符号なし項目は符号を保持しないため、"
-                        + "負の結果が絶対値として格納され、以後の比較と集計が誤ります。")
-                .detection("SUBTRACT・COMPUTE の受信項目のうち、算術文の後続位置での区間値域が"
-                        + "負を含み得るもので、受信項目の PICTURE に S が無いものを検出します。")
-                .remedy("受信項目の PICTURE へ S を付けます。"
-                        + "負にならない前提なら、その条件を演算前に検査します。")
-                .example("""
-                        01  WS-DIFF  PIC 9(5).
-                            COMPUTE WS-DIFF = WS-A - WS-B.
-                        """, """
-                        01  WS-DIFF  PIC S9(5).
-                            COMPUTE WS-DIFF = WS-A - WS-B.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.MEDIUM;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.DATA_FLOW;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override
@@ -100,7 +94,7 @@ public final class UnsignedNegativeResultRule implements Rule {
                 if (!support.isUnsignedNumeric(receiver) || !resultMayBeNegative(cfg, df, node, receiver)) {
                     continue;
                 }
-                findings.add(Finding.of(id(), defaultSeverity().toLevel(),
+                findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         "符号なし項目 " + receiver + " に " + simple.verb().toUpperCase(Locale.ROOT)
                                 + " の結果が負になり得る値を格納している。符号が失われ不正値になる。",
                         new SourcePosition(model.sourceFile(), simple.range().start().line(), 1,

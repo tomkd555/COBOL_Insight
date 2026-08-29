@@ -11,7 +11,6 @@ import jp.cobolinsight.core.sql.SqlStatementModel;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
-import java.util.ServiceLoader;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -115,12 +114,5 @@ class JsqlSqlParserTest {
                 .value().orElseThrow();
         assertTrue(cursor.structureSignals().cursor().orElseThrow().forReadOnly());
         assertEquals("CUR1", cursor.structureSignals().cursor().orElseThrow().cursorName());
-    }
-
-    @Test
-    void serviceLoaderDiscoversTheParser() {
-        boolean found = ServiceLoader.load(jp.cobolinsight.core.spi.SqlParser.class).stream()
-                .anyMatch(p -> p.type() == JsqlSqlParser.class);
-        assertTrue(found, "META-INF/services に JsqlSqlParser が登録されていること");
     }
 }

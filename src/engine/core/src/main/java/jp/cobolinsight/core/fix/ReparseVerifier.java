@@ -1,6 +1,5 @@
 package jp.cobolinsight.core.fix;
 
-import jp.cobolinsight.core.pipeline.AnalysisServices;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.source.DecodedSource;
 import jp.cobolinsight.core.spi.CharsetProvider;
@@ -15,19 +14,17 @@ import java.util.List;
  * 修正後ソースを COBOL パーサーで再パースし、固定形式の桁崩れ・トークン結合・リテラル破損などで
  * パースできない修正を検出する検証ゲート。
  *
- * <p>パーサーと文字コード復号器は {@link AnalysisServices#load()} が ServiceLoader で束ねる
- * {@link CobolParser} / {@link CharsetProvider} 実装を用いる。fix 本体は engine-api だけへ
- * コンパイル依存し、実装は実行時クラスパスへ同梱する。
+ * <p>パーサーと文字コード復号器は呼出側が渡す。core は実装モジュールへコンパイル依存を持たず、
+ * 実装の選択は app の EngineWiring が一箇所で行う。
  */
 public final class ReparseVerifier {
 
     private final CobolParser parser;
     private final CharsetProvider charsetProvider;
 
-    public ReparseVerifier() {
-        AnalysisServices services = AnalysisServices.load();
-        this.parser = single(services.cobolParsers(), "CobolParser");
-        this.charsetProvider = single(services.charsetProviders(), "CharsetProvider");
+    public ReparseVerifier(CobolParser parser, CharsetProvider charsetProvider) {
+        this.parser = parser;
+        this.charsetProvider = charsetProvider;
     }
 
     /** 復号済みソースを再パースする。 */
@@ -52,10 +49,4 @@ public final class ReparseVerifier {
         return verify(path, fixedText.getBytes(StandardCharsets.UTF_8), "UTF-8", copybookSearchPaths);
     }
 
-    private static <T> T single(List<T> implementations, String contractName) {
-        if (implementations.isEmpty()) {
-            throw new IllegalStateException(contractName + " の実装が実行時クラスパスに無い");
-        }
-        return implementations.get(0);
-    }
 }

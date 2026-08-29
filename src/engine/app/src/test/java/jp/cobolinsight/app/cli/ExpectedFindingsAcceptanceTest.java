@@ -45,7 +45,7 @@ class ExpectedFindingsAcceptanceTest {
                         FindingLevel.valueOf(c[4])))
                 .toList();
         result = LintRunner.run(new LintRunner.Options(SAMPLES,
-                List.of(SAMPLES.resolve("copybook")), Map.of(), Set.of()));
+                List.of(SAMPLES.resolve("copybook")), Map.of()));
     }
 
     private static Set<String> detected(String ruleId) {

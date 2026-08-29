@@ -1,5 +1,6 @@
 package jp.cobolinsight.app.cli;
 
+import jp.cobolinsight.rules.RuleSet;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
@@ -31,7 +32,8 @@ final class FixCommonOptions {
         return CommonScanOptions.resolveCopybookPaths(inputDir, copybookPaths);
     }
 
-    FixRunner.Options toRunnerOptions() {
-        return new FixRunner.Options(inputDir, resolvedCopybookPaths(), codepageOverrides);
+    FixRunner.Options toRunnerOptions(RuleSet ruleSet) {
+        return new FixRunner.Options(inputDir, resolvedCopybookPaths(), codepageOverrides,
+                ruleSet);
     }
 }

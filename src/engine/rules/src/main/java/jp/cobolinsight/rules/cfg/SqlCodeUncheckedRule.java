@@ -12,13 +12,15 @@ import jp.cobolinsight.core.semantic.CompoundStatement;
 import jp.cobolinsight.core.semantic.EmbeddedBlock;
 import jp.cobolinsight.core.semantic.EmbeddedBlockKind;
 import jp.cobolinsight.core.semantic.SimpleStatement;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.source.SourceRange;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
 import jp.cobolinsight.core.spi.FixProducer;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.core.spi.RuleDoc;
 import jp.cobolinsight.rules.FixEdits;
 import jp.cobolinsight.rules.SourceTextIndex;
 
@@ -40,45 +42,36 @@ import java.util.Set;
  */
 public final class SqlCodeUncheckedRule implements Rule {
 
-    @Override
-    public String id() {
-        return "R018";
-    }
+    private static final RuleMeta META = RuleMeta.named("R018", "SQLCODE/SQLSTATE未検査", "例外処理")
+            .summary("INSERT・UPDATE・DELETE の後、次の EXEC SQL までに"
+                    + "SQLCODE・SQLSTATE を検査しない箇所を検出します。")
+            .rationale("更新の失敗を検知せずに後続が進み、"
+                    + "更新されたつもりのデータで処理を続けてしまいます。")
+            .detection("データ変更 DML の実行後、次の EXEC SQL に達するまでの前方経路で"
+                    + "SQLCODE・SQLSTATE を条件参照しないものを検出します。境界を次の EXEC SQL と"
+                    + "するのは、SQLCODE が次の SQL で上書きされるためです。"
+                    + "SELECT INTO・FETCH は対象外とします。")
+            .remedy("DML の直後に SQLCODE を判定し、0 以外を異常として処理します。")
+            .example("""
+                    EXEC SQL UPDATE CUSTOMER SET NAME = :WS-NAME
+                             WHERE ID = :WS-ID END-EXEC.
+                    PERFORM NEXT-SHORI.
+                    """, """
+                    EXEC SQL UPDATE CUSTOMER SET NAME = :WS-NAME
+                             WHERE ID = :WS-ID END-EXEC.
+                    IF SQLCODE NOT = ZERO
+                        PERFORM SQL-ERROR
+                    END-IF.
+                    """)
+            .severity(Severity.HIGH)
+            .commands(Command.LINT, Command.REPORT, Command.FIX)
+            .targets(AssetKind.COBOL)
+            .needs(Needs.SEMANTIC, Needs.CFG, Needs.SOURCE_TEXT)
+            .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("SQLCODE/SQLSTATE未検査", "例外処理")
-                .summary("INSERT・UPDATE・DELETE の後、次の EXEC SQL までに"
-                        + "SQLCODE・SQLSTATE を検査しない箇所を検出します。")
-                .rationale("更新の失敗を検知せずに後続が進み、"
-                        + "更新されたつもりのデータで処理を続けてしまいます。")
-                .detection("データ変更 DML の実行後、次の EXEC SQL に達するまでの前方経路で"
-                        + "SQLCODE・SQLSTATE を条件参照しないものを検出します。境界を次の EXEC SQL と"
-                        + "するのは、SQLCODE が次の SQL で上書きされるためです。"
-                        + "SELECT INTO・FETCH は対象外とします。")
-                .remedy("DML の直後に SQLCODE を判定し、0 以外を異常として処理します。")
-                .example("""
-                        EXEC SQL UPDATE CUSTOMER SET NAME = :WS-NAME
-                                 WHERE ID = :WS-ID END-EXEC.
-                        PERFORM NEXT-SHORI.
-                        """, """
-                        EXEC SQL UPDATE CUSTOMER SET NAME = :WS-NAME
-                                 WHERE ID = :WS-ID END-EXEC.
-                        IF SQLCODE NOT = ZERO
-                            PERFORM SQL-ERROR
-                        END-IF.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.HIGH;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.CONTROL_FLOW;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override
@@ -123,7 +116,7 @@ public final class SqlCodeUncheckedRule implements Rule {
             boolean checked = CfgSupport.forwardHasMatch(cfg, start,
                     execSqlNodes::contains, SqlCodeUncheckedRule::referencesSqlCode);
             if (!checked) {
-                findings.add(Finding.of(id(), defaultSeverity().toLevel(),
+                findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         "EXEC SQL " + keyword + " " + targetTable(block.text(), keyword)
                                 + " の実行後、SQLCODE・SQLSTATE を検査していない。"
                                 + "更新が失敗しても後続処理が継続する。",
@@ -134,7 +127,7 @@ public final class SqlCodeUncheckedRule implements Rule {
     }
 
     @Override
-    public Optional<FixProducer> fixProducer() {
+    public Optional<FixProducer> fix() {
         return Optional.of(new SqlCodeFixProducer());
     }
 

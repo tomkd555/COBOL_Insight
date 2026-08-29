@@ -1,5 +1,6 @@
 package jp.cobolinsight.app.cli;
 
+import jp.cobolinsight.app.pipeline.SourceDiscovery;
 import jp.cobolinsight.core.source.AssetKind;
 
 import picocli.CommandLine.Option;
@@ -14,8 +15,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * `scan`・`call-graph` 両サブコマンドが共有する入力・保存先・解析設定のオプション群
- * (picocli の @Mixin として取り込む)。
+ * The input, output and analysis options `scan` and `call-graph` share (taken in as a picocli
+ * {@code @Mixin}).
  */
 final class CommonScanOptions {
 
@@ -34,16 +35,14 @@ final class CommonScanOptions {
             description = "ファイル単位のコードページ手動指定(相対パスまたはファイル名=コードページ)。自動判別に優先する")
     Map<String, String> codepageOverrides = new LinkedHashMap<>();
 
-    /** ScanRunner の実行オプションへ変換する。コピー句探索パスの既定解決を含む。 */
-    ScanRunner.Options toRunnerOptions() {
-        return new ScanRunner.Options(inputDir, databaseFile,
-                resolveCopybookPaths(inputDir, copybookPaths), codepageOverrides);
+    List<Path> resolvedCopybookPaths() {
+        return resolveCopybookPaths(inputDir, copybookPaths);
     }
 
     /**
-     * 指定が無い場合、走査で見つかったコピー句の置き場所をコピー句探索パスとする。
-     * フォルダ名で決めないのは、コピー句がどこに置かれていても COPY 文が解決できるようにする
-     * ためである。
+     * With no explicit setting, wherever the walk found copybooks becomes the COPY search path.
+     * Deciding by folder name instead would leave a COPY unresolved as soon as someone put the
+     * copybook somewhere else.
      */
     static List<Path> resolveCopybookPaths(Path inputDir, List<Path> specified) {
         List<Path> searchPaths = new ArrayList<>(specified);

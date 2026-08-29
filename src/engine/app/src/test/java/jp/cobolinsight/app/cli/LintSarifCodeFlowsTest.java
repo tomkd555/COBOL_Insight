@@ -65,7 +65,7 @@ class LintSarifCodeFlowsTest {
         Files.createDirectories(dir.resolve("cobol"));
         Files.writeString(dir.resolve("cobol").resolve("TAINT1.cbl"), TAINTED,
                 StandardCharsets.UTF_8);
-        return LintRunner.run(new LintRunner.Options(dir, List.of(), Map.of(), Set.of()));
+        return LintRunner.run(new LintRunner.Options(dir, List.of(), Map.of()));
     }
 
     @Test

@@ -1,5 +1,8 @@
 package jp.cobolinsight.app.cli;
 
+import jp.cobolinsight.app.pipeline.Pipelines;
+import jp.cobolinsight.app.pipeline.ScanOutcome;
+import jp.cobolinsight.app.pipeline.Persist;
 import jp.cobolinsight.app.persistence.PersistenceDao;
 import jp.cobolinsight.app.persistence.PersistenceDatabase;
 import org.junit.jupiter.api.Test;
@@ -31,16 +34,16 @@ class ScanIncrementalTest {
             copyDirectory(SAMPLES.resolve(dir), assets.resolve(dir));
         }
         Path databaseFile = tempDir.resolve("scan.db");
-        ScanRunner.Options options = new ScanRunner.Options(assets, databaseFile,
-                List.of(assets.resolve("copybook")), Map.of());
 
-        ScanRunner.Summary first = ScanRunner.run(options);
+        ScanOutcome.Summary first = Pipelines.scan(assets, databaseFile,
+                List.of(assets.resolve("copybook")), Map.of()).summary();
         assertEquals(16, first.analyzed().size());
         assertEquals(0, first.exitCode());
 
         // コピー句の変更では、取り込むプログラム(SYK001〜SYK003)までを再解析の対象に含める
         appendCommentLine(assets.resolve("copybook").resolve("SYKCPY1.cpy"));
-        ScanRunner.Summary second = ScanRunner.run(options);
+        ScanOutcome.Summary second = Pipelines.scan(assets, databaseFile,
+                List.of(assets.resolve("copybook")), Map.of()).summary();
         assertEquals(List.of("cobol/SYK001.cbl", "cobol/SYK002.cbl", "cobol/SYK003.cbl",
                 "copybook/SYKCPY1.cpy"), second.analyzed().stream().sorted().toList());
         assertEquals(12, second.skipped().size());
@@ -49,7 +52,8 @@ class ScanIncrementalTest {
 
         // プログラムの変更では、それを呼ぶJCL(SYKD010・SYKD030)までを再解析の対象に含める
         appendCommentLine(assets.resolve("cobol").resolve("SYK001.cbl"));
-        ScanRunner.Summary third = ScanRunner.run(options);
+        ScanOutcome.Summary third = Pipelines.scan(assets, databaseFile,
+                List.of(assets.resolve("copybook")), Map.of()).summary();
         assertEquals(List.of("cobol/SYK001.cbl", "jcl/SYKD010.jcl", "jcl/SYKD030.jcl"),
                 third.analyzed().stream().sorted().toList());
         assertEquals(0, third.exitCode());
@@ -57,7 +61,8 @@ class ScanIncrementalTest {
 
         // 削除されたソースは行とノードごと消える
         Files.delete(assets.resolve("jcl").resolve("SYKD030.jcl"));
-        ScanRunner.Summary fourth = ScanRunner.run(options);
+        ScanOutcome.Summary fourth = Pipelines.scan(assets, databaseFile,
+                List.of(assets.resolve("copybook")), Map.of()).summary();
         assertEquals(List.of("jcl/SYKD030.jcl"), fourth.removed());
         assertEquals(List.of(), fourth.analyzed());
         assertEdgeCounts(databaseFile, 6, 4);
@@ -74,7 +79,7 @@ class ScanIncrementalTest {
             for (var source : dao.findAllSources()) {
                 for (var edge : dao.findEdgesFrom(source.id())) {
                     // 呼出関係グラフ層(ID下限以上)は対象外。scanの増分用エッジのみ数える
-                    if (edge.id() >= ScanRunner.GRAPH_ID_BASE) {
+                    if (edge.id() >= Persist.GRAPH_ID_BASE) {
                         continue;
                     }
                     if ("COPY".equals(edge.kind())) {

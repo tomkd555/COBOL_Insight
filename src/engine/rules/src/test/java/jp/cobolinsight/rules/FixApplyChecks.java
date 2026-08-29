@@ -4,6 +4,8 @@ import jp.cobolinsight.core.finding.TextEdit;
 import jp.cobolinsight.core.fix.ByteSpliceApplier;
 import jp.cobolinsight.core.fix.ReparseResult;
 import jp.cobolinsight.core.fix.ReparseVerifier;
+import jp.cobolinsight.core.encoding.EncodingCharsetProvider;
+import jp.cobolinsight.frontend.cobol.Che4zCobolParser;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -29,6 +31,7 @@ public final class FixApplyChecks {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        return new ReparseVerifier().verify(originalFile, fixed, "UTF-8", copybookSearchPaths);
+        return new ReparseVerifier(new Che4zCobolParser(), new EncodingCharsetProvider())
+                .verify(originalFile, fixed, "UTF-8", copybookSearchPaths);
     }
 }

@@ -1,5 +1,8 @@
 package jp.cobolinsight.app.cli;
 
+import jp.cobolinsight.app.pipeline.Pipelines;
+import jp.cobolinsight.app.pipeline.ScanOutcome;
+import jp.cobolinsight.app.pipeline.Persist;
 import jp.cobolinsight.app.persistence.PersistenceDao;
 import jp.cobolinsight.app.persistence.PersistenceDatabase;
 import jp.cobolinsight.app.persistence.model.CallEdgeRecord;
@@ -85,7 +88,7 @@ class ScanExecutionOrderTest {
         Files.writeString(assets.resolve("DUPPGM1.cbl"), DUPLICATE_NAMES, StandardCharsets.UTF_8);
 
         Path databaseFile = tempDir.resolve("dup.db");
-        ScanRunner.runWithGraph(new ScanRunner.Options(assets, databaseFile, List.of(), Map.of()));
+        Pipelines.scan(assets, databaseFile, List.of(), Map.of());
 
         try (PersistenceDatabase database = PersistenceDatabase.open(databaseFile)) {
             PersistenceDao dao = new PersistenceDao(database.connection());
@@ -111,8 +114,8 @@ class ScanExecutionOrderTest {
         Files.writeString(assets.resolve("ORDJOB1.jcl"), JCL, StandardCharsets.UTF_8);
 
         Path databaseFile = tempDir.resolve("scan.db");
-        ScanRunner.Result result = ScanRunner.runWithGraph(new ScanRunner.Options(assets,
-                databaseFile, List.of(), Map.of()));
+        ScanOutcome result = Pipelines.scan(assets,
+                databaseFile, List.of(), Map.of());
 
         assertTrue(result.callGraph().toJson().contains("\"seq\":1"),
                 "グラフJSONの辺が順序を伴うこと: " + result.callGraph().toJson());
@@ -126,7 +129,7 @@ class ScanExecutionOrderTest {
 
             // ジョブ→ステップの辺は原本のステップ順に並び、EXEC文の行を持つ
             List<CallEdgeRecord> stepEdges = dao.findEdgesFrom(jobNode).stream()
-                    .filter(e -> "EXECUTION".equals(e.kind()) && e.id() >= ScanRunner.GRAPH_ID_BASE)
+                    .filter(e -> "EXECUTION".equals(e.kind()) && e.id() >= Persist.GRAPH_ID_BASE)
                     .sorted(Comparator.comparingInt(CallEdgeRecord::seq)).toList();
             assertEquals(List.of(1, 2), stepEdges.stream().map(CallEdgeRecord::seq).toList());
             assertEquals(List.of(2, 4), stepEdges.stream().map(CallEdgeRecord::line).toList());

@@ -1,18 +1,17 @@
 package jp.cobolinsight.app.cli;
 
+import jp.cobolinsight.app.pipeline.Paths;
+import jp.cobolinsight.app.pipeline.Pipelines;
+import jp.cobolinsight.app.pipeline.SourceSet;
+import jp.cobolinsight.app.pipeline.SourceUnit;
 import jp.cobolinsight.core.finding.Finding;
 import jp.cobolinsight.core.finding.FindingLevel;
 import jp.cobolinsight.core.json.JsonWriter;
 import jp.cobolinsight.core.linemap.LineMappingEntry;
-import jp.cobolinsight.core.pipeline.AnalysisServices;
 import jp.cobolinsight.core.pipeline.ExitCodes;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.DecodedSource;
-import jp.cobolinsight.core.source.SourcePosition;
-import jp.cobolinsight.core.spi.CharsetProvider;
-import jp.cobolinsight.core.spi.CobolParser;
-import jp.cobolinsight.core.spi.ParseOutcome;
 import jp.cobolinsight.core.transpile.GeneratedFile;
 import jp.cobolinsight.core.transpile.TargetLanguage;
 import jp.cobolinsight.core.transpile.TranspileResult;
@@ -21,6 +20,7 @@ import jp.cobolinsight.app.persistence.PersistenceDao;
 import jp.cobolinsight.app.persistence.PersistenceDatabase;
 import jp.cobolinsight.app.persistence.model.LineMapRecord;
 import jp.cobolinsight.app.persistence.model.SourceRecord;
+import jp.cobolinsight.rules.RuleSet;
 import jp.cobolinsight.transpile.emit.Transpiler;
 
 import java.io.IOException;
@@ -28,11 +28,8 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -100,56 +97,25 @@ public final class TranspileRunner {
         }
     }
 
-    private enum SourceKind {
-        COBOL, COPYBOOK
-    }
-
-    private record TranspileFile(String relPath, String fileName, Path absPath, SourceKind kind) {
-    }
-
     private TranspileRunner() {
     }
 
     public static Result run(Options options) {
-        AnalysisServices services = AnalysisServices.load();
-        CharsetProvider charsetProvider = first(services.charsetProviders(), "CharsetProvider");
-        CobolParser cobolParser = first(services.cobolParsers(), "CobolParser");
+        SourceSet s = Pipelines.translate(options.inputDir(), options.copybookSearchPaths(),
+                options.codepageOverrides(), RuleSet.load((Path) null));
+        LintRunner.reportWarnings(s);
 
-        List<TranspileFile> files = discover(options);
-        List<Finding> findings = new ArrayList<>();
-        Map<String, byte[]> bytesByRel = new LinkedHashMap<>();
-        Map<String, DecodedSource> decodedByRel = new LinkedHashMap<>();
-        for (TranspileFile file : files) {
-            byte[] bytes = readBytes(file.absPath());
-            bytesByRel.put(file.relPath(), bytes);
-            try {
-                decodedByRel.put(file.relPath(), decode(charsetProvider, options, file, bytes));
-            } catch (IllegalArgumentException e) {
-                if (file.kind() == SourceKind.COBOL) {
-                    findings.add(Finding.of(DECODE_FAILURE_RULE_ID, FindingLevel.ERROR,
-                            "復号に失敗した: " + e.getMessage(),
-                            SourcePosition.fileStart(file.relPath())));
-                }
-            }
-        }
-
-        // 逐語対訳と生成ファイルの出力(DB を介さない純粋処理と I/O)。
+        // Transpiling and writing the generated files: pure translation plus I/O, no database.
         List<String> analyzed = new ArrayList<>();
         Set<String> generatedFiles = new TreeSet<>();
         List<LineMappingEntry> allEntries = new ArrayList<>();
-        for (TranspileFile file : files) {
-            DecodedSource decoded = decodedByRel.get(file.relPath());
-            if (file.kind() != SourceKind.COBOL || decoded == null) {
+        for (SourceUnit unit : s.unitsOf(AssetKind.COBOL)) {
+            CobolSemanticModel model = s.programsByPath().get(unit.relPath());
+            DecodedSource decoded = s.decoded().get(unit.relPath());
+            if (model == null || decoded == null) {
                 continue;
             }
-            ParseOutcome<CobolSemanticModel> outcome =
-                    cobolParser.parse(decoded, options.copybookSearchPaths());
-            if (outcome instanceof ParseOutcome.Failure<CobolSemanticModel> failure) {
-                findings.add(failure.finding());
-                continue;
-            }
-            CobolSemanticModel model = outcome.value().orElseThrow();
-            analyzed.add(file.relPath());
+            analyzed.add(unit.relPath());
             for (TargetLanguage language : options.languages()) {
                 TranspileResult result = Transpiler.transpile(model, decoded.text(), language);
                 for (GeneratedFile generated : result.files()) {
@@ -160,59 +126,10 @@ public final class TranspileRunner {
             }
         }
 
-        int lineMapCount = persist(options, files, bytesByRel, decodedByRel, allEntries);
-
-        int exitCode = ExitCodes.fromFindings(findings);
+        List<Finding> findings = List.copyOf(s.findings());
+        int lineMapCount = persist(options, s, allEntries);
         return new Result(analyzed, findings, new ArrayList<>(generatedFiles), lineMapCount,
-                exitCode);
-    }
-
-    // ---- 走査 ----
-
-    /**
-     * scan と同じ走査で COBOL 本体を、コピー句探索パス配下からコピー句を発見する(相対パスの
-     * 辞書順)。コピー句は入力フォルダの外を指せるため、走査ではなく探索パスを起点とする
-     * ({@link CopybookScan})。走査の取りこぼしと解釈の変更は標準エラーへ出す。
-     */
-    private static List<TranspileFile> discover(Options options) {
-        SourceDiscovery.Result discovery = SourceDiscovery.discover(options.inputDir());
-        LintRunner.reportDiscoveryWarnings(discovery);
-        Map<String, TranspileFile> byRel = new TreeMap<>();
-        for (SourceDiscovery.DiscoveredFile file : discovery.filesOf(Set.of(AssetKind.COBOL))) {
-            byRel.putIfAbsent(file.relPath(), new TranspileFile(file.relPath(),
-                    file.fileName(), file.absPath(), SourceKind.COBOL));
-        }
-        for (Path dir : options.copybookSearchPaths()) {
-            for (Path copybook : CopybookScan.collect(dir)) {
-                String relPath = relativize(options.inputDir(), copybook);
-                byRel.putIfAbsent(relPath, new TranspileFile(relPath,
-                        copybook.getFileName().toString(), copybook, SourceKind.COPYBOOK));
-            }
-        }
-        return new ArrayList<>(byRel.values());
-    }
-
-    /** 入力フォルダ配下なら相対パス、そうでなければ「親ディレクトリ名/ファイル名」を相対パスとする。 */
-    private static String relativize(Path inputDir, Path file) {
-        Path base = inputDir.toAbsolutePath().normalize();
-        Path abs = file.toAbsolutePath().normalize();
-        if (abs.startsWith(base)) {
-            return base.relativize(abs).toString().replace('\\', '/');
-        }
-        Path parent = abs.getParent();
-        String dirName = parent == null ? "" : parent.getFileName().toString();
-        return (dirName.isEmpty() ? "" : dirName + "/") + abs.getFileName();
-    }
-
-    private static DecodedSource decode(CharsetProvider charsetProvider, Options options,
-            TranspileFile file, byte[] bytes) {
-        String override = options.codepageOverrides().get(file.relPath());
-        if (override == null) {
-            override = options.codepageOverrides().get(file.fileName());
-        }
-        return override == null
-                ? charsetProvider.decode(file.absPath().toString(), bytes)
-                : charsetProvider.decode(file.absPath().toString(), bytes, override);
+                ExitCodes.fromFindings(findings));
     }
 
     // ---- 生成ファイルの出力 ----
@@ -234,20 +151,17 @@ public final class TranspileRunner {
      * その由来ソース(basename で解決)の id へ紐づけて LINE_MAP へ書く。再実行の冪等性のため、書き込む
      * ソースの既存行を先に消去する。外部キーを満たせないエントリ(未登録の basename)は警告して飛ばす。
      */
-    private static int persist(Options options, List<TranspileFile> files,
-            Map<String, byte[]> bytesByRel, Map<String, DecodedSource> decodedByRel,
-            List<LineMappingEntry> entries) {
+    private static int persist(Options options, SourceSet set, List<LineMappingEntry> entries) {
         try (PersistenceDatabase database = PersistenceDatabase.open(options.databaseFile())) {
             PersistenceDao dao = new PersistenceDao(database.connection());
             int[] count = {0};
-            dao.inTransaction(() -> count[0] = writeLineMaps(dao, ScanRunner.rootOf(
-                    options.inputDir()), files, bytesByRel, decodedByRel, entries));
+            dao.inTransaction(() -> count[0] = writeLineMaps(dao,
+                    Paths.rootOf(options.inputDir()), set, entries));
             return count[0];
         }
     }
 
-    private static int writeLineMaps(PersistenceDao dao, String root, List<TranspileFile> files,
-            Map<String, byte[]> bytesByRel, Map<String, DecodedSource> decodedByRel,
+    private static int writeLineMaps(PersistenceDao dao, String root, SourceSet set,
             List<LineMappingEntry> entries) {
         Map<String, SourceRecord> existingByPath = new LinkedHashMap<>();
         for (SourceRecord source : dao.findSourcesByRoot(root)) {
@@ -256,20 +170,20 @@ public final class TranspileRunner {
         long maxId = dao.maxSourceId();
 
         Map<String, Long> idByFileName = new TreeMap<>();
-        for (TranspileFile file : files) {
-            SourceRecord existing = existingByPath.get(file.relPath());
+        for (SourceUnit unit : set.units()) {
+            SourceRecord existing = existingByPath.get(unit.relPath());
             long id;
             if (existing != null) {
                 id = existing.id();
             } else {
                 id = ++maxId;
-                DecodedSource decoded = decodedByRel.get(file.relPath());
-                byte[] bytes = bytesByRel.get(file.relPath());
+                DecodedSource decoded = set.decoded().get(unit.relPath());
+                byte[] bytes = set.bytes().get(unit.relPath());
                 String codepage = decoded == null ? null : decoded.encoding().detectedCharset();
-                dao.insertSource(new SourceRecord(id, root, file.relPath(), codepage, sha256(bytes),
-                        bytes.length));
+                dao.insertSource(new SourceRecord(id, root, unit.relPath(), codepage,
+                        Paths.sha256(bytes), bytes.length));
             }
-            idByFileName.putIfAbsent(file.fileName(), id);
+            idByFileName.putIfAbsent(unit.fileName(), id);
         }
 
         // 由来ソース(basename)ごとにエントリをまとめる。解決できない basename は外部キーを満たせないため飛ばす。
@@ -312,28 +226,4 @@ public final class TranspileRunner {
                     .thenComparingInt(e -> e.cobolLines().endLine())
                     .thenComparing(LineMappingEntry::anchorId);
 
-    // ---- 補助 ----
-
-    private static <T> T first(List<T> implementations, String contractName) {
-        if (implementations.isEmpty()) {
-            throw new IllegalStateException(contractName + " の実装が実行時クラスパスに無い");
-        }
-        return implementations.get(0);
-    }
-
-    private static byte[] readBytes(Path file) {
-        try {
-            return Files.readAllBytes(file);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
-
-    private static String sha256(byte[] bytes) {
-        try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException(e);
-        }
-    }
 }

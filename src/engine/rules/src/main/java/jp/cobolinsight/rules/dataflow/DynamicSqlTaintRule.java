@@ -11,11 +11,13 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.core.spi.RuleDoc;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -38,41 +40,33 @@ public final class DynamicSqlTaintRule implements Rule {
             "(?is)\\bACCEPT\\s+([\\p{L}\\p{N}$#_-]+)\\s+FROM\\s+"
                     + "(DATE|TIME|DAY|DAY-OF-WEEK|DAY-OF-YEAR|TIMER|WHEN-COMPILED|YYYYMMDD|YYYYDDD)\\b");
 
-    @Override
-    public String id() {
-        return "R020";
-    }
+    private static final RuleMeta META =
+            RuleMeta.named("R020", "動的SQL文への外部入力の未検証組み込み", "SQL")
+                    .summary("外部入力で汚染された値を、検証も置換もせずに組み立てた文字列を"
+                            + "EXECUTE IMMEDIATE・PREPARE へ渡す箇所を検出します。")
+                    .rationale("入力に SQL の断片を混ぜられると問い合わせの意味が変わり、"
+                            + "想定していない参照・更新を許します。")
+                    .detection("画面・帳票などの外部入力を汚染源として汚染追跡を行い、"
+                            + "汚染された変数が動的 SQL の文字列オペランドへ届くものを検出します。"
+                            + "ACCEPT FROM DATE・TIME などシステムレジスタ由来の汚染は対象外とします。")
+                    .remedy("値をホスト変数として渡し、SQL 文の組み立てへ直接埋め込まないようにします。")
+                    .example("""
+                            STRING "SELECT * FROM CUST WHERE ID='" WS-INPUT "'"
+                                DELIMITED BY SIZE INTO WS-SQL.
+                            EXEC SQL EXECUTE IMMEDIATE :WS-SQL END-EXEC.
+                            """, """
+                            EXEC SQL PREPARE STMT FROM :WS-SQL-TEMPLATE END-EXEC.
+                            EXEC SQL EXECUTE STMT USING :WS-INPUT END-EXEC.
+                            """)
+                    .severity(Severity.HIGH)
+                    .commands(Command.LINT, Command.REPORT)
+                    .targets(AssetKind.COBOL)
+                    .needs(Needs.SEMANTIC, Needs.CFG, Needs.DATAFLOW)
+                    .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("動的SQL文への外部入力の未検証組み込み", "SQL")
-                .summary("外部入力で汚染された値を、検証も置換もせずに組み立てた文字列を"
-                        + "EXECUTE IMMEDIATE・PREPARE へ渡す箇所を検出します。")
-                .rationale("入力に SQL の断片を混ぜられると問い合わせの意味が変わり、"
-                        + "想定していない参照・更新を許します。")
-                .detection("画面・帳票などの外部入力を汚染源として汚染追跡を行い、"
-                        + "汚染された変数が動的 SQL の文字列オペランドへ届くものを検出します。"
-                        + "ACCEPT FROM DATE・TIME などシステムレジスタ由来の汚染は対象外とします。")
-                .remedy("値をホスト変数として渡し、SQL 文の組み立てへ直接埋め込まないようにします。")
-                .example("""
-                        STRING "SELECT * FROM CUST WHERE ID='" WS-INPUT "'"
-                            DELIMITED BY SIZE INTO WS-SQL.
-                        EXEC SQL EXECUTE IMMEDIATE :WS-SQL END-EXEC.
-                        """, """
-                        EXEC SQL PREPARE STMT FROM :WS-SQL-TEMPLATE END-EXEC.
-                        EXEC SQL EXECUTE STMT USING :WS-INPUT END-EXEC.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.HIGH;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.DATA_FLOW;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override
@@ -114,7 +108,7 @@ public final class DynamicSqlTaintRule implements Rule {
             if (!flagged.isEmpty()) {
                 SourcePosition position = new SourcePosition(model.sourceFile(),
                         simple.range().start().line(), 1, SourcePosition.UNKNOWN_BYTE_OFFSET);
-                findings.add(new Finding(id(), defaultSeverity().toLevel(),
+                findings.add(new Finding(META.id(), META.defaultSeverity().toLevel(),
                         "動的SQLの文字列に外部入力由来の未検証変数 " + String.join(", ", flagged)
                                 + " を組み込んでいる。SQLインジェクションになり得る。",
                         position,

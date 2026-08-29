@@ -19,7 +19,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 /** 制御フロー解析のルールが共有する走査・探索の補助。状態を持たない。 */
-final class CfgSupport {
+public final class CfgSupport {
 
     private CfgSupport() {
     }
@@ -71,7 +71,7 @@ final class CfgSupport {
      * check の判定もしない)。それ以外の到達ノードに check を満たすものがあれば true。
      * start 自身は判定せず、その後続から辿る。
      */
-    static boolean forwardHasMatch(ControlFlowGraph cfg, CfgNode start,
+    public static boolean forwardHasMatch(ControlFlowGraph cfg, CfgNode start,
             Predicate<CfgNode> boundary, Predicate<CfgNode> check) {
         Set<CfgNode> visited = Collections.newSetFromMap(new IdentityHashMap<>());
         Deque<CfgNode> queue = new ArrayDeque<>();

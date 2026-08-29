@@ -13,7 +13,8 @@ import java.nio.charset.StandardCharsets;
         description = "COBOL資産の統合解析ツール",
         subcommands = {ScanCommand.class, CallGraphCommand.class, LintCommand.class,
                 SqlAdviseCommand.class, ReportCommand.class, TranspileCommand.class,
-                FixCommand.class, RulesCommand.class, SaveCommand.class})
+                FixCommand.class, RulesCommand.class, SaveCommand.class,
+                DecodeCommand.class})
 public final class Main implements Runnable {
 
     @Override

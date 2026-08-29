@@ -1,5 +1,6 @@
 package jp.cobolinsight.app.cli;
 
+import jp.cobolinsight.app.EngineWiring;
 import jp.cobolinsight.core.fix.ReparseResult;
 import jp.cobolinsight.core.fix.ReparseVerifier;
 import org.junit.jupiter.api.Test;
@@ -129,7 +130,7 @@ class FixSamplesAcceptanceTest {
     @Test
     void fixedSourcesReparseSuccessfully() {
         FixRunner.Result result = runFix();
-        ReparseVerifier verifier = new ReparseVerifier();
+        ReparseVerifier verifier = EngineWiring.reparseVerifier();
         List<Path> copybookPaths = CommonScanOptions.resolveCopybookPaths(SAMPLES, List.of());
 
         assertTrue(result.fileFixes().size() >= 4, "少なくとも SYK001/002/006/007 が修正されること");

@@ -5,11 +5,13 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.EmbeddedBlock;
 import jp.cobolinsight.core.semantic.EmbeddedBlockKind;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.core.spi.RuleDoc;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -32,40 +34,31 @@ public final class CursorNotClosedRule implements Rule {
     private static final Pattern OPEN = Pattern.compile("(?i)^\\s*OPEN\\s+([\\p{L}\\p{N}_-]+)");
     private static final Pattern CLOSE = Pattern.compile("(?i)^\\s*CLOSE\\s+([\\p{L}\\p{N}_-]+)");
 
-    @Override
-    public String id() {
-        return "R019";
-    }
+    private static final RuleMeta META = RuleMeta.named("R019", "SQLカーソルのCLOSE漏れ", "SQL")
+            .summary("DECLARE して OPEN したが CLOSE していないカーソルを検出します。")
+            .rationale("接続資源とロックを保持し続けるため、"
+                    + "同時実行数の多い環境で資源の枯渇と待ちを招きます。")
+            .detection("EXEC SQL の DECLARE CURSOR・OPEN・CLOSE をカーソル名で突き合わせ、"
+                    + "OPEN があり CLOSE の無いものを検出します。")
+            .remedy("処理の終わりと異常時の経路の双方で CLOSE を実行します。")
+            .example("""
+                    EXEC SQL OPEN CUR-CUST END-EXEC.
+                    PERFORM FETCH-LOOP UNTIL WS-EOF = "Y".
+                    GOBACK.
+                    """, """
+                    EXEC SQL OPEN CUR-CUST END-EXEC.
+                    PERFORM FETCH-LOOP UNTIL WS-EOF = "Y".
+                    EXEC SQL CLOSE CUR-CUST END-EXEC.
+                    """)
+            .severity(Severity.MEDIUM)
+            .commands(Command.LINT, Command.REPORT)
+            .targets(AssetKind.COBOL)
+            .needs(Needs.SEMANTIC)
+            .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("SQLカーソルのCLOSE漏れ", "SQL")
-                .summary("DECLARE して OPEN したが CLOSE していないカーソルを検出します。")
-                .rationale("接続資源とロックを保持し続けるため、"
-                        + "同時実行数の多い環境で資源の枯渇と待ちを招きます。")
-                .detection("EXEC SQL の DECLARE CURSOR・OPEN・CLOSE をカーソル名で突き合わせ、"
-                        + "OPEN があり CLOSE の無いものを検出します。")
-                .remedy("処理の終わりと異常時の経路の双方で CLOSE を実行します。")
-                .example("""
-                        EXEC SQL OPEN CUR-CUST END-EXEC.
-                        PERFORM FETCH-LOOP UNTIL WS-EOF = "Y".
-                        GOBACK.
-                        """, """
-                        EXEC SQL OPEN CUR-CUST END-EXEC.
-                        PERFORM FETCH-LOOP UNTIL WS-EOF = "Y".
-                        EXEC SQL CLOSE CUR-CUST END-EXEC.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.MEDIUM;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.CONTROL_FLOW;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override
@@ -98,7 +91,7 @@ public final class CursorNotClosedRule implements Rule {
             for (Map.Entry<String, EmbeddedBlock> entry : openedAt.entrySet()) {
                 String cursor = entry.getKey();
                 if (declared.contains(cursor) && !closed.contains(cursor)) {
-                    findings.add(Finding.of(id(), defaultSeverity().toLevel(),
+                    findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                             "カーソル " + cursor + " は DECLARE・OPEN されているが CLOSE されない。",
                             new SourcePosition(model.sourceFile(),
                                     entry.getValue().range().start().line(), 1,

@@ -11,11 +11,13 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.core.spi.RuleDoc;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -32,40 +34,32 @@ public final class SensitiveDataOutputRule implements Rule {
 
     private static final Set<String> OUTPUT_VERBS = Set.of("DISPLAY", "WRITE", "CALL");
 
-    @Override
-    public String id() {
-        return "R027";
-    }
+    private static final RuleMeta META =
+            RuleMeta.named("R027", "機密データ項目のマスキングなし出力", "セキュリティ")
+                    .summary("機密項目の値が、マスキングも暗号化も経ずに"
+                            + "表示・帳票・ログへ渡る箇所を検出します。")
+                    .rationale("個人番号や口座番号が画面・出力紙・ログに残り、"
+                            + "それらを閲覧できる範囲がそのまま漏洩の範囲になります。")
+                    .detection("名称の末尾が -SSN・-ACCT-NO・-CARD-NO の項目を機密とみなし、"
+                            + "汚染追跡で DISPLAY・帳票出力(WRITE)・ログ出力(CALL)へ届くものを検出します。"
+                            + "リテラル代入で値を差し替えた変数は汚染が絶たれるため対象外になります。")
+                    .remedy("出力前に伏せ字へ置き換えるか、末尾の数桁だけを残します。")
+                    .example("""
+                            DISPLAY "口座番号: " WS-ACCT-NO.
+                            """, """
+                            MOVE ALL "*" TO WS-MASKED.
+                            MOVE WS-ACCT-NO(13:4) TO WS-MASKED(13:4).
+                            DISPLAY "口座番号: " WS-MASKED.
+                            """)
+                    .severity(Severity.MEDIUM)
+                    .commands(Command.LINT, Command.REPORT)
+                    .targets(AssetKind.COBOL)
+                    .needs(Needs.SEMANTIC, Needs.CFG, Needs.DATAFLOW)
+                    .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("機密データ項目のマスキングなし出力", "セキュリティ")
-                .summary("機密項目の値が、マスキングも暗号化も経ずに"
-                        + "表示・帳票・ログへ渡る箇所を検出します。")
-                .rationale("個人番号や口座番号が画面・出力紙・ログに残り、"
-                        + "それらを閲覧できる範囲がそのまま漏洩の範囲になります。")
-                .detection("名称の末尾が -SSN・-ACCT-NO・-CARD-NO の項目を機密とみなし、"
-                        + "汚染追跡で DISPLAY・帳票出力(WRITE)・ログ出力(CALL)へ届くものを検出します。"
-                        + "リテラル代入で値を差し替えた変数は汚染が絶たれるため対象外になります。")
-                .remedy("出力前に伏せ字へ置き換えるか、末尾の数桁だけを残します。")
-                .example("""
-                        DISPLAY "口座番号: " WS-ACCT-NO.
-                        """, """
-                        MOVE ALL "*" TO WS-MASKED.
-                        MOVE WS-ACCT-NO(13:4) TO WS-MASKED(13:4).
-                        DISPLAY "口座番号: " WS-MASKED.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.MEDIUM;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.DATA_FLOW;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override
@@ -103,7 +97,7 @@ public final class SensitiveDataOutputRule implements Rule {
             if (!exposed.isEmpty()) {
                 SourcePosition position = new SourcePosition(model.sourceFile(),
                         simple.range().start().line(), 1, SourcePosition.UNKNOWN_BYTE_OFFSET);
-                findings.add(new Finding(id(), defaultSeverity().toLevel(),
+                findings.add(new Finding(META.id(), META.defaultSeverity().toLevel(),
                         "機密項目 " + String.join(", ", exposed)
                                 + " をマスキング・暗号化せずに出力している。機密情報が露出する。",
                         position,

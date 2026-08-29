@@ -10,9 +10,8 @@ import jp.cobolinsight.core.finding.TextEdit;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.source.SourceRange;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.core.spi.RuleDoc;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -26,31 +25,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SarifWriterTest {
 
     private static Rule stubRule(String id, Severity severity) {
+        RuleMeta meta = RuleMeta.named(id, id + " の名称", "テスト")
+                .summary(id + " が検出する対象である。")
+                .rationale(id + " を放置したときの影響である。")
+                .detection(id + " の検出条件である。")
+                .remedy(id + " の対処である。")
+                .example("BAD " + id, "GOOD " + id)
+                .severity(severity)
+                .build();
         return new Rule() {
             @Override
-            public String id() {
-                return id;
-            }
-
-            @Override
-            public RuleDoc doc() {
-                return RuleDoc.named(id + " の名称", "テスト")
-                        .summary(id + " が検出する対象である。")
-                        .rationale(id + " を放置したときの影響である。")
-                        .detection(id + " の検出条件である。")
-                        .remedy(id + " の対処である。")
-                        .example("BAD " + id, "GOOD " + id)
-                        .build();
-            }
-
-            @Override
-            public Severity defaultSeverity() {
-                return severity;
-            }
-
-            @Override
-            public AnalysisPhase phase() {
-                return AnalysisPhase.SYNTAX;
+            public RuleMeta meta() {
+                return meta;
             }
 
             @Override

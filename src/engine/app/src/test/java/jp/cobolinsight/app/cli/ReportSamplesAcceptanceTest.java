@@ -1,5 +1,6 @@
 package jp.cobolinsight.app.cli;
 
+import jp.cobolinsight.app.pipeline.Pipelines;
 import jp.cobolinsight.core.finding.Finding;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -36,10 +37,10 @@ class ReportSamplesAcceptanceTest {
     @BeforeAll
     static void scanThenReport() {
         Path db = tempDir.resolve("report.db");
-        ScanRunner.run(new ScanRunner.Options(SAMPLES, db,
-                List.of(SAMPLES.resolve("copybook")), Map.of()));
+        Pipelines.scan(SAMPLES, db,
+                List.of(SAMPLES.resolve("copybook")), Map.of()).summary();
         result = ReportRunner.run(new ReportRunner.Options(SAMPLES, db,
-                List.of(SAMPLES.resolve("copybook")), Map.of(), Set.of()));
+                List.of(SAMPLES.resolve("copybook")), Map.of()));
     }
 
     /** finding を "ルールID@ファイル:行" 形式の文字列集合へ変換する。 */

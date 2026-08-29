@@ -1,21 +1,16 @@
 package jp.cobolinsight.app.cli;
 
-import picocli.CommandLine;
+import jp.cobolinsight.app.pipeline.Paths;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
-import picocli.CommandLine.Spec;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Callable;
 
 /**
@@ -51,29 +46,16 @@ public final class ReportCommand implements Callable<Integer> {
             description = "ファイル単位のコードページ手動指定(相対パスまたはファイル名=コードページ)。自動判別に優先する")
     Map<String, String> codepageOverrides = new LinkedHashMap<>();
 
-    @Option(names = "--rule-config", paramLabel = "FILE",
-            description = "ルールの有効・無効を書いた設定ファイル(JSON)")
-    Path ruleConfigFile;
-
-    @Option(names = "--user-rules", paramLabel = "FILE",
-            description = "利用者定義ルールの定義ファイル(JSON)。無い場合は組み込みルールだけを実行する")
-    Path userRulesFile;
-
-    @Spec
-    CommandLine.Model.CommandSpec spec;
+    @Mixin
+    RuleOptions ruleOptions;
 
     @Override
     public Integer call() {
         List<Path> searchPaths = CommonScanOptions.resolveCopybookPaths(inputDir, copybookPaths);
-        Set<String> disabled = RuleConfig.resolveDisabled(spec, ruleConfigFile);
         ReportRunner.Result result = ReportRunner.run(new ReportRunner.Options(inputDir,
-                databaseFile, searchPaths, codepageOverrides, disabled, userRulesFile));
-        try {
-            Files.writeString(htmlFile, result.html(), StandardCharsets.UTF_8);
-            Files.writeString(textFile, result.text(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+                databaseFile, searchPaths, codepageOverrides, ruleOptions.reportingRuleSet()));
+        Paths.writeString(htmlFile, result.html());
+        Paths.writeString(textFile, result.text());
         System.out.println(result.summaryJson(htmlFile.toString(), textFile.toString()));
         return result.exitCode();
     }

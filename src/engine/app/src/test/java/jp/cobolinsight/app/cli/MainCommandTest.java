@@ -1,5 +1,6 @@
 package jp.cobolinsight.app.cli;
 
+import jp.cobolinsight.app.pipeline.Paths;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import picocli.CommandLine;
@@ -48,7 +49,7 @@ class MainCommandTest {
 
         try (var database = jp.cobolinsight.app.persistence.PersistenceDatabase.open(databaseFile)) {
             var dao = new jp.cobolinsight.app.persistence.PersistenceDao(database.connection());
-            var source = dao.findSourceByPath(ScanRunner.rootOf(assets), "cobol/SYKENC1_SJIS.cbl").orElseThrow();
+            var source = dao.findSourceByPath(Paths.rootOf(assets), "cobol/SYKENC1_SJIS.cbl").orElseThrow();
             var info = dao.findEncodingInfo(source.id()).orElseThrow();
             assertTrue(info.manualOverride(), "CLIフラグの手動指定が自動判別を上書きすること");
             assertEquals("windows-31j", info.detectedCharset());

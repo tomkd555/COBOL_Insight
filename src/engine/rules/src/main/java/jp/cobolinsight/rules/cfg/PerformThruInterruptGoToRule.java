@@ -6,11 +6,13 @@ import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.GoToStatement;
 import jp.cobolinsight.core.semantic.PerformRelation;
 import jp.cobolinsight.core.semantic.Procedure;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.core.spi.RuleDoc;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -24,42 +26,33 @@ import java.util.Set;
  */
 public final class PerformThruInterruptGoToRule implements Rule {
 
-    @Override
-    public String id() {
-        return "R007";
-    }
+    private static final RuleMeta META = RuleMeta.named("R007", "PERFORM THRUの範囲不整合", "制御フロー")
+            .summary("PERFORM THRU の実行範囲へ、入口段落を経由せず"
+                    + "外から GO TO で直接飛び込む箇所を検出します。")
+            .rationale("入口段落が担う初期化を飛ばして途中から実行されるため、"
+                    + "初期化前の値のまま処理が進みます。")
+            .detection("PERFORM ... THRU の範囲に含まれる段落のうち、入口段落以外へ、"
+                    + "範囲外の段落から GO TO で分岐するものを検出します。")
+            .remedy("範囲の入口段落から入るようにするか、"
+                    + "飛び込み先の処理を別の段落へ分けて PERFORM で呼びます。")
+            .example("""
+                    GO TO CALC-STEP2.
+                    CALC-START.
+                    CALC-STEP2.
+                    CALC-EXIT.
+                        EXIT.
+                    """, """
+                    PERFORM CALC-START THRU CALC-EXIT.
+                    """)
+            .severity(Severity.HIGH)
+            .commands(Command.LINT, Command.REPORT)
+            .targets(AssetKind.COBOL)
+            .needs(Needs.SEMANTIC)
+            .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("PERFORM THRUの範囲不整合", "制御フロー")
-                .summary("PERFORM THRU の実行範囲へ、入口段落を経由せず"
-                        + "外から GO TO で直接飛び込む箇所を検出します。")
-                .rationale("入口段落が担う初期化を飛ばして途中から実行されるため、"
-                        + "初期化前の値のまま処理が進みます。")
-                .detection("PERFORM ... THRU の範囲に含まれる段落のうち、入口段落以外へ、"
-                        + "範囲外の段落から GO TO で分岐するものを検出します。")
-                .remedy("範囲の入口段落から入るようにするか、"
-                        + "飛び込み先の処理を別の段落へ分けて PERFORM で呼びます。")
-                .example("""
-                        GO TO CALC-STEP2.
-                        CALC-START.
-                        CALC-STEP2.
-                        CALC-EXIT.
-                            EXIT.
-                        """, """
-                        PERFORM CALC-START THRU CALC-EXIT.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.HIGH;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.CONTROL_FLOW;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override
@@ -113,7 +106,7 @@ public final class PerformThruInterruptGoToRule implements Rule {
                     }
                 }
                 if (hit != null) {
-                    findings.add(Finding.of(id(), defaultSeverity().toLevel(),
+                    findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                             "PERFORM " + perform.targetProcedure() + " THRU "
                                     + perform.thruProcedure().get()
                                     + " の実行範囲へ、範囲外の段落 " + holder.name()

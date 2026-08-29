@@ -9,13 +9,15 @@ import jp.cobolinsight.core.picture.Usage;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.DataItem;
 import jp.cobolinsight.core.semantic.EmbeddedBlock;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.source.SourceRange;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
 import jp.cobolinsight.core.spi.FixProducer;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.core.spi.RuleDoc;
 import jp.cobolinsight.rules.FixEdits;
 import jp.cobolinsight.rules.SourceTextIndex;
 
@@ -32,41 +34,33 @@ import java.util.regex.Pattern;
  */
 public final class CicsResponseUncheckedRule implements Rule {
 
-    @Override
-    public String id() {
-        return "R021";
-    }
+    private static final RuleMeta META =
+            RuleMeta.named("R021", "CICS応答コード(RESP/RESP2)未検査", "例外処理")
+                    .summary("RESP・RESP2 のいずれも指定していない EXEC CICS コマンドを検出します。")
+                    .rationale("応答コードを受け取れないため、資源の不在や排他の失敗を"
+                            + "プログラム側で判定できず、異常時は既定の異常終了へ落ちます。")
+                    .detection("EXEC CICS コマンドのうち、RESP・RESP2 のいずれのオペランドも"
+                            + "持たないものを検出します。")
+                    .remedy("RESP を付けて応答コードを受け、直後に DFHRESP との比較で分岐します。")
+                    .example("""
+                            EXEC CICS READ FILE('CUSTFILE') INTO(WS-REC)
+                                 RIDFLD(WS-KEY) END-EXEC.
+                            """, """
+                            EXEC CICS READ FILE('CUSTFILE') INTO(WS-REC)
+                                 RIDFLD(WS-KEY) RESP(WS-RESP) END-EXEC.
+                            IF WS-RESP NOT = DFHRESP(NORMAL)
+                                PERFORM ERROR-SHORI
+                            END-IF.
+                            """)
+                    .severity(Severity.HIGH)
+                    .commands(Command.LINT, Command.REPORT, Command.FIX)
+                    .targets(AssetKind.COBOL)
+                    .needs(Needs.SEMANTIC, Needs.SOURCE_TEXT)
+                    .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("CICS応答コード(RESP/RESP2)未検査", "例外処理")
-                .summary("RESP・RESP2 のいずれも指定していない EXEC CICS コマンドを検出します。")
-                .rationale("応答コードを受け取れないため、資源の不在や排他の失敗を"
-                        + "プログラム側で判定できず、異常時は既定の異常終了へ落ちます。")
-                .detection("EXEC CICS コマンドのうち、RESP・RESP2 のいずれのオペランドも"
-                        + "持たないものを検出します。")
-                .remedy("RESP を付けて応答コードを受け、直後に DFHRESP との比較で分岐します。")
-                .example("""
-                        EXEC CICS READ FILE('CUSTFILE') INTO(WS-REC)
-                             RIDFLD(WS-KEY) END-EXEC.
-                        """, """
-                        EXEC CICS READ FILE('CUSTFILE') INTO(WS-REC)
-                             RIDFLD(WS-KEY) RESP(WS-RESP) END-EXEC.
-                        IF WS-RESP NOT = DFHRESP(NORMAL)
-                            PERFORM ERROR-SHORI
-                        END-IF.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.HIGH;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.CONTROL_FLOW;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override
@@ -80,7 +74,7 @@ public final class CicsResponseUncheckedRule implements Rule {
                 if (block.operands().containsKey("RESP") || block.operands().containsKey("RESP2")) {
                     continue;
                 }
-                findings.add(Finding.of(id(), defaultSeverity().toLevel(),
+                findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         "EXEC CICS コマンド(" + cicsVerb(block) + ")が RESP・RESP2 を持たず、"
                                 + "応答コードを検査していない。異常終了しても後続処理が継続する。",
                         new SourcePosition(model.sourceFile(), block.range().end().line(), 1,
@@ -91,7 +85,7 @@ public final class CicsResponseUncheckedRule implements Rule {
     }
 
     @Override
-    public Optional<FixProducer> fixProducer() {
+    public Optional<FixProducer> fix() {
         return Optional.of(new CicsResponseFixProducer());
     }
 

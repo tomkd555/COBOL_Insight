@@ -1,5 +1,7 @@
 package jp.cobolinsight.app.cli;
 
+import jp.cobolinsight.app.pipeline.Paths;
+import jp.cobolinsight.app.pipeline.Pipelines;
 import jp.cobolinsight.app.persistence.PersistenceDao;
 import jp.cobolinsight.app.persistence.PersistenceDatabase;
 import org.junit.jupiter.api.Test;
@@ -31,12 +33,12 @@ class ScanCodepageOverrideTest {
                 assets.resolve("cobol").resolve("SYKENC1_SJIS.cbl"));
         Path databaseFile = tempDir.resolve("scan.db");
 
-        ScanRunner.run(new ScanRunner.Options(assets, databaseFile, List.of(),
-                Map.of("cobol/SYKENC1_SJIS.cbl", "Shift_JIS")));
+        Pipelines.scan(assets, databaseFile, List.of(),
+                Map.of("cobol/SYKENC1_SJIS.cbl", "Shift_JIS")).summary();
 
         try (PersistenceDatabase database = PersistenceDatabase.open(databaseFile)) {
             PersistenceDao dao = new PersistenceDao(database.connection());
-            var source = dao.findSourceByPath(ScanRunner.rootOf(assets), "cobol/SYKENC1_SJIS.cbl").orElseThrow();
+            var source = dao.findSourceByPath(Paths.rootOf(assets), "cobol/SYKENC1_SJIS.cbl").orElseThrow();
             var info = dao.findEncodingInfo(source.id()).orElseThrow();
             assertTrue(info.manualOverride(), "手動指定が記録されること");
             assertEquals("windows-31j", info.detectedCharset());
@@ -53,11 +55,11 @@ class ScanCodepageOverrideTest {
                 assets.resolve("cobol").resolve("SYKENC1_SJIS.cbl"));
         Path databaseFile = tempDir.resolve("scan2.db");
 
-        ScanRunner.run(new ScanRunner.Options(assets, databaseFile, List.of(), Map.of()));
+        Pipelines.scan(assets, databaseFile, List.of(), Map.of()).summary();
 
         try (PersistenceDatabase database = PersistenceDatabase.open(databaseFile)) {
             PersistenceDao dao = new PersistenceDao(database.connection());
-            var source = dao.findSourceByPath(ScanRunner.rootOf(assets), "cobol/SYKENC1_SJIS.cbl").orElseThrow();
+            var source = dao.findSourceByPath(Paths.rootOf(assets), "cobol/SYKENC1_SJIS.cbl").orElseThrow();
             var info = dao.findEncodingInfo(source.id()).orElseThrow();
             assertFalse(info.manualOverride());
             assertEquals("windows-31j", info.detectedCharset());

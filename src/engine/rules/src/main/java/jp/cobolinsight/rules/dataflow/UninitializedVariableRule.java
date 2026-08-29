@@ -11,11 +11,13 @@ import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.CompoundStatement;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.core.spi.RuleDoc;
 import jp.cobolinsight.rules.SourceTextIndex;
 
 import java.util.ArrayList;
@@ -38,47 +40,38 @@ import jp.cobolinsight.rules.dataflow.DataFlowSupport.Section;
  */
 public final class UninitializedVariableRule implements Rule {
 
-    @Override
-    public String id() {
-        return "R001";
-    }
+    private static final RuleMeta META = RuleMeta.named("R001", "未初期化変数の参照", "データフロー")
+            .summary("値を設定される前に参照され得るデータ項目を検出します。")
+            .rationale("記憶域に残った値をそのまま使うため、"
+                    + "実行のたびに結果が変わり、再現しない不具合になります。")
+            .detection("到達定義解析で、入口に置いた未初期化の定義が使用位置へ届くものを"
+                    + "検出します。対象は、プログラム内のいずれかの文が明示的に代入する基本項目に"
+                    + "限ります。FILE 節の項目・集団項目・PROCEDURE DIVISION USING の引数・"
+                    + "特殊レジスタと、ファイル状態や CICS 応答コードのように実行系が暗黙に"
+                    + "設定する項目は対象外とします。")
+            .remedy("宣言へ VALUE 句を置くか、参照前に INITIALIZE・MOVE で値を設定します。")
+            .example("""
+                    01  WS-COUNT  PIC 9(4).
+                        IF WS-FLG = "Y"
+                            MOVE 1 TO WS-COUNT
+                        END-IF.
+                        DISPLAY WS-COUNT.
+                    """, """
+                    01  WS-COUNT  PIC 9(4) VALUE ZERO.
+                        IF WS-FLG = "Y"
+                            MOVE 1 TO WS-COUNT
+                        END-IF.
+                        DISPLAY WS-COUNT.
+                    """)
+            .severity(Severity.HIGH)
+            .commands(Command.LINT, Command.REPORT)
+            .targets(AssetKind.COBOL)
+            .needs(Needs.SEMANTIC, Needs.CFG, Needs.DATAFLOW, Needs.SOURCE_TEXT)
+            .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("未初期化変数の参照", "データフロー")
-                .summary("値を設定される前に参照され得るデータ項目を検出します。")
-                .rationale("記憶域に残った値をそのまま使うため、"
-                        + "実行のたびに結果が変わり、再現しない不具合になります。")
-                .detection("到達定義解析で、入口に置いた未初期化の定義が使用位置へ届くものを"
-                        + "検出します。対象は、プログラム内のいずれかの文が明示的に代入する基本項目に"
-                        + "限ります。FILE 節の項目・集団項目・PROCEDURE DIVISION USING の引数・"
-                        + "特殊レジスタと、ファイル状態や CICS 応答コードのように実行系が暗黙に"
-                        + "設定する項目は対象外とします。")
-                .remedy("宣言へ VALUE 句を置くか、参照前に INITIALIZE・MOVE で値を設定します。")
-                .example("""
-                        01  WS-COUNT  PIC 9(4).
-                            IF WS-FLG = "Y"
-                                MOVE 1 TO WS-COUNT
-                            END-IF.
-                            DISPLAY WS-COUNT.
-                        """, """
-                        01  WS-COUNT  PIC 9(4) VALUE ZERO.
-                            IF WS-FLG = "Y"
-                                MOVE 1 TO WS-COUNT
-                            END-IF.
-                            DISPLAY WS-COUNT.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.HIGH;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.DATA_FLOW;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override
@@ -117,7 +110,7 @@ public final class UninitializedVariableRule implements Rule {
                     continue;
                 }
                 int line = statement.range().start().line();
-                findings.add(Finding.of(id(), defaultSeverity().toLevel(),
+                findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         "未初期化の可能性がある " + var + " を、値を設定する前に参照している。"
                                 + "先行経路によっては不定値を用いる。",
                         new SourcePosition(model.sourceFile(), line, 1,

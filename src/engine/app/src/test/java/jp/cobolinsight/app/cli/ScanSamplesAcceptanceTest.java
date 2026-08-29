@@ -1,5 +1,8 @@
 package jp.cobolinsight.app.cli;
 
+import jp.cobolinsight.app.pipeline.Pipelines;
+import jp.cobolinsight.app.pipeline.ScanOutcome;
+import jp.cobolinsight.app.pipeline.Persist;
 import jp.cobolinsight.app.persistence.PersistenceDao;
 import jp.cobolinsight.app.persistence.PersistenceDatabase;
 import jp.cobolinsight.app.persistence.model.CallEdgeRecord;
@@ -37,15 +40,15 @@ class ScanSamplesAcceptanceTest {
     @TempDir
     static Path tempDir;
 
-    private static ScanRunner.Summary summary;
+    private static ScanOutcome.Summary summary;
     private static PersistenceDatabase database;
     private static PersistenceDao dao;
 
     @BeforeAll
     static void scanSamples() {
         Path databaseFile = tempDir.resolve("m1.db");
-        summary = ScanRunner.run(new ScanRunner.Options(SAMPLES, databaseFile,
-                List.of(SAMPLES.resolve("copybook")), Map.of()));
+        summary = Pipelines.scan(SAMPLES, databaseFile,
+                List.of(SAMPLES.resolve("copybook")), Map.of()).summary();
         database = PersistenceDatabase.open(databaseFile);
         dao = new PersistenceDao(database.connection());
     }
@@ -199,8 +202,8 @@ class ScanSamplesAcceptanceTest {
     @Test
     void rescanIntoAnotherDatabaseAssignsIdenticalSourceIds() {
         Path secondDatabaseFile = tempDir.resolve("m1-second.db");
-        ScanRunner.Summary second = ScanRunner.run(new ScanRunner.Options(SAMPLES,
-                secondDatabaseFile, List.of(SAMPLES.resolve("copybook")), Map.of()));
+        ScanOutcome.Summary second = Pipelines.scan(SAMPLES,
+                secondDatabaseFile, List.of(SAMPLES.resolve("copybook")), Map.of()).summary();
         assertEquals(0, second.exitCode());
         try (PersistenceDatabase secondDatabase = PersistenceDatabase.open(secondDatabaseFile)) {
             Map<String, Long> secondIds = new PersistenceDao(secondDatabase.connection())
@@ -220,8 +223,8 @@ class ScanSamplesAcceptanceTest {
 
     @Test
     void rescanWithoutChangesSkipsEveryFile() {
-        ScanRunner.Summary second = ScanRunner.run(new ScanRunner.Options(SAMPLES,
-                tempDir.resolve("m1.db"), List.of(SAMPLES.resolve("copybook")), Map.of()));
+        ScanOutcome.Summary second = Pipelines.scan(SAMPLES,
+                tempDir.resolve("m1.db"), List.of(SAMPLES.resolve("copybook")), Map.of()).summary();
         assertEquals(List.of(), second.analyzed(), "変更が無ければ再解析しないこと");
         assertEquals(20, second.skipped().size());
         assertEquals(0, second.exitCode());
@@ -236,7 +239,7 @@ class ScanSamplesAcceptanceTest {
         for (SourceRecord source : dao.findAllSources()) {
             for (CallEdgeRecord edge : dao.findEdgesFrom(source.id())) {
                 // 呼出関係グラフ層(ID下限以上)は対象外。ここではscanの増分用エッジのみ数える
-                if (edge.id() >= ScanRunner.GRAPH_ID_BASE) {
+                if (edge.id() >= Persist.GRAPH_ID_BASE) {
                     continue;
                 }
                 if (kind.equals(edge.kind())) {

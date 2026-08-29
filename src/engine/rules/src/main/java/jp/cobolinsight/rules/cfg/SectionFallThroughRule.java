@@ -8,11 +8,13 @@ import jp.cobolinsight.core.semantic.Procedure;
 import jp.cobolinsight.core.semantic.ProcedureKind;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
-import jp.cobolinsight.core.spi.Rule;
-import jp.cobolinsight.core.spi.RuleDoc;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,42 +30,34 @@ public final class SectionFallThroughRule implements Rule {
     private record SectionUnit(String name, List<Procedure> members) {
     }
 
-    @Override
-    public String id() {
-        return "R014";
-    }
+    private static final RuleMeta META = RuleMeta
+            .named("R014", "セクション末尾のEXIT文欠如によるフォールスルー", "制御フロー")
+            .summary("末尾が EXIT・終了文・無条件 GO TO のいずれでもなく、"
+                    + "次の節へ流れ落ちる節を検出します。")
+            .rationale("PERFORM で呼ぶ設計の節が、直接実行されたときに次の節まで続けて"
+                    + "実行され、二重処理や順序の狂いを生みます。")
+            .detection("節の末尾が EXIT・STOP・GOBACK・EXIT PROGRAM・無条件 GO TO の"
+                    + "いずれでもないものを検出します。")
+            .remedy("節の末尾に EXIT 段落を置き、そこで処理を閉じます。")
+            .example("""
+                    CALC-SEC SECTION.
+                        COMPUTE WS-TAX = WS-AMT * 0.10.
+                    NEXT-SEC SECTION.
+                    """, """
+                    CALC-SEC SECTION.
+                        COMPUTE WS-TAX = WS-AMT * 0.10.
+                    CALC-EXIT.
+                        EXIT.
+                    """)
+            .severity(Severity.MEDIUM)
+            .commands(Command.LINT, Command.REPORT)
+            .targets(AssetKind.COBOL)
+            .needs(Needs.SEMANTIC)
+            .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("セクション末尾のEXIT文欠如によるフォールスルー", "制御フロー")
-                .summary("末尾が EXIT・終了文・無条件 GO TO のいずれでもなく、"
-                        + "次の節へ流れ落ちる節を検出します。")
-                .rationale("PERFORM で呼ぶ設計の節が、直接実行されたときに次の節まで続けて"
-                        + "実行され、二重処理や順序の狂いを生みます。")
-                .detection("節の末尾が EXIT・STOP・GOBACK・EXIT PROGRAM・無条件 GO TO の"
-                        + "いずれでもないものを検出します。")
-                .remedy("節の末尾に EXIT 段落を置き、そこで処理を閉じます。")
-                .example("""
-                        CALC-SEC SECTION.
-                            COMPUTE WS-TAX = WS-AMT * 0.10.
-                        NEXT-SEC SECTION.
-                        """, """
-                        CALC-SEC SECTION.
-                            COMPUTE WS-TAX = WS-AMT * 0.10.
-                        CALC-EXIT.
-                            EXIT.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.MEDIUM;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.CONTROL_FLOW;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override
@@ -76,7 +70,7 @@ public final class SectionFallThroughRule implements Rule {
                 if (last == null || isTerminating(last)) {
                     continue;
                 }
-                findings.add(Finding.of(id(), defaultSeverity().toLevel(),
+                findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         "節 " + units.get(i).name() + " は末尾が EXIT・終端・GO TO で終わらず、"
                                 + "次の節 " + units.get(i + 1).name() + " へ流下する。",
                         new SourcePosition(model.sourceFile(), last.range().start().line(), 1,

@@ -1,5 +1,8 @@
 package jp.cobolinsight.app.cli;
 
+import jp.cobolinsight.app.pipeline.Paths;
+import jp.cobolinsight.app.pipeline.Pipelines;
+import jp.cobolinsight.app.pipeline.ScanOutcome;
 import jp.cobolinsight.core.transpile.TargetLanguage;
 import jp.cobolinsight.app.persistence.PersistenceDao;
 import jp.cobolinsight.app.persistence.PersistenceDatabase;
@@ -52,8 +55,8 @@ class ScanReanalysisTriggerTest {
 
         // translate は行対応表の外部キーを満たすため SOURCE 行だけを登録する。内容ハッシュは
         // 一致するが解析済みではないため、続く scan はそれらを解析対象に含める必要がある。
-        ScanRunner.Summary summary = ScanRunner.run(new ScanRunner.Options(assets, databaseFile,
-                List.of(assets.resolve("copybook")), Map.of()));
+        ScanOutcome.Summary summary = Pipelines.scan(assets, databaseFile,
+                List.of(assets.resolve("copybook")), Map.of()).summary();
 
         assertEquals(List.of(), summary.skipped(), "translate が登録した行を解析済みとみなさないこと");
         assertEquals(0, summary.exitCode());
@@ -72,10 +75,10 @@ class ScanReanalysisTriggerTest {
         Path databaseFile = tempDir.resolve("removal.db");
         List<Path> copybookPaths = List.of(assets.resolve("copybook"));
 
-        ScanRunner.run(new ScanRunner.Options(assets, databaseFile, copybookPaths, Map.of()));
+        Pipelines.scan(assets, databaseFile, copybookPaths, Map.of()).summary();
         Files.delete(assets.resolve("copybook").resolve("SYKCPY2.cpy"));
-        ScanRunner.Summary summary = ScanRunner.run(new ScanRunner.Options(assets, databaseFile,
-                copybookPaths, Map.of()));
+        ScanOutcome.Summary summary = Pipelines.scan(assets, databaseFile,
+                copybookPaths, Map.of()).summary();
 
         assertEquals(List.of("copybook/SYKCPY2.cpy"), summary.removed());
         assertTrue(summary.analyzed().contains("cobol/SYK002.cbl"),
@@ -91,16 +94,16 @@ class ScanReanalysisTriggerTest {
                 second.resolve("cobol").resolve("SYK003.cbl"));
         Path databaseFile = tempDir.resolve("shared-root.db");
 
-        ScanRunner.run(new ScanRunner.Options(first, databaseFile,
-                List.of(first.resolve("copybook")), Map.of()));
-        ScanRunner.Summary summary = ScanRunner.run(new ScanRunner.Options(second, databaseFile,
-                List.of(first.resolve("copybook")), Map.of()));
+        Pipelines.scan(first, databaseFile,
+                List.of(first.resolve("copybook")), Map.of()).summary();
+        ScanOutcome.Summary summary = Pipelines.scan(second, databaseFile,
+                List.of(first.resolve("copybook")), Map.of()).summary();
 
         assertEquals(List.of(), summary.removed(), "別の資産フォルダの行を消さないこと");
         try (PersistenceDatabase database = PersistenceDatabase.open(databaseFile)) {
             PersistenceDao dao = new PersistenceDao(database.connection());
-            assertEquals(16, dao.findSourcesByRoot(ScanRunner.rootOf(first)).size());
-            assertEquals(1, dao.findSourcesByRoot(ScanRunner.rootOf(second)).size());
+            assertEquals(16, dao.findSourcesByRoot(Paths.rootOf(first)).size());
+            assertEquals(1, dao.findSourcesByRoot(Paths.rootOf(second)).size());
         }
     }
 
@@ -110,9 +113,9 @@ class ScanReanalysisTriggerTest {
         Path databaseFile = tempDir.resolve("codepage.db");
         List<Path> copybookPaths = List.of(assets.resolve("copybook"));
 
-        ScanRunner.run(new ScanRunner.Options(assets, databaseFile, copybookPaths, Map.of()));
-        ScanRunner.Summary second = ScanRunner.run(new ScanRunner.Options(assets, databaseFile,
-                copybookPaths, Map.of("cobol/SYK005.cbl", "Shift_JIS")));
+        Pipelines.scan(assets, databaseFile, copybookPaths, Map.of()).summary();
+        ScanOutcome.Summary second = Pipelines.scan(assets, databaseFile,
+                copybookPaths, Map.of("cobol/SYK005.cbl", "Shift_JIS")).summary();
 
         assertTrue(second.analyzed().contains("cobol/SYK005.cbl"),
                 () -> "コードページ指定の変更で再解析すること: " + second.analyzed());

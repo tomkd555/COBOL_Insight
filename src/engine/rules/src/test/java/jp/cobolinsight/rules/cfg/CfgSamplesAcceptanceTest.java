@@ -2,10 +2,9 @@ package jp.cobolinsight.rules.cfg;
 
 import jp.cobolinsight.core.finding.Finding;
 import jp.cobolinsight.core.finding.FindingLevel;
-import jp.cobolinsight.core.pipeline.AnalysisServices;
 import jp.cobolinsight.core.spi.AnalysisContext;
-import jp.cobolinsight.core.spi.AnalysisPhase;
-import jp.cobolinsight.core.spi.Rule;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.rules.BuiltinRules;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashSet;
@@ -27,8 +26,8 @@ class CfgSamplesAcceptanceTest {
 
     private static Set<Hit> hitsOf(String ruleId) {
         AnalysisContext context = CfgFixtures.samples();
-        Rule rule = AnalysisServices.load().rules(AnalysisPhase.CONTROL_FLOW).stream()
-                .filter(r -> r.id().equals(ruleId)).findFirst().orElseThrow();
+        Rule rule = BuiltinRules.all().stream()
+                .filter(r -> r.meta().id().equals(ruleId)).findFirst().orElseThrow();
         Set<Hit> hits = new LinkedHashSet<>();
         for (Finding finding : rule.evaluate(context)) {
             hits.add(new Hit(baseName(finding.location().file()), finding.location().line(),
