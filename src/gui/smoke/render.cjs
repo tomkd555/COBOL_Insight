@@ -8,7 +8,7 @@
  *   2. choosing a folder runs the analysis and fills the asset tree with kind badges
  *   5. the problems rows open the asset's tab
  *   8. the rules view lists its toggles and a change round-trips through the rule file
- *  15. the import dialog cuts the pasted columns and writes a source file into the asset folder
+ *  16. the import dialog cuts the pasted columns and writes a source file into the asset folder
  *   9. a 200% zoom produces no horizontal scrollbar (never two scroll directions at once)
  *  10. the console carries no error and no CSP refusal ("Refused to ...")
  *  11. Ctrl+Shift+P opens the palette, typing filters it, and Enter runs the command
@@ -286,7 +286,7 @@ async function checkImportDialog(win) {
   await waitUntil(win, clickTestId("import-close"), "the close button");
   await delay(200);
   record(
-    "15. the import dialog cuts the columns and writes the file",
+    "16. the import dialog cuts the columns and writes the file",
     preview.includes("IDENTIFICATION DIVISION.") && !preview.includes("000100") && saved === true,
     "the line-number area was cut away",
   );
