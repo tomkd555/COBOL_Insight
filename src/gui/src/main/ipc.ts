@@ -1,7 +1,7 @@
 import { app, dialog, ipcMain } from "electron";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { readFile, stat } from "node:fs/promises";
+import { readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   CHANNELS,
@@ -14,6 +14,7 @@ import {
   type ImportSourceRequest,
   type ReportArtifactRequest,
   type RulesRequest,
+  type SaveAsRequest,
   type SaveSourceRequest,
   type SourceStamp,
   type StatRequest,
@@ -262,6 +263,18 @@ export function registerIpc(): void {
   });
   ipcMain.handle(CHANNELS.fsImportSource, (_event, request: ImportSourceRequest) =>
     importSource(importFileSystem, request),
+  );
+  // A copy of a generated report. The original artefact stays where the engine wrote it.
+  ipcMain.handle(
+    CHANNELS.fsSaveAs,
+    async (_event, request: SaveAsRequest): Promise<string | null> => {
+      const chosen = await dialog.showSaveDialog({ defaultPath: request.fileName });
+      if (chosen.canceled || chosen.filePath === undefined || chosen.filePath === "") {
+        return null;
+      }
+      await writeFile(chosen.filePath, request.text, "utf-8");
+      return chosen.filePath;
+    },
   );
 
   ipcMain.handle(CHANNELS.settingsRead, () => readSettings(userDataFileSystem, settingsPath()));

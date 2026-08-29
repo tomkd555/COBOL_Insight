@@ -7,6 +7,8 @@
  *   1. the shell is built from four regions (activity bar, side bar, editor area, panel)
  *   2. choosing a folder runs the analysis and fills the asset tree with kind badges
  *   5. the problems rows open the asset's tab
+ *   6. Cytoscape paints the call graph onto a canvas
+ *   7. the execution-order tree orders its children by the engine's seq
  *   8. the rules view lists its toggles and a change round-trips through the rule file
  *  16. the import dialog cuts the pasted columns and writes a source file into the asset folder
  *   9. a 200% zoom produces no horizontal scrollbar (never two scroll directions at once)
@@ -16,8 +18,6 @@
  * TODO 3: opening an asset starts Monaco and its lines land on distinct y coordinates
  *         (without 'unsafe-inline' in style-src every line collapses onto the same y).
  * TODO 4: typing into the body raises the unsaved mark on that tab.
- * TODO 6: Cytoscape builds a canvas and paints nodes onto it (opaque pixels are present).
- * TODO 7: the execution-order list orders its children by the engine's seq.
  * TODO 12: the fix diff shows the original beside the fixed text.
  * TODO 13: the report view renders the engine's HTML.
  * TODO 14: the transpile view lines the generated code up with the COBOL.
@@ -142,6 +142,62 @@ async function checkFindings(win) {
     "the tab the row opened",
   );
   record("5. a problems row opens the asset's tab", rows >= 3 && opened === true, `${rows} rows`);
+}
+
+/**
+ * Checks 6 and 7: the call graph. Cytoscape draws to a canvas, which jsdom cannot exercise at all,
+ * so this is the only place the drawing is proved to happen: the canvas has to carry pixels that are
+ * not fully transparent. The execution-order tree beside it has to list the two steps in the order
+ * the engine's seq gives them, which is the reverse of the order the canned edges are written in.
+ */
+async function checkCallGraph(win) {
+  await waitUntil(win, clickTestId("activity-graph"), "the call-graph tab");
+  await waitUntil(
+    win,
+    `document.querySelector('[data-testid="graph-canvas"] canvas') !== null`,
+    "the cytoscape canvas",
+  );
+
+  // The layout runs asynchronously; poll until something has been painted.
+  const painted = await waitUntil(
+    win,
+    `(() => {
+      const canvases = [...document.querySelectorAll('[data-testid="graph-canvas"] canvas')];
+      let opaque = 0;
+      for (const canvas of canvases) {
+        if (canvas.width === 0 || canvas.height === 0) continue;
+        const image = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+        // Every fourth byte is alpha; a stride keeps a large canvas cheap to scan.
+        for (let index = 3; index < image.length; index += 4 * 37) {
+          if (image[index] > 0) opaque += 1;
+        }
+      }
+      return opaque > 0 ? opaque : null;
+    })()`,
+    "opaque pixels on the graph canvas",
+  );
+  record("6. Cytoscape paints the call graph onto a canvas", painted > 0, `${painted} opaque pixels`);
+
+  const steps = await waitUntil(
+    win,
+    `(() => {
+      const rows = [...document.querySelectorAll('[data-testid="trace-tree"] [role="treeitem"]')]
+        .map((row) => row.textContent);
+      const found = rows.filter((label) => label.includes('STEP0'));
+      return found.length >= 2 ? found : null;
+    })()`,
+    "the steps in the execution-order tree",
+  );
+  const ordered = steps.findIndex((label) => label.includes("STEP010")) <
+    steps.findIndex((label) => label.includes("STEP020"));
+  record("7. the execution-order tree orders its children by seq", ordered, steps.join(" / "));
+
+  // The toolbar drives cytoscape imperatively, which jsdom cannot exercise either. Nothing is
+  // asserted here beyond the buttons working: an exception would surface in the console check.
+  for (const button of ["graph-zoom-in", "graph-zoom-out", "graph-fit", "graph-recenter"]) {
+    await waitUntil(win, clickTestId(button), `the ${button} button`);
+    await delay(120);
+  }
 }
 
 /**
@@ -436,6 +492,7 @@ async function main() {
     await checkShell(win);
     await checkAssetTree(win);
     await checkFindings(win);
+    await checkCallGraph(win);
     await checkRules(win);
     await checkRuleAndSettingsEditors(win);
     await checkImportDialog(win);

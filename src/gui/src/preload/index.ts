@@ -8,6 +8,7 @@ import {
   type ImportSourceRequest,
   type ReportArtifactRequest,
   type RulesRequest,
+  type SaveAsRequest,
   type SaveSourceRequest,
   type StatRequest,
   type TranspileRequest,
@@ -45,6 +46,7 @@ const api: CobolInsightApi = {
   dirExists: (path: string) => ipcRenderer.invoke(CHANNELS.fsDirExists, path),
   stat: (request: StatRequest) => ipcRenderer.invoke(CHANNELS.fsStat, request),
   importSource: (request: ImportSourceRequest) => ipcRenderer.invoke(CHANNELS.fsImportSource, request),
+  saveAs: (request: SaveAsRequest) => ipcRenderer.invoke(CHANNELS.fsSaveAs, request),
 
   readSettings: () => ipcRenderer.invoke(CHANNELS.settingsRead),
   writeSettings: (settings: AppSettings) => ipcRenderer.invoke(CHANNELS.settingsWrite, settings),

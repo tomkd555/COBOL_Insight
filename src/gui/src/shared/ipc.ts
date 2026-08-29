@@ -515,6 +515,14 @@ export interface ImportSourceResult {
   lineCount: number;
 }
 
+/** A copy of a generated artefact, written wherever the save dialog points. */
+export interface SaveAsRequest {
+  /** The file name the dialog offers. */
+  fileName: string;
+  /** The text to write. It is written as UTF-8. */
+  text: string;
+}
+
 /** Which file to stat, inside an allowed base directory. */
 export interface StatRequest {
   baseDir: string;
@@ -551,6 +559,8 @@ export interface CobolInsightApi {
   dirExists(path: string): Promise<boolean>;
   stat(request: StatRequest): Promise<SourceStamp | null>;
   importSource(request: ImportSourceRequest): Promise<ImportSourceResult>;
+  /** Writes a copy of generated text where the save dialog points. Null when it was cancelled. */
+  saveAs(request: SaveAsRequest): Promise<string | null>;
 
   readSettings(): Promise<AppSettings>;
   writeSettings(settings: AppSettings): Promise<void>;
@@ -582,6 +592,7 @@ export const CHANNELS = {
   fsDirExists: "fs:dir-exists",
   fsStat: "fs:stat",
   fsImportSource: "fs:import-source",
+  fsSaveAs: "fs:save-as",
 
   settingsRead: "settings:read",
   settingsWrite: "settings:write",

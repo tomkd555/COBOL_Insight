@@ -6,6 +6,8 @@ import { Welcome } from "../editors/welcome/Welcome";
 import { SourceEditor } from "../editors/source/SourceEditor";
 import { RuleDetail } from "../editors/rules/RuleDetail";
 import { CustomRules } from "../editors/rules/CustomRules";
+import { GraphEditor } from "../editors/graph/GraphEditor";
+import { ReportEditor } from "../editors/report/ReportEditor";
 import { Settings } from "../editors/settings/Settings";
 import { Placeholder } from "../editors/Placeholder";
 
@@ -24,6 +26,12 @@ function editorFor(tab: WorkbenchTab, notify: Notify): ReactElement {
   // A rules tab either describes one rule (its id is in `path`) or edits the user-defined rules.
   if (tab.kind === "rules") {
     return tab.path === null ? <CustomRules notify={notify} /> : <RuleDetail ruleId={tab.path} />;
+  }
+  if (tab.kind === "graph") {
+    return <GraphEditor focusLabel={tab.path} />;
+  }
+  if (tab.kind === "report") {
+    return <ReportEditor notify={notify} />;
   }
   if (tab.kind === "settings") {
     return <Settings notify={notify} />;
