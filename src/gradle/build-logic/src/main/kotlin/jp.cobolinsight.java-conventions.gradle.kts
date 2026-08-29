@@ -12,10 +12,6 @@ java {
     }
 }
 
-repositories {
-    mavenCentral()
-}
-
 // JUnit の版はBOMで一括して固定し、個別の依存にはバージョンを書かない。
 val junitBomVersion = "6.1.2"
 

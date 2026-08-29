@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>jp.cobolinsight.vendor</groupId>
+  <artifactId>che4z-cobol-engine</artifactId>
+  <version>2.5.1-ja1</version>
+  <name>Eclipse Che4z COBOL Language Support engine (patched for Japanese identifiers)</name>
+  <description>engine, common and parser modules of eclipse-che4z/che-che4z-lsp-for-cobol tag 2.5.1
+    plus branch ja-identifiers-2.5.1 of tomkd555/che-che4z-lsp-for-cobol, merged into one jar.
+    Third-party dependencies are declared by the consuming Gradle module, not here.</description>
+  <licenses><license><name>Eclipse Public License 2.0</name><url>https://www.eclipse.org/legal/epl-2.0/</url></license></licenses>
+</project>

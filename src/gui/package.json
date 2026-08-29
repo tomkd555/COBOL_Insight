@@ -1,6 +1,6 @@
 {
   "name": "cobol-insight-gui",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "private": true,
   "description": "COBOL Insight の Electron GUI(electron-vite + React、ネットワーク非接続・全依存ローカル同梱)",
   "main": "out/main/index.js",
@@ -10,6 +10,7 @@
     "typecheck": "tsc -b",
     "start": "electron-vite build && electron-vite preview",
     "test": "vitest run",
+    "check": "npm run typecheck && npm test",
     "test:watch": "vitest",
     "smoke:render": "electron-vite build && electron smoke/render.cjs",
     "dist": "electron-vite build && electron-builder"

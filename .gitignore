@@ -6,8 +6,6 @@ build/
 .idea/
 *.iml
 
-# 上流OSS clone(src/vendor配下)は追跡しない
-/src/vendor/
 
 # Node(Electron GUI)
 node_modules/

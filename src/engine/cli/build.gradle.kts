@@ -9,16 +9,6 @@ application {
     mainClass.set("jp.cobolinsight.cli.Main")
 }
 
-// cobol-frontendが依存するorg.eclipse.lsp.cobol系はmavenLocalにのみ存在する。プロジェクト依存の
-// 実行時解決はcli自身が宣言したリポジトリで行われるため、cli側にも同じ宣言が要る。
-repositories {
-    mavenLocal {
-        content {
-            includeGroup("org.eclipse.lsp.cobol")
-        }
-    }
-}
-
 // installDist成果物(bin/lib)を入力に、内蔵JRE同梱のWindows app-imageをjpackageで生成する。
 // 出力はbuild配下(git追跡外)。
 val jpackageAppImageDir = layout.buildDirectory.dir("jpackage/app-image")
@@ -41,12 +31,16 @@ tasks.register<Exec>("jpackageAppImage") {
         listOf(
             "--type", "app-image",
             "--name", "COBOLInsight",
-            "--app-version", "0.1.0",
+            "--app-version", project.version.toString(),
             "--vendor", "COBOL Insight Project",
             "--input", install.resolve("lib").absolutePath,
-            "--main-jar", "cli.jar",
+            "--main-jar", "cli-${project.version}.jar",
             "--main-class", "jp.cobolinsight.cli.Main",
             "--dest", outDir.get().asFile.absolutePath,
+            "--java-options", "-Dfile.encoding=UTF-8",
+            // jdk.charsets carries x-IBM930/x-IBM939 (EBCDIC); without it the packaged image cannot
+            // decode Japanese EBCDIC sources. java.sql is sqlite-jdbc, java.desktop is graphviz-java.
+            "--add-modules", "java.base,java.logging,java.sql,java.xml,java.naming,java.desktop,java.scripting,jdk.charsets,jdk.unsupported",
             // CLIのためコンソール接続の起動ランチャーを生成する(既定はGUI用の非コンソール)。
             "--win-console"
         )
@@ -84,12 +78,16 @@ dependencies {
     runtimeOnly(project(":engine:sql-frontend"))
 }
 
-// Che4z(EPL-2.0)とMAPA(MIT)のライセンスファイルを配布物(cli.jar)へ同梱する。
-tasks.processResources {
-    from(rootProject.layout.projectDirectory.file("src/vendor/che4z/LICENSE.md")) {
-        into("licenses/che4z")
-    }
-    from(rootProject.layout.projectDirectory.file("src/vendor/mapa/LICENSE")) {
-        into("licenses/mapa")
+// Fails the build when the GUI package.json version drifts from gradle.properties (the single source).
+val checkVersion = tasks.register("checkVersion") {
+    group = "verification"
+    val packageJson = rootProject.layout.projectDirectory.file("src/gui/package.json")
+    val expected = project.version.toString()
+    inputs.file(packageJson)
+    doLast {
+        val actual = Regex("\"version\"[ 	]*:[ 	]*\"([^\"]+)\"")
+            .find(packageJson.asFile.readText())?.groupValues?.get(1)
+        require(actual == expected) { "src/gui/package.json version is $actual but gradle.properties says $expected" }
     }
 }
+tasks.named("check") { dependsOn(checkVersion) }
