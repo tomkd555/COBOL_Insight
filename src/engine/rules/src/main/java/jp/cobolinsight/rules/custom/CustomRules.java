@@ -118,14 +118,15 @@ public final class CustomRules {
                 : compile(inParagraphText, true, "match.inParagraph");
         RuleMeta meta = metaOf(object, id, name, targets,
                 String.join("・", verbs) + " 文を検出します。",
-                describeStatement(verbs, clauses, inParagraphText), Set.of(Needs.SEMANTIC));
+                describeStatement(targets, verbs, clauses, inParagraphText),
+                Set.of(Needs.SEMANTIC));
         return new StatementRule(meta, verbs, clauses, inParagraph, message);
     }
 
-    private static String describeStatement(List<String> verbs, List<String> clauses,
-            String inParagraph) {
-        StringBuilder out = new StringBuilder("対象は ").append(String.join("・", verbs))
-                .append(" 文です。");
+    private static String describeStatement(Set<AssetKind> targets, List<String> verbs,
+            List<String> clauses, String inParagraph) {
+        StringBuilder out = new StringBuilder("対象は ").append(labelOf(targets)).append(" の ")
+                .append(String.join("・", verbs)).append(" 文です。");
         if (clauses.isEmpty()) {
             out.append("該当する文をすべて検出します。");
         } else {
@@ -153,14 +154,16 @@ public final class CustomRules {
         boolean onEveryPath = optionalBoolean(match, "onEveryPath");
         RuleMeta meta = metaOf(object, id, name, targets,
                 verb + " の実行後に " + String.join("・", dataItems) + " を検査しない箇所を検出します。",
-                describeCheckedAfter(verb, textRegex, dataItems, scope, onEveryPath),
+                describeCheckedAfter(targets, verb, textRegex, dataItems, scope, onEveryPath),
                 Set.of(Needs.SEMANTIC, Needs.CFG));
         return new CheckedAfterRule(meta, verb, afterText, dataItems, scope, onEveryPath, message);
     }
 
-    private static String describeCheckedAfter(String verb, String textRegex,
-            List<String> dataItems, CheckedAfterRule.Scope scope, boolean onEveryPath) {
-        StringBuilder out = new StringBuilder("対象は ").append(verb).append(" 文");
+    private static String describeCheckedAfter(Set<AssetKind> targets, String verb,
+            String textRegex, List<String> dataItems, CheckedAfterRule.Scope scope,
+            boolean onEveryPath) {
+        StringBuilder out = new StringBuilder("対象は ").append(labelOf(targets)).append(" の ")
+                .append(verb).append(" 文");
         if (!textRegex.isEmpty()) {
             out.append("(本文が正規表現「").append(textRegex).append("」に一致するもの)");
         }

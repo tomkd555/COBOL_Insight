@@ -86,6 +86,28 @@ class StringOverflowRuleTest {
         assertTrue(findings.get(0).message().contains("WS-SRC"), findings.get(0).message());
     }
 
+    /** ON OVERFLOW を書いてあれば、あふれても黙って切り捨てられることはない。 */
+    @Test
+    void ignoresOverflowThatIsHandled() {
+        String text = program("F016E",
+                "       01  WS-SRC  PIC X(30).\n"
+                        + "       01  WS-A    PIC X(05).\n"
+                        + "       01  WS-B    PIC X(05).\n"
+                        + "       01  WS-DST  PIC X(10).",
+                "           UNSTRING WS-SRC INTO WS-A WS-B",
+                "               ON OVERFLOW",
+                "                   DISPLAY 'UNSTRING OVERFLOW'",
+                "           END-UNSTRING",
+                "           STRING WS-SRC DELIMITED BY SIZE",
+                "               INTO WS-DST",
+                "               ON OVERFLOW",
+                "                   DISPLAY 'STRING OVERFLOW'",
+                "           END-STRING",
+                "           STOP RUN.");
+        assertEquals(List.of(), run("F016E", text),
+                "ON OVERFLOW であふれ時の処理を書いた STRING・UNSTRING は対象外");
+    }
+
     @Test
     void ignoresUnstringThatFits() {
         String text = program("F016D",

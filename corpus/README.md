@@ -5,9 +5,16 @@ Every asset here is deliberately defect-free: each file demonstrates the *correc
 defensive practice for one family of rules (checked file status, checked SQLCODE, checked
 CICS RESP, bounded subscripts, initialised variables, matching MOVE sizes, and so on), so
 that any finding a rule raises against this corpus is by definition a false positive rather
-than a genuine defect. This complements `samples/`, whose `samples/期待結果.md` records
-*intentional* defects for true-positive testing; this corpus carries no equivalent
-ground-truth defect list because none of its findings should exist.
+than a genuine defect. This complements `samples/`, whose `samples/expected-results.md` and
+`samples/expected-findings.tsv` record *intentional* defects for true-positive testing; this
+corpus carries no equivalent ground-truth defect list because none of its findings should exist.
+
+Two more files live here, both produced by the measurement rather than by a rule:
+`baseline.tsv` lists every corpus finding that was judged not worth changing a rule for, with a
+written reason, and `rule-hits.md` carries the per-rule numbers and the verdict each one earned.
+`RuleEvaluationReportTest` writes the table in `rule-hits.md` and fails on a corpus finding that
+`baseline.tsv` does not account for, so new noise cannot slip in unnoticed. No asset in this
+corpus was changed to please a rule.
 
 All files are synthetic and hand-written for this corpus. None of the code, comments, or
 data is copied from real production sources. The `CRP` prefix (`CRP001.cbl`, `CRPD010.jcl`,

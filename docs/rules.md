@@ -53,8 +53,8 @@ to standard error as `警告: ルール設定: …`; `rules` carries them in its
 under `ruleErrors`.
 
 There is a second wording for an unknown id — `rule <id> was removed in V2` — used
-when the id is on the removed list. That list is currently empty, so the message
-does not occur in this build.
+when the id is on the removed list. That list holds `S003`, `S005` and `S006`; see
+"How the default rules were validated" below for why they went.
 
 ## Per-rule override
 
@@ -155,10 +155,11 @@ Which asset kinds the rule examines. Allowed values, upper-cased and trimmed:
 rejected (`targets が空である`); a non-array with `targets は配列で書く`; an
 unknown kind with `targets に扱えない種別がある: …`.
 
-`targets` is honoured by `match.kind = "line"`, which resolves each file's kind
-from its extension and skips the kinds not listed. The `statement` and
-`checked-after` kinds walk the parsed COBOL programs, so they see COBOL regardless
-of what `targets` says; the value still appears in the catalogue.
+All three `match.kind` values honour `targets`. Each file's kind is resolved from
+its extension, and a file of a kind the rule does not list — or of an extension that
+names no kind at all — is skipped. `statement` and `checked-after` walk parsed
+programs, so the only distinction they can draw in practice is `COBOL` against
+`COPYBOOK`; a rule that lists neither examines nothing.
 
 ## `match.kind`
 
@@ -346,3 +347,44 @@ the next `CALL`, by a condition naming `RETURN-CODE` or `WS-STATUS`, on every pa
 resulting catalogue. Custom rules appear with `"source": "user"`, overrides show
 in `severity` and `enabled` next to `defaultSeverity` and `defaultEnabled`, and
 every per-entry problem appears in `ruleErrors`.
+
+## How the default rules were validated
+
+The build ships 34 built-in rules. Which of them are on by default, and which
+exist at all, was settled by measurement rather than by taste.
+
+**The two folders.** `samples/` carries deliberate defects, one row each in
+`samples/expected-findings.tsv`, and answers "does the rule find what it claims
+to find". `corpus/` answers the opposite question: every file in it is written to
+demonstrate the correct, defensive practice for one family of rules, so it holds
+no defects and every finding against it is a false positive by construction. Both
+folders are synthetic — hand-written for this repository, nothing copied from a
+real system — so the numbers say how a rule behaves on the idioms these files use,
+not how often it is right in the field.
+
+**The harness.** `RuleEvaluationReportTest` (in the `app` module) runs `lint` and
+`sql-lint` over both folders with every rule forced on, ignoring any `rules.json`,
+so a rule that ships disabled is measured too. It writes the per-rule table into
+`corpus/rule-hits.md`: samples findings, how many of them are expected defects,
+how many are not, and how many findings the corpus drew.
+
+**The baseline.** Every corpus finding has to be listed in `corpus/baseline.tsv`
+as `ruleId <TAB> file:line <TAB> reason`, with `*` in place of `file:line`
+accepting every finding of one rule. The test fails when a corpus finding is not
+listed, and when a listed one no longer fires, so noise arrives as a diff someone
+has to read instead of drifting in unnoticed. The same test gates coverage: a rule
+that is on by default must have at least one positive fixture, either a row in
+`expected-findings.tsv` or a test under the `rules` module that builds the rule and
+evaluates it.
+
+**What the measurement changed.** R008 (PERFORM without THRU) now ships off: 43
+findings over samples and 51 over the corpus, none of them a defect. S005 (FETCH
+FIRST missing) and S006 (OPTIMIZE FOR missing) were dropped: they fired on every
+SELECT and on every cursor declaration for no defect at all. S003 was folded into
+S002, which now carries both message variants — a function on a column is one way
+of being non-SARGable, and a function on the left of a comparison used to be
+reported by both rules at once. R011 and R016 kept their place with the cause of a
+false positive fixed rather than baselined. Proposals to switch off R006, R009,
+R029 and R030, and to re-scope R017, were rejected: the first four drew no findings
+at all, and the R017 re-scope would have lost expected defect No.6. The verdict on
+each rule, with the number behind it, is in `corpus/rule-hits.md`.

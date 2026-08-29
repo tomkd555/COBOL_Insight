@@ -71,7 +71,9 @@ final class CheckedAfterRule implements Rule {
         }
         List<Finding> findings = new ArrayList<>();
         for (CobolSemanticModel model : ctx.cobolPrograms()) {
-            cfgs.of(model).ifPresent(cfg -> evaluate(model, cfg, findings));
+            if (StatementRule.inTargets(meta, model)) {
+                cfgs.of(model).ifPresent(cfg -> evaluate(model, cfg, findings));
+            }
         }
         return findings;
     }

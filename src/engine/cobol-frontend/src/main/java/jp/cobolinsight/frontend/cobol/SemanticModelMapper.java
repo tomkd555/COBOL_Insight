@@ -306,7 +306,25 @@ final class SemanticModelMapper {
         if (node instanceof ExitNode) {
             return simple("EXIT", node);
         }
+        collectNestedPerforms(node, procedureName);
         return simple(resolveVerb(node), node);
+    }
+
+    /**
+     * PERFORM 関係のうち、平坦な文として写す文の条件句の中にあるもの
+     * (READ ... NOT INVALID KEY PERFORM ...、COMPUTE ... ON SIZE ERROR PERFORM ... など)を拾う。
+     * 文そのものは SimpleStatement のまま写し、関係だけを記録する。記録しないと、そこからしか
+     * 呼ばれない段落が「どこからも参照されない」ものに見える。
+     */
+    private void collectNestedPerforms(Node node, String procedureName) {
+        for (Node child : node.getChildren()) {
+            if (child instanceof PerformNode perform && !perform.isInline()) {
+                performs.add(new PerformRelation(procedureName, perform.getTarget().getName(),
+                        Optional.ofNullable(perform.getThru()).map(t -> t.getName()),
+                        rangeOf(perform.getLocality())));
+            }
+            collectNestedPerforms(child, procedureName);
+        }
     }
 
     private CompoundStatement mapIf(IfNode ifNode, String procedureName) {

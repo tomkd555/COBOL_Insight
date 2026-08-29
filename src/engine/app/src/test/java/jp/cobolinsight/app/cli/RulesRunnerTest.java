@@ -57,7 +57,7 @@ class RulesRunnerTest {
     @Test
     void listsBuiltinRulesWithDescriptions() {
         RulesRunner.Result result = run(null, null);
-        assertEquals(37, result.rules().size());
+        assertEquals(34, result.rules().size());
         Map<String, Object> first = JsonReader.asObject(rulesOf(result).get(0));
         assertEquals("R001", first.get("id"));
         assertEquals("未初期化変数の参照", first.get("name"));
@@ -85,7 +85,7 @@ class RulesRunnerTest {
     @Test
     void customRulesJoinTheCatalog(@TempDir Path dir) throws IOException {
         RulesRunner.Result result = run(write(dir, CUSTOM_RULE), null);
-        assertEquals(38, result.rules().size());
+        assertEquals(35, result.rules().size());
         Map<String, Object> custom = rulesOf(result).stream()
                 .map(JsonReader::asObject)
                 .filter(rule -> "U001".equals(rule.get("id")))
@@ -101,7 +101,7 @@ class RulesRunnerTest {
     void invalidCustomRuleIsReportedWithoutStoppingTheList(@TempDir Path dir) throws IOException {
         RulesRunner.Result result =
                 run(write(dir, "{\"version\": 2, \"custom\": [{\"id\": \"bad\"}]}"), null);
-        assertEquals(37, result.rules().size());
+        assertEquals(34, result.rules().size());
         assertEquals(1, result.errors().size());
         assertTrue(result.toText().contains("警告"), result.toText());
     }
@@ -120,12 +120,19 @@ class RulesRunnerTest {
         assertEquals(List.of(), JsonReader.asArray(jsonOf(result).get("ruleErrors")));
     }
 
-    /** 設定が無ければ全ルールが有効である。 */
+    /**
+     * 設定が無ければ、既定で無効なルール以外はすべて有効である。R008 は計測の結果として既定で
+     * 無効であり(corpus/rule-hits.md)、設定ファイルが無い状態でもその1件だけは無効で出る。
+     */
     @Test
-    void everyRuleIsEnabledWithoutRulesFile() {
+    void onlyTheDefaultOffRuleIsDisabledWithoutRulesFile() {
         RulesRunner.Result result = run(null, null);
-        assertTrue(rulesOf(result).stream().map(JsonReader::asObject)
-                .allMatch(rule -> Boolean.TRUE.equals(rule.get("enabled"))));
+        Map<String, Boolean> enabled = rulesOf(result).stream()
+                .map(JsonReader::asObject)
+                .collect(Collectors.toMap(rule -> (String) rule.get("id"),
+                        rule -> (Boolean) rule.get("enabled")));
+        assertEquals(List.of("R008"), enabled.entrySet().stream()
+                .filter(entry -> !entry.getValue()).map(Map.Entry::getKey).sorted().toList());
     }
 
     /** ルールを入れ替えた後に設定へ取り残されたIDは、指定を捨てずに警告で知らせる。 */
@@ -141,6 +148,6 @@ class RulesRunnerTest {
     @Test
     void textListingCountsBuiltinAndCustomRulesSeparately(@TempDir Path dir) throws IOException {
         String text = run(write(dir, CUSTOM_RULE), null).toText();
-        assertTrue(text.contains("合計 38 件(組み込み 37・利用者定義 1)"), text);
+        assertTrue(text.contains("合計 35 件(組み込み 34・利用者定義 1)"), text);
     }
 }

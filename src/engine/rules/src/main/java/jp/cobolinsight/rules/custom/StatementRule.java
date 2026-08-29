@@ -9,6 +9,7 @@ import jp.cobolinsight.core.semantic.Procedure;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.semantic.StatementBlock;
+import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
 
@@ -48,6 +49,9 @@ final class StatementRule implements Rule {
     public List<Finding> evaluate(AnalysisContext ctx) {
         List<Finding> findings = new ArrayList<>();
         for (CobolSemanticModel model : ctx.cobolPrograms()) {
+            if (!inTargets(meta, model)) {
+                continue;
+            }
             for (Procedure procedure : model.procedures()) {
                 if (inParagraph != null && !inParagraph.matcher(procedure.name()).find()) {
                     continue;
@@ -88,6 +92,18 @@ final class StatementRule implements Rule {
             }
         }
         return false;
+    }
+
+    /**
+     * Whether a parsed program is of a kind the rule declares in {@code targets}. The declarative
+     * kinds that walk parsed programs — {@code statement} and {@code checked-after} — share this
+     * with the {@code line} kind, so a rule targeting only {@code COPYBOOK} does not report on a
+     * COBOL program and the other way round. A file whose extension names no kind is skipped, the
+     * same as under {@code line}.
+     */
+    static boolean inTargets(RuleMeta meta, CobolSemanticModel model) {
+        AssetKind kind = AssetKind.ofFileName(model.sourceFile());
+        return kind != null && meta.targets().contains(kind);
     }
 
     /** Upper case with runs of whitespace collapsed, so a clause spanning two lines still matches. */

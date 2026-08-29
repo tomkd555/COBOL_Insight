@@ -1,0 +1,11 @@
+# Accepted corpus findings. The corpus is defect-free, so every row here is a false positive that
+# was judged not worth changing the rule for. "*" in place of file:line accepts every finding of
+# that rule. RuleEvaluationReportTest fails on a corpus finding missing from this file, and on a
+# row that no longer fires, so noise arrives as a reviewable diff.
+ruleId	file:line	reason
+R005	CRP001.cbl:163	The subscript is bounded by the IF above it, which caps WS-検証件数 at WS-明細上限 (10). The interval analysis does not narrow on branches — the CFG carries no true/false edge labels — so it keeps the PICTURE bound of CRP1-明細件数 instead.
+R005	CRP004.cbl:48	WS-IDX is the control variable of a paragraph-level PERFORM VARYING and is in range on every path that runs the paragraph. The CFG also carries the fall-through edge from the paragraph above, which is never taken because that paragraph is only ever entered by PERFORM; the state on it has WS-IDX past the loop bound.
+R005	CRP004.cbl:56	Same PERFORM VARYING, same never-taken fall-through edge, at the DISPLAY of the computed amount.
+R008	*	R008 is off by default. It reported 51 findings over the corpus and 43 over samples for no defect at all; whether a PERFORM names its end with THRU is a house style, not a bug. Kept measurable by forcing every rule on in the harness.
+R014	CRP008.cbl:73	CRP008 uses SECTION headers as labels: every paragraph is entered by a PERFORM naming the paragraph, and no PERFORM names a section, so the fall-through from 1000-初期化SECTION into 2000-検証SECTION is never taken. R014 does not ask whether anything performs the section, and narrowing it to sections that are performed would cost it the latent trap it exists to catch in section-structured programs.
+R017	CRP002.cbl:154	The REWRITE handles its failure with INVALID KEY / NOT INVALID KEY, which R017 deliberately does not count as a check because it catches one event and not an I/O error in general. WS-MASTER-STATUS is tested after OPEN but on no path forward from this REWRITE. Re-scoping R017 to "the status item is read nowhere in the program" would clear this, and would lose expected defect No.6 (SYK002:130), whose WS-MASTER-STATUS is read at SYK002:95.

@@ -40,7 +40,7 @@ class LintCommandTest {
             "           GOBACK.",
             "");
 
-    /** 警告どまりの資産。THRUなし単独段落PERFORM(R008)を含む。 */
+    /** 警告どまりの資産。どこからも呼ばれない段落(R011)を含む。 */
     private static final String WARNING = String.join("\n",
             "       IDENTIFICATION DIVISION.",
             "       PROGRAM-ID.  WARN1.",
@@ -50,10 +50,11 @@ class LintCommandTest {
             "       01  WS-COUNT                    PIC 9(03).",
             "       PROCEDURE DIVISION.",
             "       0000-MAIN.",
-            "           PERFORM 1000-STEP",
+            "           MOVE 1 TO WS-COUNT",
+            "           DISPLAY WS-COUNT",
             "           GOBACK.",
             "       1000-STEP.",
-            "           MOVE 1 TO WS-COUNT.",
+            "           MOVE 2 TO WS-COUNT.",
             "");
 
     /** エラーを含む資産。VALUE 句へ認証情報を直書きした項目(R026)を含む。 */
@@ -116,14 +117,14 @@ class LintCommandTest {
     void rulesFileSuppressesItsFindings() throws IOException {
         Path dir = assets("warncfg", WARNING.replace("WARN1", "WARNCFG"));
         Path config = tempDir.resolve("rules.json");
-        Files.writeString(config, "{\"version\": 2, \"rules\": {\"R008\": {\"enabled\": false}}}",
+        Files.writeString(config, "{\"version\": 2, \"rules\": {\"R011\": {\"enabled\": false}}}",
                 StandardCharsets.UTF_8);
 
         int exitCode = new CommandLine(new Main()).execute("lint", dir.toString(),
                 "--sarif", tempDir.resolve("warncfg.sarif").toString(),
                 "--rules", config.toString());
 
-        assertEquals(0, exitCode, "設定ファイルで R008 を無効化すると成功(0)になること");
+        assertEquals(0, exitCode, "設定ファイルで R011 を無効化すると成功(0)になること");
     }
 
     /** 設定ファイルは複数件を並べられる。1件目だけを読んで打ち切らないことを固める。 */
@@ -132,14 +133,14 @@ class LintCommandTest {
         Path dir = assets("warnmany", WARNING.replace("WARN1", "WARNMANY"));
         Path config = tempDir.resolve("rules-many.json");
         Files.writeString(config, "{\"version\": 2, \"rules\": {\"R001\": {\"enabled\": false},"
-                        + " \"R008\": {\"enabled\": false}}}",
+                        + " \"R011\": {\"enabled\": false}}}",
                 StandardCharsets.UTF_8);
 
         int exitCode = new CommandLine(new Main()).execute("lint", dir.toString(),
                 "--sarif", tempDir.resolve("warnmany.sarif").toString(),
                 "--rules", config.toString());
 
-        assertEquals(0, exitCode, "並べた R001・R008 のいずれも無効化されること");
+        assertEquals(0, exitCode, "並べた R001・R011 のいずれも無効化されること");
     }
 
     /**

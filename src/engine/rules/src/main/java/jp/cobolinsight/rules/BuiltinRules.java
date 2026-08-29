@@ -26,10 +26,7 @@ import jp.cobolinsight.rules.dataflow.StringOverflowRule;
 import jp.cobolinsight.rules.dataflow.UninitializedVariableRule;
 import jp.cobolinsight.rules.dataflow.UnsignedNegativeResultRule;
 import jp.cobolinsight.rules.sql.CursorDeclarationRule;
-import jp.cobolinsight.rules.sql.FetchFirstMissingRule;
-import jp.cobolinsight.rules.sql.FunctionOnIndexColumnRule;
 import jp.cobolinsight.rules.sql.NonSargablePredicateRule;
-import jp.cobolinsight.rules.sql.OptimizeForMissingRule;
 import jp.cobolinsight.rules.sql.SelectStarRule;
 import jp.cobolinsight.rules.syntax.BinarySubscriptRule;
 import jp.cobolinsight.rules.syntax.CopyReplacingRule;
@@ -86,9 +83,6 @@ public final class BuiltinRules {
                 new UndefinedBmsMapReferenceRule(),
                 new SelectStarRule(),
                 new NonSargablePredicateRule(),
-                new FunctionOnIndexColumnRule(),
-                new CursorDeclarationRule(),
-                new FetchFirstMissingRule(),
-                new OptimizeForMissingRule());
+                new CursorDeclarationRule());
     }
 }
