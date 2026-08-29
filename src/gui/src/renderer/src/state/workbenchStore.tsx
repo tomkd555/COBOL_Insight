@@ -104,6 +104,19 @@ export function customRulesTab(title: string): WorkbenchTab {
   return { id: CUSTOM_RULES_TAB_ID, kind: "rules", title, path: null, line: null };
 }
 
+/**
+ * The call-graph editor. `path` carries the label of the node to centre on — the program a problems
+ * row named, say — or null to open on the graph's own roots.
+ */
+export function graphTab(title: string, focusLabel: string | null = null): WorkbenchTab {
+  return { id: "graph", kind: "graph", title, path: focusLabel, line: null };
+}
+
+/** The report editor. */
+export function reportTab(title: string): WorkbenchTab {
+  return { id: "report", kind: "report", title, path: null, line: null };
+}
+
 /** The settings editor. */
 export function settingsTab(title: string): WorkbenchTab {
   return { id: "settings", kind: "settings", title, path: null, line: null };
@@ -172,11 +185,12 @@ export function workbenchReducer(state: WorkbenchState, action: WorkbenchAction)
       if (existing === undefined) {
         return { ...state, tabs: [...state.tabs, action.tab], activeTabId: action.tab.id };
       }
-      // An open tab is not opened again; only the requested line is replaced.
+      // An open tab is not opened again; only what the request points at is replaced — the line for
+      // a source tab, and the node to centre on for the call graph.
       return {
         ...state,
         tabs: state.tabs.map((tab) =>
-          tab.id === action.tab.id ? { ...tab, line: action.tab.line } : tab,
+          tab.id === action.tab.id ? { ...tab, path: action.tab.path, line: action.tab.line } : tab,
         ),
         activeTabId: action.tab.id,
       };

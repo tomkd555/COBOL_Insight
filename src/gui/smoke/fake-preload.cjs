@@ -168,8 +168,10 @@ const GRAPH = {
     { id: GRAPH_ID_BASE + 3, type: "STEP", label: "STEP020" },
   ],
   edges: [
-    { from: GRAPH_ID_BASE + 1, to: GRAPH_ID_BASE + 2, kind: "EXECUTION", resolution: "CONSTANT", seq: 1, line: 20 },
+    // The two steps are listed out of execution order on purpose: the screen has to order them by
+    // seq, not by the order they were read in.
     { from: GRAPH_ID_BASE + 1, to: GRAPH_ID_BASE + 3, kind: "EXECUTION", resolution: "CONSTANT", seq: 2, line: 30 },
+    { from: GRAPH_ID_BASE + 1, to: GRAPH_ID_BASE + 2, kind: "EXECUTION", resolution: "CONSTANT", seq: 1, line: 20 },
     { from: GRAPH_ID_BASE + 2, to: 2, kind: "EXECUTION", resolution: "CONSTANT", seq: 1, line: 20 },
     { from: 2, to: 3, kind: "CALL", resolution: "CONSTANT", seq: 1, line: 11 },
   ],
@@ -307,6 +309,7 @@ const api = {
   },
   importSource: (request) =>
     Promise.resolve({ status: "written", relPath: request.fileName, lineCount: request.lines.length }),
+  saveAs: (request) => Promise.resolve(`C:\\smoke\\${request.fileName}`),
 
   readSettings: () => Promise.resolve(settings),
   writeSettings: (next) => {

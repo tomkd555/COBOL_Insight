@@ -11,6 +11,8 @@ import { text } from "../text";
 import type { ProjectState } from "./projectStore";
 import {
   CUSTOM_RULES_TAB_ID,
+  graphTab,
+  reportTab,
   settingsTab,
   type WorkbenchAction,
   type WorkbenchState,
@@ -29,6 +31,8 @@ export type CommandId =
   | "view.showRules"
   | "view.showProblems"
   | "view.showOutput"
+  | "view.showGraph"
+  | "view.showReport"
   | "view.showSettings"
   | "rules.toggleActive"
   | "rules.validateCustom"
@@ -153,6 +157,20 @@ export function buildCommands(context: CommandContext): Command[] {
       category: text.command.categoryView,
       when: () => true,
       run: () => workbenchDispatch({ type: "SHOW_PANEL", view: "output" }),
+    },
+    {
+      id: "view.showGraph",
+      title: text.command.showGraph,
+      category: text.command.categoryView,
+      when: () => true,
+      run: () => workbenchDispatch({ type: "OPEN_TAB", tab: graphTab(text.graph.title) }),
+    },
+    {
+      id: "view.showReport",
+      title: text.command.showReport,
+      category: text.command.categoryView,
+      when: () => true,
+      run: () => workbenchDispatch({ type: "OPEN_TAB", tab: reportTab(text.report.title) }),
     },
     {
       id: "view.showSettings",

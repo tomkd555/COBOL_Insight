@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactElement } from "react";
 import { text } from "../../text";
 import { artifactItems, useProject } from "../../state/projectStore";
 import { useSettings } from "../../state/settingsStore";
+import { graphTab, useWorkbenchDispatch } from "../../state/workbenchStore";
 import {
   ALL,
   fileNames,
@@ -15,6 +16,13 @@ import {
 } from "../../model/findings";
 import { ruleOf } from "../../model/ruleIndex";
 import { SEVERITIES, type Severity } from "../../model/severity";
+
+/** The program a finding's file stands for: the file name without its folders and extension. */
+function programNameOf(file: string): string {
+  const name = file.split("/").pop() ?? file;
+  const dot = name.lastIndexOf(".");
+  return dot <= 0 ? name : name.slice(0, dot);
+}
 
 export interface ProblemsProps {
   onOpenAsset: (path: string, line: number | null) => void;
@@ -32,6 +40,7 @@ export interface ProblemsProps {
 export function Problems({ onOpenAsset, compact = false }: ProblemsProps): ReactElement {
   const project = useProject();
   const settings = useSettings();
+  const dispatch = useWorkbenchDispatch();
   const [filter, setFilter] = useState<FindingFilter>(initialFindingFilter);
 
   const merged = useMemo(
@@ -189,7 +198,25 @@ export function Problems({ onOpenAsset, compact = false }: ProblemsProps): React
                   {row.finding.ruleId} {row.ruleName}
                 </td>
                 <td className="ci-problems__message">{row.finding.message}</td>
-                <td className="ci-problems__file">{row.finding.file}</td>
+                <td className="ci-problems__file">
+                  {row.finding.file}
+                  <button
+                    type="button"
+                    className="ci-problems__graph"
+                    aria-label={text.problems.openInGraph(row.finding.file)}
+                    title={text.problems.openInGraph(row.finding.file)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      dispatch({
+                        type: "OPEN_TAB",
+                        tab: graphTab(text.graph.title, programNameOf(row.finding.file)),
+                      });
+                    }}
+                    data-testid={`finding-graph-${row.key}`}
+                  >
+                    <span className="codicon codicon-type-hierarchy" aria-hidden="true" />
+                  </button>
+                </td>
                 <td className="ci-problems__line">{row.finding.startLine}</td>
               </tr>
             ))}
