@@ -6,21 +6,25 @@
  *
  *   1. the shell is built from four regions (activity bar, side bar, editor area, panel)
  *   2. choosing a folder runs the analysis and fills the asset tree with kind badges
+ *   3. opening an asset starts Monaco and its lines land on distinct y coordinates
+ *      (without 'unsafe-inline' in style-src every line collapses onto the same y)
+ *   4. typing into the body raises the unsaved mark on that tab
  *   5. the problems rows open the asset's tab
  *   9. a 200% zoom produces no horizontal scrollbar (never two scroll directions at once)
  *  10. the console carries no error and no CSP refusal ("Refused to ...")
  *  11. Ctrl+Shift+P opens the palette, typing filters it, and Enter runs the command
+ *  12. a CP930 asset opens as readable text and its identification area is marked at the
+ *      byte-correct character, not the 73rd character
+ *  13. switching away from an edited tab and back keeps the edit, and Ctrl+Z takes it back
+ *  14. saving a file that changed underneath raises the conflict dialog instead of overwriting
+ *  15. a finding whose rule has a fix offers a quick fix, which opens the diff tab
  *
- * TODO 3: opening an asset starts Monaco and its lines land on distinct y coordinates
- *         (without 'unsafe-inline' in style-src every line collapses onto the same y).
- * TODO 4: typing into the body raises the unsaved mark on that tab.
  * TODO 6: Cytoscape builds a canvas and paints nodes onto it (opaque pixels are present).
  * TODO 7: the execution-order list orders its children by the engine's seq.
  * TODO 8: the rules tab lists its toggles and a change round-trips through the rule file.
- * TODO 12: the fix diff shows the original beside the fixed text.
- * TODO 13: the report view renders the engine's HTML.
- * TODO 14: the transpile view lines the generated code up with the COBOL.
- * TODO 15: the import dialog writes a source file into the asset folder.
+ * TODO 16: the report view renders the engine's HTML.
+ * TODO 17: the transpile view lines the generated code up with the COBOL.
+ * TODO 18: the import dialog writes a source file into the asset folder.
  *
  * Elements are selected by data-testid: selecting by visible text or class name would break this
  * smoke every time the wording or the styling changed. The engine is never launched — the preload is
@@ -45,6 +49,16 @@ const FAKE_PRELOAD = join(__dirname, "fake-preload.cjs");
 const results = [];
 /** The errors and CSP refusals the console carried. */
 const consoleErrors = [];
+
+/**
+ * Messages Chromium reports on the error channel that are not faults.
+ *
+ * The ResizeObserver notice is raised when an observer's callback resizes what it observes within
+ * the same frame, which is exactly what Monaco's automaticLayout does when an editor is mounted into
+ * a tab that is itself still being laid out. The specification calls for the remaining work to be
+ * delivered on the next frame, and it is; nothing is lost.
+ */
+const BENIGN = [/^ResizeObserver loop /];
 
 function record(name, ok, detail) {
   results.push({ name, ok, detail });
@@ -119,6 +133,258 @@ async function checkAssetTree(win) {
     "2. the asset tree fills with kind badges",
     rows > 0 && badges >= 5,
     `${rows} rows, ${badges} badges`,
+  );
+}
+
+/** The one editor of the group, reached through the handle vendor/monacoEditor publishes. */
+const EDITOR = `window.ciMonaco.editor.getEditors()[0]`;
+
+/** Opens one asset from the tree and waits until the editor is showing it. */
+async function openAsset(win, path) {
+  await waitUntil(win, clickTestId(`tree-${path}`), `the tree row for ${path}`);
+  await waitUntil(
+    win,
+    `(() => {
+      const editor = ${EDITOR};
+      const model = editor === undefined ? null : editor.getModel();
+      return model !== null && model.getValueLength() > 0 ? true : null;
+    })()`,
+    `the editor showing ${path}`,
+  );
+}
+
+/** A fragment only the first asset's text carries, for telling which model the editor is showing. */
+const SYK001_MARK = "SYK00110";
+
+/**
+ * Selects an already-open source tab and waits until the editor is showing that tab's model. The
+ * model is swapped in an effect, so clicking the tab and typing straight away would type into the
+ * model of the tab that was open before.
+ */
+async function activateSourceTab(win, path, mark) {
+  await waitUntil(win, clickTestId(`tab-source:${path}`, "button"), `the tab for ${path}`);
+  await waitUntil(
+    win,
+    `(() => {
+      const model = ${EDITOR} === undefined ? null : ${EDITOR}.getModel();
+      return model !== null && model.getValue().includes(${JSON.stringify(mark)}) ? true : null;
+    })()`,
+    `the editor showing ${path}`,
+  );
+}
+
+/** Types one character at the start of the document, through Monaco's own input handling. */
+function typeAtStart(text) {
+  return `(() => {
+    const editor = ${EDITOR};
+    if (editor === undefined) return false;
+    editor.focus();
+    editor.setPosition({ lineNumber: 1, column: 1 });
+    editor.trigger('smoke', 'type', { text: ${JSON.stringify(text)} });
+    return true;
+  })()`;
+}
+
+/**
+ * Check 3: Monaco really lays its lines out. Without 'unsafe-inline' in style-src the editor's
+ * generated stylesheet is refused and every line collapses onto the same y coordinate, which is a
+ * regression no jsdom test can see.
+ */
+async function checkEditorLayout(win) {
+  await openAsset(win, "cobol/SYK001.cbl");
+  const layout = await waitUntil(
+    win,
+    `(() => {
+      const lines = [...document.querySelectorAll('.monaco-editor .view-line')];
+      if (lines.length < 3) return null;
+      const tops = new Set(lines.map((line) => Math.round(line.getBoundingClientRect().top)));
+      return { lines: lines.length, distinct: tops.size };
+    })()`,
+    "the editor's rendered lines",
+  );
+  record(
+    "3. Monaco renders its lines at distinct y coordinates",
+    layout.lines >= 3 && layout.distinct === layout.lines,
+    `${layout.lines} lines, ${layout.distinct} distinct tops`,
+  );
+}
+
+/** Check 4: typing raises the unsaved mark on the tab. */
+async function checkDirtyMark(win) {
+  await waitUntil(win, typeAtStart("X"), "typing into the editor");
+  const marked = await waitUntil(
+    win,
+    `document.querySelector('[data-testid="dirty-source:cobol/SYK001.cbl"]') !== null`,
+    "the unsaved mark",
+  );
+  record("4. typing raises the unsaved mark on the tab", marked === true);
+}
+
+/**
+ * Check 13: the text model belongs to the tab, not to the editor, so switching away and back keeps
+ * both the edit and the undo stack. The edit made by check 4 is the one carried across.
+ */
+async function checkEditSurvivesSwitch(win) {
+  await openAsset(win, "cobol/SYK002.cbl");
+  await activateSourceTab(win, "cobol/SYK001.cbl", SYK001_MARK);
+  const kept = await waitUntil(
+    win,
+    `${EDITOR}.getValue().startsWith('X') ? 'kept' : null`,
+    "the edit after switching back",
+  );
+  await evaluate(win, `${EDITOR}.trigger('smoke', 'undo', null)`);
+  const undone = await waitUntil(
+    win,
+    `(() => {
+      const clean = !${EDITOR}.getValue().startsWith('X');
+      const mark = document.querySelector('[data-testid="dirty-source:cobol/SYK001.cbl"]');
+      return clean && mark === null ? 'undone' : null;
+    })()`,
+    "the undo",
+  );
+  record(
+    "13. an edit survives a tab switch and Ctrl+Z takes it back",
+    kept === "kept" && undone === "undone",
+  );
+}
+
+/**
+ * Check 12: an EBCDIC CP930 asset opens as readable text, and its identification area is marked at
+ * the character byte column 73 actually falls on. The fixture's third line holds double-byte
+ * characters wrapped in shift bytes, so that is character 53 — anything counting characters instead
+ * of bytes would mark character 73 or nothing at all.
+ */
+async function checkEbcdicColumns(win) {
+  await openAsset(win, "encoding/SYKENC1_CP930.cbl");
+  const marked = await waitUntil(
+    win,
+    `(() => {
+      const model = ${EDITOR}.getModel();
+      if (model === null || model.getLineCount() < 3) return null;
+      const line = model.getLineContent(3);
+      if (!line.includes('文字コード')) return null;
+      const rendered = [...document.querySelectorAll('.monaco-editor .view-line')].find(
+        (element) => element.textContent.replace(/\\u00a0/g, ' ').startsWith('      *  文字'),
+      );
+      if (rendered === undefined) return null;
+      const areas = [...rendered.querySelectorAll('.ci-code__identification')];
+      if (areas.length === 0) return null;
+      return {
+        expected: line.slice(53),
+        marked: areas.map((area) => area.textContent.replace(/\\u00a0/g, ' ')).join(''),
+        readable: line.includes('文字コード検証用'),
+      };
+    })()`,
+    "the identification area of the CP930 fixture",
+  );
+  record(
+    "12. a CP930 asset opens readable and its identification area starts at the right character",
+    marked.readable === true && marked.marked === marked.expected && marked.expected !== "",
+    `marked ${JSON.stringify(marked.marked)}, expected ${JSON.stringify(marked.expected)}`,
+  );
+}
+
+/**
+ * Check 14: a file that changed under the editor is not overwritten silently. The fake preload's
+ * `touch` stands in for the outside edit by moving the file's stamp.
+ */
+async function checkSaveConflict(win) {
+  await activateSourceTab(win, "cobol/SYK001.cbl", SYK001_MARK);
+  await waitUntil(win, typeAtStart("Y"), "an unsaved edit");
+  await waitUntil(
+    win,
+    `document.querySelector('[data-testid="dirty-source:cobol/SYK001.cbl"]') !== null`,
+    "the unsaved mark on the asset about to be saved",
+  );
+  await evaluate(win, `window.cobolInsight.touch('cobol/SYK001.cbl')`);
+  await evaluate(
+    win,
+    `window.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true }))`,
+  );
+  const raised = await waitUntil(
+    win,
+    `(() => {
+      if (document.querySelector('[data-testid="save-conflict"]') !== null) return { ok: true };
+      // A notification instead means the save went through, which is the failure worth naming.
+      const toast = document.querySelector('[data-testid^="toast-"]');
+      if (toast !== null) return { ok: false, toast: toast.textContent };
+      return null;
+    })()`,
+    "the conflict dialog",
+  ).catch((error) => ({
+    ok: false,
+    reason: error.message,
+  }));
+  record(
+    "14. saving over a changed original raises the conflict dialog",
+    raised.ok === true,
+    raised.ok === true ? undefined : JSON.stringify(raised),
+  );
+
+  if (raised.ok !== true) {
+    return;
+  }
+  // Take the overwrite, so the later checks start from a saved file rather than a dialog.
+  await waitUntil(win, clickTestId("save-conflict-overwrite"), "the overwrite button");
+  await waitUntil(
+    win,
+    `document.querySelector('[data-testid="save-conflict"]') === null ? 'closed' : null`,
+    "the dialog closing",
+  );
+}
+
+/**
+ * Check 15: a finding whose rule can be fixed offers the quick fix, and taking it opens the diff
+ * tab for that asset. The canned lint result puts R004 — the one rule in the fake catalog with
+ * hasFix — on line 10 of the first asset.
+ */
+async function checkQuickFix(win) {
+  await activateSourceTab(win, "cobol/SYK001.cbl", SYK001_MARK);
+  const started = await waitUntil(
+    win,
+    `(() => {
+      const editor = ${EDITOR};
+      const model = editor.getModel();
+      const markers = window.ciMonaco.editor.getModelMarkers({ resource: model.uri });
+      if (markers.length === 0) return null;
+      if (!markers.some((marker) => marker.code === 'R004')) {
+        return { ok: false, codes: markers.map((marker) => marker.code) };
+      }
+      editor.focus();
+      editor.setPosition({ lineNumber: 10, column: 1 });
+      // Through trigger rather than getAction: the code-action commands are contributed as editor
+      // commands, which getAction does not list.
+      editor.trigger('smoke', 'editor.action.quickFix', {});
+      return { ok: true };
+    })()`,
+    "the quick fix action",
+  );
+  if (started.ok !== true) {
+    record("15. a fixable finding offers a quick fix that opens the diff tab", false, JSON.stringify(started));
+    return;
+  }
+  const chosen = await waitUntil(
+    win,
+    `(() => {
+      const rows = [...document.querySelectorAll('.action-widget .monaco-list-row')];
+      const titles = rows.map((row) => row.textContent.trim());
+      // The first row is the group header ("Quick Fix"); the action itself follows it.
+      const action = rows.find((row) => row.textContent.includes('修正案'));
+      if (action === undefined) return null;
+      action.click();
+      return { titles };
+    })()`,
+    "the quick fix chooser",
+  );
+  const opened = await waitUntil(
+    win,
+    `document.querySelector('[data-testid="tab-fix:cobol/SYK001.cbl"]') !== null`,
+    "the diff tab the quick fix opened",
+  ).catch(() => false);
+  record(
+    "15. a fixable finding offers a quick fix that opens the diff tab",
+    opened === true,
+    `offered ${JSON.stringify(chosen.titles)}`,
   );
 }
 
@@ -272,8 +538,9 @@ async function main() {
     const level = detail === null ? args[1] : detail.level;
     const message = detail === null ? args[2] : detail.message;
     const isError = level === 3 || level === "error";
-    if (isError || /Refused to /.test(String(message))) {
-      consoleErrors.push(String(message));
+    const text = String(message);
+    if ((isError || /Refused to /.test(text)) && !BENIGN.some((pattern) => pattern.test(text))) {
+      consoleErrors.push(text);
     }
   });
   win.webContents.on("preload-error", (_event, path, error) => {
@@ -285,11 +552,31 @@ async function main() {
 
   try {
     await win.loadFile(RENDERER_HTML);
-    await checkShell(win);
-    await checkAssetTree(win);
-    await checkFindings(win);
-    await checkCommandPalette(win);
-    await checkZoomReflow(win);
+    // Each check is run on its own: one that fails should not hide the ones that follow it, and the
+    // order matters only in that the editor checks build on the tab the one before them opened.
+    for (const check of [
+      checkShell,
+      checkAssetTree,
+      checkFindings,
+      checkEditorLayout,
+      checkDirtyMark,
+      checkEditSurvivesSwitch,
+      checkEbcdicColumns,
+      checkSaveConflict,
+      checkQuickFix,
+      checkCommandPalette,
+      checkZoomReflow,
+    ]) {
+      try {
+        await check(win);
+      } catch (error) {
+        record(
+          `${check.name} ran to completion`,
+          false,
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    }
     checkConsole();
   } catch (error) {
     record("the smoke ran to completion", false, error instanceof Error ? error.message : String(error));

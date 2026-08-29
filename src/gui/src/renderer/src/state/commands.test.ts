@@ -17,6 +17,9 @@ function context(overrides: Partial<CommandContext> = {}): CommandContext {
     runAnalysis: vi.fn(),
     cancelAnalysis: vi.fn(),
     requestCloseTab: vi.fn(),
+    saveActiveTab: vi.fn(),
+    saveAllTabs: vi.fn(),
+    hasDirty: false,
     ...overrides,
   };
 }

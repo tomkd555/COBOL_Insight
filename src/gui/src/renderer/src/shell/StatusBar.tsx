@@ -2,6 +2,8 @@ import type { ReactElement } from "react";
 import { text } from "../text";
 import { artifactCount, useProject } from "../state/projectStore";
 import { useWorkbenchDispatch } from "../state/workbenchStore";
+import { useEditorStatus } from "../state/editorStatusStore";
+import { codepageLabel } from "../../../shared/codepage";
 
 /** A count, or a dash when the artefact was never fetched or could not be read. */
 function countText(count: number | null): string {
@@ -15,6 +17,7 @@ function countText(count: number | null): string {
 export function StatusBar(): ReactElement {
   const project = useProject();
   const dispatch = useWorkbenchDispatch();
+  const status = useEditorStatus();
   const showProblems = (): void => dispatch({ type: "SHOW_PANEL", view: "problems" });
 
   return (
@@ -40,6 +43,17 @@ export function StatusBar(): ReactElement {
         {text.status.sqlFindings} {countText(artifactCount(project.sqlFindings))}
       </button>
       <div className="ci-statusbar__spacer" />
+      {status === null ? null : (
+        <>
+          <span className="ci-statusbar__item" data-testid="status-caret">
+            {text.status.caret(status.line, status.column)}
+          </span>
+          <span className="ci-statusbar__item" data-testid="status-codepage">
+            {codepageLabel(status.codepage, text.explorer.codepageUnknown)}
+            {status.detected ? `（${text.sourceView.detected}）` : ""}
+          </span>
+        </>
+      )}
       <span className="ci-statusbar__item ci-statusbar__item--dim">
         {project.inputDir ?? text.status.noFolder}
       </span>

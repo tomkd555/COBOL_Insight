@@ -53,6 +53,7 @@ export const text = {
     sqlFindings: "SQL指摘",
     stage: (stage: number, total: number): string => `第 ${stage} / ${total} 段`,
     unit: "件",
+    caret: (line: number, column: number): string => `行 ${line}、列 ${column}`,
   },
 
   welcome: {
@@ -136,6 +137,48 @@ export const text = {
     codepage: "文字コード",
     detected: "自動判別",
     lines: (count: number): string => `${count} 行`,
+    editor: "ソース本文",
+    reopenLabel: "この文字コードで開き直す",
+    reopenAuto: "自動",
+    discard: "編集を破棄する",
+    readOnly: "読み取り専用",
+    overflow: (bytes: number): string => `この行は ${bytes} バイトあり、80 桁の記録に収まりません。`,
+  },
+
+  save: {
+    noReason: "解析エンジンは理由を返しませんでした。",
+    saved: (path: string): string => `${path} を保存しました。`,
+    savedWithErrors: (path: string, count: number): string =>
+      `${path} を保存しました。保存時の検証で ${count} 件の誤りが見つかりました。指摘の一覧で内容を確かめられます。`,
+    failed: (path: string, reason: string): string =>
+      `${path} を保存できませんでした。${reason} 文字コードの指定とコピー句の探索パスを確かめて、もう一度保存してください。`,
+    nothingToSave: "保存する編集がありません。",
+    conflictTitle: "原本が書き換わっています",
+    conflictBody: (path: string): string =>
+      `${path} は、開いたあとにこのツールの外で書き換わりました。上書きすると、その変更は失われます。`,
+    overwrite: "上書きする",
+    reload: "再読み込みする",
+    showDiff: "差分を見る",
+    diskLabel: "ディスク上",
+    draftLabel: "編集中",
+    reloaded: (path: string): string => `${path} を読み込み直しました。`,
+    discarded: (path: string): string => `${path} の編集を破棄しました。`,
+  },
+
+  quickFix: {
+    showFix: "この指摘の修正案を見る",
+  },
+
+  fixView: {
+    title: "修正案",
+    loading: "修正案を作っています…",
+    error: "修正案を取得できませんでした。",
+    empty: "この資産に対する修正案はありませんでした。",
+    original: "原本",
+    fixed: "修正案",
+    apply: "修正案を書き出す",
+    applied: (dir: string): string => `${dir} へ修正案を書き出しました（原本は変更していません）。`,
+    diff: "差分",
   },
 
   run: {
@@ -174,12 +217,15 @@ export const text = {
     closeTab: "タブを閉じる",
     nextTab: "次のタブへ",
     previousTab: "前のタブへ",
+    save: "保存する",
+    saveAll: "すべて保存する",
   },
 
   modal: {
     confirmDiscardTitle: "保存していない変更があります",
     confirmDiscardBody: "閉じると、この資産への編集は失われます。",
     discard: "破棄して閉じる",
+    saveAndClose: "保存して閉じる",
     keep: "編集を続ける",
     close: "閉じる",
   },

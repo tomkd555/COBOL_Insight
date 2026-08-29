@@ -25,6 +25,7 @@ import type { RulesFile } from "../shared/rulesFile";
 import { runEngine, type EngineProcess, type EngineSpawn, type RunEngineDeps } from "./engine/run";
 import { resolveEngineLaunch, type EngineLaunch } from "./engine/launch";
 import { decodeSource } from "./engine/decode";
+import { createCachedDecode } from "./engine/decodeCache";
 import { saveSource } from "./engine/save";
 import { listRules, validateRules, type RulesDeps } from "./engine/rules";
 import { readInventory } from "./artifacts/inventory";
@@ -154,6 +155,40 @@ export function stopRunningEngine(): void {
   runningEngine = null;
 }
 
+/**
+ * The real path and stamp of a file the renderer named, or null when it is absent or outside the
+ * allowed base directory. Both the stat channel and the decode cache identify a file through this.
+ */
+async function locateSourceFile(
+  request: StatRequest,
+): Promise<{ realPath: string; stamp: SourceStamp } | null> {
+  try {
+    const realPath = await resolveSourceFile(decodeFileSystem, request.baseDir, request.path);
+    const stats = await stat(realPath);
+    return { realPath, stamp: { mtimeMs: stats.mtimeMs, byteSize: stats.size } };
+  } catch {
+    // An absent or out-of-bounds file is simply "no stamp"; no caller needs a finer distinction.
+    return null;
+  }
+}
+
+/**
+ * The cached decode. One cache serves the whole session: reopening an unchanged file costs a map
+ * lookup rather than another JVM launch.
+ */
+const cachedDecode = createCachedDecode({
+  locate: (request) => locateSourceFile(request),
+  decode: (request) =>
+    decodeSource(
+      {
+        fs: decodeFileSystem,
+        tempFile: () => tempPath("decode"),
+        run: (decodeRequest) => invokeUninterrupted({ subcommand: "decode", request: decodeRequest }),
+      },
+      request,
+    ),
+});
+
 function settingsPath(): string {
   return join(app.getPath("userData"), SETTINGS_FILE_NAME);
 }
@@ -182,14 +217,7 @@ export function registerIpc(): void {
   });
 
   ipcMain.handle(CHANNELS.engineDecode, (_event, request: DecodeSourceRequest) =>
-    decodeSource(
-      {
-        fs: decodeFileSystem,
-        tempFile: () => tempPath("decode"),
-        run: (decodeRequest) => invokeUninterrupted({ subcommand: "decode", request: decodeRequest }),
-      },
-      request,
-    ),
+    cachedDecode(request),
   );
 
   ipcMain.handle(CHANNELS.engineSave, (_event, request: SaveSourceRequest) =>
@@ -250,16 +278,11 @@ export function registerIpc(): void {
     selectFolder(() => dialog.showOpenDialog({ properties: ["openDirectory"] })),
   );
   ipcMain.handle(CHANNELS.fsDirExists, (_event, path: string) => dirExists(directoryStat, path));
-  ipcMain.handle(CHANNELS.fsStat, async (_event, request: StatRequest): Promise<SourceStamp | null> => {
-    try {
-      const target = await resolveSourceFile(decodeFileSystem, request.baseDir, request.path);
-      const stats = await stat(target);
-      return { mtimeMs: stats.mtimeMs, byteSize: stats.size };
-    } catch {
-      // An absent or out-of-bounds file is simply "no stamp"; the caller needs no finer distinction.
-      return null;
-    }
-  });
+  ipcMain.handle(
+    CHANNELS.fsStat,
+    async (_event, request: StatRequest): Promise<SourceStamp | null> =>
+      (await locateSourceFile(request))?.stamp ?? null,
+  );
   ipcMain.handle(CHANNELS.fsImportSource, (_event, request: ImportSourceRequest) =>
     importSource(importFileSystem, request),
   );

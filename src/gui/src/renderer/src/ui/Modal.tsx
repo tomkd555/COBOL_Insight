@@ -8,6 +8,8 @@ export interface ModalProps {
   /** Escape and the backdrop both call this. */
   onDismiss: () => void;
   testId?: string;
+  /** Widens the dialog, for a body that carries something to read rather than a sentence. */
+  wide?: boolean;
 }
 
 /**
@@ -17,7 +19,7 @@ export interface ModalProps {
  * Focus moves into the dialog on opening and is trapped inside it while it is open, so a keyboard
  * user cannot tab out to the shell behind.
  */
-export function Modal({ title, children, actions, onDismiss, testId }: ModalProps): ReactElement {
+export function Modal({ title, children, actions, onDismiss, testId, wide }: ModalProps): ReactElement {
   const dialogRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -53,7 +55,7 @@ export function Modal({ title, children, actions, onDismiss, testId }: ModalProp
       <div className="ci-modal__backdrop" onClick={onDismiss} aria-hidden="true" />
       <div
         ref={dialogRef}
-        className="ci-modal__dialog"
+        className={`ci-modal__dialog${wide === true ? " ci-modal__dialog--wide" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={title}
