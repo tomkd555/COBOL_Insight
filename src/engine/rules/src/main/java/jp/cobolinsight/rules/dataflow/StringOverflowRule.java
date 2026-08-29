@@ -46,7 +46,8 @@ public final class StringOverflowRule implements Rule {
                     .rationale("収まらない分が切り捨てられ、"
                             + "連結した文字列や分割した結果が途中で欠けます。")
                     .detection("送信側の合計長と受信側の長さをバイト長で突き合わせ、"
-                            + "超えるものを検出します。長さを解決できない項目を含む文は対象外とします。")
+                            + "超えるものを検出します。長さを解決できない項目を含む文と、"
+                            + "ON OVERFLOW 句であふれ時の処理を書いてある文は対象外とします。")
                     .remedy("受信項目の長さを広げるか、ON OVERFLOW 句であふれ時の処理を書きます。")
                     .example("""
                             01  WS-OUT  PIC X(10).
@@ -93,6 +94,9 @@ public final class StringOverflowRule implements Rule {
                 continue;
             }
             String verb = simple.verb().toUpperCase(Locale.ROOT);
+            if (hasOverflowHandler(simple.text())) {
+                continue;
+            }
             String message = "STRING".equals(verb) ? checkString(simple.text(), support)
                     : "UNSTRING".equals(verb) ? checkUnstring(simple.text(), support)
                     : null;
@@ -102,6 +106,14 @@ public final class StringOverflowRule implements Rule {
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
             }
         }
+    }
+
+    /**
+     * ON OVERFLOW 句を持つ文か。あふれ得ることは同じでも、あふれたときの処理が書かれていれば
+     * 切り捨てが黙って通ることはない。このルールの是正手段そのものであるため、対象から外す。
+     */
+    private static boolean hasOverflowHandler(String text) {
+        return wordIndex(text, "OVERFLOW") >= 0;
     }
 
     /** STRING の送信合計長 > 受信長 のとき警告文言、そうでなければ null。 */

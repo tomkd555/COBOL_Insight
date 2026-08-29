@@ -102,6 +102,56 @@ class LintUserRulesTest {
         assertEquals(List.of(), userFindings(lint(dir, rules)));
     }
 
+    /**
+     * statement 種別も targets に従う。同じ定義を COBOL 向けと COPYBOOK 向けで走らせ、
+     * COBOL 本体の ACCEPT が前者だけで出ることを見る。
+     */
+    @Test
+    void statementRuleObeysTargets(@TempDir Path dir) throws IOException {
+        Path cobol = dir.resolve("cobol");
+        Files.createDirectories(cobol);
+        Files.writeString(cobol.resolve("TARGETS.cbl"), String.join("\n",
+                "       IDENTIFICATION DIVISION.",
+                "       PROGRAM-ID. TARGETS.",
+                "       DATA DIVISION.",
+                "       WORKING-STORAGE SECTION.",
+                "       01  WS-INPUT PIC X(10).",
+                "       PROCEDURE DIVISION.",
+                "       MAIN-PARA.",
+                "           ACCEPT WS-INPUT FROM CONSOLE",
+                "           DISPLAY WS-INPUT",
+                "           GOBACK.",
+                ""), StandardCharsets.UTF_8);
+        Path rules = dir.resolve("rules.json");
+
+        Files.writeString(rules, statementRuleFile("COBOL"), StandardCharsets.UTF_8);
+        List<Finding> onCobol = userFindings(lint(dir, rules));
+        assertEquals(1, onCobol.size(), () -> "COBOL を対象にすれば出ること: " + onCobol);
+        assertEquals("U002", onCobol.get(0).ruleId());
+
+        Files.writeString(rules, statementRuleFile("COPYBOOK"), StandardCharsets.UTF_8);
+        assertEquals(List.of(), userFindings(lint(dir, rules)),
+                "COPYBOOK だけを対象にすれば COBOL 本体の文は見ないこと");
+    }
+
+    private static String statementRuleFile(String target) {
+        return """
+                {
+                  "version": 2,
+                  "custom": [
+                    {
+                      "id": "U002",
+                      "name": "ACCEPT の使用",
+                      "commands": ["LINT"],
+                      "targets": ["%s"],
+                      "match": { "kind": "statement", "verb": "ACCEPT" },
+                      "message": "ACCEPT は運用規約で禁止されている"
+                    }
+                  ]
+                }
+                """.formatted(target);
+    }
+
     /** 利用者定義ルールの説明も SARIF の rules へ載り、読む側が指摘の意味を追える。 */
     @Test
     void userRuleAppearsInSarifRules(@TempDir Path dir) throws IOException {

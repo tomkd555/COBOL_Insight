@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 /**
- * `sql-lint` サブコマンド。資産フォルダの埋め込みSQLを解析し、指摘(S001〜S006)を
+ * `sql-lint` サブコマンド。資産フォルダの埋め込みSQLを解析し、指摘(S001・S002・S004)を
  * SARIF 2.1.0ファイルへ書き出して処理サマリをJSONで標準出力へ書く。終了コードは検出結果で
  * 分岐する(成功=0・警告あり=1・エラー=2)。バグ検出は lint サブコマンドが担う。
  */

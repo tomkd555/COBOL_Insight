@@ -8,7 +8,7 @@ import java.util.Objects;
 /**
  * 埋め込みSQL文の解析結果。原文(originalText)とマングリング後テキスト(mangledText)の両方を
  * 保持し、ルールは原データ名で報告できる。range は元のCOBOLソース上の位置。
- * structureSignals は SQL指摘(S001〜S006)が読む構文レベルの構造シグナル。
+ * structureSignals は SQL指摘(S001・S002・S004)が読む構文レベルの構造シグナル。
  */
 public record SqlStatementModel(SqlStatementKind kind, String originalText, String mangledText,
         List<HostVariableBinding> hostVariables, List<String> referencedTables, SourceRange range,

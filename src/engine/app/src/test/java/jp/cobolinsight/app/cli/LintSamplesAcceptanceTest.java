@@ -2,6 +2,8 @@ package jp.cobolinsight.app.cli;
 
 import jp.cobolinsight.core.finding.Finding;
 import jp.cobolinsight.core.finding.FindingLevel;
+import jp.cobolinsight.rules.RuleSet;
+import jp.cobolinsight.rules.RulesFile;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -20,7 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * samples/ 全体の lint 受入回帰テスト。構文段階(SYNTAX)・制御フロー段階
  * (CONTROL_FLOW)・データフロー段階(DATA_FLOW)の3段階を実行し、expected-results.md の欠陥をファイル・行番号
  * どおりに検出し、samplesに意図的欠陥の無いルールが誤検出を出さないことを突合する。構文段階のR002
- * (未使用変数)・R008(THRUなし単独段落PERFORM)、制御フロー段階のR007/R011/R017/R018/R021/R022/R031、
+ * (未使用変数)・R008(THRUなし単独段落PERFORM、既定では無効のため設定で入れて確認する)、
+ * 制御フロー段階のR007/R011/R017/R018/R021/R022/R031、
  * データフロー段階のR001/R003/R004/R005(expected-results.md No.1/2/3/5/9/13/14)の検出と、samplesがERRORレベルの検出を
  * 含むため終了コードが2であることを確認する。lint は rule id が "R" で始まるルールのみを実行し、
  * SQL指摘(S接頭辞)を除外する。R017は path-sensitive な忠実実装のため付随検出を許容し、
@@ -126,8 +129,18 @@ class LintSamplesAcceptanceTest {
                 "lintのSARIF driver.rules にS接頭辞のSQL指摘ルールが載らないこと");
     }
 
+    /**
+     * R008 は既定で無効(corpus/rule-hits.md の計測による)。既定の走行で1件も出ないことと、
+     * 設定で入れたときに THRU なし単独段落 PERFORM の全件を行番号どおり検出することの両方を見る。
+     */
     @Test
     void r008DetectsEveryThruLessSingleParagraphPerformAndNothingElse() {
+        assertEquals(List.of(), byRule("R008"), "R008は既定で無効のため既定の走行では出ないこと");
+        LintRunner.Result withR008 = LintRunner.run(new LintRunner.Options(SAMPLES,
+                List.of(SAMPLES.resolve("copybook")), Map.of(),
+                RuleSet.load(new RulesFile(
+                        Map.of("R008", new RulesFile.RuleOverride(true, null)),
+                        List.of(), List.of()))));
         Map<String, Set<Integer>> expected = Map.of(
                 "cobol/SYK001.cbl", new TreeSet<>(Set.of(73, 74, 75, 82, 92, 93, 94, 99, 101)),
                 "cobol/SYK002.cbl", new TreeSet<>(Set.of(61, 62, 63, 64, 79, 81, 83, 85, 96)),
@@ -136,13 +149,15 @@ class LintSamplesAcceptanceTest {
                 "cobol/SYK006.cbl", new TreeSet<>(Set.of(75, 76, 77, 78, 84, 104, 106, 108, 110, 153)),
                 "cobol/SYK007.cbl", new TreeSet<>(Set.of(50, 51, 52, 57, 74, 75, 76)),
                 "cobol/SYK008.cbl", new TreeSet<>(Set.of(39, 41, 43)));
-        Map<String, Set<Integer>> actual = byRule("R008").stream()
+        List<Finding> findings = withR008.findings().stream()
+                .filter(f -> f.ruleId().equals("R008")).toList();
+        Map<String, Set<Integer>> actual = findings.stream()
                 .collect(Collectors.groupingBy(f -> f.location().file(),
                         Collectors.mapping(f -> f.location().line(),
                                 Collectors.toCollection(TreeSet::new))));
         assertEquals(expected, actual,
                 "R008はTHRUなし単独段落PERFORMの全件を行番号どおり検出し、それ以外を検出しないこと");
-        assertTrue(byRule("R008").stream().allMatch(f -> f.level() == FindingLevel.WARNING));
+        assertTrue(findings.stream().allMatch(f -> f.level() == FindingLevel.WARNING));
     }
 
     @Test

@@ -42,6 +42,10 @@ public final class PerformSingleParagraphRule implements Rule {
                     PERFORM CALC-TAX THRU CALC-TAX-EXIT.
                     """)
             .severity(Severity.MEDIUM)
+            // 既定では動かさない。samples で 43 件、誤検出計測用の corpus で 51 件を出しながら、
+            // そのどれも欠陥ではなかった。THRU を付けるかどうかは現場の書き方の取り決めであって
+            // 不具合ではないため、その取り決めを持つ現場が rules.json で入れる形にする。
+            .defaultEnabled(false)
             .commands(Command.LINT, Command.REPORT)
             .targets(AssetKind.COBOL)
             .needs(Needs.SEMANTIC)

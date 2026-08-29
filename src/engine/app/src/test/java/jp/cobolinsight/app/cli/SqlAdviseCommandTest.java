@@ -84,7 +84,6 @@ class SqlAdviseCommandTest {
         assertEquals(1, exitCode, "S004(中→警告)を含むため終了コード1であること");
         String json = Files.readString(sarif, StandardCharsets.UTF_8);
         assertTrue(json.contains("\"ruleId\":\"S004\""), json);
-        assertTrue(json.contains("\"ruleId\":\"S005\""), "S005(FETCH FIRST欠如)も発火すること: " + json);
         assertTrue(!json.contains("\"ruleId\":\"R"), "バグ検出(R接頭辞)が混じらないこと: " + json);
     }
 

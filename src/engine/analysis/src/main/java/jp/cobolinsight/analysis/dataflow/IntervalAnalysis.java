@@ -356,6 +356,10 @@ final class IntervalAnalysis {
      * インライン PERFORM の制御変数を UNTIL 継続条件から絞る。パーサーは inline PERFORM の
      * VARYING/FROM/BY 句を conditionText へ残さず UNTIL 条件のみを渡すため、初期値・歩進が不明で
      * ある。昇順ループ(&gt;/&gt;=)は VARYING の常用形に合わせ下端を 1 と仮定し、上端を条件境界で絞る。
+     *
+     * <p>ループ突入前の区間とは合流させない。反復の本体は継続条件が成り立つときにしか実行されず、
+     * 突入前の値(VALUE ZERO の 0 など)はそこに現れない。合流させると仮定した下端 1 が失われ、
+     * 表の添字が 0 以下になり得るという結論だけが残る。
      */
     private void inlineLoopControl(LoopClause clause, Map<String, ValueInterval> in,
             Map<String, ValueInterval> out) {
@@ -387,9 +391,7 @@ final class IntervalAnalysis {
                 return;
             }
         }
-        ValueInterval seed = Intervals.make(lo, hi);
-        ValueInterval prev = in.get(cond.var());
-        out.put(cond.var(), prev == null ? seed : Intervals.hull(prev, seed));
+        out.put(cond.var(), Intervals.make(lo, hi));
     }
 
     private void move(String u, Map<String, ValueInterval> in, Map<String, ValueInterval> out) {

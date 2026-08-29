@@ -18,9 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * samples/ 全体の sql-lint 受入回帰テスト。埋め込みSQLを SqlParser SPI で SQL文モデルへ変換し、
  * SQL指摘(id が "S" のルール)のみを実行して、次のとおりに検出することを突合する。
- * SYK006 は S004・S006 をカーソル宣言行(145)で、S005 を SELECT INTO(96)とカーソル宣言(145)で
- * 検出し、SYK007 は S005 を SELECT INTO(69)で検出する。S001〜S003 は samples に該当構文が無いため
- * 陰性である。SQL指摘の最上位は S004(中→警告)のため終了コードは1になる。
+ * SYK006 は S004 をカーソル宣言行(145)で検出し、それ以外の検出は無い。S001・S002 は samples に
+ * 該当構文が無いため陰性である。SQL指摘の最上位は S004(中→警告)のため終了コードは1になる。
  */
 class SqlAdviseSamplesAcceptanceTest {
 
@@ -65,10 +64,10 @@ class SqlAdviseSamplesAcceptanceTest {
     }
 
     @Test
-    void s001ThroughS003AreNegativeOnSamples() {
+    void s001AndS002AreNegativeOnSamples() {
         assertEquals(List.of(), byRule("S001"), "S001(SELECT *)は samples に該当構文が無く陰性");
-        assertEquals(List.of(), byRule("S002"), "S002(非SARGable述語)は陰性");
-        assertEquals(List.of(), byRule("S003"), "S003(列への関数適用・CAST)は陰性");
+        assertEquals(List.of(), byRule("S002"),
+                "S002(非SARGable述語・列への関数適用)は samples に該当構文が無く陰性");
     }
 
     @Test
@@ -79,27 +78,18 @@ class SqlAdviseSamplesAcceptanceTest {
                 "S004(中)は警告レベルであること");
     }
 
+    /** S004 だけが samples で陽性である。取り下げた S005・S006 が復活していないことも見る。 */
     @Test
-    void s005FiresOnEverySelectAndCursorDeclaration() {
-        assertEquals(Set.of("cobol/SYK006.cbl:96", "cobol/SYK006.cbl:145", "cobol/SYK007.cbl:69"),
-                fileLines("S005"),
-                "S005は SELECT INTO(SYK006:96・SYK007:69)とカーソル宣言(SYK006:145)へ一律発火すること");
-        assertTrue(byRule("S005").stream().allMatch(f -> f.level() == FindingLevel.NOTE),
-                "S005(低)は注記レベルであること");
-    }
-
-    @Test
-    void s006FiresOnTheCursorDeclarationMissingOptimizeFor() {
-        assertEquals(Set.of("cobol/SYK006.cbl:145"), fileLines("S006"),
-                "S006は SYK006 のカーソル宣言(OPTIMIZE FOR欠如)1件を検出すること");
-        assertTrue(byRule("S006").stream().allMatch(f -> f.level() == FindingLevel.NOTE),
-                "S006(低)は注記レベルであること");
+    void s004IsTheOnlyAdviceOnSamples() {
+        assertEquals(Set.of("S004"), result.findings().stream().map(Finding::ruleId)
+                .collect(Collectors.toCollection(TreeSet::new)),
+                () -> "samples の SQL指摘は S004 のみであること: " + result.findings());
     }
 
     @Test
     void exitCodeIsWarningsBecauseHighestAdviceLevelIsWarning() {
         assertEquals(0, result.countByLevel(FindingLevel.ERROR),
-                "samples の SQL指摘に error レベル(S002/S003)は無いこと");
+                "samples の SQL指摘に error レベル(S002)は無いこと");
         assertTrue(result.countByLevel(FindingLevel.WARNING) > 0, "S004(警告)を含むこと");
         assertEquals(1, result.exitCode(), "警告あり=1で分岐すること");
     }
