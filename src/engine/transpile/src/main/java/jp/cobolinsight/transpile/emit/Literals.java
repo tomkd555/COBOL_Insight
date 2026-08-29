@@ -3,15 +3,16 @@ package jp.cobolinsight.transpile.emit;
 import java.util.Locale;
 import java.util.Set;
 
-/** 88レベル VALUE 句の値 literal の判定、引用符除去、表意定数と THRU 範囲の解釈。 */
+/** Determination of 88-level VALUE clause value literals, quote removal, and interpretation of figurative constants and THRU ranges. */
 public final class Literals {
 
-    /** VALUE の範囲指定を区切る語。前後の空白を含めて探す。 */
+    /** The word delimiting a VALUE range specification. Matched including the surrounding spaces. */
     private static final String THRU = " THRU ";
 
     /**
-     * バイト値が文字コード系(EBCDIC/ASCII)に依存する表意定数。値へ写すと原意と食い違うため
-     * 対訳しない。手続き部の被演算子の扱い({@code OperandParser})と同じ区分である。
+     * Figurative constants whose byte value depends on the code page (EBCDIC/ASCII). Not translated,
+     * because mapping them to a value would diverge from the original meaning. Same classification
+     * as the operand handling in the procedure division ({@code OperandParser}).
      */
     private static final Set<String> CODE_PAGE_DEPENDENT = Set.of(
             "HIGH-VALUE", "HIGH-VALUES", "LOW-VALUE", "LOW-VALUES", "QUOTE", "QUOTES",
@@ -20,14 +21,15 @@ public final class Literals {
     private Literals() {
     }
 
-    /** 文字コード系に依存し、値へ写せない表意定数か。 */
+    /** Whether this is a figurative constant that depends on the code page and cannot be mapped to a value. */
     public static boolean isCodePageDependentFigurative(String value) {
         return CODE_PAGE_DEPENDENT.contains(value.trim().toUpperCase(Locale.ROOT));
     }
 
     /**
-     * 比較式へ埋め込む値。表意定数は ZERO を 0、SPACE を半角空白1文字へ写し、それ以外は引用符を
-     * 外した中身を返す。SPACES の1文字への簡約は手続き部の対訳と同じ扱いである。
+     * The value to embed into the comparison expression. Figurative constants map ZERO to 0 and
+     * SPACE to a single half-width space; otherwise the unquoted content is returned. Reducing
+     * SPACES to a single character matches the procedure division translation.
      */
     public static String resolve(String value) {
         return switch (value.trim().toUpperCase(Locale.ROOT)) {
@@ -38,8 +40,8 @@ public final class Literals {
     }
 
     /**
-     * 範囲指定を区切る THRU の位置。無ければ -1。引用符の中の THRU は文字列 literal の一部であり
-     * 区切りではないため読み飛ばす。
+     * The position of the THRU delimiting a range specification, or -1 if none. A THRU inside quotes
+     * is part of a string literal, not a delimiter, and is skipped.
      */
     public static int indexOfThru(String value) {
         String upper = value.toUpperCase(Locale.ROOT);
@@ -59,12 +61,12 @@ public final class Literals {
         return -1;
     }
 
-    /** 範囲指定の THRU の文字数(前後の空白を含む)。 */
+    /** The character length of the range-specification THRU (including the surrounding spaces). */
     public static int thruLength() {
         return THRU.length();
     }
 
-    /** 単引用符または二重引用符で囲まれた文字列 literal か。 */
+    /** Whether this is a string literal enclosed in single or double quotes. */
     public static boolean isQuoted(String value) {
         String v = value.trim();
         if (v.length() < 2) {
@@ -75,7 +77,7 @@ public final class Literals {
         return (first == '\'' || first == '"') && first == last;
     }
 
-    /** 引用符を除去した中身を返す。引用符が無ければそのまま返す。 */
+    /** Returns the content with quotes removed. Returned as-is if there are no quotes. */
     public static String unquote(String value) {
         String v = value.trim();
         if (isQuoted(v)) {

@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** 行追跡エミッタ基盤(識別子正規化・種別判定・行追跡・行対応の安定整列/採番)の単体検証。 */
+/** Unit tests for the line-tracking emitter framework (identifier sanitization, kind determination, line tracking, and stable sorting/numbering of the line map). */
 class EmitterFrameworkTest {
 
     @Test

@@ -18,11 +18,14 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * 意味モデルの手続き部(段落・節と文の木)を、言語非依存の中間表現 {@link ProcedureIr}/{@link ProcStmt} へ写す。
- * SimpleStatement は {@link OperandParser} で再パースし、CompoundStatement(BRANCH→if/EVALUATE、LOOP→while)は
- * 構造を辿って写す。inline PERFORM VARYING の反復変数句は意味モデルに無いため、原ソース({@link SourceSlicer})から復元する。
- * GO TO を含む手続きは {@link GotoStructurer} で構造化制御へ還元し、還元できない形だけを注記付きの
- * 非対訳として落とす。
+ * Maps the procedure division of the semantic model (the tree of paragraphs, sections, and statements)
+ * into the language-independent intermediate representation {@link ProcedureIr}/{@link ProcStmt}.
+ * SimpleStatement is re-parsed with {@link OperandParser}; CompoundStatement (BRANCH -> if/EVALUATE,
+ * LOOP -> while) is mapped by walking its structure. The loop-variable clause of an inline
+ * PERFORM VARYING is absent from the semantic model, so it is recovered from the original source
+ * ({@link SourceSlicer}). A procedure containing GO TO is reduced to structured control by
+ * {@link GotoStructurer}, and only the forms that cannot be reduced fall back to a noted,
+ * untranslated form.
  */
 public final class ProcedureModelBuilder {
 
@@ -60,7 +63,7 @@ public final class ProcedureModelBuilder {
         return result;
     }
 
-    /** 1文を中間表現へ写す。GO TO は構造化に失敗した退避経路でのみ現れ、注記付き非対訳とする。 */
+    /** Maps one statement to the intermediate representation. GO TO appears only on the fallback path where structuring failed, and is left as a noted, untranslated form. */
     List<ProcStmt> convert(Statement statement) {
         return switch (statement) {
             case SimpleStatement s -> parser.parseSimple(s);
@@ -153,7 +156,7 @@ public final class ProcedureModelBuilder {
                 join(condNote, "VARYING 句を解釈できず反復変数の初期化・増分を省略"));
     }
 
-    /** 直訳不能条件の注記と反復変数句の注記を、非空のものだけ「; 」で連結する。 */
+    /** Joins the untranslatable-condition note and the loop-variable-clause note with "; ", including only the non-empty ones. */
     private static String join(String condNote, String varyingNote) {
         if (condNote.isEmpty()) {
             return varyingNote;

@@ -24,12 +24,16 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 意味モデルを対象言語のレコード/アクセサ群と手続き部の対訳コードへ逐語対訳する入口。ランタイムヘルパ1ファイル、
- * 独立レベル(01・77)の各レコードにつき1クラスファイル、手続き部を持つプログラムでは段落=メソッドの
- * プログラムファイル1つを生成し、宣言行・文行→生成行の対応表を安定順で組む。
- * 決定論: 生成順は意味モデルの並び順、行対応は安定キー整列、改行は LF・BOMなし。
- * 手続き対訳では GO TO を構造化制御へ還元し、還元できない形は注記付きの非対訳とする。原ソース
- * {@code sourceText} を渡すと inline PERFORM VARYING の反復変数句を復元する(渡さない場合は該当句を省略する)。
+ * The entry point that line-by-line translates a semantic model into a target language's records,
+ * accessors, and procedure division translation code. Generates one runtime helper file, one class
+ * file per independent-level (01/77) record, and, for a program with a procedure division, one
+ * program file where each paragraph becomes a method, then assembles the declaration-line/
+ * statement-line-to-generated-line correspondence table in a stable order.
+ * Determinism: generation order follows the semantic model's order, line correspondences are sorted
+ * by a stable key, and line breaks are LF with no BOM.
+ * The procedure translation reduces GO TO to structured control; forms that cannot be reduced are
+ * left untranslated with a note. Passing the original source {@code sourceText} restores the loop
+ * variable clause of an inline PERFORM VARYING (omitted if not passed).
  */
 public final class Transpiler {
 
@@ -86,7 +90,7 @@ public final class Transpiler {
         return new TranspileResult(programId, language, files, lineMap);
     }
 
-    /** パス末尾のファイル名を宣言元ソースの識別子とする。 */
+    /** Uses the trailing file name of the path as the declaring source's identifier. */
     private static String sourceId(String file) {
         int separator = Math.max(file.lastIndexOf('/'), file.lastIndexOf('\\'));
         return separator >= 0 ? file.substring(separator + 1) : file;

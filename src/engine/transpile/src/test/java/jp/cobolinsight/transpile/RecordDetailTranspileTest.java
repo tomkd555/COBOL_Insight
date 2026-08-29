@@ -14,7 +14,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** レコード対訳の細目。REDEFINES の名前照合と、88レベル VALUE の表意定数の写し方を検証する。 */
+/** Record-translation details. Verifies REDEFINES name matching and how figurative constants in level-88 VALUE clauses are mapped over. */
 class RecordDetailTranspileTest {
 
     private static final SourcePosition POSITION = SourcePosition.fileStart("t.cbl");

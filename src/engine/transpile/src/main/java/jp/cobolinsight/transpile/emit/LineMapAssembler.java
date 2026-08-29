@@ -7,9 +7,11 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * 未採番の行対応({@link PendingMapping})を安定キー(COBOL開始行→COBOL元ソース→生成ファイル→生成開始行→…)で
- * 整列し、その順で anchorId を決定論的に採番して {@link LineMappingEntry} 群を完成させる。乱数・時刻・ハッシュに依存しない。
- * anchorId の接頭辞にはプログラム識別子を単一で用い、各エントリの cobolSourceId(宣言元ソース)とは独立させる。
+ * Sorts unnumbered line correspondences ({@link PendingMapping}) by a stable key (COBOL start
+ * line -> COBOL source -> generated file -> generated start line -> ...), assigns anchorId
+ * deterministically in that order, and completes the {@link LineMappingEntry} list. Does not depend
+ * on randomness, time, or hashing. A single program identifier is used as the anchorId prefix,
+ * independent of each entry's cobolSourceId (the declaring source).
  */
 public final class LineMapAssembler {
 
@@ -25,7 +27,7 @@ public final class LineMapAssembler {
     private LineMapAssembler() {
     }
 
-    /** anchorId は {@code <anchorPrefix>#NNNN}(1始まり・4桁ゼロ埋め・整列順)。 */
+    /** anchorId is {@code <anchorPrefix>#NNNN} (1-based, zero-padded to 4 digits, in sort order). */
     public static List<LineMappingEntry> assemble(String anchorPrefix, List<PendingMapping> pending) {
         List<PendingMapping> sorted = new ArrayList<>(pending);
         sorted.sort(STABLE_ORDER);

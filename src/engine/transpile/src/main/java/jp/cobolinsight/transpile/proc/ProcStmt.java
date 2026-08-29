@@ -5,21 +5,23 @@ import jp.cobolinsight.core.source.SourceRange;
 import java.util.List;
 
 /**
- * 手続き文の中間表現。1 COBOL 文を言語非依存の構造へ写す。各文は由来する COBOL の {@link SourceRange} と
- * 注記(直訳不能・簡約の説明。空なら 1:1 の逐語対訳)を持ち、{@link ProcedureRenderer} が行対応へ反映する。
+ * Intermediate representation of a procedure statement. Maps one COBOL statement into a
+ * language-independent structure. Each statement carries the {@link SourceRange} it was derived from
+ * and a note (an explanation of an untranslatable case or simplification; empty means a 1:1 literal
+ * translation), which {@link ProcedureRenderer} reflects into the line mapping.
  */
 public sealed interface ProcStmt {
 
     SourceRange range();
 
-    /** この文全体の注記(空なら注記なし)。 */
+    /** Note for this whole statement (empty means no note). */
     String note();
 
-    /** 代入(MOVE 送信→受信・ADD/COMPUTE の受信=式)。 */
+    /** Assignment (MOVE sender to receiver; ADD/COMPUTE receiver = expression). */
     record Assign(PExpr.Ref target, PExpr value, SourceRange range, String note) implements ProcStmt {
     }
 
-    /** 分岐(IF→arms 1件+else、EVALUATE→arms n件+other)。elseBody が空なら else なし。 */
+    /** Branch (IF -> one arm plus else; EVALUATE -> n arms plus other). Empty elseBody means no else. */
     record Branch(List<Arm> arms, List<ProcStmt> elseBody, SourceRange range, String note)
             implements ProcStmt {
         public Branch {
@@ -28,7 +30,7 @@ public sealed interface ProcStmt {
         }
     }
 
-    /** 分岐の1本の腕(条件と本体)。 */
+    /** One arm of a branch (condition and body). */
     record Arm(PCond cond, List<ProcStmt> body) {
         public Arm {
             body = List.copyOf(body);
@@ -36,8 +38,8 @@ public sealed interface ProcStmt {
     }
 
     /**
-     * 反復(PERFORM UNTIL・inline/out-of-line、PERFORM VARYING)。until を満たさない間くり返す。
-     * varyingVar/varyingInit/varyingStep は VARYING 句を復元できたときのみ非 null。
+     * Loop (PERFORM UNTIL, inline or out-of-line; PERFORM VARYING). Repeats while until is not satisfied.
+     * varyingVar/varyingInit/varyingStep are non-null only when the VARYING clause could be recovered.
      */
     record Loop(PCond until, List<ProcStmt> body, PExpr.Ref varyingVar, PExpr varyingInit,
             PExpr varyingStep, SourceRange range, String note) implements ProcStmt {
@@ -46,30 +48,30 @@ public sealed interface ProcStmt {
         }
     }
 
-    /** 段落・節への PERFORM(関数/メソッド呼出)。 */
+    /** PERFORM of a paragraph or section (function/method call). */
     record PerformCall(String methodName, SourceRange range, String note) implements ProcStmt {
     }
 
-    /** PERFORM 段落 n TIMES(回数反復)。 */
+    /** PERFORM paragraph n TIMES (counted repetition). */
     record PerformTimes(String methodName, PExpr count, SourceRange range, String note)
             implements ProcStmt {
     }
 
-    /** PERFORM 段落 THRU 段落(範囲の順次呼出)。 */
+    /** PERFORM paragraph THRU paragraph (sequential call over the range). */
     record PerformThru(List<String> methodNames, SourceRange range, String note) implements ProcStmt {
         public PerformThru {
             methodNames = List.copyOf(methodNames);
         }
     }
 
-    /** DISPLAY(標準出力への連結出力)。 */
+    /** DISPLAY (concatenated output to standard output). */
     record Display(List<PExpr> operands, SourceRange range, String note) implements ProcStmt {
         public Display {
             operands = List.copyOf(operands);
         }
     }
 
-    /** CALL(プログラム呼出)。argDescriptors は各引数の記述(受け渡し様式を含む)。 */
+    /** CALL (program invocation). argDescriptors describes each argument, including the passing mode. */
     record CallProgram(String target, List<String> argDescriptors, SourceRange range, String note)
             implements ProcStmt {
         public CallProgram {
@@ -77,15 +79,15 @@ public sealed interface ProcStmt {
         }
     }
 
-    /** STOP RUN・GOBACK・EXIT PROGRAM(呼出元へ復帰)。verb は原動詞句。 */
+    /** STOP RUN, GOBACK, EXIT PROGRAM (return to caller). verb is the original verb phrase. */
     record Return(String verb, SourceRange range, String note) implements ProcStmt {
     }
 
-    /** CONTINUE・EXIT(無処理)。 */
+    /** CONTINUE, EXIT (no-op). */
     record NoOp(String verb, SourceRange range, String note) implements ProcStmt {
     }
 
-    /** 直訳不能・未対応の文(ファイル I/O・STRING 等)。原文行をコメント化し注記で可視化する。 */
+    /** An untranslatable or unsupported statement (file I/O, STRING, etc.). The original lines are turned into comments and made visible via the note. */
     record Untranslated(List<String> cobolTextLines, SourceRange range, String note)
             implements ProcStmt {
         public Untranslated {
@@ -94,10 +96,12 @@ public sealed interface ProcStmt {
     }
 
     /**
-     * EXEC CICS / EXEC SQL の直訳不能ブロック。原文をコメント保存した上で、実行時に到達すると例外を投げる
-     * 注記スタブ(Python は NotImplementedError、Java は UnsupportedOperationException)として出力する。
-     * command は例外文言に使う命令名(例「EXEC CICS RECEIVE MAP」)、note はオペランドを含む注記。
-     * 複数の COBOL 行を1つのスタブへ畳むため、行対応は N:1(MANY_TO_ONE)になる。
+     * An untranslatable EXEC CICS / EXEC SQL block. The original text is preserved as a comment, and the
+     * statement is emitted as a noted stub that throws an exception if reached at runtime
+     * (NotImplementedError in Python, UnsupportedOperationException in Java).
+     * command is the instruction name used in the exception message (e.g. "EXEC CICS RECEIVE MAP"),
+     * and note carries the operands. Multiple COBOL lines collapse into a single stub, so the line
+     * mapping is N:1 (MANY_TO_ONE).
      */
     record EmbeddedStub(String command, List<String> cobolTextLines, SourceRange range, String note)
             implements ProcStmt {

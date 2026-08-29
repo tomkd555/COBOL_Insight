@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/** Java 生成のレンダリング。byte[] を裏に持つクラスと、ランタイムヘルパ CobolRuntime.java を出力する。 */
+/** Rendering for Java generation. Emits a class backed by a byte[] and the runtime helper CobolRuntime.java. */
 public final class JavaEmitter implements LanguageEmitter {
 
     private static final String RUNTIME_FILE_NAME = "CobolRuntime.java";
@@ -277,9 +277,11 @@ public final class JavaEmitter implements LanguageEmitter {
     }
 
     /**
-     * 88レベル VALUE の1件を親項目との比較式へ写す。VALUE が引用符付きなら親が数値項目でも文字列として
-     * 比較し、原文の表記に従う。{@code low THRU high} は下限・上限の範囲比較へ展開する。表意定数は
-     * 値へ写し、文字コード系に依存して写せないものは常に偽の式と注記へ落とす。
+     * Maps one 88-level VALUE entry to a comparison expression against the parent item. If VALUE is
+     * quoted, the comparison is done as a string even when the parent is a numeric item, following
+     * the source notation as written. {@code low THRU high} expands into a lower/upper bound range
+     * comparison. Figurative constants are mapped to their value, and any that cannot be mapped
+     * because they depend on the code page are always rendered as a false expression with a note.
      */
     private static String condition(String call, FieldKind parentKind, String value) {
         if (Literals.isCodePageDependentFigurative(value)) {

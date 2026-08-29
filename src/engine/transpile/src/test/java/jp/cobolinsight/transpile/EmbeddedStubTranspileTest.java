@@ -26,9 +26,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 直訳不能構文の注記スタブと N:1 の行対応を検証する。EXEC CICS(SYK008)・EXEC SQL(SYK006/007)を
- * 注記スタブへ、作業部 SQL 指令を注記コメントへ落とし、行対応が全生成行を覆い anchorId が決定論であること、
- * 全9本の生成 Java がコンパイルでき決定論であること、88レベル述語がレコードクラスに載ることを確認する。
+ * Verifies annotated stubs for untranslatable syntax and N:1 line mapping. Confirms that
+ * EXEC CICS (SYK008) and EXEC SQL (SYK006/007) fall through to annotated stubs, that working-storage
+ * SQL directives fall through to annotated comments, that the line map covers every generated line
+ * with deterministic anchorIds, that all 9 generated Java sources compile deterministically, and that
+ * level-88 predicates land on the record class.
  */
 class EmbeddedStubTranspileTest {
 
@@ -50,7 +52,7 @@ class EmbeddedStubTranspileTest {
                 .orElseThrow(() -> new AssertionError("プログラムファイルが無い: " + suffix)).content();
     }
 
-    // ---- EXEC CICS 注記スタブ(SYK008)----
+    // ---- EXEC CICS annotated stub (SYK008) ----
 
     @Test
     void cicsBecomesRaiseStubWithOperandsInNote() {
@@ -62,9 +64,9 @@ class EmbeddedStubTranspileTest {
         assertTrue(py.contains("raise NotImplementedError(\"EXEC CICS SEND MAP は直訳不能\")"), py);
         assertTrue(py.contains("raise NotImplementedError(\"EXEC CICS RETURN は直訳不能\")"), py);
         assertTrue(py.contains("raise NotImplementedError(\"EXEC CICS XCTL は直訳不能\")"), py);
-        // XCTL の PROGRAM オペランドが注記に含まれる
+        // The PROGRAM operand of XCTL is included in the note
         assertTrue(py.contains("PROGRAM=SYK009"), py);
-        // 原文コメント保存
+        // Original comment preserved
         assertTrue(py.contains("# EXEC CICS"), py);
     }
 
@@ -90,7 +92,7 @@ class EmbeddedStubTranspileTest {
         assertEquals(MappingKind.MANY_TO_ONE, receive.mappingKind(), "N:1");
     }
 
-    // ---- EXEC SQL 注記スタブ(SYK006)----
+    // ---- EXEC SQL annotated stub (SYK006) ----
 
     @Test
     void sqlBecomesRaiseStub() {
@@ -114,7 +116,7 @@ class EmbeddedStubTranspileTest {
                 && e.mappingKind() == MappingKind.MANY_TO_ONE), "EXEC SQL が N:1 で対応表に載る");
     }
 
-    // ---- 作業部 SQL 指令 → 注記コメント(SYK006/007)----
+    // ---- Working-storage SQL directives -> annotated comment (SYK006/007) ----
 
     @Test
     void workingStorageSqlDirectivesBecomeComments() {
@@ -131,7 +133,7 @@ class EmbeddedStubTranspileTest {
                 && e.cobolLines().startLine() == 43), "INCLUDE SQLCA(43行)が対応表に載る");
     }
 
-    // ---- 88レベル述語がレコードクラスに載る ----
+    // ---- Level-88 predicate lands on the record class ----
 
     @Test
     void conditionPredicateGeneratedInRecordClass() {
@@ -141,7 +143,7 @@ class EmbeddedStubTranspileTest {
         assertTrue(javaRec.contains("public boolean is_WS_EOF("), javaRec);
     }
 
-    // ---- 決定論(全9本・両言語)----
+    // ---- Determinism (all 9 samples, both languages) ----
 
     @Test
     void allSamplesAreDeterministic() {
@@ -159,7 +161,7 @@ class EmbeddedStubTranspileTest {
         }
     }
 
-    // ---- anchorId は <programId>#NNNN で決定論・整列 ----
+    // ---- anchorId is deterministic and sorted as <programId>#NNNN ----
 
     @Test
     void anchorsAreProgramScopedAndSorted() {
@@ -185,7 +187,7 @@ class EmbeddedStubTranspileTest {
         }
     }
 
-    // ---- 行対応が全生成行を覆う(構造化構文の骨格を除く)----
+    // ---- Line map covers every generated line (excluding structured-syntax scaffolding) ----
 
     @Test
     void lineMapCoversAllContentLines() {
@@ -195,7 +197,7 @@ class EmbeddedStubTranspileTest {
                 for (GeneratedFile f : result.files()) {
                     if (f.fileName().equals("cobol_runtime.py")
                             || f.fileName().equals("CobolRuntime.java")) {
-                        continue; // 入力非依存のランタイムは対訳対象外
+                        continue; // The input-independent runtime is out of scope for translation
                     }
                     assertFileCovered(sample, language, f, result.lineMap());
                 }
@@ -220,8 +222,9 @@ class EmbeddedStubTranspileTest {
         }
         assertFalse(covered.isEmpty(), sample + " / " + f.fileName() + " に対応が無い");
         String[] lines = f.content().split("\n", -1);
-        // 検査範囲は対応の付いた最小行から最大行まで。package 宣言・import・クラス冒頭の宣言は
-        // COBOL 文に由来しないため、この範囲の外に置かれ検査対象から外れる。
+        // The checked range runs from the minimum to the maximum mapped line. The package
+        // declaration, imports, and class-level declarations are not derived from COBOL statements,
+        // so they sit outside this range and are excluded from the check.
         for (int l = min; l <= max; l++) {
             if (covered.contains(l)) {
                 continue;
@@ -232,7 +235,7 @@ class EmbeddedStubTranspileTest {
         }
     }
 
-    /** 制御構造の継続・閉じ・詰め物など、COBOL 文に対応しない骨格行か。 */
+    /** Whether the line is scaffolding with no corresponding COBOL statement, such as a control-structure continuation, closing brace, or filler line. */
     private static boolean isStructural(String trimmed, TargetLanguage language) {
         if (trimmed.isEmpty()) {
             return true;
@@ -243,7 +246,7 @@ class EmbeddedStubTranspileTest {
         return trimmed.equals("pass") || trimmed.equals("else:") || trimmed.startsWith("elif ");
     }
 
-    // ---- 全9本の生成 Java がコンパイルできる ----
+    // ---- All 9 generated Java sources compile ----
 
     @Test
     void allSamplesGeneratedJavaCompiles(@TempDir Path tempDir) throws IOException {

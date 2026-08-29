@@ -22,8 +22,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * GO TO を含まない samples(SYK001/003/004/005/007)の手続き部を Python/Java へ逐語対訳し、決定論・
- * 主要文(MOVE/COMPUTE/IF/EVALUATE/PERFORM/CALL)の対訳・生成 Java のコンパイル可否・行対応の注記を検証する。
+ * Translates the procedure division of the samples with no GO TO (SYK001/003/004/005/007) verbatim into
+ * Python/Java, and verifies determinism, the translation of the main statements (MOVE/COMPUTE/IF/
+ * EVALUATE/PERFORM/CALL), whether the generated Java compiles, and the notes carried in the line map.
  */
 class ProcedureTranspileTest {
 

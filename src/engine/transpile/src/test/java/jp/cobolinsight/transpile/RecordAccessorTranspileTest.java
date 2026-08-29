@@ -26,9 +26,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * SYKCPY1.cpy(SYK003 経由)のレコードを Python/Java へ生成し、決定論・レイアウト一致・Java コンパイル可否を検証する。
- * 正解の出所は {@link RecordLayoutResolver} が解決するレイアウト(受注番号@0/受注日@10/YMD REDEFINES@10/金額合計@24 len6/
- * 明細行 OCCURS@32 要素22/処理区分@252 88レベル)と、WS-作業項目(WS-I S9(04) COMP@0 len2/WS-合計@2 len6/件数@8 len5)。
+ * Generates the record from SYKCPY1.cpy (via SYK003) into Python/Java, and verifies determinism, layout
+ * agreement, and whether the Java compiles. The ground truth is the layout resolved by
+ * {@link RecordLayoutResolver} (order number@0 / order date@10 / YMD REDEFINES@10 / total amount@24 len6 /
+ * detail line OCCURS@32 element 22 / process kind@252 level 88) and WS-作業項目 (WS-I S9(04) COMP@0 len2 /
+ * WS-合計@2 len6 / count@8 len5).
  */
 class RecordAccessorTranspileTest {
 

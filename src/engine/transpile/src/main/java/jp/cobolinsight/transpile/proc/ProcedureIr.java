@@ -4,7 +4,7 @@ import jp.cobolinsight.core.source.SourceRange;
 
 import java.util.List;
 
-/** 1つの段落・節を対訳した中間表現。methodName は生成側メソッド名、headerRange は段落見出しの位置。 */
+/** Intermediate representation of one translated paragraph/section. methodName is the method name on the generated side, headerRange is the position of the paragraph header. */
 public record ProcedureIr(String cobolName, String methodName, List<ProcStmt> body,
         SourceRange headerRange) {
 

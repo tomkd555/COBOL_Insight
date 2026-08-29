@@ -6,9 +6,11 @@ import jp.cobolinsight.core.transpile.TargetLanguage;
 import java.util.Optional;
 
 /**
- * 対象言語ごとのレンダリング責務。走査(どの項目をどの順で出すか)は {@link RecordClassGenerator} が担い、
- * 本インターフェースは各要素の言語別の字面(クラス枠・アクセサ・述語・ランタイムヘルパ)を出力に書き込む。
- * 各 emit メソッドは {@link LineTrackingEmitter} へ行を追記するだけで、行対応の記録は呼び手の生成器が行う。
+ * The rendering responsibility for each target language. Traversal (which items to emit in what
+ * order) is handled by {@link RecordClassGenerator}; this interface writes each element's
+ * language-specific surface form (class scaffolding, accessors, predicates, runtime helper) to the
+ * output. Each emit method only appends lines to the {@link LineTrackingEmitter}; recording the
+ * line correspondence is the caller generator's responsibility.
  */
 public interface LanguageEmitter {
 
@@ -21,34 +23,34 @@ public interface LanguageEmitter {
 
     TargetLanguage language();
 
-    /** インデント1レベル分の文字列。 */
+    /** The string for one level of indentation. */
     String indentUnit();
 
-    /** レコードクラスを収める生成ファイル名(拡張子込み)。 */
+    /** The generated file name holding the record class (including extension). */
     String recordFileName(String recordCobolName);
 
-    /** ランタイムヘルパの生成ファイル名。 */
+    /** The generated file name of the runtime helper. */
     String runtimeFileName();
 
-    /** 入力非依存で常に同一のランタイムヘルパ(COMP-3/ゾーン10進/BINARY/英数字の encode/decode)。 */
+    /** The runtime helper (COMP-3/zoned decimal/BINARY/alphanumeric encode/decode) that is always the same regardless of input. */
     GeneratedFile runtimeLibrary();
 
-    /** ファイル冒頭(モジュール説明・ランタイム取り込み)を出力する。行対応は付けない。 */
+    /** Emits the file header (module description, runtime import). No line correspondence is recorded. */
     void emitFileHeader(LineTrackingEmitter out, String programId, String recordCobolName);
 
-    /** クラス定義の頭(宣言・総バイト長定数・コンストラクタ・バッファ参照)を出力する。 */
+    /** Emits the head of the class definition (declaration, total byte length constant, constructors, buffer reference). */
     void emitClassHeader(LineTrackingEmitter out, String className, String cobolName, int totalBytes);
 
-    /** クラス定義の閉じ(必要な言語のみ)を出力する。 */
+    /** Emits the closing of the class definition (only for languages that need one). */
     void emitClassFooter(LineTrackingEmitter out);
 
-    /** 集団項目(REDEFINES/OCCURS を含む)の構造を説明するコメント行を出力する。 */
+    /** Emits a comment line describing the structure of a group item (including REDEFINES/OCCURS). */
     void emitGroupComment(LineTrackingEmitter out, String cobolName, int offset, int byteLength,
             Optional<Integer> occursCount, Optional<String> redefinesTarget);
 
-    /** 基本項目の get/set アクセサを出力する。 */
+    /** Emits the get/set accessor for an elementary item. */
     void emitAccessor(LineTrackingEmitter out, AccessorSpec spec);
 
-    /** 88レベル条件名の述語メソッドを出力する。 */
+    /** Emits the predicate method for an 88-level condition name. */
     void emitConditionPredicate(LineTrackingEmitter out, ConditionSpec spec);
 }

@@ -7,8 +7,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 原ソーステキストから行範囲を切り出す。意味モデルに含まれない詳細(inline PERFORM VARYING の
- * VARYING/FROM/BY 句など)を range から復元するために使う。行は1始まり。
+ * Extracts a line range from the original source text. Used to recover details not carried in the
+ * semantic model (such as the VARYING/FROM/BY clauses of an inline PERFORM VARYING) from a range.
+ * Lines are 1-based.
  */
 public final class SourceSlicer {
 
@@ -18,7 +19,7 @@ public final class SourceSlicer {
         this.lines = sourceText.replace("\r\n", "\n").replace('\r', '\n').split("\n", -1);
     }
 
-    /** range の開始行から終了行までを空白1つで連結して返す(桁は無視し行全体を切り出す)。 */
+    /** Joins the start line through the end line of range with single spaces (ignores columns and takes whole lines). */
     public String linesOf(SourceRange range) {
         int start = range.start().line();
         int end = range.end().line();
@@ -35,8 +36,10 @@ public final class SourceSlicer {
     }
 
     /**
-     * 開始位置(桁を含む)から終了位置(桁を含まない)までを切り出す。行をまたぐ場合は、各行の前後
-     * 空白を除いて空白1つで連結する。行・桁は1始まりで、桁は復号済みテキストの文字数で数える。
+     * Extracts text from the start position (column inclusive) to the end position (column exclusive).
+     * When the range spans multiple lines, each line's leading/trailing whitespace is trimmed and the
+     * lines are joined with single spaces. Lines and columns are 1-based; columns are counted in
+     * characters of the decoded text.
      */
     public String between(SourcePosition start, SourcePosition end) {
         StringBuilder sb = new StringBuilder();
@@ -60,7 +63,7 @@ public final class SourceSlicer {
         return sb.toString();
     }
 
-    /** range の各行を前後空白を除いてそのまま返す(直訳不能ブロックの原文コメント保存に使う)。 */
+    /** Returns each line of range as-is with leading/trailing whitespace trimmed (used to preserve the original text as comments for untranslatable blocks). */
     public List<String> rawLinesOf(SourceRange range) {
         List<String> result = new ArrayList<>();
         int start = range.start().line();
