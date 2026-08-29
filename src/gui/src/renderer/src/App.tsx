@@ -12,6 +12,8 @@ import {
   useWorkbenchDispatch,
 } from "./state/workbenchStore";
 import { SettingsProvider, useSettingsDispatch } from "./state/settingsStore";
+import { RulesProvider } from "./state/rulesStore";
+import { useRules } from "./state/useRules";
 import { useShellStartup } from "./state/useShellStartup";
 import { buildCommands, type Command } from "./state/commands";
 import { commandForChord, isPaletteChord } from "./state/keybindings";
@@ -52,6 +54,7 @@ function Shell(): ReactElement {
   }, []);
 
   useShellStartup(notify);
+  const rulesActions = useRules(notify);
 
   const openAsset = useCallback(
     (path: string, line: number | null): void => {
@@ -107,8 +110,18 @@ function Shell(): ReactElement {
         runAnalysis,
         cancelAnalysis,
         requestCloseTab,
+        rulesActions,
       }),
-    [project, workbench, workbenchDispatch, selectFolder, runAnalysis, cancelAnalysis, requestCloseTab],
+    [
+      project,
+      workbench,
+      workbenchDispatch,
+      selectFolder,
+      runAnalysis,
+      cancelAnalysis,
+      requestCloseTab,
+      rulesActions,
+    ],
   );
 
   // The keyboard chords. They are ignored while typing into a field, except inside the code editor.
@@ -146,7 +159,7 @@ function Shell(): ReactElement {
         {workbench.sideVisible ? (
           <>
             <div className="ci-shell__side" style={{ width: `${workbench.sideWidth}px` }}>
-              <SideBar onSelectFolder={selectFolder} onOpenAsset={openAsset} />
+              <SideBar onSelectFolder={selectFolder} onOpenAsset={openAsset} notify={notify} />
             </div>
             <SplitHandle
               size={workbench.sideWidth}
@@ -160,7 +173,11 @@ function Shell(): ReactElement {
           </>
         ) : null}
         <div className="ci-shell__main">
-          <EditorGroup onRequestClose={requestCloseTab} onSelectFolder={selectFolder} />
+          <EditorGroup
+            onRequestClose={requestCloseTab}
+            onSelectFolder={selectFolder}
+            notify={notify}
+          />
           {workbench.panelVisible ? (
             <>
               <SplitHandle
@@ -223,14 +240,16 @@ function Shell(): ReactElement {
   );
 }
 
-/** The application root: the three stores wrapped around the shell. */
+/** The application root: the four stores wrapped around the shell. */
 export function App(): ReactElement {
   return (
     <SettingsProvider>
       <ProjectProvider>
-        <WorkbenchProvider>
-          <Shell />
-        </WorkbenchProvider>
+        <RulesProvider>
+          <WorkbenchProvider>
+            <Shell />
+          </WorkbenchProvider>
+        </RulesProvider>
       </ProjectProvider>
     </SettingsProvider>
   );

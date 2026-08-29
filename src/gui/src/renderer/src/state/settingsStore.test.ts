@@ -71,6 +71,7 @@ describe("toAppSettings", () => {
       severityThreshold: "high",
       defaultEncoding: "Shift_JIS",
       copybookPaths: ["C:/cpy"],
+      fixOutDir: "C:/out",
       lastInputDir: "C:/assets",
       paneSizes: { sideWidth: 320 },
       restored: true,
@@ -79,8 +80,21 @@ describe("toAppSettings", () => {
       severityThreshold: "high",
       defaultEncoding: "Shift_JIS",
       copybookPaths: ["C:/cpy"],
+      fixOutDir: "C:/out",
       lastInputDir: "C:/assets",
       paneSizes: { sideWidth: 320 },
     });
+  });
+});
+
+describe("the fix output directory", () => {
+  it("is taken from the stored settings and written back", () => {
+    const restored = settingsReducer(initialSettingsState, {
+      type: "RESTORE",
+      settings: { ...emptyAppSettings(), fixOutDir: "C:/out" },
+    });
+    expect(restored.fixOutDir).toBe("C:/out");
+    const changed = settingsReducer(restored, { type: "SET_FIX_OUT_DIR", dir: "C:/fixed" });
+    expect(toAppSettings(changed).fixOutDir).toBe("C:/fixed");
   });
 });

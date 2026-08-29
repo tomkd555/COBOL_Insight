@@ -31,13 +31,8 @@ const FULL: RulesFile = {
       category: "house rules",
       severity: "MEDIUM",
       targets: ["COBOL"],
-      pattern: "FROM\\s+CONSOLE",
-      excludePattern: "",
-      ignoreCase: false,
-      wholeLine: false,
       message: "console input is forbidden",
-      rationale: "",
-      remedy: "",
+      match: { kind: "line", regex: "FROM\\s+CONSOLE", ignoreCase: true },
     },
   ],
 };
@@ -63,10 +58,11 @@ describe("readRulesFile", () => {
     expect(file.custom.map((rule) => rule.id)).toEqual(["U001"]);
   });
 
-  it("defaults a custom rule's severity when it has none", async () => {
-    const stored = JSON.stringify({ custom: [{ id: "U001" }] });
+  it("carries a custom rule across untouched, so no field is lost and none is invented", async () => {
+    const definition = { id: "U001", name: "kept", match: { kind: "statement", verb: ["READ"] } };
+    const stored = JSON.stringify({ custom: [definition] });
     const file = await readRulesFile(memory({ [PATH]: stored }), PATH);
-    expect(file.custom[0].severity).toBe("MEDIUM");
+    expect(file.custom[0]).toEqual(definition);
   });
 });
 

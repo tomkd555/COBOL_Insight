@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { fireEvent } from "@testing-library/dom";
 import type { CobolInsightApi } from "../../../shared/ipc";
 import { emptyAppSettings } from "../../../shared/settings";
+import { emptyRulesFile } from "../../../shared/rulesFile";
 import { App } from "../App";
 
 const OUTPUT_PATHS = {
@@ -59,7 +60,7 @@ function fakeApi(overrides: Partial<CobolInsightApi> = {}): CobolInsightApi {
     importSource: vi.fn(),
     readSettings: vi.fn(async () => emptyAppSettings()),
     writeSettings: vi.fn(async () => undefined),
-    readRules: vi.fn(),
+    readRules: vi.fn(async () => emptyRulesFile()),
     writeRules: vi.fn(),
     versions: { chrome: "0", node: "0", electron: "0" },
     ...overrides,

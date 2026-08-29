@@ -253,3 +253,11 @@ const api = {
 };
 
 contextBridge.exposeInMainWorld("cobolInsight", api);
+
+/**
+ * What the smoke needs to see but the application does not: the rule file as the last write left
+ * it, so a toggle on screen can be shown to have reached the file.
+ */
+contextBridge.exposeInMainWorld("cobolInsightSmoke", {
+  rulesFile: () => rulesFile,
+});

@@ -24,6 +24,8 @@ export interface SettingsState {
   /** The default codepage, or "" for "let the engine detect it". */
   readonly defaultEncoding: string;
   readonly copybookPaths: readonly string[];
+  /** Where `fix apply` writes the corrected sources. Empty means the engine's own default. */
+  readonly fixOutDir: string;
   readonly lastInputDir: string;
   readonly paneSizes: Readonly<Record<string, number>>;
   /** Whether the stored settings have been read yet. Saving before that would erase them. */
@@ -34,6 +36,7 @@ export const initialSettingsState: SettingsState = {
   severityThreshold: "warning",
   defaultEncoding: "",
   copybookPaths: [],
+  fixOutDir: "",
   lastInputDir: "",
   paneSizes: {},
   restored: false,
@@ -44,6 +47,7 @@ export type SettingsAction =
   | { type: "SET_THRESHOLD"; threshold: Severity }
   | { type: "SET_ENCODING"; encoding: string }
   | { type: "SET_COPYBOOK_PATHS"; paths: readonly string[] }
+  | { type: "SET_FIX_OUT_DIR"; dir: string }
   | { type: "SET_LAST_INPUT_DIR"; dir: string }
   | { type: "SET_PANE_SIZE"; key: string; size: number };
 
@@ -66,6 +70,7 @@ export function settingsReducer(state: SettingsState, action: SettingsAction): S
           ? action.settings.defaultEncoding
           : "",
         copybookPaths: [...action.settings.copybookPaths],
+        fixOutDir: action.settings.fixOutDir,
         lastInputDir: action.settings.lastInputDir,
         paneSizes: { ...action.settings.paneSizes },
         restored: true,
@@ -79,6 +84,9 @@ export function settingsReducer(state: SettingsState, action: SettingsAction): S
 
     case "SET_COPYBOOK_PATHS":
       return { ...state, copybookPaths: [...action.paths] };
+
+    case "SET_FIX_OUT_DIR":
+      return { ...state, fixOutDir: action.dir };
 
     case "SET_LAST_INPUT_DIR":
       return { ...state, lastInputDir: action.dir };
@@ -100,6 +108,7 @@ export function toAppSettings(state: SettingsState): AppSettings {
     severityThreshold: state.severityThreshold,
     defaultEncoding: state.defaultEncoding,
     copybookPaths: [...state.copybookPaths],
+    fixOutDir: state.fixOutDir,
     lastInputDir: state.lastInputDir,
     paneSizes: { ...state.paneSizes },
   };

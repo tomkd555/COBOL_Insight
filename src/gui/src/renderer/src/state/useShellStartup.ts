@@ -15,6 +15,7 @@ import {
   useWorkbenchDispatch,
 } from "./workbenchStore";
 import { toAppSettings, useSettings, useSettingsDispatch } from "./settingsStore";
+import { useRulesDispatch } from "./rulesStore";
 
 /** How a failure reaches the user. The shell passes its toast function. */
 export type Notify = (message: string, failed?: boolean) => void;
@@ -25,6 +26,7 @@ export function useShellStartup(notify: Notify): void {
   const workbenchDispatch = useWorkbenchDispatch();
   const settings = useSettings();
   const settingsDispatch = useSettingsDispatch();
+  const rulesDispatch = useRulesDispatch();
 
   // Restore the stored settings once, before anything is saved back over them.
   useEffect(() => {
@@ -46,15 +48,20 @@ export function useShellStartup(notify: Notify): void {
     };
   }, [settingsDispatch, workbenchDispatch, notify]);
 
-  // Load the rule catalog once the output paths are known, so findings can name their rule.
+  // Load the rule configuration and the catalog it produces once the output paths are known, so
+  // findings can name their rule and the rules screen has a file to edit.
   useEffect(() => {
     let cancelled = false;
     api()
       .outputPaths()
       .then(async (paths) => {
         projectDispatch({ type: "SET_OUTPUT_PATHS", paths });
-        const catalog = await api().rules({ rulesFile: paths.rules });
+        const [file, catalog] = await Promise.all([
+          api().readRules(paths.rules),
+          api().rules({ rulesFile: paths.rules }),
+        ]);
         if (cancelled) return;
+        rulesDispatch({ type: "LOAD", file });
         projectDispatch({
           type: "SET_RULES",
           entries: catalog.rules,
@@ -65,7 +72,7 @@ export function useShellStartup(notify: Notify): void {
     return () => {
       cancelled = true;
     };
-  }, [projectDispatch, notify]);
+  }, [projectDispatch, rulesDispatch, notify]);
 
   /**
    * Save when a resize finishes rather than on every pixel of a drag, and never before the stored

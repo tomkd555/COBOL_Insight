@@ -1,13 +1,17 @@
 import type { ReactElement } from "react";
 import { text } from "../text";
 import { useWorkbench, type SideView } from "../state/workbenchStore";
+import type { Notify } from "../state/useShellStartup";
 import { Explorer } from "../views/explorer/Explorer";
 import { Problems } from "../views/problems/Problems";
+import { Rules } from "../views/rules/Rules";
 import { Placeholder } from "../editors/Placeholder";
 
 export interface SideBarProps {
   onSelectFolder: () => void;
   onOpenAsset: (path: string, line: number | null) => void;
+  /** How a failed write reaches the user. */
+  notify: Notify;
 }
 
 const TITLES: Readonly<Record<SideView, string>> = {
@@ -21,7 +25,7 @@ const TITLES: Readonly<Record<SideView, string>> = {
  * The side bar. It holds whichever view the activity bar selected; the views a later phase will fill
  * show the placeholder, so every activity entry leads somewhere.
  */
-export function SideBar({ onSelectFolder, onOpenAsset }: SideBarProps): ReactElement {
+export function SideBar({ onSelectFolder, onOpenAsset, notify }: SideBarProps): ReactElement {
   const workbench = useWorkbench();
   const view = workbench.sideView;
 
@@ -33,6 +37,8 @@ export function SideBar({ onSelectFolder, onOpenAsset }: SideBarProps): ReactEle
           <Explorer onSelectFolder={onSelectFolder} onOpenAsset={onOpenAsset} />
         ) : view === "problems" ? (
           <Problems onOpenAsset={onOpenAsset} compact />
+        ) : view === "rules" ? (
+          <Rules notify={notify} />
         ) : (
           <Placeholder />
         )}
