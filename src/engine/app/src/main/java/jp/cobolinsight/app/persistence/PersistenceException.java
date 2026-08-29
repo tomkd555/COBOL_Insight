@@ -1,6 +1,6 @@
 package jp.cobolinsight.app.persistence;
 
-/** 永続化層の入出力エラーを表す非検査例外。 */
+/** Unchecked exception representing an I/O error in the persistence layer. */
 public class PersistenceException extends RuntimeException {
 
     public PersistenceException(String message, Throwable cause) {

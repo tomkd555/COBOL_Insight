@@ -25,8 +25,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 解析に失敗した資産が呼出関係グラフへ孤立ノードとして現れることの検証。図から失われると
- * 「これが全体である」と誤読されるため、パースできない資産も種別 UNANALYZABLE のノードとして出す。
+ * Verification that an asset that failed to analyze still appears as an isolated node in the
+ * call graph. If it were missing from the diagram, it could be misread as "this is the whole
+ * picture," so an asset that cannot be parsed is still emitted as a node of kind UNANALYZABLE.
  */
 class CallGraphUnanalyzableNodeTest {
 
@@ -78,7 +79,7 @@ class CallGraphUnanalyzableNodeTest {
         assertFalse(node.attributes().getOrDefault("reason", "").isBlank(),
                 "属性 reason に失敗理由が入ること");
 
-        // 解析できた資産は従来どおりプログラムノードとして現れる。
+        // An asset that was successfully analyzed still appears as a program node, as before.
         assertTrue(result.callGraph().nodes().stream()
                         .anyMatch(n -> n.kind() == NodeKind.PROGRAM && n.label().equals("GOOD")),
                 "解析できたプログラムは PROGRAM ノードのままであること");
@@ -98,8 +99,9 @@ class CallGraphUnanalyzableNodeTest {
     }
 
     /**
-     * 解析できなかった資産の NODE 行も種別 UNANALYZABLE で残ること。走査が先に付ける種別
-     * (PROGRAM)のままでは、プロジェクトファイルを読む側が解析できた資産と区別できない。
+     * The NODE row for an asset that could not be analyzed must also stay as kind UNANALYZABLE.
+     * If it were left as the kind the scan assigns first (PROGRAM), a reader of the project file
+     * could not distinguish it from an asset that was successfully analyzed.
      */
     @Test
     void unanalyzableNodeIsPersistedWithItsKind() throws IOException {

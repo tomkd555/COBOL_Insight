@@ -22,8 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * translate サブコマンドの picocli 配線・生成ファイル出力・LINE_MAP 永続化・決定論・言語選択・
- * 終了コードを、samples/ を対象に end-to-end で検証する。
+ * End-to-end verification, against samples/, of the translate subcommand's picocli wiring,
+ * generated-file output, LINE_MAP persistence, determinism, language selection, and exit code.
  */
 class TranspileCommandTest {
 
@@ -67,11 +67,11 @@ class TranspileCommandTest {
             long syk006 = ids.get("cobol/SYK006.cbl");
             List<LineMapRecord> syk006Maps = dao.findLineMapsBySource(syk006);
             assertFalse(syk006Maps.isEmpty(), "SYK006 の行対応が LINE_MAP に載ること");
-            // 直訳できない PERFORM UNTIL 条件は、注記付きで行対応へ載る。
+            // A PERFORM UNTIL condition that cannot be translated verbatim appears in the mapping with a note.
             assertTrue(syk006Maps.stream().anyMatch(
                     m -> m.note().contains("直訳不能") && m.note().contains("SQLCODE")),
                     "直訳不能条件(SQLCODE)の注記が LINE_MAP に載ること: " + syk006Maps);
-            // コピー句由来のレコードクラス対応も、コピー句ソースへ紐づいて載ること。
+            // A record class mapping originating from a copybook should also be linked to the copybook source.
             long copybook = ids.get("copybook/SYKCPY3.cpy");
             assertFalse(dao.findLineMapsBySource(copybook).isEmpty(),
                     "コピー句 SYKCPY3 由来の行対応がコピー句ソースへ紐づいて載ること");

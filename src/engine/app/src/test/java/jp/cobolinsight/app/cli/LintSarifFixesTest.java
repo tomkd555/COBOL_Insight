@@ -20,9 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * lint の SARIF が、FixProducer を持つルールの検出へ fixes(artifactChanges のソース範囲置換)を
- * 付すことの検証。FixProducer を持つルールの集合は
- * 実行時に {@link Rule#fix()} へ問い合わせて求め、テスト側で固定値として持たない。
+ * Verifies that lint's SARIF attaches fixes (artifactChanges source-range replacements) to
+ * detections from rules that have a FixProducer. The set of rules with a FixProducer is obtained
+ * at runtime by querying {@link Rule#fix()}, and is not hardcoded on the test side.
  */
 class LintSarifFixesTest {
 
@@ -36,7 +36,7 @@ class LintSarifFixesTest {
                 List.of(SAMPLES.resolve("copybook")), Map.of()));
     }
 
-    /** lint が実行するルールのうち FixProducer を持つものの id(実行時問い合わせ)。 */
+    /** The ids of the lint-run rules that have a FixProducer (queried at runtime). */
     private static Set<String> ruleIdsWithFixProducer() {
         return BuiltinRules.all().stream()
                 .filter(rule -> rule.meta().id().startsWith("R"))

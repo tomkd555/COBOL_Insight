@@ -1,6 +1,6 @@
 package jp.cobolinsight.app.persistence.model;
 
-/** PARAGRAPH表の1行(COBOLの段落・節)。 */
+/** One row of the PARAGRAPH table (a COBOL paragraph or section). */
 public record ParagraphRecord(long id, long programId, String name, int startLine, int endLine) {
 
     public ParagraphRecord {

@@ -13,8 +13,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * scan の増分更新が用いるノード・エッジの保守操作の検証。1,000,000,000,000 は scan が呼出関係グラフの
- * 構築結果へ与えるIDの下限で、これ未満のIDはソース単位の解析結果が占める。
+ * Verifies the node/edge maintenance operations used by scan's incremental updates. 1,000,000,000,000
+ * is the lower bound of the IDs scan assigns to the call-relationship graph's build result; IDs below
+ * this are occupied by source-level analysis results.
  */
 class PersistenceDaoMaintenanceTest {
 

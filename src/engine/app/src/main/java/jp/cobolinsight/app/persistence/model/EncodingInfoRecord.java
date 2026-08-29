@@ -1,6 +1,6 @@
 package jp.cobolinsight.app.persistence.model;
 
-/** ENCODING_INFO表の1行(SOURCEと1:1)。 */
+/** One row of the ENCODING_INFO table (1:1 with SOURCE). */
 public record EncodingInfoRecord(long sourceId, String detectedCharset, double confidence,
         boolean manualOverride, boolean soSiPresent) {
 

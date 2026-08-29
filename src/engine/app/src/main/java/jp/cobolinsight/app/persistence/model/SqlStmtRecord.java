@@ -1,8 +1,9 @@
 package jp.cobolinsight.app.persistence.model;
 
 /**
- * SQL_STMT表の1行(埋め込みSQL)。mangledTextはホスト変数を連番トークンへ置き換えて構文解析器へ
- * 渡せる形にした文、originalTextは置換前の原文である。
+ * One row of the SQL_STMT table (embedded SQL). mangledText is the statement with host variables
+ * replaced by sequential tokens so it can be passed to the parser; originalText is the original
+ * text before replacement.
  */
 public record SqlStmtRecord(long id, long sourceId, String stmtType, String mangledText,
         String originalText) {

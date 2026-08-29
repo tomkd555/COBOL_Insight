@@ -1,6 +1,6 @@
 package jp.cobolinsight.app.persistence.model;
 
-/** BMS_MAP表の1行(DFHMDIが定義する画面)。 */
+/** One row of the BMS_MAP table (a screen defined by DFHMDI). */
 public record BmsMapRecord(long id, long mapsetId, String name, int sizeRows, int sizeCols) {
 
     public BmsMapRecord {

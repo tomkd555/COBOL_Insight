@@ -1,9 +1,9 @@
 package jp.cobolinsight.app.persistence;
 
-/** 解析結果を保持する13表のDDL。 */
+/** The DDL for the 13 tables that hold analysis results. */
 final class Schema {
 
-    /** データベースファイルの user_version へ記録するスキーマの版数。 */
+    /** The schema version recorded in the database file's user_version. */
     static final int VERSION = 3;
 
     static final String[] CREATE_STATEMENTS = {
@@ -152,8 +152,9 @@ final class Schema {
     };
 
     /**
-     * 版数の古いファイルを作り直すための削除文。外部キーの参照先を後に消すため、子表から並べる。
-     * 索引は表と一緒に消えるため個別に並べない。
+     * The drop statements used to rebuild a file with an old schema version. Ordered from child
+     * tables first, since a foreign key's referent must be dropped later. Indexes are dropped
+     * along with their table, so they are not listed separately.
      */
     static final String[] DROP_STATEMENTS = {
             "DROP TABLE IF EXISTS LINE_MAP",

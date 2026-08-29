@@ -17,8 +17,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * fix サブコマンド(preview/apply)の picocli 配線・差分表示・相対構成での出力・再パース検証ゲートを、
- * samples/ を対象に end-to-end で検証する。原本(samples/)は変更しない。
+ * End-to-end verification of the fix subcommand's (preview/apply) picocli wiring, diff display,
+ * output in a relative layout, and the reparse-verification gate, against samples/. The originals
+ * (samples/) are never modified.
  */
 class FixCommandTest {
 
@@ -49,13 +50,13 @@ class FixCommandTest {
 
         assertEquals(0, run.exitCode(), "解析に error が無ければ成功(0)。stdout=" + run.stdout());
         String out = run.stdout();
-        // R017(FILE STATUS 検査)・R004(ON SIZE ERROR)・R018(SQLCODE 検査)の挿入が追加行として出ること。
+        // The insertions from R017 (FILE STATUS check), R004 (ON SIZE ERROR) and R018 (SQLCODE check) must appear as added lines.
         assertTrue(out.contains("+           IF WS-ORDIN-STATUS NOT = '00'"), out);
         assertTrue(out.contains("+           ON SIZE ERROR DISPLAY 'SIZE ERROR: WS-引当率' END-COMPUTE"),
                 out);
         assertTrue(out.contains("+           IF SQLCODE NOT = 0 DISPLAY 'SQL ERROR: ' SQLCODE END-IF."),
                 out);
-        // unified diff のハンク見出しと、対象ファイルがサマリへ載ること。
+        // The unified diff's hunk headers and the target files must appear in the summary.
         assertTrue(out.contains("@@"), out);
         assertTrue(out.contains("\"cobol/SYK001.cbl\""), out);
         assertTrue(out.contains("\"cobol/SYK007.cbl\""), out);
@@ -80,7 +81,7 @@ class FixCommandTest {
                 "全ての修正後ソースが再パースできれば成功(0)。stdout=" + run.stdout());
         assertTrue(run.stdout().contains("\"reparseFailures\":0"), run.stdout());
 
-        // 相対パス構成(cobol/)を保って書き出すこと。
+        // Must write out while preserving the relative path layout (cobol/).
         Path syk001 = out.resolve("cobol").resolve("SYK001.cbl");
         Path syk007 = out.resolve("cobol").resolve("SYK007.cbl");
         assertTrue(Files.exists(syk001), "出力が cobol/ 構成を保つこと");
@@ -91,7 +92,7 @@ class FixCommandTest {
         assertTrue(syk007Text.contains("END-COMPUTE"), "ON SIZE ERROR+END-COMPUTE が入ること");
         assertTrue(syk007Text.contains("IF SQLCODE NOT = 0"), "SQLCODE 検査が入ること");
 
-        // 原本は変更しないこと。
+        // The original must not be modified.
         assertArrayEquals(originalBefore,
                 Files.readAllBytes(SAMPLES.resolve("cobol").resolve("SYK007.cbl")),
                 "apply は原本を変更しないこと");
@@ -103,7 +104,7 @@ class FixCommandTest {
         execute("fix", "apply", SAMPLES.toString(), "--out", out.toString());
         String syk001 = Files.readString(out.resolve("cobol").resolve("SYK001.cbl"),
                 StandardCharsets.UTF_8);
-        // 挿入した検査文は B領域起点(12桁目)から始まり、一連番号欄(1-6桁)は空白であること。
+        // The inserted check statement must start at the B-area origin (column 12), with the sequence-number field (columns 1-6) left blank.
         String inserted = syk001.lines()
                 .filter(line -> line.contains("IF WS-ORDIN-STATUS NOT = '00'"))
                 .findFirst().orElseThrow();
@@ -121,7 +122,7 @@ class FixCommandTest {
         assertTrue(content.contains("<style"), "インライン CSS を持つこと");
         assertTrue(content.contains("cobol/SYK001.cbl"), "対象ファイルの差分を含むこと");
         assertTrue(content.contains("IF SQLCODE NOT = 0"), "挿入内容を含むこと");
-        // 外部資産へ依存しない自己完結 HTML であること。
+        // Must be self-contained HTML with no dependency on external assets.
         assertFalse(content.contains("http://"), content);
         assertFalse(content.contains("https://"), content);
         assertFalse(content.contains("<script"), content);

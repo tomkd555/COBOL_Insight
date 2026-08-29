@@ -8,16 +8,18 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * 原本テキストと修正後テキストの unified diff を算出する。差分計算は java-diff-utils へ一元化する。
- * 行分割は改行(LF)で行い、原本・修正後を同一手順で分割するため、無変更行は差分に現れない。
+ * Computes the unified diff between the original text and the fixed text. Diff computation is
+ * centralized on java-diff-utils. Lines are split on the newline (LF), and since the original and
+ * the fixed text are split by the same procedure, unchanged lines do not appear in the diff.
  *
- * <p>返す各行は着色を含まない素の unified diff である。ヘッダ({@code --- a/<label>} /
- * {@code +++ b/<label>})・ハンクヘッダ({@code @@ ... @@})・追加行({@code +})・削除行
- * ({@code -})・文脈行(先頭空白)から成る。ANSI 着色や HTML への整形は表示側の責務とする。
+ * <p>Each line returned is a plain unified diff with no coloring: it consists of headers
+ * ({@code --- a/<label>} / {@code +++ b/<label>}), hunk headers ({@code @@ ... @@}), added lines
+ * ({@code +}), removed lines ({@code -}), and context lines (leading whitespace). ANSI coloring
+ * or formatting into HTML is the display layer's responsibility.
  */
 public final class UnifiedDiffFormatter {
 
-    /** 差分の前後に付ける文脈行数。 */
+    /** The number of context lines placed before and after each diff hunk. */
     private final int contextSize;
 
     public UnifiedDiffFormatter() {
@@ -29,7 +31,8 @@ public final class UnifiedDiffFormatter {
     }
 
     /**
-     * {@code label} をファイル名としたヘッダ付きの unified diff 行を返す。差分が無い場合は空リスト。
+     * Returns the unified diff lines, with headers, using {@code label} as the file name. Returns
+     * an empty list when there is no difference.
      */
     public List<String> unifiedDiff(String label, String originalText, String fixedText) {
         List<String> original = Arrays.asList(originalText.split("\n", -1));

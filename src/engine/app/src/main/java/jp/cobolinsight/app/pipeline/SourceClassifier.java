@@ -9,25 +9,29 @@ import java.nio.charset.StandardCharsets;
 import java.util.regex.Pattern;
 
 /**
- * ソースの内容から資産の種別を逆算する。ファイル入出力を持たない純関数であり、判定に使うのは
- * 与えられたバイト列だけである。判定表はこの改修で最も回帰を起こしやすい部分なので、
- * バイト列を直接与える単体テストで細かく固められるよう入出力から切り離してある。
+ * Back-calculates the asset kind from the source content. A pure function with no file I/O;
+ * classification uses only the given byte array. Because the classification table is the part
+ * most prone to regressions in this rework, it is kept separate from I/O so it can be pinned down
+ * precisely with unit tests that feed byte arrays directly.
  *
- * <p><b>読む量に上限を置かない。</b>標識が現れた行で確定してそこで読むのをやめ、現れなければ
- * 末尾まで読む。「先頭 N 行まで」という制御は、N+1 行目に {@code IDENTIFICATION DIVISION} を
- * 持つソースを黙って落とす。利用者から見て説明のつかない取りこぼしになるため置かない。
+ * <p><b>Do not cap the amount read.</b> Once a marker line appears, stop reading right there;
+ * if none appears, read to the end. A control such as "read only the first N lines" would silently
+ * drop a source that has {@code IDENTIFICATION DIVISION} on line N+1. That is left out because it
+ * would produce a loss the user could not otherwise explain.
  *
- * <p>文字コードの推定は {@link CodePageDetector} へそのまま委ね、ここに独自の判定基準を持たない。
- * EBCDIC と判定されたら単バイトの IBM037 で、それ以外は ISO-8859-1 で写す。いずれも1バイトが
- * 1文字へ対応するので、文字位置がそのままカード桁になる。判定に使うキーワードはすべて ASCII で
- * あり、日本語の注記が化けても種別の判定には影響しない。
+ * <p>Character-set detection is delegated entirely to {@link CodePageDetector}; no independent
+ * classification criteria live here. Once judged EBCDIC, the content is decoded as single-byte
+ * IBM037; otherwise as ISO-8859-1. Either way one byte maps to one character, so the character
+ * position is exactly the card column. All keywords used for classification are ASCII, so garbled
+ * Japanese comments never affect the kind decision.
  */
 final class SourceClassifier {
 
     /**
-     * 内容判定の結末。kind が null のとき、binary が真なら「テキストでないと確定した」、
-     * 偽なら「種別を決められなかった」である。両者を分けるのは、前者が取りこぼしではなく
-     * 判定であるためで、報告の扱いが変わる。
+     * The outcome of content classification. When kind is null, binary true means "confirmed not
+     * to be text"; false means "the kind could not be determined." The distinction matters
+     * because the former is a firm judgment rather than a loss, and that changes how it is
+     * reported.
      */
     record Verdict(AssetKind kind, boolean binary) {
 
@@ -44,35 +48,38 @@ final class SourceClassifier {
     }
 
     /**
-     * JCL の制御文。{@code //} で始まる行は他の種別と衝突し得ないため最優先で判定する。
-     * 名前欄はメインフレームのメンバ名の規則(先頭が英字または国別文字、8文字以内)に従う。
+     * A JCL control statement. A line starting with {@code //} cannot collide with any other
+     * kind, so it is judged first. The name field follows the mainframe member-name rule (starts
+     * with a letter or national character, at most 8 characters).
      */
     private static final Pattern JCL_STATEMENT = Pattern.compile(
             "^//([A-Z@#$][A-Z0-9@#$]{0,7})?\\s+"
                     + "(JOB|EXEC|DD|PROC|PEND|SET|INCLUDE|IF|ELSE|ENDIF|OUTPUT|JCLLIB|COMMAND)\\b",
             Pattern.CASE_INSENSITIVE);
 
-    /** BMS のマクロ呼出。名前欄は空でもよい。 */
+    /** A BMS macro call. The name field may be empty. */
     private static final Pattern BMS_MACRO =
             Pattern.compile("^\\S*\\s+DFH(MSD|MDI|MDF)\\b", Pattern.CASE_INSENSITIVE);
 
     /**
-     * COBOL 本体を名指す語。コピー句との区別はこの語の有無へ一元化する。コピー句は本体へ差し込む
-     * 断片であり DIVISION も PROGRAM-ID も書かないため、両者を分ける唯一の安定した特徴になる。
+     * The keyword that names a COBOL main body. Distinguishing it from a copybook is unified
+     * around whether this keyword is present: a copybook is a fragment inserted into the main
+     * body and writes neither DIVISION nor PROGRAM-ID, which is the one stable feature that
+     * separates the two.
      */
     private static final Pattern COBOL_MARKER = Pattern.compile(
             "\\b(IDENTIFICATION\\s+DIVISION|ID\\s+DIVISION|ENVIRONMENT\\s+DIVISION"
                     + "|DATA\\s+DIVISION|PROCEDURE\\s+DIVISION|PROGRAM-ID)\\b",
             Pattern.CASE_INSENSITIVE);
 
-    /** データ項目のレベル番号。01〜49・66・77・88 を受ける。 */
+    /** A data item level number. Accepts 01-49, 66, 77, 88. */
     private static final Pattern LEVEL_NUMBER =
             Pattern.compile("^(0?[1-9]|[1-4][0-9]|66|77|88)\\s+\\S");
 
-    /** 単バイトの EBCDIC。桁とバイト位置を一致させるため、混在コードページではなくこれを使う。 */
+    /** Single-byte EBCDIC. Used instead of a mixed-byte code page so columns and byte positions line up. */
     private static final Charset EBCDIC_SINGLE_BYTE = Charset.forName("IBM037");
 
-    /** EBCDIC の行区切りに使われる NEL。IBM037 で写すと U+0085 になる。 */
+    /** NEL, used as the line separator in EBCDIC. Decodes to U+0085 under IBM037. */
     private static final char NEXT_LINE = (char) 0x85;
 
     private static final CodePageDetector DETECTOR = new CodePageDetector();
@@ -81,16 +88,17 @@ final class SourceClassifier {
     }
 
     /**
-     * バイト列から種別を判定する。
+     * Classifies the kind from a byte array.
      *
-     * <p>仕様書は {@code classify(String fileName, byte[])} の署名を挙げているが、内容判定は
-     * ファイル名を一切見ない。受け取ると「名前も判定に効く」と読める死んだ引数になるため落とした。
-     * 拡張子との突き合わせは呼び出し側({@link SourceDiscovery})の責務である。
+     * <p>The spec lists the signature {@code classify(String fileName, byte[])}, but content
+     * classification never looks at the file name at all. Accepting it would read as "the name
+     * also affects the decision," which would be a dead parameter, so it was dropped.
+     * Matching against the extension is the responsibility of the caller ({@link SourceDiscovery}).
      */
     static Verdict classify(byte[] content) {
         if (containsNul(content)) {
-            // COBOL・JCL・BMS のテキストに NUL は現れない。EBCDIC のカード像でも空白は 0x40 で
-            // ある。1バイトでも現れた時点でテキストでないと確定するので、件数のしきい値は要らない。
+            // NUL never appears in COBOL/JCL/BMS text. Even in an EBCDIC card image, blank is
+            // 0x40. The moment even a single byte appears, the content is confirmed to not be text, so no count threshold is needed.
             return Verdict.BINARY;
         }
         String text = decode(content);
@@ -112,12 +120,12 @@ final class SourceClassifier {
             }
             from = breakAt + lineBreakLength(text, breakAt);
         }
-        // COBOL 本体を名指す語が末尾まで現れず、最初の有意行がレベル番号で始まるならコピー句。
+        // If the keyword naming a COBOL main body never appears through to the end, and the first significant line starts with a level number, it is a copybook.
         return Boolean.TRUE.equals(firstSignificantIsLevelNumber)
                 ? Verdict.of(AssetKind.COPYBOOK) : Verdict.UNDECIDED;
     }
 
-    /** 1行から強い根拠を読む。注記行と根拠を持たない行には {@link Verdict#UNDECIDED} を返す。 */
+    /** Reads strong evidence from a single line. Returns {@link Verdict#UNDECIDED} for comment lines and lines with no evidence. */
     private static Verdict classifyLine(String line) {
         if (!isSignificant(line)) {
             return Verdict.UNDECIDED;
@@ -135,10 +143,11 @@ final class SourceClassifier {
     }
 
     /**
-     * 判定の根拠に使える行か。種別ごとに注記の桁が違うため、3通りすべてを飛ばす。
-     * 固定形式の7桁目の {@code *} を必ず飛ばすのが要である。COBOL の見出し注記は
-     * {@code PROGRAM-ID : 〜} のように本文の語をそのまま書くのが常であり、注記を本文とみなすと
-     * コピー句や JCL でも COBOL 判定が通ってしまう。
+     * Whether the line can be used as evidence for classification. Skips all three comment forms,
+     * since the comment column differs by kind. Skipping the {@code *} in column 7 of fixed
+     * format is essential. A COBOL heading comment commonly writes body keywords verbatim, as in
+     * {@code PROGRAM-ID : ~}; treating a comment as body text would let a copybook or JCL file
+     * pass as COBOL.
      */
     private static boolean isSignificant(String line) {
         if (line.isBlank()) {
@@ -164,9 +173,10 @@ final class SourceClassifier {
     }
 
     /**
-     * 判定に使う写し。EBCDIC のソースは行区切りに NEL(0x15)を使うことがあり、IBM037 で写すと
-     * U+0085 になるため、EBCDIC のときだけこれを改行へ直す。ISO-8859-1 で写す側で同じことを
-     * すると、UTF-8 の日本語が持つ 0x85 バイト(「共」= E5 85 B1 など)を行の切れ目と誤読する。
+     * The copy used for classification. An EBCDIC source may use NEL (0x15) as its line
+     * separator, which decodes to U+0085 under IBM037, so only for EBCDIC is this converted to a
+     * newline. Doing the same on the side that decodes as ISO-8859-1 would misread the 0x85 byte
+     * that appears inside a UTF-8 Japanese character (e.g. "共" = E5 85 B1) as a line break.
      */
     private static String decode(byte[] content) {
         boolean ebcdic = DETECTOR.detect(content).codePage().isEbcdic();
@@ -175,7 +185,7 @@ final class SourceClassifier {
         return ebcdic ? text.replace(NEXT_LINE, '\n') : text;
     }
 
-    /** 次の改行の位置。無ければ -1。 */
+    /** The position of the next line break. -1 if none. */
     private static int indexOfLineBreak(String text, int from) {
         for (int i = from; i < text.length(); i++) {
             char c = text.charAt(i);

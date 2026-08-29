@@ -7,7 +7,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** unified diff 算出({@link UnifiedDiffFormatter})の検証。 */
+/** Verifies unified diff computation ({@link UnifiedDiffFormatter}). */
 class UnifiedDiffFormatterTest {
 
     private final UnifiedDiffFormatter formatter = new UnifiedDiffFormatter();

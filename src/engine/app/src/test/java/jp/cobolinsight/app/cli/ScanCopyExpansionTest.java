@@ -18,8 +18,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * `scan --copy-expansion` が書き出すコピー句インライン展開の成果物の検証。GUI はこのJSONから、
- * 原本の COPY 文の位置へコピー句を差し込んだ姿を組み立てる。
+ * Verifies the copybook inline-expansion artifact written by `scan --copy-expansion`. From this
+ * JSON, the GUI builds the view where the copybook is inserted at the position of the original
+ * COPY statement.
  */
 class ScanCopyExpansionTest {
 

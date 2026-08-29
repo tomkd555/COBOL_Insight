@@ -35,8 +35,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 呼出関係グラフ構築の受入回帰テスト。samples/ 全体(COBOL9・JCL3・BMS1)から構築した
- * 呼出関係グラフを、expected-results.md 4・5・9章の正解グラフと1辺単位で突合する。
+ * Acceptance regression test for call-graph construction. Compares the call graph built from
+ * the entire samples/ set (COBOL9 / JCL3 / BMS1) against the expected graph in
+ * expected-results.md chapters 4, 5 and 9, edge by edge.
  */
 class CallGraphSamplesAcceptanceTest {
 
@@ -68,11 +69,11 @@ class CallGraphSamplesAcceptanceTest {
                 + edge.resolution() + "]";
     }
 
-    /** expected-results.md 4章(JCL・データセット)・5章(CALL)・9章(CICS)から起こした正解の全辺。 */
+    /** All expected edges derived from expected-results.md chapter 4 (JCL/dataset), chapter 5 (CALL) and chapter 9 (CICS). */
     private static Set<String> expectedEdges() {
         Set<String> expected = new TreeSet<>();
-        // 4章: ジョブ→ステップ→プログラム(EXEC PGM=対応。SYKD020のSTEP020は
-        // インストリームPROC SYKPRC01経由のためSTEP020.STEP020へ展開される)
+        // Chapter 4: job -> step -> program (matches EXEC PGM=. SYKD020's STEP020 expands
+        // to STEP020.STEP020 because it runs via the in-stream PROC SYKPRC01)
         expected.add("job:SYKD010 -> step:SYKD010.STEP010 [EXECUTION/CONSTANT]");
         expected.add("job:SYKD010 -> step:SYKD010.STEP020 [EXECUTION/CONSTANT]");
         expected.add("job:SYKD020 -> step:SYKD020.STEP010 [EXECUTION/CONSTANT]");
@@ -85,9 +86,9 @@ class CallGraphSamplesAcceptanceTest {
         expected.add("step:SYKD020.STEP020.STEP020 -> program:SYK007 [EXECUTION/CONSTANT]");
         expected.add("step:SYKD030.STEP010 -> program:SYK001 [EXECUTION/CONSTANT]");
         expected.add("step:SYKD030.STEP020 -> program:SYK002 [EXECUTION/CONSTANT]");
-        // 4章: データセット参照。&CYCLE(SET CYCLE=250718)は250718へ解決済みであること。
-        // ステップ間連携(ORDER.VALID・STOCK.EXTRACT)、ジョブ間連携(ORDER.ERROR)、
-        // 共有VSAM(SYKV.ORDER.MASTER)は同一データセットノードの共有として表れる。
+        // Chapter 4: dataset references. &CYCLE (SET CYCLE=250718) must already be resolved to 250718.
+        // Inter-step linkage (ORDER.VALID / STOCK.EXTRACT), inter-job linkage (ORDER.ERROR),
+        // and the shared VSAM (SYKV.ORDER.MASTER) appear as sharing of the same dataset node.
         expected.add("step:SYKD010.STEP010 -> dataset:SYKT.D250718.ORDER.DAILY [REFERENCE/CONSTANT]");
         expected.add("step:SYKD010.STEP010 -> dataset:SYKW.D250718.ORDER.VALID [REFERENCE/CONSTANT]");
         expected.add("step:SYKD010.STEP010 -> dataset:SYKW.D250718.ORDER.ERROR [REFERENCE/CONSTANT]");
@@ -105,16 +106,17 @@ class CallGraphSamplesAcceptanceTest {
         expected.add(
                 "step:SYKD030.STEP020 -> dataset:SYKW.D250718.ORDER.RERUN.VALID [REFERENCE/CONSTANT]");
         expected.add("step:SYKD030.STEP020 -> dataset:SYKV.ORDER.MASTER [REFERENCE/CONSTANT]");
-        // 4章: Db2表参照(SYK006はSYKDB.ZAIKOM、SYK007はSYKDB.ZAIKOMとSYKDB.SOKOM)
+        // Chapter 4: Db2 table references (SYK006 -> SYKDB.ZAIKOM; SYK007 -> SYKDB.ZAIKOM and SYKDB.SOKOM)
         expected.add("program:SYK006 -> db2:SYKDB.ZAIKOM [REFERENCE/CONSTANT]");
         expected.add("program:SYK007 -> db2:SYKDB.ZAIKOM [REFERENCE/CONSTANT]");
         expected.add("program:SYK007 -> db2:SYKDB.SOKOM [REFERENCE/CONSTANT]");
-        // 5章: 静的CALL(SYK001→SYK003、SYK006→SYK005は133・142行目の2回で1辺)・
-        // 動的CALL(SYK002→SYK004。定数伝播による解決で定数由来)
+        // Chapter 5: static CALL (SYK001->SYK003; SYK006->SYK005 collapses two occurrences at
+        // lines 133 and 142 into one edge); dynamic CALL (SYK002->SYK004, resolved by constant
+        // propagation, so its origin is CONSTANT)
         expected.add("program:SYK001 -> program:SYK003 [CALL/CONSTANT]");
         expected.add("program:SYK002 -> program:SYK004 [CALL/CONSTANT]");
         expected.add("program:SYK006 -> program:SYK005 [CALL/CONSTANT]");
-        // 9章: CICS遷移(XCTL・RETURN TRANSID・定義表によるSYK8→SYK008解決)とマップ参照
+        // Chapter 9: CICS transitions (XCTL, RETURN TRANSID, SYK8->SYK008 resolution via the definition table) and map references
         expected.add("program:SYK008 -> program:SYK009 [TRANSACTION_TRANSITION/CONSTANT]");
         expected.add("program:SYK008 -> transaction:SYK8 [TRANSACTION_TRANSITION/CONSTANT]");
         expected.add("transaction:SYK8 -> program:SYK008 [TRANSACTION_TRANSITION/CONSTANT]");
@@ -145,10 +147,11 @@ class CallGraphSamplesAcceptanceTest {
         assertEquals(NodeKind.DB2_TABLE, byId.get("db2:SYKDB.SOKOM").kind());
         assertEquals(NodeKind.TRANSACTION, byId.get("transaction:SYK8").kind());
         assertEquals(NodeKind.BMS_MAP, byId.get("bmsmap:SYKMAP1.SYKM01").kind());
-        // samples/には未解決動的CALL・外部ユーティリティが無い(合成fixtureはlinkerモジュールで検証)
+        // samples/ has no unresolved dynamic CALL or external utility (those are covered by
+        // synthetic fixtures in the linker module tests)
         assertTrue(byId.values().stream().noneMatch(n -> n.kind() == NodeKind.UNRESOLVED));
         assertTrue(byId.values().stream().noneMatch(n -> n.kind() == NodeKind.EXTERNAL_UTILITY));
-        // 9本全てのCOBOLがソース由来のプログラムノードであり、外部型付けされないこと
+        // All 9 COBOL programs must be source-derived program nodes, not typed as external
         for (int i = 1; i <= 9; i++) {
             assertTrue(byId.get("program:SYK00" + i).attributes().isEmpty(),
                     "SYK00" + i + " は外部プログラム扱いにならないこと");
@@ -173,8 +176,8 @@ class CallGraphSamplesAcceptanceTest {
         Map<String, Long> sourceIdByPath = dao.findAllSources().stream()
                 .collect(Collectors.toMap(SourceRecord::path, SourceRecord::id));
 
-        // グラフ層ノード: ソース非対応の19ノード(ステップ6・データセット8・Db2表2・
-        // トランザクション1・BMSマップ2)が採番規約どおり保存されること
+        // Graph-layer nodes: the 19 nodes with no source (6 steps, 8 datasets, 2 Db2 tables,
+        // 1 transaction, 2 BMS maps) must be persisted following the ID numbering convention
         long graphNodes = result.callGraph().nodes().stream()
                 .filter(n -> n.kind() != NodeKind.PROGRAM && n.kind() != NodeKind.JOB).count();
         assertEquals(19, graphNodes);
@@ -184,7 +187,7 @@ class CallGraphSamplesAcceptanceTest {
                     .contains(node.type()), node.type());
         }
 
-        // グラフ層エッジ: 全36辺が保存され、動的CALL辺はhost_varに変数名を持つこと
+        // Graph-layer edges: all 36 edges must be persisted, and the dynamic CALL edge must carry the variable name in host_var
         long syk002 = sourceIdByPath.get("cobol/SYK002.cbl");
         long syk004 = sourceIdByPath.get("cobol/SYK004.cbl");
         int graphEdgeCount = 0;
@@ -202,7 +205,7 @@ class CallGraphSamplesAcceptanceTest {
         assertEquals(36, graphEdgeCount);
         assertTrue(dynamicEdgeFound, "動的CALL辺がNODE.id=SOURCE.id規約のノードIDで保存されること");
 
-        // linker finding: SYK002のソースIDに紐づくNOTEが保存されること
+        // linker finding: a NOTE tied to SYK002's source ID must be persisted
         FindingRecord findingRecord = dao.findFinding(Persist.GRAPH_ID_BASE).orElseThrow();
         assertEquals(CallGraphLinker.DYNAMIC_CALL_RESOLVED_RULE_ID, findingRecord.ruleId());
         assertEquals("NOTE", findingRecord.level());
@@ -234,7 +237,7 @@ class CallGraphSamplesAcceptanceTest {
 
     @Test
     void rescanRebuildsGraphLayerWithoutDuplicationAndDeterministically() throws IOException {
-        // 共有DB(m2.db)は他テストが参照するため、rescanは専用の複製へ書き込む
+        // Other tests reference the shared DB (m2.db), so the rescan writes to a dedicated copy
         Path rescanDb = tempDir.resolve("m2-rescan.db");
         Files.copy(tempDir.resolve("m2.db"), rescanDb);
         ScanOutcome second = Pipelines.scan(SAMPLES,

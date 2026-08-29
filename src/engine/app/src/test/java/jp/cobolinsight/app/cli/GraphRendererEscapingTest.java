@@ -18,9 +18,9 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * SVG/PNG生成の回帰テスト。シングルクォート・バックスラッシュ・制御文字・改行を含む
- * ノードラベルのDOTをJSエンジン(viz.js)へ渡しても、JS文字列境界を破らずに
- * 生成が完了することを検証する。
+ * A regression test for SVG/PNG generation. Verifies that passing DOT with node labels containing
+ * single quotes, backslashes, control characters, and newlines to the JS engine (viz.js) still
+ * completes generation without breaking a JS string boundary.
  */
 class GraphRendererEscapingTest {
 

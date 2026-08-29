@@ -1,9 +1,10 @@
 package jp.cobolinsight.app.persistence.model;
 
 /**
- * CALL_EDGE表の1行(呼出関係グラフのエッジ)。resolution・hostVar・lineは省略可。
- * seq は呼出元ノードの出辺のうち何番目かを原本の順序で表す1起点の番号で、順序が分からない辺は0、
- * line は呼出箇所の行で、分からない辺は null とする。
+ * A row of the CALL_EDGE table (a call-graph edge). resolution, hostVar and line are optional.
+ * seq is a 1-based number expressing which of the origin node's outgoing edges this is in the
+ * original order; an edge whose order is unknown gets 0. line is the calling line; an edge whose
+ * line is unknown gets null.
  */
 public record CallEdgeRecord(long id, long fromNode, long toNode, String kind, String resolution,
         String hostVar, int seq, Integer line) {
@@ -14,7 +15,7 @@ public record CallEdgeRecord(long id, long fromNode, long toNode, String kind, S
         }
     }
 
-    /** 順序も行も持たない辺(コピー句取込辺など、原本の順序を問わない辺)。 */
+    /** An edge with neither order nor line (e.g. a copybook-inclusion edge, where original order does not matter). */
     public CallEdgeRecord(long id, long fromNode, long toNode, String kind, String resolution,
             String hostVar) {
         this(id, fromNode, toNode, kind, resolution, hostVar, 0, null);

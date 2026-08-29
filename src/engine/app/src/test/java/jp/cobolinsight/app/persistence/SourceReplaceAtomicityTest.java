@@ -37,7 +37,7 @@ class SourceReplaceAtomicityTest {
         assertThrows(PersistenceException.class, () -> dao.inTransaction(() -> {
             dao.deleteSourceCascade(1L);
             dao.insertSource(new SourceRecord(1L, "/assets", "PROGA.cbl", "IBM930", "hash-v2", 120L));
-            // source_id=99 は存在しないため外部キー制約違反で失敗する
+            // source_id=99 does not exist, so this fails on a foreign-key constraint violation
             dao.insertProgram(new ProgramRecord(2L, 99L, "PROGA"));
         }));
 

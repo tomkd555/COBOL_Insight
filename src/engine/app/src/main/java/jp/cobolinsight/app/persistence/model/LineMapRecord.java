@@ -2,7 +2,7 @@ package jp.cobolinsight.app.persistence.model;
 
 import java.util.Objects;
 
-/** LINE_MAP表の1行(COBOL行と生成行の対応)。note は直訳不能構文の注記で、直訳可能なら空文字列。 */
+/** One row of the LINE_MAP table (the mapping between a COBOL line and a generated line). note is an annotation for syntax that cannot be translated verbatim, or an empty string if it can. */
 public record LineMapRecord(long id, long cobolSourceId, int cobolLineStart, int cobolLineEnd,
         String genFile, int genLineStart, int genLineEnd, String kind, String note, String anchorId) {
 

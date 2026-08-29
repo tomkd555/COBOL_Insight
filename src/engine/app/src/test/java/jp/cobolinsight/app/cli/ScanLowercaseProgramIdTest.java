@@ -19,8 +19,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 小文字PROGRAM-IDのプログラムが、大文字で参照するJCLと同一ノードへ解決されることの検証
- * (実体プログラムノードのID生成規則と呼出先側の大文字化の整合)。
+ * Verifies that a program with a lowercase PROGRAM-ID resolves to the same node as the JCL that
+ * references it in uppercase (consistency between the concrete program node's ID-generation rule
+ * and the uppercasing on the call side).
  */
 class ScanLowercaseProgramIdTest {
 
@@ -60,8 +61,8 @@ class ScanLowercaseProgramIdTest {
 
         try (PersistenceDatabase database = PersistenceDatabase.open(databaseFile)) {
             PersistenceDao dao = new PersistenceDao(database.connection());
-            // グラフ層に永続化されるソース非対応ノードはステップ1件のみで、プログラムノードは
-            // NODE.id=SOURCE.id 規約の既存行へ対応づけられること
+            // The only source-less node persisted at the graph layer should be the one STEP, and
+            // the program node should map onto the existing row under the NODE.id=SOURCE.id convention.
             assertEquals("STEP",
                     dao.findNode(Persist.GRAPH_ID_BASE).orElseThrow().type());
             assertTrue(dao.findNode(Persist.GRAPH_ID_BASE + 1).isEmpty(),

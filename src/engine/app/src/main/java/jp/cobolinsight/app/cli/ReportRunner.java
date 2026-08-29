@@ -28,17 +28,19 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * `report` の中核処理。scan 済み SQLite を入力に、資産インベントリ・呼出関係の
- * 要約・scan 由来 finding を DB から読む。lint 検出(id が "R")と SQL 指摘(id が "S")は scan が
- * 永続化しないため、DB と同じ資産フォルダに対し report のパイプラインを
- * メモリ上で再実行して収集する。統合結果を HTML とテキストの両形式へ整形し、CI 向け終了コードを
- * {@link ExitCodes#fromFindings} で返す。
+ * Core processing of `report`. Takes an already-scanned SQLite database as input and reads the
+ * asset inventory, call-graph summary, and scan-originated findings from the DB. Since scan does
+ * not persist lint detections (id starting with "R") or SQL advice (id starting with "S"), these
+ * are collected by re-running the report pipeline in memory against the same asset folder as the
+ * DB. Formats the combined result into both HTML and text, and returns a CI exit code via
+ * {@link ExitCodes#fromFindings}.
  */
 public final class ReportRunner {
 
     /**
-     * DB の FINDING 行のうち、この ID 未満は scan 由来(復号・パース失敗)、以上は呼出関係グラフ層
-     * (linker 由来の解決根拠 finding)。{@link Persist#GRAPH_ID_BASE} と一致させる。
+     * Of the FINDING rows in the DB, those with an ID below this value originate from scan
+     * (decode/parse failures); those at or above it belong to the call-graph layer (linker-derived
+     * resolution-basis findings). Kept in sync with {@link Persist#GRAPH_ID_BASE}.
      */
     private static final long GRAPH_ID_BASE = Persist.GRAPH_ID_BASE;
 
@@ -53,11 +55,11 @@ public final class ReportRunner {
         }
     }
 
-    /** 資産インベントリの1件(SOURCE 表 + NODE 表の種別)。 */
+    /** One entry of the asset inventory (SOURCE table + type from the NODE table). */
     public record AssetEntry(String path, String type, String codepage, long byteSize) {
     }
 
-    /** 呼出関係グラフの要約(ノード種別ごとの件数と、ラベルで解決した辺の一覧)。 */
+    /** Call-graph summary (a count per node type, plus the list of edges resolved to labels). */
     public record CallGraphSummary(int nodeCount, int edgeCount, Map<String, Integer> nodesByType,
             List<EdgeView> edges) {
 
@@ -67,7 +69,7 @@ public final class ReportRunner {
         }
     }
 
-    /** 呼出関係グラフの辺1本(両端をノードラベルへ解決済み)。 */
+    /** One edge of the call graph (both endpoints already resolved to node labels). */
     public record EdgeView(String from, String to, String kind) {
     }
 
@@ -103,8 +105,8 @@ public final class ReportRunner {
     }
 
     public static Result run(Options options) {
-        // SQLite は指定ファイルが無ければ新規作成する。存在検査を置かないと、パスの誤りが
-        // 「資産0件のレポート」として通り、空のDBファイルだけが残る。
+        // SQLite creates a new file if the specified one is missing. Without an existence check,
+        // a mistaken path would silently pass as "a report with 0 assets", leaving only an empty DB file.
         if (!Files.isRegularFile(options.databaseFile())) {
             throw new IllegalStateException(
                     "SQLiteプロジェクトファイルが無い: " + options.databaseFile()
@@ -164,8 +166,9 @@ public final class ReportRunner {
     }
 
     /**
-     * DB の FINDING 表を Finding へ復元する(source_id をソースパスへ解決)。scan 由来(復号・パース
-     * 失敗)と呼出関係グラフ層(linker 由来)の両方を含める。
+     * Restores the DB's FINDING table into Finding objects (resolving source_id to the source
+     * path). Includes both scan-originated (decode/parse failure) and call-graph-layer
+     * (linker-derived) findings.
      */
     private static List<Finding> readScanFindings(PersistenceDao dao,
             Map<Long, SourceRecord> sourceById) {
@@ -183,7 +186,7 @@ public final class ReportRunner {
         return findings;
     }
 
-    /** NODE・CALL_EDGE 表から呼出関係の要約(種別ごとのノード件数・ラベル解決済みの辺一覧)を作る。 */
+    /** Builds a call-graph summary (node count per type, list of label-resolved edges) from the NODE and CALL_EDGE tables. */
     private static CallGraphSummary readCallGraph(PersistenceDao dao) {
         List<NodeRecord> nodes = dao.findAllNodes();
         Map<Long, String> labelById = new HashMap<>();

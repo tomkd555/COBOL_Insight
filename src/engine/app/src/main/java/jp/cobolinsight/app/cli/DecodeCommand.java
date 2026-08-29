@@ -21,17 +21,20 @@ import java.util.Optional;
 import java.util.concurrent.Callable;
 
 /**
- * `decode`。1本のソースを原本のコードページで復号し、本文と行ごとの桁の境目を JSON へ書く。
+ * `decode`. Decodes a single source using its original code page and writes the text plus the
+ * per-line column boundaries to JSON.
  *
- * <p>画面のソースビューアは固定形式の領域(一連番号・標識・A領域・B領域・識別)を塗り分けるが、
- * その境目は<b>バイト桁</b>で決まる。全角文字を含む行では文字数とバイト桁が一致しないため、
- * 画面側で数えると領域がずれる。境目の算出はバイト対応表を持つ engine 側の仕事である。
+ * <p>The GUI's source viewer colors in the fixed-format regions (sequence number, indicator,
+ * area A, area B, identification), but those boundaries are determined by <b>byte column</b>. On
+ * lines that contain double-byte characters, the character count and the byte column do not
+ * match, so counting on the GUI side would put the regions in the wrong place. Computing the
+ * boundaries is the engine's job, since it holds the byte offset table.
  */
 @Command(name = "decode", mixinStandardHelpOptions = true,
         description = "1本のソースを復号し、本文と固定形式の桁境界を JSON で書き出す")
 public final class DecodeCommand implements Callable<Integer> {
 
-    /** 桁を塗り分けるための境目。固定形式の各領域が始まるバイト桁(1起点)である。 */
+    /** The boundaries used to color in the columns: the byte column (1-based) where each fixed-format region starts. */
     private static final int[] BOUNDARY_COLUMNS = {7, 8, 12, 73};
 
     @Option(names = "--file", paramLabel = "FILE", required = true,
@@ -106,8 +109,12 @@ public final class DecodeCommand implements Callable<Integer> {
     }
 
     /**
-     * 行内で、1起点のバイト桁 {@code column} が始まる UTF-16 の文字位置(行頭からの相対)。
-     * その桁に届かない短い行では -1 を返す。全角文字の途中に当たる桁は、その文字の位置を指す。
+     * Within a line, the UTF-16 character position (relative to the start of the line) of the
+     * first character whose byte offset reaches or passes the 1-based byte column {@code column}.
+     * Returns -1 for a line too short to reach that column. When {@code column} falls in the
+     * middle of a double-byte character, that character's own byte offset is still short of the
+     * target, so it is skipped; the result then points to the character immediately following it,
+     * not to the double-byte character {@code column} falls inside.
      */
     private static int charIndexAtByteColumn(ByteOffsetTable table, int lineStartByte,
             int lineStartChar, int lineEndChar, int column) {
@@ -121,8 +128,9 @@ public final class DecodeCommand implements Callable<Integer> {
     }
 
     /**
-     * 復号に用いるコードページ名。手動指定を最優先とし、次にプロジェクトファイルが走査時に記録した
-     * 値、いずれも無ければ null を返して自動判別に委ねる({@code save} と同じ解決順)。
+     * The code page name used for decoding. The manually specified value takes highest priority,
+     * then the value the project file recorded at scan time; if neither is available, returns
+     * null to leave it to auto-detection (the same resolution order as {@code save}).
      */
     private String resolveCodepage(Path target) {
         if (codepage != null) {

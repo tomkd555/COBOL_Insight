@@ -14,10 +14,11 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 /**
- * `lint`。資産フォルダをルールで静的解析し、SARIF 2.1.0ファイルを書き出して処理サマリをJSONで
- * 標準出力へ書く。終了コードは検出結果で分岐する(成功=0・警告あり=1・エラー=2)。
+ * `lint`. Statically analyzes the asset folder with rules, writes out a SARIF 2.1.0 file, and writes
+ * the processing summary to standard output as JSON. The exit code branches on the detection results
+ * (success=0, warnings=1, errors=2).
  *
- * <p>{@code --file} を与えると、その1本と、そこから解決するコピー句だけを対象とする。
+ * <p>When {@code --file} is given, only that one file and the copybooks resolved from it are targeted.
  */
 @Command(name = "lint", mixinStandardHelpOptions = true,
         description = "資産フォルダをルールで静的解析し、SARIFを出力する")

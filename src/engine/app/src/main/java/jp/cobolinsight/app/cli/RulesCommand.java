@@ -8,8 +8,8 @@ import picocli.CommandLine.Option;
 import java.util.concurrent.Callable;
 
 /**
- * `rules`。組み込みルールと利用者定義ルールの一覧・説明を表示する。資産フォルダを取らない唯一の
- * サブコマンドであり、解析は行わない。
+ * `rules`. Displays the list and descriptions of built-in and user-defined rules. The only
+ * subcommand that does not take an asset folder, and it performs no analysis.
  */
 @Command(name = "rules", mixinStandardHelpOptions = true,
         description = "検出ルールの一覧と説明を表示する")
@@ -27,7 +27,7 @@ public final class RulesCommand implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        // 設定の誤りは一覧そのものへ ruleErrors として載せるため、ここでは標準エラーへ出さない。
+        // Configuration errors are recorded as ruleErrors on the listing itself, so nothing is written to standard error here.
         RulesRunner.Result result =
                 RulesRunner.run(new RulesRunner.Options(ruleOptions.ruleSet(), ruleId));
         if (result.detail() && result.rules().isEmpty()) {

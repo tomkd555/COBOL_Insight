@@ -19,13 +19,16 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 /**
- * `fix apply` サブコマンド。原本ファイルは変更せず、修正後ソースを出力先(既定 {@code fix/})へ、
- * 元の相対パス構成を保って書き出す。各出力ファイルは書き出し後に再パース検証ゲートを通し、桁崩れ・
- * トークン結合・リテラル破損などでパースできない修正を error として検出する。終了コードは解析段の
- * 検出結果と再パース検証結果で分岐する(いずれかに error があれば 2)。
+ * The `fix apply` subcommand. Leaves the original files unchanged and writes the fixed sources to
+ * the output directory (default {@code fix/}), preserving the original relative path layout. Each
+ * output file is passed through a reparse verification gate after being written, detecting fixes
+ * that cannot be parsed due to column misalignment, token merging, literal corruption, and the
+ * like as errors. The exit code branches on both the analysis-stage detection results and the
+ * reparse verification results (2 if either has an error).
  *
- * <p>コピー句由来の修正は書き出さない。コピー句は複数プログラムへ展開されるため、原本を書き換えず
- * 影響範囲(取り込むプログラム一覧)を併記して利用者の判断に委ねる({@code copybookFixes})。
+ * <p>Fixes originating from copybooks are not written out. Since a copybook is expanded into
+ * multiple programs, the original is left unmodified; instead its impact (the list of importing
+ * programs) is reported alongside it, leaving the decision to the user ({@code copybookFixes}).
  */
 @Command(name = "apply", mixinStandardHelpOptions = true,
         description = "修正後ソースを出力先へ書き出し、再パース検証する(原本不変)")
@@ -41,11 +44,11 @@ public final class FixApplyCommand implements Callable<Integer> {
             description = "修正後ソースの出力先(元の相対パス構成を保持。既定: ${DEFAULT-VALUE})")
     Path outputDir;
 
-    /** コピー句由来の修正。原本は書き換えず、取り込むプログラム一覧を併記する。 */
+    /** A fix originating from a copybook. The original is left unmodified; the list of importing programs is reported alongside it. */
     record CopybookFix(String relPath, List<String> importers) {
     }
 
-    /** 書き出し・再パース結果。書き出したプログラム・提示に留めたコピー句修正・再パース error 群。 */
+    /** The write-out and reparse results: the programs written, the copybook fixes left as reported only, and the set of reparse errors. */
     record ApplyOutcome(List<String> written, List<CopybookFix> copybookFixes,
             List<Finding> reparseFindings) {
     }
@@ -66,8 +69,10 @@ public final class FixApplyCommand implements Callable<Integer> {
     }
 
     /**
-     * 修正群を出力先へ適用する。プログラム本体は相対構成を保って書き出し再パース検証する。コピー句
-     * 由来の修正は書き出さず、取り込むプログラム一覧を併記して {@link CopybookFix} へ集約する。
+     * Applies the fixes to the output directory. Main program bodies are written out preserving
+     * the relative layout and reparse-verified. Fixes originating from copybooks are not written
+     * out; instead they are collected into {@link CopybookFix} together with the list of
+     * importing programs.
      */
     static ApplyOutcome applyFixes(List<FixRunner.FileFix> fixes, Path outputDir,
             ReparseVerifier verifier, List<Path> copybookSearchPaths) {

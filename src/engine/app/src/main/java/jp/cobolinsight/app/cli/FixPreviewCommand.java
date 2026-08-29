@@ -17,10 +17,12 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 /**
- * `fix preview` サブコマンド。修正案を原本と修正後の unified diff として算出し、ANSI 着色で標準出力へ
- * 表示する。原本ファイルもソースも変更しない。任意で {@code --html} により外部資産に依存しない
- * 自己完結 HTML へ差分を書き出す。着色は接続先が端末のときのみ行い、リダイレクト時は素の diff を出す。
- * 終了コードは解析段の検出結果で分岐する(復号・パース失敗があれば 2)。
+ * `fix preview` subcommand. Computes the fix proposal as a unified diff between the original and
+ * fixed text, and displays it to standard output with ANSI coloring. Changes neither the original
+ * file nor the source. Optionally, {@code --html} writes the diff out as self-contained HTML with no
+ * dependency on external assets. Coloring is applied only when the destination is a terminal; a plain
+ * diff is emitted when redirected. The exit code branches on the analysis stage's detection results
+ * (2 if decoding or parsing failed).
  */
 @Command(name = "preview", mixinStandardHelpOptions = true,
         description = "修正案の差分を unified diff で表示する(原本・ソース不変)")
@@ -54,7 +56,8 @@ public final class FixPreviewCommand implements Callable<Integer> {
                 System.out.println(line);
             }
             if (fix.copybook()) {
-                // 原本コピー句は書き換えず提示のみ。影響範囲として組み込み元プログラムを併記する。
+                // The original copybook is not rewritten, only shown as a proposal. The importing
+                // programs are listed alongside it as the affected scope.
                 System.out.println("# コピー句 " + fix.relPath()
                         + " は原本を書き換えず提示のみ。組み込み元プログラム: "
                         + String.join(", ", fix.importers()));

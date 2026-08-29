@@ -10,14 +10,15 @@ import java.util.List;
 import java.util.stream.Stream;
 
 /**
- * コピー句探索パス直下からコピー句を集める。translate と fix が原本と併せて写す対象を得るために
- * 使う。
+ * Collects copybooks directly under the copybook search path. Used to obtain the targets that
+ * translate and fix copy alongside the original.
  *
- * <p>入力フォルダの走査({@link SourceDiscovery})とは<b>別の関心</b>である。あちらは資産の
- * 置き場所を問わず内容から種別を逆算するのに対し、ここは COPY 文の解決先を集める層であり、
- * 拡張子で拾う。COBOL の COPY 解決は「コピー句名＋拡張子」でファイル名を組み立てるため、
- * 拡張子の一致がそのまま解決の可否になるからである。受け付ける拡張子は
- * {@link AssetKind#COPYBOOK} が名乗るものすべてとする。
+ * <p>This is a <b>separate concern</b> from scanning the input folder ({@link SourceDiscovery}).
+ * That one infers kind from content regardless of where the asset lives, whereas this is the
+ * layer that collects COPY-statement resolution targets, picked up by extension. Because COBOL's
+ * COPY resolution builds a filename from "copybook name + extension", matching the extension is
+ * exactly what determines whether it can be resolved. Every extension that
+ * {@link AssetKind#COPYBOOK} claims is accepted.
  */
 final class CopybookScan {
 
@@ -25,8 +26,9 @@ final class CopybookScan {
     }
 
     /**
-     * 探索パス直下のコピー句をファイル名の昇順で返す。ディレクトリでない場合は空を返す。
-     * 探索パスは入力フォルダの外を指せるため、再帰はせず直下だけを見る(COPY 解決も同じ)。
+     * Returns the copybooks directly under the search path, sorted by filename ascending. Returns
+     * empty if the path is not a directory. Because the search path can point outside the input
+     * folder, this looks only at direct children with no recursion (COPY resolution does the same).
      */
     static List<Path> collect(Path dir) {
         if (!Files.isDirectory(dir)) {

@@ -16,12 +16,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 資産の走査({@link SourceDiscovery})の検証。フォルダの形に依らず内容から種別を逆算すること、
- * 取りこぼしと解釈の変更を全件報告することを確かめる。
+ * Verifies asset discovery ({@link SourceDiscovery}): that the kind is inferred from content
+ * regardless of folder layout, and that missed files and reinterpretations are all reported.
  */
 class SourceDiscoveryTest {
 
-    /** COBOL 本体・コピー句・JCL・BMS の最小の本文。内容判定が確定する形にしてある。 */
+    /** Minimal bodies for COBOL, copybook, JCL, and BMS. Shaped so content detection resolves deterministically. */
     private static final String COBOL = """
                    IDENTIFICATION DIVISION.
                    PROGRAM-ID.  SAMPLE.
@@ -119,7 +119,7 @@ class SourceDiscoveryTest {
     @Test
     void knownExtensionIsUsedWhenTheContentDoesNotDecide() throws IOException {
         Path assets = tempDir.resolve("assets");
-        // 判定の根拠を持たない本文。既知拡張子の場合だけ拡張子の種別を採る。
+        // Body with no basis for a decision. Only when the extension is known does the extension's kind get used.
         write(assets.resolve("FRAGMENT.cpy"), "            MOVE ZERO TO WS-COUNT\n");
 
         SourceDiscovery.Result result = SourceDiscovery.discover(assets);
@@ -150,7 +150,7 @@ class SourceDiscoveryTest {
     void excludedExtensionsAreNotCandidates() throws IOException {
         Path assets = tempDir.resolve("assets");
         write(assets.resolve("A.cbl"), COBOL);
-        // 資産についての文書。内容に COBOL の語が現れても対象にしない。
+        // Documents about assets. Not a target even if COBOL keywords appear in the content.
         write(assets.resolve("findings.sarif"), COBOL);
         write(assets.resolve("report.html"), COBOL);
         write(assets.resolve("summary.json"), COBOL);
@@ -203,7 +203,7 @@ class SourceDiscoveryTest {
         assertEquals(List.of("A.cbl"), relPaths(SourceDiscovery.discover(assets)));
     }
 
-    /** 深さの上限を持たないことの歯止め。11段より深い位置の資産も拾う。 */
+    /** Guard against a depth limit being introduced. Also collects assets deeper than 11 levels. */
     @Test
     void assetsDeeperThanTenLevelsAreCollected() throws IOException {
         Path assets = tempDir.resolve("assets");
@@ -221,8 +221,9 @@ class SourceDiscoveryTest {
     }
 
     /**
-     * 残す唯一の上限({@code MAX_FILES})に達したときは、必ず {@code truncated} で伝えること。
-     * この上限は SOURCE.id が 1,000,000 未満という採番の不変条件に由来する。
+     * When the one remaining limit ({@code MAX_FILES}) is reached, it must always be reported via
+     * {@code truncated}. This limit comes from the numbering invariant that SOURCE.id stays below
+     * 1,000,000.
      */
     @Test
     void reachingTheFileLimitIsReportedAsTruncated() throws IOException {

@@ -19,19 +19,22 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * samples/ 全体の lint 受入回帰テスト。構文段階(SYNTAX)・制御フロー段階
- * (CONTROL_FLOW)・データフロー段階(DATA_FLOW)の3段階を実行し、expected-results.md の欠陥をファイル・行番号
- * どおりに検出し、samplesに意図的欠陥の無いルールが誤検出を出さないことを突合する。構文段階のR002
- * (未使用変数)・R008(THRUなし単独段落PERFORM、既定では無効のため設定で入れて確認する)、
- * 制御フロー段階のR007/R011/R017/R018/R021/R022/R031、
- * データフロー段階のR001/R003/R004/R005(expected-results.md No.1/2/3/5/9/13/14)の検出と、samplesがERRORレベルの検出を
- * 含むため終了コードが2であることを確認する。lint は rule id が "R" で始まるルールのみを実行し、
- * SQL指摘(S接頭辞)を除外する。R017は path-sensitive な忠実実装のため付随検出を許容し、
- * 必須2件の包含とOPEN/CLOSE非検出のみを表明する。
+ * Acceptance regression test for lint over the entire samples/. Runs the three stages -
+ * SYNTAX, CONTROL_FLOW, and DATA_FLOW - and checks that the defects in expected-results.md are
+ * detected by file and line number, and that rules with no intended defect in samples produce no
+ * false positives. Covers detection of R002 (unused variable) in the SYNTAX stage, R008
+ * (single-paragraph PERFORM without THRU, disabled by default so it is enabled via configuration
+ * to verify), R007/R011/R017/R018/R021/R022/R031 in the CONTROL_FLOW stage, and
+ * R001/R003/R004/R005 in the DATA_FLOW stage (expected-results.md No.1/2/3/5/9/13/14), and
+ * confirms the exit code is 2 because samples contains ERROR-level findings. lint runs only
+ * rules whose rule id starts with "R" and excludes SQL advice (S-prefixed). R017 is a
+ * path-sensitive, faithful implementation, so incidental detections are tolerated; only the
+ * inclusion of the two mandatory findings and the absence of OPEN/CLOSE detections is asserted.
  *
- * <p>正解の出所は samples/expected-results.md(12種別18件)。この18件は「意図的に混入した欠陥15件」と
- * 「CICS関連の検出3件」の合計である。データフロー解析が拾うのは18件中の7件
- * (No.1/2/3/5/9/13/14)。
+ * <p>The ground truth comes from samples/expected-results.md (18 findings across 12 categories).
+ * These 18 findings are the sum of "15 intentionally injected defects" and
+ * "3 CICS-related detections". Data-flow analysis picks up 7 of the 18
+ * (No.1/2/3/5/9/13/14).
  */
 class LintSamplesAcceptanceTest {
 
@@ -49,7 +52,7 @@ class LintSamplesAcceptanceTest {
         return result.findings().stream().filter(f -> f.ruleId().equals(ruleId)).toList();
     }
 
-    /** 指定ルールの検出位置を "cobol/ファイル:行" 集合として返す。 */
+    /** Returns the detection locations of the given rule as a set of "cobol/file:line" strings. */
     private static Set<String> fileLines(String ruleId) {
         return byRule(ruleId).stream()
                 .map(f -> f.location().file() + ":" + f.location().line())
@@ -83,8 +86,8 @@ class LintSamplesAcceptanceTest {
 
     @Test
     void rulesWithoutIntendedDefectsProduceNoFindingsOnSamples() {
-        // 意図的欠陥の無いルール。R012/R015/R016/R020/R025/R027/R028 はデータフロー段階(DATA_FLOW)のうち
-        // samplesに該当欠陥が無いもので、データフロー解析でも偽陽性を出さないことを担保する。
+        // Rules with no intended defect. R012/R015/R016/R020/R025/R027/R028 are DATA_FLOW-stage
+        // rules with no corresponding defect in samples, ensuring data-flow analysis also produces no false positives.
         for (String ruleId : List.of("R006", "R009", "R010", "R013", "R014", "R019",
                 "R023", "R024", "R026", "R029", "R030",
                 "R012", "R015", "R016", "R020", "R025", "R027", "R028")) {
@@ -130,8 +133,9 @@ class LintSamplesAcceptanceTest {
     }
 
     /**
-     * R008 は既定で無効(corpus/rule-hits.md の計測による)。既定の走行で1件も出ないことと、
-     * 設定で入れたときに THRU なし単独段落 PERFORM の全件を行番号どおり検出することの両方を見る。
+     * R008 is disabled by default (based on measurements in corpus/rule-hits.md). Checks both that
+     * the default run produces zero findings, and that enabling it via configuration detects every
+     * single-paragraph PERFORM without THRU, matching line numbers exactly.
      */
     @Test
     void r008DetectsEveryThruLessSingleParagraphPerformAndNothingElse() {
@@ -210,12 +214,14 @@ class LintSamplesAcceptanceTest {
     }
 
     /**
-     * R017は path-sensitive な忠実実装のため付随検出を許容し、集合の完全一致は表明しない。
-     * 必須とする正解2件(SYK001:85 READ・SYK002:130 REWRITE)の包含と、
-     * 全件ERROR、およびOPEN/CLOSE行を検出しないことのみを表明する。
-     * 実測の検出は9件(全件error): SYK001:85/126/130、SYK002:73/107/130、SYK006:87/172、
-     * SYK007:60。必須2件を除く7件は、FILE STATUS変数が後続で参照されない構造同一の真の未検査
-     * (record-access I/O)であり忠実実装が検出するため、集合固定はしない。
+     * R017 is a path-sensitive, faithful implementation, so incidental detections are tolerated and
+     * exact set equality is not asserted. Only the inclusion of the two mandatory correct findings
+     * (SYK001:85 READ, SYK002:130 REWRITE), that all findings are ERROR level, and that OPEN/CLOSE
+     * lines are never detected are asserted.
+     * The actual detection count is 9 (all error): SYK001:85/126/130, SYK002:73/107/130, SYK006:87/172,
+     * SYK007:60. The 7 findings beyond the two mandatory ones are genuine unchecked cases with the
+     * same structure - a FILE STATUS variable that is never referenced afterward
+     * (record-access I/O) - which the faithful implementation detects, so the set is not fixed.
      */
     @Test
     void r017ContainsMandatoryUncheckedRecordIoAndNeverOpenOrClose() {

@@ -12,7 +12,7 @@ import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** lintサブコマンドのpicocli配線・SARIFファイル出力・終了コード分岐の検証。 */
+/** Verifies the lint subcommand's picocli wiring, SARIF file output, and exit-code branching. */
 class LintCommandTest {
 
     @TempDir
@@ -40,7 +40,7 @@ class LintCommandTest {
             "           GOBACK.",
             "");
 
-    /** 警告どまりの資産。どこからも呼ばれない段落(R011)を含む。 */
+    /** An asset that reaches only warning level. Contains a paragraph called from nowhere (R011). */
     private static final String WARNING = String.join("\n",
             "       IDENTIFICATION DIVISION.",
             "       PROGRAM-ID.  WARN1.",
@@ -57,7 +57,7 @@ class LintCommandTest {
             "           MOVE 2 TO WS-COUNT.",
             "");
 
-    /** エラーを含む資産。VALUE 句へ認証情報を直書きした項目(R026)を含む。 */
+    /** An asset containing an error. Contains an item with credentials hardcoded in a VALUE clause (R026). */
     private static final String ERROR = String.join("\n",
             "       IDENTIFICATION DIVISION.",
             "       PROGRAM-ID.  ERR1.",
@@ -83,7 +83,7 @@ class LintCommandTest {
             "           GOBACK.",
             "");
 
-    /** 参照されない項目だけを持つ外部コピー句。未使用変数(R002)をコピー句側の位置で検出させる。 */
+    /** An external copybook holding only an unreferenced item. Makes an unused variable (R002) get detected at the copybook's location. */
     private static final String EXT_COPYBOOK =
             "       01  EXT-UNUSED                  PIC X(01).\n";
 
@@ -112,7 +112,7 @@ class LintCommandTest {
         assertEquals(1, exitCode, "警告あり=1であること");
     }
 
-    /** ルールの有効・無効は設定ファイルだけが決める。 */
+    /** Only the config file decides whether a rule is enabled or disabled. */
     @Test
     void rulesFileSuppressesItsFindings() throws IOException {
         Path dir = assets("warncfg", WARNING.replace("WARN1", "WARNCFG"));
@@ -127,7 +127,7 @@ class LintCommandTest {
         assertEquals(0, exitCode, "設定ファイルで R011 を無効化すると成功(0)になること");
     }
 
-    /** 設定ファイルは複数件を並べられる。1件目だけを読んで打ち切らないことを固める。 */
+    /** The config file can list multiple entries. Confirms it does not stop after reading only the first. */
     @Test
     void rulesFileSuppressesEveryListedRule() throws IOException {
         Path dir = assets("warnmany", WARNING.replace("WARN1", "WARNMANY"));
@@ -144,8 +144,9 @@ class LintCommandTest {
     }
 
     /**
-     * 未作成の設定ファイルは、1件も無効にしていない設定として扱う。GUI は設定の有無に
-     * かかわらず --rules を常に渡すため、入れたばかりの環境ではファイルがまだ無い。
+     * A config file that has not been created yet is treated as a config that disables nothing.
+     * The GUI always passes --rules regardless of whether a config exists, so a freshly set-up
+     * environment does not have the file yet.
      */
     @Test
     void missingRulesFileDisablesNothing() throws IOException {

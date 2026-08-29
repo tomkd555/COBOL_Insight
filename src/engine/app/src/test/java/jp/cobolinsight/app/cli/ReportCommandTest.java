@@ -12,13 +12,13 @@ import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** reportサブコマンドのpicocli配線・HTML/テキストファイル出力・終了コード分岐の検証。 */
+/** Verifies the report subcommand's picocli wiring, HTML/text file output, and exit-code branching. */
 class ReportCommandTest {
 
     @TempDir
     Path tempDir;
 
-    /** カーソル宣言(FOR句なし・OPTIMIZE FORなし)を持つプログラム。SQL指摘 S004(中→警告)を含む。 */
+    /** A program with a cursor declaration (no FOR clause, no OPTIMIZE FOR). Triggers SQL advice S004 (medium -> warning). */
     private static final String CURSOR = String.join("\n",
             "       IDENTIFICATION DIVISION.",
             "       PROGRAM-ID.  CURDECL.",

@@ -17,8 +17,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * save サブコマンドの end-to-end 検証。画面で編集した全文を原本のコードページのまま原本へ書き戻し、
- * 再パース検証の結果を要約 JSON へ載せることを確かめる。
+ * End-to-end verification of the save subcommand. Confirms that the full text edited on screen is
+ * written back to the original file in the original codepage, and that the reparse verification
+ * result is included in the summary JSON.
  */
 class SaveCommandTest {
 
@@ -44,7 +45,7 @@ class SaveCommandTest {
         return capture(() -> new CommandLine(new Main()).execute(args));
     }
 
-    /** picocli を通さず、組み立て済みのコマンドをそのまま動かす(差し替えた試験用の実装向け)。 */
+    /** Runs a pre-built command directly, bypassing picocli (for a substituted test implementation). */
     private Run execute(SaveCommand command) {
         return capture(command::call);
     }
@@ -74,7 +75,7 @@ class SaveCommandTest {
         return edited;
     }
 
-    /** 要約 JSON から数値の項目を取り出す。 */
+    /** Extracts a numeric field from the summary JSON. */
     private static int intField(String summary, String name) {
         String key = "\"" + name + "\":";
         int at = summary.indexOf(key) + key.length();
@@ -92,7 +93,7 @@ class SaveCommandTest {
         assertEquals(0, run.exitCode(), "再パースできる編集は成功(0)。stdout=" + run.stdout());
         assertTrue(run.stdout().contains("\"written\":true"), run.stdout());
         assertTrue(run.stdout().contains("\"reparseErrors\":[]"), run.stdout());
-        // 原本は windows-31j のまま。UTF-8 で書き戻していないこと。
+        // The original stays in windows-31j. Confirms it was not written back in UTF-8.
         assertArrayEquals(editedText.getBytes(SJIS), Files.readAllBytes(file));
         assertEquals(5, intField(run.stdout(), "changedLineFrom"), run.stdout());
         assertEquals(5, intField(run.stdout(), "changedLineTo"), run.stdout());
@@ -142,8 +143,8 @@ class SaveCommandTest {
     }
 
     /**
-     * 書き戻しの途中で失敗しても原本は元のバイト列のままであること。原本を直接開いて書くと、
-     * ここで原本が切り詰められた中途半端な内容になる。
+     * The original must stay byte-identical even if the write-back fails partway through. Opening
+     * and writing the original directly would leave it truncated with half-finished content here.
      */
     @Test
     void failedWriteLeavesTheOriginalByteIdentical() throws IOException {
@@ -167,8 +168,8 @@ class SaveCommandTest {
     }
 
     /**
-     * 書き戻しの後で失敗した場合は written:true と報告すること。原本を置き換えた後に
-     * 「触れていない」と伝えると、利用者はもう残っていない元の内容を当てにする。
+     * A failure after the write-back must be reported as written:true. Telling the user "untouched"
+     * after the original has already been replaced would make them rely on original content that no longer exists.
      */
     @Test
     void failureAfterTheReplacementIsReportedAsWritten() throws IOException {
@@ -195,8 +196,9 @@ class SaveCommandTest {
     }
 
     /**
-     * COPY を持つ資産を保存する。コピー句の名前は試験ごとに変える。Che4z は解決の可否を
-     * コピー句の名前で憶えるため、同じ名前を別の探索パスで2度引くと2度目が1度目の結果になる。
+     * Saves an asset that has a COPY. The copybook name is varied per test. Che4z remembers whether
+     * resolution succeeded by copybook name, so looking up the same name twice with different search
+     * paths would make the second lookup return the first lookup's result.
      */
     private Path writeCopyUsingSource(Path assets, String copybookName) throws IOException {
         Files.createDirectories(assets.resolve("copy"));
@@ -220,9 +222,9 @@ class SaveCommandTest {
     }
 
     /**
-     * --copybook-path の指定が無い保存でも、COPY を持つ資産が再パースの誤りを伴わないこと。
-     * 探索パスを空のまま再パースすると「Copybook not found」が必ず出て、編集と無関係な誤りを
-     * 利用者へ見せる。
+     * An asset with a COPY must not incur a reparse error even when saved without an explicit
+     * --copybook-path. Reparsing with an empty search path always produces "Copybook not found",
+     * showing the user an error unrelated to their edit.
      */
     @Test
     void copybooksAreFoundWithoutAnExplicitSearchPath() throws IOException {
@@ -237,7 +239,7 @@ class SaveCommandTest {
         assertTrue(run.stdout().contains("\"reparseErrors\":[]"), run.stdout());
     }
 
-    /** コピー句を見つけられない探索パスでは誤りが出ること(上の試験が効いていることの裏)。 */
+    /** Confirms an error occurs with a search path that cannot find the copybook (the flip side proving the test above is meaningful). */
     @Test
     void unresolvedCopybookIsReportedAsAReparseError() throws IOException {
         Path assets = tempDir.resolve("blind");
@@ -256,8 +258,9 @@ class SaveCommandTest {
 
     @Test
     void codepageRecordedByScanIsUsedWhenTheProjectFileIsGiven() throws IOException {
-        // 本文は ASCII だけで、自動判別では UTF-8 になる。scan へ windows-31j を手動指定して
-        // プロジェクトファイルへ記録させ、save がその記録を引くことを日本語の追記で確かめる。
+        // The body is ASCII-only, so automatic detection would resolve it as UTF-8. Manually
+        // specify windows-31j to scan so it gets recorded in the project file, and confirm save
+        // picks up that record by appending Japanese text.
         String ascii = PROGRAM.replace("'日次処理'", "'DAILY'");
         Path file = writeSource(ascii, StandardCharsets.US_ASCII);
         Path db = tempDir.resolve("project.db");

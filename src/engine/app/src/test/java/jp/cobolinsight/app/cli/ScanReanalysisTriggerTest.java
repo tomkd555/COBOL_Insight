@@ -20,8 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 増分解析の対象判定が、内容ハッシュの一致以外の要因も見ることの検証。SOURCE 行が
- * 解析由来かどうか、および適用するコードページが変わったかどうかを扱う。
+ * Verification that deciding whether to reanalyze incrementally also looks at factors beyond a
+ * content-hash match. Covers whether a SOURCE row originates from analysis, and whether the
+ * applied codepage has changed.
  */
 class ScanReanalysisTriggerTest {
 
@@ -53,8 +54,8 @@ class ScanReanalysisTriggerTest {
                 List.of(assets.resolve("copybook")), Map.of(),
                 List.of(TargetLanguage.PYTHON), tempDir.resolve("out")));
 
-        // translate は行対応表の外部キーを満たすため SOURCE 行だけを登録する。内容ハッシュは
-        // 一致するが解析済みではないため、続く scan はそれらを解析対象に含める必要がある。
+        // translate registers only SOURCE rows, to satisfy the line-map's foreign key. Their content
+        // hash matches but they are not analyzed, so the subsequent scan must include them as analysis targets.
         ScanOutcome.Summary summary = Pipelines.scan(assets, databaseFile,
                 List.of(assets.resolve("copybook")), Map.of()).summary();
 

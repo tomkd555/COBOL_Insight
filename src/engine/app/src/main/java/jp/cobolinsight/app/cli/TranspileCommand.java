@@ -16,9 +16,10 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 /**
- * `translate` サブコマンド。資産フォルダの COBOL を Python/Java へ逐語対訳し、生成ファイルを出力先へ書き、
- * COBOL 行と生成行の対応表を SQLite の LINE_MAP へ保存する。終了コードは復号・パース失敗で分岐する
- * (成功=0・エラー=2)。
+ * The `translate` subcommand. Translates the COBOL in the asset folder verbatim into Python/Java,
+ * writes the generated files to the output directory, and saves the COBOL-to-generated-line
+ * mapping table to SQLite's LINE_MAP. The exit code branches on decode/parse failure
+ * (success = 0, error = 2).
  */
 @Command(name = "translate", mixinStandardHelpOptions = true,
         description = "資産フォルダの COBOL を Python/Java へ逐語対訳し、行対応表を保存する")

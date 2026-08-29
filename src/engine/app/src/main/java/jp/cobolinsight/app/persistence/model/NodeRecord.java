@@ -1,8 +1,9 @@
 package jp.cobolinsight.app.persistence.model;
 
 /**
- * NODE表の1行(呼出関係グラフのノード)。ソースに対応するノードは NODE.id = SOURCE.id で登録し、
- * ソースに対応しないノード(ジョブステップ・データセット等)はそれより大きいIDへ採番する。
+ * One row of the NODE table (a node of the call-relationship graph). A node that corresponds to a
+ * source is registered with NODE.id = SOURCE.id; a node with no corresponding source (a job step,
+ * a dataset, etc.) is assigned an ID larger than that.
  */
 public record NodeRecord(long id, String type, String label) {
 

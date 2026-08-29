@@ -11,8 +11,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * `fix preview`・`fix apply` の子コマンドが共有する入力・解析設定のオプション群(picocli の
- * {@code @Mixin} として取り込む)。オプションは lint/translate と整合させる。
+ * The set of input and analysis-configuration options shared by the `fix preview` and `fix apply`
+ * subcommands (pulled in via picocli's {@code @Mixin}). The options are kept consistent with
+ * lint/translate.
  */
 final class FixCommonOptions {
 
@@ -27,7 +28,7 @@ final class FixCommonOptions {
             description = "ファイル単位のコードページ手動指定(相対パスまたはファイル名=コードページ)。自動判別に優先する")
     Map<String, String> codepageOverrides = new LinkedHashMap<>();
 
-    /** 既定解決を適用したコピー句探索パス。 */
+    /** The copybook search path with default resolution applied. */
     List<Path> resolvedCopybookPaths() {
         return CommonScanOptions.resolveCopybookPaths(inputDir, copybookPaths);
     }

@@ -9,8 +9,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 統合レポートの HTML・テキスト整形を担う。scan/lint/sql-lint/call-graph の統合結果を
- * 「資産インベントリ」「検出結果一覧(scan+lint)」「呼出関係の要約」「SQL 指摘」の4節へ組む。
+ * Renders the combined report's HTML and text formatting. Assembles the combined results of
+ * scan/lint/sql-lint/call-graph into four sections: "asset inventory", "finding list (scan+lint)",
+ * "call-graph summary" and "SQL findings".
  */
 final class ReportRenderer {
 

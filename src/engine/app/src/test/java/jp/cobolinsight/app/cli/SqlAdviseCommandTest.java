@@ -12,7 +12,7 @@ import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** sql-lintサブコマンドのpicocli配線・SARIFファイル出力・終了コード分岐の検証。 */
+/** Verifies the sql-lint subcommand's picocli wiring, SARIF file output, and exit code branching. */
 class SqlAdviseCommandTest {
 
     @TempDir
@@ -26,7 +26,7 @@ class SqlAdviseCommandTest {
         return dir;
     }
 
-    /** カーソル宣言(FOR句なし・OPTIMIZE FORなし)を持つプログラム。S004(中→警告)を含む。 */
+    /** A program with a cursor declaration (no FOR clause, no OPTIMIZE FOR). Triggers S004 (medium -> warning). */
     private static final String CURSOR = String.join("\n",
             "       IDENTIFICATION DIVISION.",
             "       PROGRAM-ID.  CURDECL.",
@@ -43,7 +43,7 @@ class SqlAdviseCommandTest {
             "           GOBACK.",
             "");
 
-    /** 埋め込みSQLを持たないプログラム。SQL指摘は0件。 */
+    /** A program with no embedded SQL. Produces zero SQL findings. */
     private static final String NO_SQL = String.join("\n",
             "       IDENTIFICATION DIVISION.",
             "       PROGRAM-ID.  NOSQL.",

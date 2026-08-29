@@ -127,7 +127,7 @@ class PersistenceDaoRoundTripTest {
                 new ParagraphEdgeRecord(1L, 1L, 1L, 2L, "SUB-RTN", "PERFORM", 12, 1);
         ParagraphEdgeRecord fallthrough =
                 new ParagraphEdgeRecord(2L, 1L, 1L, 2L, "SUB-RTN", "FALLTHROUGH", null, 2);
-        // 飛び先の段落が無いGO TOは、名前だけを残して飛び先IDを持たない
+        // A GO TO with no target paragraph keeps only the name and has no target ID
         ParagraphEdgeRecord unresolved =
                 new ParagraphEdgeRecord(3L, 1L, 2L, null, "NO-SUCH-RTN", "GOTO", 25, 1);
         dao.insertParagraphEdge(perform);
