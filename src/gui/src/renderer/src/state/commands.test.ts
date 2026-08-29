@@ -23,6 +23,9 @@ function context(overrides: Partial<CommandContext> = {}): CommandContext {
       saveCustomRules: vi.fn(),
       validateCustomRules: vi.fn(),
     },
+    saveActiveTab: vi.fn(),
+    saveAllTabs: vi.fn(),
+    hasDirty: false,
     ...overrides,
   };
 }

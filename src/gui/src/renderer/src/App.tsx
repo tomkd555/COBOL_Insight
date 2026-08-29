@@ -6,6 +6,7 @@ import {
   PANEL_LIMITS,
   SIDE_LIMITS,
   WorkbenchProvider,
+  fixTab,
   isTabDirty,
   sourceTab,
   useWorkbench,
@@ -14,11 +15,21 @@ import {
 import { SettingsProvider, useSettingsDispatch } from "./state/settingsStore";
 import { RulesProvider } from "./state/rulesStore";
 import { useRules } from "./state/useRules";
+import { EditorStatusProvider } from "./state/editorStatusStore";
 import { useShellStartup } from "./state/useShellStartup";
 import { buildCommands, type Command } from "./state/commands";
-import { commandForChord, isPaletteChord } from "./state/keybindings";
+import {
+  commandAfterPrefix,
+  commandForChord,
+  isPaletteChord,
+  isSequencePrefix,
+} from "./state/keybindings";
 import { useAnalysis } from "./state/useAnalysis";
+import { useSourceSave } from "./state/useSourceSave";
 import { closeDecision } from "./model/closeGuard";
+import { forgetDocument } from "./model/openDocuments";
+import { disposeModel } from "./vendor/monacoModels";
+import { languageIdFor } from "./vendor/monarch";
 import { ActivityBar } from "./shell/ActivityBar";
 import { SideBar } from "./shell/SideBar";
 import { EditorGroup } from "./shell/EditorGroup";
@@ -26,6 +37,7 @@ import { Panel } from "./shell/Panel";
 import { StatusBar } from "./shell/StatusBar";
 import { TitleBar } from "./shell/TitleBar";
 import { CommandPalette } from "./shell/CommandPalette";
+import { DiffView } from "./editors/diff/DiffView";
 import { SplitHandle } from "./ui/SplitHandle";
 import { Modal } from "./ui/Modal";
 import { Toast, type ToastMessage } from "./ui/Toast";
@@ -55,10 +67,28 @@ function Shell(): ReactElement {
 
   useShellStartup(notify);
   const rulesActions = useRules(notify);
+  const sourceSave = useSourceSave(notify);
 
   const openAsset = useCallback(
     (path: string, line: number | null): void => {
       workbenchDispatch({ type: "OPEN_TAB", tab: sourceTab(path, line) });
+    },
+    [workbenchDispatch],
+  );
+
+  const showFix = useCallback(
+    (path: string): void => {
+      workbenchDispatch({ type: "OPEN_TAB", tab: fixTab(path) });
+    },
+    [workbenchDispatch],
+  );
+
+  /** Closes a tab for good, releasing the text model and the decode it was holding. */
+  const closeTab = useCallback(
+    (id: string): void => {
+      workbenchDispatch({ type: "CLOSE_TAB", id });
+      disposeModel(id);
+      forgetDocument(id);
     },
     [workbenchDispatch],
   );
@@ -92,13 +122,23 @@ function Shell(): ReactElement {
   const requestCloseTab = useCallback(
     (id: string): void => {
       if (closeDecision(isTabDirty(workbench, id)) === "close") {
-        workbenchDispatch({ type: "CLOSE_TAB", id });
+        closeTab(id);
       } else {
         setPendingClose(id);
       }
     },
-    [workbench, workbenchDispatch],
+    [workbench, closeTab],
   );
+
+  const saveActiveTab = useCallback((): void => {
+    if (workbench.activeTabId !== null) {
+      void sourceSave.save(workbench.activeTabId);
+    }
+  }, [workbench.activeTabId, sourceSave]);
+
+  const saveAllTabs = useCallback((): void => {
+    void sourceSave.saveAll();
+  }, [sourceSave]);
 
   const commands: Command[] = useMemo(
     () =>
@@ -111,6 +151,9 @@ function Shell(): ReactElement {
         cancelAnalysis,
         requestCloseTab,
         rulesActions,
+        saveActiveTab,
+        saveAllTabs,
+        hasDirty: sourceSave.hasDirty,
       }),
     [
       project,
@@ -121,12 +164,39 @@ function Shell(): ReactElement {
       cancelAnalysis,
       requestCloseTab,
       rulesActions,
+      saveActiveTab,
+      saveAllTabs,
+      sourceSave.hasDirty,
     ],
   );
 
   // The keyboard chords. They are ignored while typing into a field, except inside the code editor.
+  // Ctrl+K arms a two-key sequence; the next key completes it or cancels it.
+  const armed = useRef(false);
   useEffect(() => {
+    const runCommand = (id: string): boolean => {
+      const command = commands.find((candidate) => candidate.id === id);
+      if (command === undefined || !command.when()) {
+        return false;
+      }
+      command.run();
+      return true;
+    };
     const onKeyDown = (event: globalThis.KeyboardEvent): void => {
+      if (armed.current) {
+        armed.current = false;
+        const sequenced = commandAfterPrefix(event);
+        if (sequenced !== null) {
+          event.preventDefault();
+          runCommand(sequenced);
+          return;
+        }
+      }
+      if (isSequencePrefix(event)) {
+        event.preventDefault();
+        armed.current = true;
+        return;
+      }
       if (isPaletteChord(event)) {
         event.preventDefault();
         setPaletteOpen(true);
@@ -136,12 +206,10 @@ function Shell(): ReactElement {
       if (id === null) {
         return;
       }
-      const command = commands.find((candidate) => candidate.id === id);
-      if (command === undefined || !command.when()) {
-        return;
-      }
+      // A bound chord is swallowed even when the command does not currently apply, so that the
+      // browser's own binding (Ctrl+S, say) never fires behind it.
       event.preventDefault();
-      command.run();
+      runCommand(id);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -150,6 +218,8 @@ function Shell(): ReactElement {
   const commitSize = useCallback((): void => {
     workbenchDispatch({ type: "COMMIT_SIZE" });
   }, [workbenchDispatch]);
+
+  const conflict = sourceSave.conflict;
 
   return (
     <div className="ci-shell">
@@ -177,6 +247,7 @@ function Shell(): ReactElement {
             onRequestClose={requestCloseTab}
             onSelectFolder={selectFolder}
             notify={notify}
+            onShowFix={showFix}
           />
           {workbench.panelVisible ? (
             <>
@@ -213,12 +284,24 @@ function Shell(): ReactElement {
                 type="button"
                 className="ci-button ci-button--danger"
                 onClick={() => {
-                  workbenchDispatch({ type: "CLOSE_TAB", id: pendingClose });
+                  closeTab(pendingClose);
                   setPendingClose(null);
                 }}
                 data-testid="confirm-discard-yes"
               >
                 {text.modal.discard}
+              </button>
+              <button
+                type="button"
+                className="ci-button"
+                onClick={() => {
+                  const id = pendingClose;
+                  setPendingClose(null);
+                  void sourceSave.save(id).then(() => closeTab(id));
+                }}
+                data-testid="confirm-discard-save"
+              >
+                {text.modal.saveAndClose}
               </button>
               <button
                 type="button"
@@ -235,19 +318,74 @@ function Shell(): ReactElement {
         </Modal>
       )}
 
+      {conflict === null ? null : (
+        <Modal
+          title={text.save.conflictTitle}
+          testId="save-conflict"
+          wide={conflict.diskText !== null}
+          onDismiss={sourceSave.dismissConflict}
+          actions={
+            <>
+              <button
+                type="button"
+                className="ci-button ci-button--danger"
+                onClick={sourceSave.overwrite}
+                data-testid="save-conflict-overwrite"
+              >
+                {text.save.overwrite}
+              </button>
+              <button
+                type="button"
+                className="ci-button"
+                onClick={() => {
+                  const id = conflict.tabId;
+                  sourceSave.dismissConflict();
+                  void sourceSave.reload(id);
+                }}
+                data-testid="save-conflict-reload"
+              >
+                {text.save.reload}
+              </button>
+              <button
+                type="button"
+                className="ci-button"
+                onClick={sourceSave.showConflictDiff}
+                data-testid="save-conflict-diff"
+              >
+                {text.save.showDiff}
+              </button>
+            </>
+          }
+        >
+          <p>{text.save.conflictBody(conflict.path)}</p>
+          {conflict.diskText === null ? null : (
+            <div className="ci-modal__diff">
+              <DiffView
+                original={conflict.diskText}
+                modified={conflict.draft}
+                languageId={languageIdFor(conflict.path)}
+                ariaLabel={`${text.save.diskLabel} / ${text.save.draftLabel}`}
+              />
+            </div>
+          )}
+        </Modal>
+      )}
+
       <Toast messages={toasts} onDismiss={dismissToast} />
     </div>
   );
 }
 
-/** The application root: the four stores wrapped around the shell. */
+/** The application root: the stores wrapped around the shell. */
 export function App(): ReactElement {
   return (
     <SettingsProvider>
       <ProjectProvider>
         <RulesProvider>
           <WorkbenchProvider>
-            <Shell />
+            <EditorStatusProvider>
+              <Shell />
+            </EditorStatusProvider>
           </WorkbenchProvider>
         </RulesProvider>
       </ProjectProvider>

@@ -12,10 +12,12 @@
       same y coordinate, and the source on screen no longer matches the file.
       worker-src's blob: is needed only to start Monaco's worker, which is raised from a Blob holding
       the already-bundled worker code.
+      img-src's data: is needed only for the wavy underline Monaco draws beneath a finding, which it
+      builds as an inline SVG data URI. It permits no origin: a data: URI carries its own bytes.
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>COBOL Insight</title>

@@ -20,6 +20,10 @@ import EditorWorker from "monaco-editor/editor/editor.worker?worker&inline";
 // editor.api import, and without them the shell's icons render as blank boxes. The font is
 // referenced relatively, so it also loads from file://.
 import "monaco-editor/features/codicon/register";
+// The code-action contribution: the lightbulb, the chooser, and the editor.action.quickFix command.
+// editor.api carries the API for registering a provider but none of the interface that offers what a
+// provider returns, and the quick fix on a finding is reached from that interface alone.
+import "monaco-editor/features/codeAction/register";
 
 /**
  * The globals Monaco reads when it creates a worker. ciMonaco is the handle the offscreen render

@@ -13,6 +13,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
+import { text } from "../text";
 
 /** Tab kinds. Only `source` binds to one asset; the rest open at most one tab each. */
 export type TabKind = "source" | "graph" | "rules" | "report" | "settings" | "fix";
@@ -106,6 +107,17 @@ export function customRulesTab(title: string): WorkbenchTab {
 /** The settings editor. */
 export function settingsTab(title: string): WorkbenchTab {
   return { id: "settings", kind: "settings", title, path: null, line: null };
+}
+
+/** The id of an asset's fix diff. It is its own tab, so the source stays open beside it. */
+export function fixTabId(path: string): string {
+  return `fix:${path}`;
+}
+
+/** A tab holding the fix proposal for one asset, against the original. */
+export function fixTab(path: string): WorkbenchTab {
+  const name = path.split("/").pop() ?? path;
+  return { id: fixTabId(path), kind: "fix", title: `${name}（${text.fixView.diff}）`, path, line: null };
 }
 
 export type WorkbenchAction =

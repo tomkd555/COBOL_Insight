@@ -8,7 +8,7 @@ export interface ModalProps {
   /** Escape and the backdrop both call this. */
   onDismiss: () => void;
   testId?: string;
-  /** A dialog holding a form and a preview rather than a question and two buttons. */
+  /** Widens the dialog, for a body that carries something to read rather than a sentence. */
   wide?: boolean;
 }
 
@@ -19,14 +19,7 @@ export interface ModalProps {
  * Focus moves into the dialog on opening and is trapped inside it while it is open, so a keyboard
  * user cannot tab out to the shell behind.
  */
-export function Modal({
-  title,
-  children,
-  actions,
-  onDismiss,
-  testId,
-  wide,
-}: ModalProps): ReactElement {
+export function Modal({ title, children, actions, onDismiss, testId, wide }: ModalProps): ReactElement {
   const dialogRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {

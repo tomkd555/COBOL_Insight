@@ -32,6 +32,7 @@ export const KEYBINDINGS: readonly Keybinding[] = [
   { chord: "Ctrl+B", key: "b", shift: false, command: "view.toggleSideBar" },
   { chord: "Ctrl+J", key: "j", shift: false, command: "view.togglePanel" },
   { chord: "Ctrl+W", key: "w", shift: false, command: "editor.closeTab" },
+  { chord: "Ctrl+S", key: "s", shift: false, command: "editor.save" },
   { chord: "Ctrl+PageDown", key: "pagedown", shift: false, command: "editor.nextTab" },
   { chord: "Ctrl+PageUp", key: "pageup", shift: false, command: "editor.previousTab" },
   { chord: "Ctrl+Shift+E", key: "e", shift: true, command: "view.showExplorer" },
@@ -42,6 +43,40 @@ export const KEYBINDINGS: readonly Keybinding[] = [
 
 /** The chord that opens the command palette. It is handled apart from the command list. */
 export const PALETTE_CHORD = { key: "p", shift: true, label: "Ctrl+Shift+P" } as const;
+
+/**
+ * The two-key sequences. The first key arms the sequence and the second decides the command, which
+ * is how a shell offers more bindings than a single Ctrl chord has letters for. Ctrl+K S is the one
+ * in use; the prefix does nothing on its own.
+ */
+export const SEQUENCE_PREFIX = { key: "k", label: "Ctrl+K" } as const;
+
+const SEQUENCES: readonly { key: string; chord: string; command: CommandId }[] = [
+  { key: "s", chord: "Ctrl+K S", command: "editor.saveAll" },
+];
+
+/** Whether the event arms a two-key sequence. */
+export function isSequencePrefix(event: ChordEvent): boolean {
+  if (!event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
+    return false;
+  }
+  if (isTextEntry(event.target)) {
+    return false;
+  }
+  return event.key.toLowerCase() === SEQUENCE_PREFIX.key;
+}
+
+/**
+ * The command the second key of an armed sequence runs, or null when it completes none. The second
+ * key is taken with or without Ctrl, as VS Code takes it.
+ */
+export function commandAfterPrefix(event: ChordEvent): CommandId | null {
+  if (event.metaKey || event.altKey || isTextEntry(event.target)) {
+    return null;
+  }
+  const key = event.key.toLowerCase();
+  return SEQUENCES.find((sequence) => sequence.key === key)?.command ?? null;
+}
 
 /** Elements that take typed characters; a chord must not be stolen from them. */
 const TEXT_ENTRY_TAGS = ["INPUT", "TEXTAREA", "SELECT"];

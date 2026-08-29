@@ -35,7 +35,9 @@ export type CommandId =
   | "rules.saveCustom"
   | "editor.closeTab"
   | "editor.nextTab"
-  | "editor.previousTab";
+  | "editor.previousTab"
+  | "editor.save"
+  | "editor.saveAll";
 
 export interface Command {
   readonly id: CommandId;
@@ -60,6 +62,12 @@ export interface CommandContext {
   readonly requestCloseTab: (id: string) => void;
   /** Writing the rule configuration file. */
   readonly rulesActions: RulesActions;
+  /** Writes the selected tab's edits back over the original. */
+  readonly saveActiveTab: () => void;
+  /** Writes every unsaved tab back, one after another. */
+  readonly saveAllTabs: () => void;
+  /** Whether anything is unsaved, which is what makes the two save commands apply. */
+  readonly hasDirty: boolean;
 }
 
 /** The rule the active tab describes, or null when the active tab describes none. */
@@ -190,6 +198,21 @@ export function buildCommands(context: CommandContext): Command[] {
           context.requestCloseTab(workbench.activeTabId);
         }
       },
+    },
+    {
+      id: "editor.save",
+      title: text.command.save,
+      category: text.command.categoryFile,
+      // A tab with nothing unsaved has nothing to write, so the command does not apply.
+      when: () => workbench.activeTabId !== null && context.hasDirty,
+      run: context.saveActiveTab,
+    },
+    {
+      id: "editor.saveAll",
+      title: text.command.saveAll,
+      category: text.command.categoryFile,
+      when: () => context.hasDirty,
+      run: context.saveAllTabs,
     },
     {
       id: "editor.nextTab",

@@ -715,10 +715,102 @@
   user-select: none;
 }
 
+.ci-source__control {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-2);
+}
+
+.ci-source__control-label {
+  white-space: nowrap;
+}
+
+.ci-source__badge {
+  padding: 0 var(--ci-space-2);
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius);
+}
+
+.ci-source__spacer {
+  flex: 1 1 auto;
+}
+
 .ci-source__state {
   margin: 0;
   padding: var(--ci-space-3);
   color: var(--ci-fg-dim);
+}
+
+/* ---------------------------------------------------------------- the code editor */
+
+.ci-code,
+.ci-diff {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/*
+ * The fixed-format areas. The engine reports the byte column each area starts at and the editor
+ * turns those into inline decorations, so the colouring stays right on a line holding double-byte
+ * characters, where a character count would drift from the column.
+ */
+.ci-code__sequence {
+  color: var(--ci-fg-dim);
+}
+
+.ci-code__indicator {
+  color: var(--ci-kind-jcl);
+  font-weight: 700;
+}
+
+.ci-code__indicator--comment {
+  color: var(--ci-kind-cobol);
+  font-weight: 400;
+}
+
+.ci-code__indicator--debug {
+  color: var(--ci-kind-copybook);
+}
+
+.ci-code__indicator--continuation {
+  color: var(--ci-kind-bms);
+}
+
+.ci-code__identification {
+  color: var(--ci-fg-dim);
+  background: rgb(255 255 255 / 4%);
+}
+
+/* Past column 80 the fixed format gives the bytes no meaning at all. */
+.ci-code__overflow {
+  color: var(--ci-danger);
+  background: var(--ci-danger-bg);
+}
+
+/* The glyph margin marks the worst finding on the line. */
+.ci-code__glyph::before {
+  content: "";
+  display: block;
+  margin: 6px 0 0 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.ci-code__glyph--high::before {
+  background: var(--ci-severity-high);
+}
+
+.ci-code__glyph--medium::before {
+  background: var(--ci-severity-medium);
+}
+
+.ci-code__glyph--low::before {
+  background: var(--ci-severity-low);
+}
+
+.ci-code__glyph--warning::before {
+  background: var(--ci-severity-warning);
 }
 
 .ci-source__state--error {
@@ -747,6 +839,7 @@
   inset: 0;
   background: var(--ci-bg-overlay);
 }
+
 
 .ci-palette__dialog {
   position: relative;
@@ -807,6 +900,16 @@
   border: 1px solid var(--ci-border-strong);
   border-radius: var(--ci-radius);
   box-shadow: 0 8px 24px rgb(0 0 0 / 40%);
+}
+
+.ci-modal__dialog--wide {
+  width: min(1000px, 92vw);
+}
+
+.ci-modal__diff {
+  height: min(420px, 50vh);
+  margin-top: var(--ci-space-3);
+  border: 1px solid var(--ci-border-strong);
 }
 
 .ci-modal__title {

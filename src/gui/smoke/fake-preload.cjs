@@ -91,6 +91,7 @@ const INVENTORY = [
   { id: 3, path: "cobol/SYK002.cbl", name: "SYK002.cbl", type: "PROGRAM", codepage: "Shift_JIS", byteSize: 3800, findingCount: 1 },
   { id: 4, path: "copybook/SYKCPY1.cpy", name: "SYKCPY1.cpy", type: "COPYBOOK", codepage: null, byteSize: 640, findingCount: 0 },
   { id: 5, path: "jcl/SYKD010.jcl", name: "SYKD010.jcl", type: "JCL", codepage: "Shift_JIS", byteSize: 900, findingCount: 0 },
+  { id: 6, path: "encoding/SYKENC1_CP930.cbl", name: "SYKENC1_CP930.cbl", type: "PROGRAM", codepage: "IBM930", byteSize: 1200, findingCount: 0 },
 ];
 
 const FINDINGS = [
@@ -116,6 +117,41 @@ const COBOL_TEXT = [
   "001000     MOVE 受注番号 TO WK-ORDER-ID.                               SYK00200",
   "001100     STOP RUN.                                                   SYK00210",
 ].join("\n");
+
+/*
+ * One EBCDIC CP930 asset, copied from what the engine actually returns for
+ * samples/encoding/SYKENC1_CP930.cbl: the text, and the byte-column boundaries of every line.
+ *
+ * The boundaries are the point of the fixture. Line 3 holds double-byte characters, and CP930 wraps
+ * a double-byte run in shift-out and shift-in bytes, so byte column 73 — where the identification
+ * area starts — falls on character 53, not on character 73 as it would in a line of single-byte
+ * characters. Anything that counted characters instead of bytes would put the decoration elsewhere.
+ */
+const CP930_PATH = "encoding/SYKENC1_CP930.cbl";
+
+const CP930_TEXT = [
+  "      *================================================================*",
+  "      *  PROGRAM-ID : SYKENC1                                         *",
+  "      *  文字コード検証用サンプルプログラム                             *",
+  "      *  日本語コメントと日本語混じりの見出しを含む。                    *",
+  "      *================================================================*",
+  "       IDENTIFICATION DIVISION.",
+  "       PROGRAM-ID.  SYKENC1.",
+  "       PROCEDURE DIVISION.",
+  "           STOP RUN.",
+].join("\n");
+
+const CP930_LINES = [
+  { byteLength: 73, boundaries: [6, 7, 11, 72] },
+  { byteLength: 72, boundaries: [6, 7, 11, -1] },
+  { byteLength: 76, boundaries: [6, 7, 10, 53] },
+  { byteLength: 77, boundaries: [6, 7, 10, 48] },
+  { byteLength: 73, boundaries: [6, 7, 11, 72] },
+  { byteLength: 32, boundaries: [6, 7, 11, -1] },
+  { byteLength: 29, boundaries: [6, 7, 11, -1] },
+  { byteLength: 27, boundaries: [6, 7, 11, -1] },
+  { byteLength: 21, boundaries: [6, 7, 11, -1] },
+];
 
 const COPYBOOK_TEXT = [
   "000100 01  SYK-ORDER-REC.                                              CPY00110",
@@ -145,6 +181,17 @@ const GRAPH = {
     { programSourceId: 2, from: 21, to: 22, toName: "READ-ORDER", kind: "PERFORM", line: 9, seq: 1 },
   ],
 };
+
+/**
+ * How many times each file has been changed outside the tool. A file's stamp is derived from this,
+ * so a save that follows a `touch` finds the original no longer the one it read.
+ */
+const touched = new Map();
+
+function stampOf(path) {
+  const revision = touched.get(path) ?? 0;
+  return { mtimeMs: 1000 + revision, byteSize: 100 + revision };
+}
 
 /** The stored settings and the rule file, held in memory so a write is visible to the next read. */
 let settings = {
@@ -181,16 +228,28 @@ const api = {
     }
   },
   cancel: () => Promise.resolve(undefined),
-  decode: (request) =>
-    Promise.resolve({
+  decode: (request) => {
+    if (request.path === CP930_PATH) {
+      return Promise.resolve({
+        text: CP930_TEXT,
+        codepage: "x-IBM930",
+        detected: false,
+        soSiPresent: true,
+        lines: CP930_LINES,
+        stamp: stampOf(request.path),
+        error: "",
+      });
+    }
+    return Promise.resolve({
       text: request.path.includes("SYKCPY1") ? COPYBOOK_TEXT : COBOL_TEXT,
       codepage: "Shift_JIS",
       detected: true,
       soSiPresent: false,
       lines: [],
-      stamp: { mtimeMs: 1, byteSize: 1 },
+      stamp: stampOf(request.path),
       error: "",
-    }),
+    });
+  },
   save: (request) =>
     Promise.resolve({
       written: true,
@@ -216,7 +275,12 @@ const api = {
   readGraph: () => Promise.resolve(GRAPH),
   readCopyExpansion: () => Promise.resolve({ programs: [] }),
   readFixDiff: (request) =>
-    Promise.resolve({ relPath: request.relPath, originalText: COBOL_TEXT, fixedText: COBOL_TEXT }),
+    Promise.resolve({
+      relPath: request.relPath,
+      originalText: COBOL_TEXT,
+      // One line differs, so the diff view has something to line up.
+      fixedText: COBOL_TEXT.replace("STOP RUN.", "GOBACK.  "),
+    }),
   readTranspile: () => Promise.resolve({ files: [], lineMap: [] }),
   readReport: () => Promise.resolve("<h1>COBOL Insight 解析レポート</h1>"),
 
@@ -230,7 +294,17 @@ const api = {
     }),
   selectFolder: () => Promise.resolve("C:\\smoke\\assets"),
   dirExists: () => Promise.resolve(true),
-  stat: () => Promise.resolve({ mtimeMs: 1, byteSize: 1 }),
+  stat: (request) => Promise.resolve(stampOf(request.path)),
+
+  /*
+   * Not part of the contract the real preload publishes: the smoke's way of standing in for an edit
+   * made outside the tool. Bumping a file's stamp is what makes the next save find a changed
+   * original and raise the conflict dialog.
+   */
+  touch: (path) => {
+    touched.set(path, (touched.get(path) ?? 0) + 1);
+    return Promise.resolve(undefined);
+  },
   importSource: (request) =>
     Promise.resolve({ status: "written", relPath: request.fileName, lineCount: request.lines.length }),
 

@@ -7,6 +7,7 @@ import { SourceEditor } from "../editors/source/SourceEditor";
 import { RuleDetail } from "../editors/rules/RuleDetail";
 import { CustomRules } from "../editors/rules/CustomRules";
 import { Settings } from "../editors/settings/Settings";
+import { FixDiff } from "../editors/diff/FixDiff";
 import { Placeholder } from "../editors/Placeholder";
 
 export interface EditorGroupProps {
@@ -14,21 +15,8 @@ export interface EditorGroupProps {
   onSelectFolder: () => void;
   /** How a failed write reaches the user. */
   notify: Notify;
-}
-
-/** Picks the editor for a tab. Kinds a later phase will fill get the placeholder for now. */
-function editorFor(tab: WorkbenchTab, notify: Notify): ReactElement {
-  if (tab.kind === "source" && tab.path !== null) {
-    return <SourceEditor path={tab.path} line={tab.line} />;
-  }
-  // A rules tab either describes one rule (its id is in `path`) or edits the user-defined rules.
-  if (tab.kind === "rules") {
-    return tab.path === null ? <CustomRules notify={notify} /> : <RuleDetail ruleId={tab.path} />;
-  }
-  if (tab.kind === "settings") {
-    return <Settings notify={notify} />;
-  }
-  return <Placeholder />;
+  /** Opens the fix proposal for one asset, from the quick fix on a finding that has one. */
+  onShowFix: (path: string) => void;
 }
 
 /**
@@ -37,14 +25,37 @@ function editorFor(tab: WorkbenchTab, notify: Notify): ReactElement {
  *
  * Only the selected tab's body is rendered. That is why the unsaved text lives in the workbench
  * store rather than inside an editor, which would lose it on every switch.
+ *
+ * The source editor is rendered as the same element for every source tab, so switching between two
+ * assets keeps one Monaco instance and changes only its model — which is what carries the undo stack
+ * and any unsaved edit across the switch.
  */
 export function EditorGroup({
   onRequestClose,
   onSelectFolder,
   notify,
+  onShowFix,
 }: EditorGroupProps): ReactElement {
   const workbench = useWorkbench();
   const active = activeTabOf(workbench);
+
+  /** Picks the editor for a tab. Kinds a later phase will fill get the placeholder for now. */
+  const editorFor = (tab: WorkbenchTab): ReactElement => {
+    if (tab.kind === "source" && tab.path !== null) {
+      return <SourceEditor path={tab.path} line={tab.line} onShowFix={onShowFix} />;
+    }
+    if (tab.kind === "fix" && tab.path !== null) {
+      return <FixDiff path={tab.path} onNotify={notify} />;
+    }
+    // A rules tab either describes one rule (its id is in `path`) or edits the user-defined rules.
+    if (tab.kind === "rules") {
+      return tab.path === null ? <CustomRules notify={notify} /> : <RuleDetail ruleId={tab.path} />;
+    }
+    if (tab.kind === "settings") {
+      return <Settings notify={notify} />;
+    }
+    return <Placeholder />;
+  };
 
   return (
     <section className="ci-editorgroup" data-testid="editorarea">
@@ -59,7 +70,7 @@ export function EditorGroup({
           aria-labelledby={`tabheader-${active.id}`}
           data-testid={`tabpanel-${active.id}`}
         >
-          {editorFor(active, notify)}
+          {editorFor(active)}
         </div>
       )}
     </section>
