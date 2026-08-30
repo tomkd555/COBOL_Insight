@@ -34,11 +34,21 @@
  * check exits non-zero.
  *
  * Run: npm run smoke:render (electron-vite build, then electron smoke/render.cjs)
+ *
+ * With `--shots <dir>` the suite runs once per theme, dark then light, and writes a PNG of the
+ * window after every check into <dir>/<theme>/. That is how the design review sees the screens:
+ * the renderer needs the preload bridge, so a browser cannot open it on its own.
  */
 
 const { app, BrowserWindow } = require("electron");
-const { existsSync } = require("node:fs");
+const { existsSync, mkdirSync, writeFileSync } = require("node:fs");
 const { join } = require("node:path");
+
+/** The directory the screenshots go to, or null when the run is the plain smoke. */
+const SHOTS_DIR = (() => {
+  const at = process.argv.indexOf("--shots");
+  return at < 0 || process.argv[at + 1] === undefined ? null : process.argv[at + 1];
+})();
 
 /** The ceiling on each wait. Generous, because it covers rendering start-up. */
 const WAIT_TIMEOUT_MS = 30000;
@@ -64,6 +74,19 @@ const BENIGN = [/^ResizeObserver loop /];
 function record(name, ok, detail) {
   results.push({ name, ok, detail });
   console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail === undefined ? "" : ` — ${detail}`}`);
+}
+
+/** Writes the window as it stands to <shots>/<theme>/<name>.png. A no-op in the plain smoke. */
+async function snap(win, theme, name) {
+  if (SHOTS_DIR === null) {
+    return;
+  }
+  const dir = join(SHOTS_DIR, theme);
+  mkdirSync(dir, { recursive: true });
+  // Let the last click's re-render and Monaco's next frame land before the capture.
+  await delay(250);
+  const image = await win.webContents.capturePage();
+  writeFileSync(join(dir, `${name}.png`), image.toPNG());
 }
 
 function delay(ms) {
@@ -928,6 +951,19 @@ async function main() {
     return;
   }
 
+  for (const theme of SHOTS_DIR === null ? ["dark"] : ["dark", "light"]) {
+    await runSuite(theme);
+  }
+
+  const failed = results.filter((result) => !result.ok);
+  console.log(`\nrender smoke: ${results.length - failed.length} / ${results.length} checks passed`);
+  app.exit(failed.length === 0 ? 0 : 1);
+}
+
+/** Loads the renderer with the fake preload told to store that theme, and runs every check. */
+async function runSuite(theme) {
+  // One suite's console faults must not be charged to the next.
+  consoleErrors.length = 0;
   const win = new BrowserWindow({
     // The production default size (see src/main/window.ts).
     width: 1440,
@@ -940,6 +976,8 @@ async function main() {
       nodeIntegration: false,
       // Render for real regardless of the display environment.
       offscreen: true,
+      // The fake preload reads this into the stored settings, so the shell resolves that theme.
+      additionalArguments: [`--ci-theme=${theme}`],
     },
   });
 
@@ -993,18 +1031,18 @@ async function main() {
           error instanceof Error ? error.message : String(error),
         );
       }
+      await snap(win, theme, check.name);
     }
     checkConsole();
   } catch (error) {
     record("the smoke ran to completion", false, error instanceof Error ? error.message : String(error));
     checkConsole();
   }
-
-  const failed = results.filter((result) => !result.ok);
-  console.log(`\nrender smoke: ${results.length - failed.length} / ${results.length} checks passed`);
-  app.exit(failed.length === 0 ? 0 : 1);
+  win.destroy();
 }
 
+// Closing the first theme's window must not end the app before the second theme has run.
+app.on("window-all-closed", () => undefined);
 app.commandLine.appendSwitch("disable-gpu");
 app.disableHardwareAcceleration();
 app.whenReady().then(main);

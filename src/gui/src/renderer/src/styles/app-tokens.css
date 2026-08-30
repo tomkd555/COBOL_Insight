@@ -2,9 +2,6 @@
  *
  * theme.css (generated from tokens.json) holds the palette. This file holds what the shell needs on
  * top of it: derived surfaces mixed from the palette, the code font, and the fixed chrome sizes.
- *
- * The --ci-* names below are the shim that keeps every not-yet-rewritten rule in the component stylesheets working;
- * an alias is deleted when its last consumer is rewritten against the --color-* names directly.
  */
 
 :root {
@@ -38,26 +35,4 @@
   --ci-tab-height: 34px;
   --ci-split-size: 6px;
   --ci-radius: var(--radius-md);
-
-  /* ---- Shim: aliases still consumed by the component stylesheets. Delete each with its last consumer. ---- */
-  --ci-bg-app: var(--color-background);
-  --ci-bg-editor: var(--color-background);
-  --ci-bg-panel: var(--color-muted);
-  --ci-bg-raised: var(--color-surface);
-  --ci-bg-active: var(--ci-bg-selected);
-  --ci-fg: var(--color-foreground);
-  --ci-fg-strong: var(--color-foreground);
-  --ci-fg-dim: var(--color-muted-foreground);
-  --ci-border: var(--color-border);
-  --ci-focus: var(--color-primary);
-  --ci-severity-high: var(--color-destructive);
-  --ci-severity-medium: var(--color-accent);
-  --ci-severity-low: var(--color-primary);
-  --ci-severity-warning: var(--color-muted-foreground);
-  --ci-kind-cobol: var(--color-muted-foreground);
-  --ci-kind-copybook: var(--color-muted-foreground);
-  --ci-kind-jcl: var(--color-muted-foreground);
-  --ci-kind-bms: var(--color-muted-foreground);
-  --ci-kind-other: var(--color-muted-foreground);
-  --ci-danger: var(--color-destructive);
 }

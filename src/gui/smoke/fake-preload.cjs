@@ -270,7 +270,13 @@ function stampOf(path) {
 }
 
 /** The stored settings and the rule file, held in memory so a write is visible to the next read. */
+/** The theme the smoke asked for through additionalArguments; empty means "system". */
+const requestedTheme = (process.argv.find((arg) => arg.startsWith("--ci-theme=")) ?? "").slice(
+  "--ci-theme=".length,
+);
+
 let settings = {
+  theme: requestedTheme,
   severityThreshold: "warning",
   defaultEncoding: "",
   copybookPaths: [],

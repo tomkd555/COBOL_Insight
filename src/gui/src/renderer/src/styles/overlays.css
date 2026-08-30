@@ -8,6 +8,17 @@
 
 /* ---------------------------------------------------------------- palette, modal, toast */
 
+@keyframes ci-overlay-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .ci-palette,
 .ci-modal {
   position: fixed;
@@ -27,19 +38,21 @@
   position: relative;
   margin: 10vh auto 0;
   width: min(600px, 90vw);
-  background: var(--ci-bg-raised);
-  border: 1px solid var(--ci-border-strong);
-  border-radius: var(--ci-radius);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 40%);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
+  animation: ci-overlay-in var(--duration-base) var(--ease-standard);
 }
 
 .ci-palette__input {
   width: 100%;
-  padding: var(--ci-space-2) var(--ci-space-3);
-  background: var(--ci-bg-app);
+  height: 32px;
+  padding: 0 var(--ci-space-3);
+  background: var(--color-background);
   border: none;
-  border-bottom: 1px solid var(--ci-border);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .ci-palette__list {
@@ -52,25 +65,27 @@
 
 .ci-palette__item {
   display: flex;
+  align-items: center;
   gap: var(--ci-space-2);
-  padding: var(--ci-space-1) var(--ci-space-3);
+  height: 28px;
+  padding: 0 var(--ci-space-3);
   cursor: pointer;
 }
 
 .ci-palette__item--active {
-  background: var(--ci-bg-active);
-  color: var(--ci-fg-strong);
+  background: var(--ci-bg-selected);
+  color: var(--color-foreground);
 }
 
 .ci-palette__category {
   flex: 0 0 auto;
-  color: var(--ci-fg-dim);
+  color: var(--color-muted-foreground);
 }
 
 .ci-palette__empty {
   margin: 0;
   padding: var(--ci-space-3);
-  color: var(--ci-fg-dim);
+  color: var(--color-muted-foreground);
 }
 
 .ci-modal__dialog {
@@ -78,10 +93,11 @@
   margin: 20vh auto 0;
   width: min(440px, 90vw);
   padding: var(--ci-space-4);
-  background: var(--ci-bg-raised);
-  border: 1px solid var(--ci-border-strong);
-  border-radius: var(--ci-radius);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 40%);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  animation: ci-overlay-in var(--duration-base) var(--ease-standard);
 }
 
 .ci-modal__dialog--wide {
@@ -91,16 +107,17 @@
 .ci-modal__diff {
   height: min(420px, 50vh);
   margin-top: var(--ci-space-3);
-  border: 1px solid var(--ci-border-strong);
+  border: 1px solid var(--color-border);
 }
 
 .ci-modal__title {
   margin: 0 0 var(--ci-space-2);
   font-size: var(--ci-size-lg);
+  font-weight: 600;
 }
 
 .ci-modal__body {
-  color: var(--ci-fg-dim);
+  color: var(--color-muted-foreground);
 }
 
 .ci-modal__actions {
@@ -126,20 +143,22 @@
   align-items: flex-start;
   gap: var(--ci-space-2);
   padding: var(--ci-space-2) var(--ci-space-3);
-  background: var(--ci-bg-raised);
-  border: 1px solid var(--ci-border-strong);
-  border-radius: var(--ci-radius);
-  box-shadow: 0 4px 12px rgb(0 0 0 / 40%);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  font-size: var(--ci-size-md);
 }
 
 .ci-toast--failed {
-  border-color: var(--ci-danger);
+  border-left: 3px solid var(--color-destructive);
+  color: var(--color-foreground);
 }
 
 .ci-toast__close {
   background: transparent;
   border: none;
-  color: var(--ci-fg-dim);
+  color: var(--color-muted-foreground);
   cursor: pointer;
 }
 
@@ -148,26 +167,27 @@
 .ci-strip {
   margin: var(--ci-space-2) 0;
   padding: var(--ci-space-2);
-  border: 1px solid var(--ci-border-strong);
-  border-radius: var(--ci-radius);
+  background: var(--color-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   font-size: var(--ci-size-sm);
 }
 
 .ci-strip--error {
   background: var(--ci-danger-bg);
-  border-color: var(--ci-danger);
+  color: var(--color-destructive);
 }
 
 .ci-strip--ok {
-  border-color: var(--ci-kind-cobol);
+  border-left: 3px solid var(--color-primary);
 }
 
 .ci-strip__title {
   margin: 0;
-  color: var(--ci-fg-strong);
 }
 
 .ci-strip__list {
   margin: var(--ci-space-1) 0 0;
-  padding-inline-start: var(--ci-space-4);
+  padding-inline-start: 1.2em;
+  list-style: disc;
 }

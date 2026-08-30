@@ -6,6 +6,7 @@ import {
   buildTreeRows,
   countFindingsByFile,
   toggleCollapsed,
+  type AssetTypeCode,
   type AssetTypeFilter,
   type TreeRow,
 } from "../../model/assetTree";
@@ -20,6 +21,22 @@ export interface ExplorerProps {
 /** The kind filter's label. */
 function filterLabel(filter: AssetTypeFilter): string {
   return text.assetType[filter];
+}
+
+/** The codicon glyph shown before an asset kind badge's text. */
+function badgeIcon(type: AssetTypeCode): string {
+  switch (type) {
+    case "cobol":
+      return "symbol-method";
+    case "copybook":
+      return "symbol-snippet";
+    case "jcl":
+      return "list-ordered";
+    case "bms":
+      return "layout";
+    case "other":
+      return "file";
+  }
 }
 
 /**
@@ -179,7 +196,10 @@ export function Explorer({ onSelectFolder, onOpenAsset }: ExplorerProps): ReactE
             />
             <span className="ci-tree__name">{row.name}</span>
             {row.type !== null ? (
-              <span className={`ci-badge ci-badge--${row.type}`}>{text.assetType[row.type]}</span>
+              <span className={`ci-badge ci-badge--${row.type}`}>
+                <span className={`codicon codicon-${badgeIcon(row.type)}`} aria-hidden="true" />
+                {text.assetType[row.type]}
+              </span>
             ) : null}
             {row.item !== null && row.item.codepage === null ? (
               <span className="ci-badge ci-badge--warn">{text.explorer.codepageUnknown}</span>

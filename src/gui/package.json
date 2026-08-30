@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "check": "npm run typecheck && npm test",
     "smoke:render": "electron-vite build && electron smoke/render.cjs",
+    "smoke:shots": "electron-vite build && electron smoke/render.cjs --shots out/screenshots",
     "dist": "electron-vite build && electron-builder"
   },
   "dependencies": {

@@ -19,8 +19,9 @@
   display: flex;
   gap: var(--ci-space-3);
   padding: var(--ci-space-1) var(--ci-space-3);
-  border-bottom: 1px solid var(--ci-border);
-  color: var(--ci-fg-dim);
+  background: var(--color-muted);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-muted-foreground);
   font-size: var(--ci-size-sm);
 }
 
@@ -40,14 +41,14 @@
 }
 
 .ci-source__line--target {
-  background: var(--ci-bg-active);
+  background: var(--ci-bg-selected);
 }
 
 .ci-source__number {
   display: inline-block;
   width: 5ch;
   margin-inline-end: var(--ci-space-2);
-  color: var(--ci-fg-dim);
+  color: var(--color-muted-foreground);
   text-align: right;
   user-select: none;
 }
@@ -64,8 +65,10 @@
 
 .ci-source__badge {
   padding: 0 var(--ci-space-2);
-  border: 1px solid var(--ci-border-strong);
+  border: 1px solid var(--color-border);
   border-radius: var(--ci-radius);
+  background: var(--color-muted);
+  color: var(--color-muted-foreground);
 }
 
 .ci-source__spacer {
@@ -74,8 +77,8 @@
 
 .ci-source__state {
   margin: 0;
-  padding: var(--ci-space-3);
-  color: var(--ci-fg-dim);
+  padding: var(--ci-space-4);
+  color: var(--color-muted-foreground);
 }
 
 /* ---------------------------------------------------------------- the code editor */
@@ -91,37 +94,38 @@
  * turns those into inline decorations, so the colouring stays right on a line holding double-byte
  * characters, where a character count would drift from the column.
  */
+/* The dimming is Monaco's own token colour (vendor/monarch.ts); this decoration adds none of its own. */
 .ci-code__sequence {
-  color: var(--ci-fg-dim);
+  color: inherit;
 }
 
 .ci-code__indicator {
-  color: var(--ci-kind-jcl);
+  color: var(--color-muted-foreground);
   font-weight: 700;
 }
 
 .ci-code__indicator--comment {
-  color: var(--ci-kind-cobol);
+  color: var(--color-muted-foreground);
   font-weight: 400;
 }
 
 .ci-code__indicator--debug {
-  color: var(--ci-kind-copybook);
+  color: var(--color-muted-foreground);
 }
 
 .ci-code__indicator--continuation {
-  color: var(--ci-kind-bms);
+  color: var(--color-muted-foreground);
 }
 
+/* A background only: the text colour stays Monaco's token colour. */
 .ci-code__identification {
-  color: var(--ci-fg-dim);
-  background: rgb(255 255 255 / 4%);
+  background: color-mix(in oklch, var(--color-muted-foreground) 10%, transparent);
 }
 
 /* Past column 80 the fixed format gives the bytes no meaning at all. */
 .ci-code__overflow {
-  color: var(--ci-danger);
-  background: var(--ci-danger-bg);
+  background: color-mix(in oklch, var(--color-destructive) 18%, transparent);
+  border-left: 1px solid var(--color-destructive);
 }
 
 /* The glyph margin marks the worst finding on the line. */
@@ -135,29 +139,29 @@
 }
 
 .ci-code__glyph--high::before {
-  background: var(--ci-severity-high);
+  background: var(--color-destructive);
 }
 
 .ci-code__glyph--medium::before {
-  background: var(--ci-severity-medium);
+  background: var(--color-accent);
 }
 
 .ci-code__glyph--low::before {
-  background: var(--ci-severity-low);
+  background: var(--color-primary);
 }
 
 .ci-code__glyph--warning::before {
-  background: var(--ci-severity-warning);
+  background: var(--color-muted-foreground);
 }
 
 .ci-source__state--error {
-  color: var(--ci-danger);
+  color: var(--color-destructive);
 }
 
 .ci-source__reason {
   display: block;
   margin-top: var(--ci-space-1);
-  color: var(--ci-fg-dim);
+  color: var(--color-muted-foreground);
   font-size: var(--ci-size-sm);
 }
 
@@ -170,8 +174,10 @@
 .ci-copy {
   height: 100%;
   overflow: auto;
-  border-left: 2px solid var(--ci-kind-copybook);
-  background: color-mix(in srgb, var(--ci-kind-copybook) 8%, transparent);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  border-left: 2px solid var(--color-primary);
+  background: var(--color-surface);
   font-family: var(--ci-font-code);
   font-size: var(--ci-size-sm);
 }
@@ -181,18 +187,22 @@
   align-items: center;
   gap: var(--ci-space-2);
   padding: 0 var(--ci-space-2);
-  color: var(--ci-fg-dim);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
 }
 
 .ci-copy__toggle {
   border: 1px solid var(--ci-border-strong);
   border-radius: var(--ci-radius);
   padding: 0 var(--ci-space-2);
-  background: var(--ci-bg-raised);
-  color: var(--ci-fg);
+  background: var(--color-surface);
+  color: var(--color-foreground);
   font-family: var(--ci-font-ui);
   font-size: var(--ci-size-sm);
   cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
 }
 
 .ci-copy__toggle:hover {
@@ -200,12 +210,12 @@
 }
 
 .ci-copy__toggle:focus-visible {
-  outline: 2px solid var(--ci-focus);
+  outline: 2px solid var(--color-primary);
   outline-offset: 1px;
 }
 
 .ci-copy__name {
-  color: var(--ci-kind-copybook);
+  color: var(--color-muted-foreground);
 }
 
 .ci-copy__path {
@@ -216,7 +226,7 @@
 
 .ci-copy__lines {
   padding: 0 var(--ci-space-2);
-  color: var(--ci-fg);
+  color: var(--color-foreground);
   white-space: pre;
 }
 
@@ -224,14 +234,14 @@
   display: inline-block;
   width: 5ch;
   margin-inline-end: var(--ci-space-2);
-  color: var(--ci-fg-dim);
+  color: var(--color-muted-foreground);
   text-align: right;
   user-select: none;
 }
 
 /* The copybook's own line, as the engine preprocessed it. */
 .ci-copy__text {
-  color: var(--ci-fg);
+  color: var(--color-foreground);
 }
 
 /* The glyph that opens and closes the expansion, on the COPY statement's own line. */
@@ -241,7 +251,7 @@
   margin: 6px 0 0 4px;
   width: 8px;
   height: 8px;
-  border: 2px solid var(--ci-kind-copybook);
+  border: 2px solid var(--color-primary);
   border-radius: 2px;
 }
 
@@ -260,7 +270,7 @@
   grid-template-columns: 1fr 1fr;
   gap: 1px;
   min-height: 0;
-  background: var(--ci-border);
+  background: var(--color-border);
 }
 
 .ci-sidebyside__pane {
@@ -268,14 +278,16 @@
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  background: var(--ci-bg-editor);
+  background: var(--color-background);
 }
 
+/* Styled like the source view header (.ci-source__meta): the same strip, the same rule below it. */
 .ci-sidebyside__label {
   padding: var(--ci-space-1) var(--ci-space-3);
   overflow: hidden;
-  border-bottom: 1px solid var(--ci-border);
-  color: var(--ci-fg-dim);
+  background: var(--color-muted);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-muted-foreground);
   font-size: var(--ci-size-sm);
   text-overflow: ellipsis;
   white-space: nowrap;
