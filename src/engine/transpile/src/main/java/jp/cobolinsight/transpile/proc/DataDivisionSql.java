@@ -5,13 +5,15 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * データ部(PROCEDURE DIVISION より前)の EXEC SQL ... END-EXEC 指令を原ソースから拾う。作業部の
- * INCLUDE SQLCA・BEGIN/END DECLARE SECTION 等の DB2 プリプロセッサ指令は意味モデルに載らないため、
- * 直訳不能として注記コメント化するには原ソースを直接走査する必要がある。行は1始まり。
+ * Collects EXEC SQL ... END-EXEC directives from the original source, before PROCEDURE DIVISION
+ * (i.e. in the data division). DB2 preprocessor directives such as INCLUDE SQLCA or
+ * BEGIN/END DECLARE SECTION in the working-storage section are not carried by the semantic
+ * model, so the original source must be scanned directly to render them as untranslatable
+ * annotation comments. Lines are 1-based.
  */
 public final class DataDivisionSql {
 
-    /** データ部で見つかった1件の EXEC SQL 指令。行範囲(1始まり・両端含む)と原文行を持つ。 */
+    /** One EXEC SQL directive found in the data division: its line range (1-based, inclusive) and source lines. */
     public record Directive(int startLine, int endLine, List<String> textLines) {
         public Directive {
             textLines = List.copyOf(textLines);
@@ -36,7 +38,7 @@ public final class DataDivisionSql {
                 break;
             }
             if (trimmed.startsWith("*")) {
-                continue; // コメント行(識別部の EXEC CICS 注記など)は対象外
+                continue; // Skip comment lines (e.g. EXEC CICS notes in the identification division)
             }
             if (current == null && upper.contains("EXEC SQL")) {
                 current = new ArrayList<>();

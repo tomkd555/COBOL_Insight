@@ -1,8 +1,10 @@
 package jp.cobolinsight.transpile.proc;
 
 /**
- * 値式・条件式の中間表現を対象言語の字面へ変換する。演算子や添字補正など言語共通の骨格を担い、
- * データ参照の接頭辞・文字列比較・論理演算子など言語差は {@link ProcedureDialect} に委ねる。
+ * Converts the intermediate representation of value and condition expressions into the target
+ * language's textual form. Handles the language-common skeleton, such as operators and subscript
+ * adjustment, while delegating language-specific differences—data reference prefixes, string
+ * comparison, logical operators—to {@link ProcedureDialect}.
  */
 public final class ExprWriter {
 
@@ -33,7 +35,7 @@ public final class ExprWriter {
         };
     }
 
-    /** 式が文字列型を表すか(DISPLAY の連結や比較の型判定に使う)。 */
+    /** Whether the expression represents a string type (used to judge types for DISPLAY concatenation and comparisons). */
     public static boolean isString(PExpr e) {
         return switch (e) {
             case PExpr.Ref ref -> ref.isString();

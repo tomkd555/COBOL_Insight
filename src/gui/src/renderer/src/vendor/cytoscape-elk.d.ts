@@ -1,6 +1,6 @@
 /**
- * cytoscape-elk(ELK レイアウトアダプタ)は型定義を同梱しないため、cytoscape 拡張として宣言する。
- * 実体は elkjs/lib/elk.bundled.js を読み込む UMD モジュールであり、外部への通信は行わない。
+ * cytoscape-elk ships no type definitions, so it is declared here as a cytoscape extension. It is a
+ * UMD module wrapping elkjs/lib/elk.bundled.js; both are bundled locally and reach no network.
  */
 declare module "cytoscape-elk" {
   import type cytoscape from "cytoscape";

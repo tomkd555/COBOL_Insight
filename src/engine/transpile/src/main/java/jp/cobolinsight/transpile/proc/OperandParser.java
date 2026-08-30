@@ -1,12 +1,12 @@
 package jp.cobolinsight.transpile.proc;
 
-import jp.cobolinsight.engineapi.semantic.CompoundStatement;
-import jp.cobolinsight.engineapi.semantic.EmbeddedBlock;
-import jp.cobolinsight.engineapi.semantic.EmbeddedBlockKind;
-import jp.cobolinsight.engineapi.semantic.SimpleStatement;
-import jp.cobolinsight.engineapi.semantic.StatementBlock;
-import jp.cobolinsight.engineapi.source.SourcePosition;
-import jp.cobolinsight.engineapi.source.SourceRange;
+import jp.cobolinsight.core.semantic.CompoundStatement;
+import jp.cobolinsight.core.semantic.EmbeddedBlock;
+import jp.cobolinsight.core.semantic.EmbeddedBlockKind;
+import jp.cobolinsight.core.semantic.SimpleStatement;
+import jp.cobolinsight.core.semantic.StatementBlock;
+import jp.cobolinsight.core.source.SourcePosition;
+import jp.cobolinsight.core.source.SourceRange;
 import jp.cobolinsight.transpile.emit.Identifiers;
 import jp.cobolinsight.transpile.emit.Literals;
 
@@ -17,10 +17,12 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * SimpleStatement.text を verb 別に再パースして被演算子を得る軽量トークナイザ。意味モデルが verb と
- * 全文しか持たないため、MOVE/COMPUTE/ADD/DISPLAY/CALL/PERFORM 等の受信・送信・条件を字句解析で取り出し、
- * {@link ProgramSymbols} で解決して {@link ProcStmt} の中間表現へ写す。解釈できない構文は原文コメントの
- * {@link ProcStmt.Untranslated} へ落とし、注記で可視化する。
+ * A lightweight tokenizer that re-parses {@code SimpleStatement.text} per verb to obtain operands.
+ * Since the semantic model holds only the verb and the full text, this extracts the receiving,
+ * sending, and condition parts of MOVE/COMPUTE/ADD/DISPLAY/CALL/PERFORM and similar statements by
+ * lexical analysis, resolves them via {@link ProgramSymbols}, and maps them into the {@link ProcStmt}
+ * intermediate representation. Syntax that cannot be interpreted falls back to a verbatim-comment
+ * {@link ProcStmt.Untranslated} and is surfaced with a note.
  */
 public final class OperandParser {
 
@@ -39,7 +41,7 @@ public final class OperandParser {
         this.slicer = slicer;
     }
 
-    // ---- 単文の入口 ----
+    // ---- Entry point for simple statements ----
 
     public List<ProcStmt> parseSimple(SimpleStatement s) {
         String verb = s.verb().toUpperCase(Locale.ROOT);
@@ -68,11 +70,12 @@ public final class OperandParser {
         };
     }
 
-    // ---- EXEC SQL / EXEC CICS(直訳不能ブロック → 注記スタブ)----
+    // ---- EXEC SQL / EXEC CICS (untranslatable block -> note stub) ----
 
     /**
-     * EXEC SQL / EXEC CICS を注記スタブへ写す。range を鍵に {@link EmbeddedBlock} を結合して命令名とオペランドを
-     * 得る。原文は {@link SourceSlicer} で復元し、供給が無い場合は意味モデルの正規化テキストで代替する。
+     * Maps EXEC SQL / EXEC CICS to a note stub. Joins the {@link EmbeddedBlock} keyed by range to
+     * obtain the command name and operands. The original text is recovered via {@link SourceSlicer};
+     * when it is unavailable, the semantic model's normalized text is used instead.
      */
     private List<ProcStmt> embeddedStub(SimpleStatement s) {
         EmbeddedBlock block = embeddedByRange == null ? null : embeddedByRange.get(s.range());
@@ -106,7 +109,7 @@ public final class OperandParser {
         };
     }
 
-    /** EXEC SQL 本文の先頭命令(DECLARE ... CURSOR は「DECLARE CURSOR」)を大文字で返す。 */
+    /** Returns the leading verb of an EXEC SQL body in uppercase (DECLARE ... CURSOR becomes "DECLARE CURSOR"). */
     private static String sqlCommand(String text) {
         List<String> toks = splitTokens(text.trim());
         int i = 0;
@@ -146,8 +149,9 @@ public final class OperandParser {
     private List<ProcStmt> parseMove(String text, SourceRange range) {
         List<String> toks = splitTokens(stripFirstWord(text));
         int toIdx = indexOfKeyword(toks, "TO");
-        // 送信項目が1語で、その直後が TO である形だけを解釈する。TO の後ろは受信項目の並びとみなし、
-        // 受信項目1件ごとに代入文を1つ起こす。
+        // Only interprets the form where the sending item is a single word immediately followed by
+        // TO. Everything after TO is treated as a list of receiving items, and one assignment
+        // statement is generated per receiving item.
         if (toIdx != 1 || toks.size() <= toIdx + 1) {
             return untranslated(text, range, "MOVE の構文を解釈できない(集団/CORR/参照修正)");
         }
@@ -234,8 +238,9 @@ public final class OperandParser {
         if (arith.isEmpty()) {
             return untranslated(text, range, "COMPUTE の式に未解決の項目がある");
         }
-        // ROUNDED は受信項目の桁数へ丸めることを指示する。対訳の代入式は丸めを行わないため、
-        // 指定を落としたことを注記する。ROUNDED は受信項目の後に書くため、注記は先に決める。
+        // ROUNDED instructs rounding to the receiving item's digit count. Since the translated
+        // assignment does not perform rounding, a note records that the specification was dropped.
+        // ROUNDED is written after the receiving item, so the note is decided first.
         String note = toks.subList(0, eqIdx).stream().anyMatch(t -> t.equalsIgnoreCase("ROUNDED"))
                 ? "ROUNDED の丸めは対訳へ反映しない" : "";
         List<ProcStmt> result = new ArrayList<>();
@@ -349,7 +354,7 @@ public final class OperandParser {
         return one(new ProcStmt.PerformCall(method, range, ""));
     }
 
-    // ---- 被演算子の解決 ----
+    // ---- Operand resolution ----
 
     Optional<PExpr> parseOperand(String rawToken) {
         String token = rawToken.trim();
@@ -367,8 +372,9 @@ public final class OperandParser {
             case "SPACE", "SPACES" -> {
                 return Optional.of(new PExpr.Lit(" ", true));
             }
-            // 表意定数のうち、バイト値が文字コード系(EBCDIC/ASCII)に依存するものは値へ写すと原意と
-            // 食い違う。解決できなかったものとして返し、呼び手が注記付きの非対訳へ落とす。
+            // Among figurative constants, ones whose byte value depends on the character encoding
+            // scheme (EBCDIC/ASCII) would diverge from the original meaning if mapped to a value.
+            // Return them as unresolved, so the caller falls back to an untranslated form with a note.
             case "HIGH-VALUE", "HIGH-VALUES", "LOW-VALUE", "LOW-VALUES", "QUOTE", "QUOTES",
                     "NULL", "NULLS" -> {
                 return Optional.empty();
@@ -426,7 +432,7 @@ public final class OperandParser {
         return parts.size() == 1 ? parts.get(0) : new PExpr.Arith(parts);
     }
 
-    // ---- 算術式 ----
+    // ---- Arithmetic expressions ----
 
     Optional<PExpr> parseArithmetic(String text) {
         List<PExpr> parts = new ArrayList<>();
@@ -440,8 +446,9 @@ public final class OperandParser {
                 parts.add(new PExpr.Op("("));
                 rest = rest.substring(1);
             }
-            // 末尾の ')' は、トークン内で対応が取れていない分だけを式の閉じ括弧として切り出す。
-            // 添字の括弧(A(1) の ')')を誤って外さないための条件である。
+            // A trailing ')' is peeled off as an expression closing paren only for the portion that
+            // is unmatched within the token, so as not to mistakenly strip a subscript paren
+            // (the ')' in A(1)).
             while (rest.endsWith(")") && count(rest, ')') > count(rest, '(')) {
                 trailing.add(new PExpr.Op(")"));
                 rest = rest.substring(0, rest.length() - 1);
@@ -472,14 +479,16 @@ public final class OperandParser {
         return n;
     }
 
-    // ---- 条件式 ----
+    // ---- Condition expressions ----
 
     /**
-     * 分岐(IF)の条件を原文から復元して条件式へ写す。意味モデルの conditionText は条件式が持つ
-     * 構文木ノードの範囲を合成した結果であり、ノードを持たないクラス条件・符号条件(NOT NUMERIC 等)を
-     * 落とす。そこで原ソースの IF 見出しから THEN 側の最初の文の直前までを切り出し、IF・THEN の
-     * 予約語を除いて条件の原文を得る。原ソース未供給、または THEN 側に文が無い場合は意味モデルの
-     * テキストで代替する。
+     * Recovers a branch (IF) condition from the original text and maps it to a condition expression.
+     * The semantic model's conditionText is composed from the ranges of the condition expression's
+     * syntax-tree nodes, and drops class conditions and sign conditions (e.g. NOT NUMERIC) that have
+     * no node. So instead, the original text of the condition is obtained by slicing from the IF
+     * header in the original source up to just before the first statement on the THEN side, and
+     * stripping the IF and THEN reserved words. When the original source is not supplied, or there is
+     * no statement on the THEN side, the semantic model's text is used instead.
      */
     public PCond parseBranchCondition(CompoundStatement cs) {
         return parseCondition(branchConditionText(cs));
@@ -503,7 +512,7 @@ public final class OperandParser {
         return null;
     }
 
-    /** 切り出した IF 見出しから、先頭の IF と末尾の THEN を語境界で除く。 */
+    /** From the sliced IF header, removes the leading IF and trailing THEN at word boundaries. */
     private static String stripBranchKeywords(String text) {
         String result = text.trim();
         if (startsWithWord(result, "IF")) {
@@ -674,7 +683,7 @@ public final class OperandParser {
         return new PExpr.Lit(v, parentIsString);
     }
 
-    /** EVALUATE の subject と WHEN 値から条件を組む(subject=TRUE のときは when 句を条件として解釈)。 */
+    /** Builds a condition from EVALUATE's subject and WHEN value (when subject=TRUE, the WHEN clause itself is interpreted as the condition). */
     public PCond evaluateArm(String subject, String whenLabel) {
         if (subject.trim().equalsIgnoreCase("TRUE")) {
             return parseCondition(whenLabel);
@@ -700,7 +709,7 @@ public final class OperandParser {
         };
     }
 
-    // ---- 字句解析ユーティリティ ----
+    // ---- Lexical analysis utilities ----
 
     static String stripFirstWord(String text) {
         String trimmed = text.trim();
@@ -711,7 +720,7 @@ public final class OperandParser {
         return trimmed.substring(Math.min(space, trimmed.length())).trim();
     }
 
-    /** 空白区切り。引用符と添字括弧の中の空白は区切らない。 */
+    /** Splits on whitespace. Whitespace inside quotes and subscript parentheses is not split. */
     static List<String> splitTokens(String text) {
         List<String> tokens = new ArrayList<>();
         StringBuilder current = new StringBuilder();
@@ -758,7 +767,7 @@ public final class OperandParser {
         return tokens;
     }
 
-    /** 条件式の字句解析。関係演算子(= &lt; &gt; と複合)を独立トークンにし、被演算子・語形は1トークンにする。 */
+    /** Lexes a condition expression. Relational operators (= &lt; &gt; and their combinations) become independent tokens; operands and word forms become single tokens. */
     static List<String> tokenizeCondition(String text) {
         List<String> tokens = new ArrayList<>();
         int i = 0;

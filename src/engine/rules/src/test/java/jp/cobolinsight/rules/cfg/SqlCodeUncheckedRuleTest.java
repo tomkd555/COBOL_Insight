@@ -1,8 +1,8 @@
 package jp.cobolinsight.rules.cfg;
 
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.FindingLevel;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.FindingLevel;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -12,7 +12,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** R018 SQLCODE未検査の境界fixture検証(検査済みで非検出・未検査で検出、SELECT INTOは対象外)。 */
+/** R018 boundary fixture verification for unchecked SQLCODE (not detected when checked, detected when unchecked; SELECT INTO is excluded). */
 class SqlCodeUncheckedRuleTest {
 
     @TempDir
@@ -40,7 +40,7 @@ class SqlCodeUncheckedRuleTest {
                 "");
     }
 
-    // SELECT INTO は対象外(データ変更DML限定)であることの確認。
+    // Confirms that SELECT INTO is excluded (only data-modifying DML is in scope).
     private static final String SELECT_INTO = String.join("\n",
             "       IDENTIFICATION DIVISION.",
             "       PROGRAM-ID. FIX018C.",

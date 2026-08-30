@@ -1,10 +1,10 @@
 package jp.cobolinsight.rules.cfg;
 
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.FixSuggestion;
-import jp.cobolinsight.engineapi.finding.TextEdit;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
-import jp.cobolinsight.engineapi.spi.AnalysisContext;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.FixSuggestion;
+import jp.cobolinsight.core.finding.TextEdit;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.spi.AnalysisContext;
 import jp.cobolinsight.rules.FixApplyChecks;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -17,9 +17,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * R021 の FixProducer 検証。END-EXEC の直前へ RESP オペランド行を、直後へ応答コードの判定文を
- * 挿入する2件の TextEdit を返すことを確認する。受け変数は WORKING-STORAGE の PIC S9(08) COMP
- * 相当で名前に RESP を含む基本項目に限り、該当が無ければ修正案を出さない。
+ * R021 FixProducer verification. Confirms it returns two TextEdits: one inserting a RESP
+ * operand line right before END-EXEC, the other inserting a response-code check statement
+ * right after it. The receiving variable is restricted to an elementary item in
+ * WORKING-STORAGE equivalent to PIC S9(08) COMP whose name contains RESP; if none matches,
+ * no fix suggestion is produced.
  */
 class CicsResponseUncheckedFixTest {
 
@@ -39,20 +41,21 @@ class CicsResponseUncheckedFixTest {
         String file = CfgFixtures.samplesFile("SYK008.cbl");
         Finding finding = finding(context, file, 38);
 
-        FixSuggestion suggestion = new CicsResponseUncheckedRule().fixProducer().orElseThrow()
+        FixSuggestion suggestion = new CicsResponseUncheckedRule().fix().orElseThrow()
                 .produce(finding, context)
                 .orElseThrow(() -> new AssertionError("R021 の修正案が返ること"));
         assertEquals(2, suggestion.edits().size());
 
-        // END-EXEC は38行。オペランド行はその直前(38行先頭)へ入る。
+        // END-EXEC is line 38. The operand line goes right before it (start of line 38).
         TextEdit operand = suggestion.edits().get(0);
         assertEquals(38, operand.range().start().line());
         assertEquals(1, operand.range().start().column());
         assertEquals(38, operand.range().end().line());
         assertEquals("           RESP(WS-RESPコード)\n", operand.replacement());
 
-        // 判定文は END-EXEC の直後(39行先頭)へ入る。END-EXEC は文を閉じないため終止ピリオドを
-        // 付けず、明示的な END-IF だけで閉じる。
+        // The check statement goes right after END-EXEC (start of line 39). Since END-EXEC
+        // does not close the sentence, no terminating period is added; it closes with an
+        // explicit END-IF only.
         TextEdit judgement = suggestion.edits().get(1);
         assertEquals(39, judgement.range().start().line());
         assertEquals(1, judgement.range().start().column());
@@ -67,8 +70,9 @@ class CicsResponseUncheckedFixTest {
 
     @Test
     void skipsFixWhenNoRespReceiverIsDeclared() {
-        // RESP を受けられる PIC S9(08) COMP 相当の項目が無ければ、検出は続けるが修正案を出さない。
-        // WORKING-STORAGE への宣言追加は行わない。
+        // If no item equivalent to PIC S9(08) COMP is available to receive RESP, detection
+        // still proceeds but no fix suggestion is produced. No declaration is added to
+        // WORKING-STORAGE.
         String text = String.join("\n",
                 "       IDENTIFICATION DIVISION.",
                 "       PROGRAM-ID. FIX021C.",
@@ -91,13 +95,14 @@ class CicsResponseUncheckedFixTest {
         CicsResponseUncheckedRule rule = new CicsResponseUncheckedRule();
         Finding finding = rule.evaluate(context).get(0);
 
-        assertTrue(rule.fixProducer().orElseThrow().produce(finding, context).isEmpty(),
+        assertTrue(rule.fix().orElseThrow().produce(finding, context).isEmpty(),
                 "受け変数が無ければ修正案を出さないこと");
     }
 
     @Test
     void closesJudgementWithPeriodWhenEndExecEndsSentence() {
-        // END-EXEC が終止ピリオドで文を閉じている場合は、判定文も終止ピリオドで閉じる。
+        // If END-EXEC closes the sentence with a terminating period, the check statement
+        // also closes with a terminating period.
         String text = String.join("\n",
                 "       IDENTIFICATION DIVISION.",
                 "       PROGRAM-ID. FIX021D.",
@@ -123,9 +128,9 @@ class CicsResponseUncheckedFixTest {
         CicsResponseUncheckedRule rule = new CicsResponseUncheckedRule();
         Finding finding = rule.evaluate(context).get(0);
 
-        FixSuggestion suggestion = rule.fixProducer().orElseThrow().produce(finding, context)
+        FixSuggestion suggestion = rule.fix().orElseThrow().produce(finding, context)
                 .orElseThrow();
-        // RESP2 を含む名前は RESP の受け変数として選ばない。
+        // A name containing RESP2 is not chosen as the RESP receiving variable.
         assertEquals("           RESP(WS-RESPコード)\n",
                 suggestion.edits().get(0).replacement());
         assertTrue(suggestion.edits().get(1).replacement().contains("END-IF.\n"),

@@ -1,13 +1,15 @@
 package jp.cobolinsight.rules.syntax;
 
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.Severity;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
-import jp.cobolinsight.engineapi.source.SourcePosition;
-import jp.cobolinsight.engineapi.spi.AnalysisContext;
-import jp.cobolinsight.engineapi.spi.AnalysisPhase;
-import jp.cobolinsight.engineapi.spi.Rule;
-import jp.cobolinsight.engineapi.spi.RuleDoc;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.Severity;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
+import jp.cobolinsight.core.source.SourcePosition;
+import jp.cobolinsight.core.spi.AnalysisContext;
 import jp.cobolinsight.rules.SourceTextIndex;
 
 import java.util.ArrayList;
@@ -16,10 +18,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * R024 COPY REPLACINGによる置換漏れ。COPY文のREPLACING句で指定した置換対象の文字列が、
- * 置換の適用対象であるコピー句の内容(コメント行を除く)に一件も出現せず、置換が一度も
- * 行われない場合を検出する。置換が行われないと、取り込んだ項目の名前が意図した名前にならない。
- * COPY文と対象コピー句のテキストは SourceTextIndex から得る。
+ * R024 A COPY REPLACING substitution that never fires. Detects the case where a substitution
+ * target string named in a COPY statement's REPLACING clause never appears (zero occurrences)
+ * in the content of the copybook the replacement applies to (comment lines excluded), so the
+ * substitution never actually happens. When it does not happen, the names of the imported
+ * items do not become the intended names. The COPY statement's text and the target copybook's
+ * text come from SourceTextIndex.
  */
 public final class CopyReplacingRule implements Rule {
 
@@ -28,8 +32,10 @@ public final class CopyReplacingRule implements Rule {
     private static final Pattern COPY_STATEMENT = Pattern.compile(
             "(?i)^COPY\\s+([\\p{L}\\p{N}][\\p{L}\\p{N}-]*)(.*)$", Pattern.DOTALL);
     /**
-     * 疑似テキストの中身は区切りの == を含まない。含み得るとすると、対を複数書いたREPLACING句で
-     * 1対目の置換後テキストから2対目の置換対象までを1つの中身として取り込んでしまう。
+     * The content of a pseudo-text does not contain the == delimiter. If it could, then in a
+     * REPLACING clause that writes multiple pairs, this would swallow everything from the
+     * first pair's replacement text through the second pair's substitution target as a
+     * single piece of content.
      */
     private static final Pattern REPLACING_TARGET = Pattern.compile(
             "(?i)(?:(LEADING|TRAILING)\\s+)?"
@@ -39,42 +45,35 @@ public final class CopyReplacingRule implements Rule {
     private static final String WORD_BOUNDARY_BEFORE = "(?<![\\p{L}\\p{N}-])";
     private static final String WORD_BOUNDARY_AFTER = "(?![\\p{L}\\p{N}-])";
     /**
-     * COPY文の終止ピリオドを探して読み進める論理行の上限。ピリオドを欠くソースで後続のデータ部
-     * 全体を1文として取り込まないための歯止めであり、REPLACING句の実務的な行数を上回る値を採る。
+     * The cap on the number of logical lines read while searching for the COPY statement's
+     * terminating period. This is a safeguard so that, in source that lacks the period, the
+     * entire remainder of the data division is not swallowed as a single statement; the
+     * value is set above the practical line count of a REPLACING clause.
      */
     private static final int MAX_STATEMENT_LINES = 20;
 
-    @Override
-    public String id() {
-        return "R024";
-    }
+    private static final RuleMeta META = RuleMeta.named("R024", "COPY REPLACINGによる置換漏れ", "データ定義")
+            .summary("COPY 文の REPLACING で指定した置換対象が、取り込むコピー句に"
+                    + "一度も現れない箇所を検出します。")
+            .rationale("置換が起きないため、取り込んだ項目の名前が意図した名前にならず、"
+                    + "接頭辞の付け替えを前提にした後続の参照が解決できません。")
+            .detection("REPLACING の置換対象文字列を、対象コピー句の内容(注記行を除く)と"
+                    + "突き合わせ、出現が 0 件のものを検出します。")
+            .remedy("置換対象の綴りをコピー句の記述と揃えます。不要になった REPLACING は削ります。")
+            .example("""
+                    COPY CUSTREC REPLACING ==:PFX:== BY ==CUST==.
+                    """, """
+                    COPY CUSTREC REPLACING ==:PRE:== BY ==CUST==.
+                    """)
+            .severity(Severity.MEDIUM)
+            .commands(Command.LINT, Command.REPORT)
+            .targets(AssetKind.COBOL, AssetKind.COPYBOOK)
+            .needs(Needs.SEMANTIC, Needs.SOURCE_TEXT)
+            .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("COPY REPLACINGによる置換漏れ", "データ定義")
-                .summary("COPY 文の REPLACING で指定した置換対象が、取り込むコピー句に"
-                        + "一度も現れない箇所を検出します。")
-                .rationale("置換が起きないため、取り込んだ項目の名前が意図した名前にならず、"
-                        + "接頭辞の付け替えを前提にした後続の参照が解決できません。")
-                .detection("REPLACING の置換対象文字列を、対象コピー句の内容(注記行を除く)と"
-                        + "突き合わせ、出現が 0 件のものを検出します。")
-                .remedy("置換対象の綴りをコピー句の記述と揃えます。不要になった REPLACING は削ります。")
-                .example("""
-                        COPY CUSTREC REPLACING ==:PFX:== BY ==CUST==.
-                        """, """
-                        COPY CUSTREC REPLACING ==:PRE:== BY ==CUST==.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.MEDIUM;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.SYNTAX;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override
@@ -162,8 +161,10 @@ public final class CopyReplacingRule implements Rule {
     }
 
     /**
-     * 置換対象がコピー句本文に語として出現するかを判定する。前後にCOBOL語構成文字が無いことを
-     * 課すが、LEADINGは語頭一致(後方境界なし)、TRAILINGは語尾一致(前方境界なし)で照合する。
+     * Judges whether the substitution target appears as a word in the copybook body text.
+     * This requires the absence of COBOL word-forming characters on both sides, except that
+     * LEADING matches at the start of a word (no trailing boundary) and TRAILING matches at
+     * the end of a word (no leading boundary).
      */
     private static boolean occursIn(String content, String upperValue, String mode) {
         String quoted = Pattern.quote(upperValue);

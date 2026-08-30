@@ -2,8 +2,8 @@ plugins {
     `kotlin-dsl`
 }
 
-// build-logic は独立したビルドであり、ルート側のリポジトリ指定は及ばない。
-// kotlin-dsl が使う Kotlin の依存とGradleプラグインの取得先をここで指定する。
+// build-logic is a standalone build, so the root repository declarations do not reach it.
+// Specify here where to fetch the Kotlin dependencies and Gradle plugins that kotlin-dsl uses.
 repositories {
     mavenCentral()
     gradlePluginPortal()

@@ -1,20 +1,21 @@
 package jp.cobolinsight.transpile.emit;
 
-import jp.cobolinsight.engineapi.picture.PictureCategory;
-import jp.cobolinsight.engineapi.picture.PictureType;
+import jp.cobolinsight.core.picture.PictureCategory;
+import jp.cobolinsight.core.picture.PictureType;
 
 /**
- * アクセサが値とバイト列を変換する際の符号化区分。基本項目の PICTURE と USAGE から決まり、
- * ランタイムヘルパの decode/encode 関数と1対1で対応する。
+ * The encoding kind used when an accessor converts between a value and a byte sequence. Determined
+ * by the elementary item's PICTURE and USAGE, and corresponds one-to-one with a runtime helper's
+ * decode/encode function.
  */
 public enum FieldKind {
-    /** COMP-3 パック10進。 */
+    /** COMP-3 packed decimal. */
     PACKED,
-    /** DISPLAY ゾーン10進。 */
+    /** DISPLAY zoned decimal. */
     ZONED,
-    /** BINARY(COMP/COMP-4/COMP-5)。 */
+    /** BINARY (COMP/COMP-4/COMP-5). */
     BINARY,
-    /** 英数字・英字・編集項目(バイト列をそのまま文字列として扱う)。 */
+    /** Alphanumeric, alphabetic, and edited items (the byte sequence is treated as a string as-is). */
     ALPHANUMERIC;
 
     public static FieldKind of(PictureType type) {

@@ -9,13 +9,16 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "noEmit": true,
-    "types": ["node"]
+    "types": ["node", "vitest/globals"]
   },
   "include": [
     "electron.vite.config.ts",
     "vitest.config.ts",
     "src/shared/**/*",
     "src/main/**/*",
-    "src/preload/**/*"
+    "src/preload/**/*",
+    // The byte-column model, so the EBCDIC integration test can hold the engine's boundaries against
+    // the ones the editor recomputes locally. It is pure arithmetic and pulls in no browser API.
+    "src/renderer/src/model/columns.ts"
   ]
 }

@@ -1,77 +1,106 @@
-import type { ReactElement } from "react";
+import { useRef, type KeyboardEvent, type ReactElement } from "react";
+import { text } from "../text";
 import {
-  singletonTab,
-  singletonTabTitle,
+  graphTab,
+  reportTab,
   useWorkbench,
   useWorkbenchDispatch,
+  type SideView,
+  type WorkbenchTab,
 } from "../state/workbenchStore";
 
-/** アクティビティバーの1項目。資産一覧だけが側パネルを開き、他はタブを開く。 */
-interface ActivityItem {
-  readonly id: string;
-  readonly label: string;
-  /** 記号。読み上げからは外し、名前は label が担う。 */
-  readonly symbol: string;
-}
+/** The activity bar entries, in order. Icons are Monaco's codicons; no icon package is involved. */
+const ENTRIES: readonly { view: SideView; icon: string; label: string }[] = [
+  { view: "explorer", icon: "codicon-files", label: text.activity.explorer },
+  { view: "search", icon: "codicon-search", label: text.activity.search },
+  { view: "rules", icon: "codicon-checklist", label: text.activity.rules },
+  { view: "problems", icon: "codicon-warning", label: text.activity.problems },
+];
 
-const ITEMS: readonly ActivityItem[] = [
-  { id: "explorer", label: "エクスプローラー", symbol: "▤" },
-  { id: "graph", label: singletonTabTitle("graph"), symbol: "⛓" },
-  { id: "fix", label: singletonTabTitle("fix"), symbol: "🛠" },
-  { id: "rules", label: singletonTabTitle("rules"), symbol: "✓" },
-  { id: "report", label: singletonTabTitle("report"), symbol: "▦" },
-  { id: "settings", label: singletonTabTitle("settings"), symbol: "⚙" },
+/** The editors the activity bar opens directly, below the side-bar views. */
+const EDITORS: readonly { id: string; icon: string; label: string; tab: () => WorkbenchTab }[] = [
+  {
+    id: "graph",
+    icon: "codicon-type-hierarchy",
+    label: text.graph.title,
+    tab: () => graphTab(text.graph.title),
+  },
+  {
+    id: "report",
+    icon: "codicon-file-pdf",
+    label: text.report.title,
+    tab: () => reportTab(text.report.title),
+  },
 ];
 
 /**
- * 左端のアイコン列。資産一覧は側パネルの開閉、それ以外は対応するタブを開く。
- * 現在の場所は、資産一覧なら側パネルの開閉、他なら選択中のタブと一致するかで示す。
+ * The activity bar. It behaves as a tab list over the side bar views, with roving tabindex: one
+ * button is in the tab order and the arrow keys move between them, so reaching the last entry does
+ * not cost four presses of Tab.
  */
 export function ActivityBar(): ReactElement {
   const workbench = useWorkbench();
   const dispatch = useWorkbenchDispatch();
+  const listRef = useRef<HTMLDivElement | null>(null);
 
-  function select(id: string): void {
-    if (id === "explorer") {
-      dispatch({ type: "SHOW_SIDE", view: "explorer" });
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    const step = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
+    if (step === 0) {
       return;
     }
-    if (id === "graph" || id === "fix" || id === "rules" || id === "report" || id === "settings") {
-      dispatch({ type: "OPEN_TAB", tab: singletonTab(id) });
-    }
-  }
-
-  function isCurrent(id: string): boolean {
-    return id === "explorer"
-      ? workbench.sideVisible && workbench.sideView === "explorer"
-      : workbench.activeTabId === id;
-  }
+    event.preventDefault();
+    const buttons = [...(listRef.current?.querySelectorAll<HTMLButtonElement>("button") ?? [])];
+    const current = buttons.findIndex((button) => button === document.activeElement);
+    buttons[(Math.max(current, 0) + step + buttons.length) % buttons.length]?.focus();
+  };
 
   return (
-    <nav className="ci-activitybar" aria-label="機能の切り替え" data-testid="activitybar">
-      <ul className="ci-activitybar__list">
-        {ITEMS.map((item) => {
-          const current = isCurrent(item.id);
+    <div className="ci-activitybar" data-testid="activitybar">
+      <div
+        ref={listRef}
+        className="ci-activitybar__group"
+        role="tablist"
+        aria-orientation="vertical"
+        aria-label={text.activity.label}
+        onKeyDown={onKeyDown}
+      >
+        {ENTRIES.map((entry) => {
+          const selected = workbench.sideVisible && workbench.sideView === entry.view;
           return (
-            <li key={item.id} className="ci-activitybar__item">
-              <button
-                type="button"
-                className={
-                  current ? "ci-activitybar__button ci-activitybar__button--current" : "ci-activitybar__button"
-                }
-                aria-label={item.label}
-                aria-current={current ? "true" : undefined}
-                data-testid={`activity-${item.id}`}
-                onClick={() => select(item.id)}
-              >
-                <span className="ci-activitybar__symbol" aria-hidden="true">
-                  {item.symbol}
-                </span>
-              </button>
-            </li>
+            <button
+              key={entry.view}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              aria-label={entry.label}
+              title={entry.label}
+              // Roving tabindex: only the selected entry is reachable with Tab.
+              tabIndex={selected ? 0 : -1}
+              className={`ci-activitybar__item${selected ? " ci-activitybar__item--active" : ""}`}
+              onClick={() => dispatch({ type: "SHOW_SIDE", view: entry.view })}
+              data-testid={`activity-${entry.view}`}
+            >
+              <span className={`codicon ${entry.icon}`} aria-hidden="true" />
+            </button>
           );
         })}
-      </ul>
-    </nav>
+      </div>
+      {/* The editors that are not side-bar views. They open a tab rather than swapping the side. */}
+      <div className="ci-activitybar__group ci-activitybar__group--end">
+        {EDITORS.map((entry) => (
+          <button
+            key={entry.id}
+            type="button"
+            aria-label={entry.label}
+            title={entry.label}
+            className="ci-activitybar__item"
+            onClick={() => dispatch({ type: "OPEN_TAB", tab: entry.tab() })}
+            data-testid={`activity-${entry.id}`}
+          >
+            <span className={`codicon ${entry.icon}`} aria-hidden="true" />
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

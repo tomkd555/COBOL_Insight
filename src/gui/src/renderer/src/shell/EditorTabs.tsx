@@ -1,114 +1,82 @@
 import { useRef, type KeyboardEvent, type ReactElement } from "react";
-import {
-  isTabDirty,
-  useWorkbench,
-  useWorkbenchDispatch,
-  type WorkbenchTab,
-} from "../state/workbenchStore";
-import { confirmClose } from "./closeGuard";
+import { text } from "../text";
+import { isTabDirty, useWorkbench, useWorkbenchDispatch } from "../state/workbenchStore";
 
-/** 矢印キーによる移動量(1=次、-1=前)。Home・End は端へ移す。 */
-const STEP_KEYS: Readonly<Record<string, number>> = {
-  ArrowRight: 1,
-  ArrowLeft: -1,
-};
+export interface EditorTabsProps {
+  /** Closing goes through the shell, which asks before discarding unsaved edits. */
+  onRequestClose: (id: string) => void;
+}
 
 /**
- * 本文領域の上に並ぶタブ帯。ARIA タブパターンに従い、選択中のタブへ Tab 停止を集約する
- * (roving tabindex)。閉じるボタンはタブの中に置き、タブ自体の押下と取り違えないよう
- * クリックの伝播を止める。
+ * The tab strip. It is a tab list with roving tabindex: exactly one tab is in the tab order, and the
+ * arrow keys move the selection, so a long strip does not have to be traversed with Tab.
  */
-export function EditorTabs(): ReactElement {
+export function EditorTabs({ onRequestClose }: EditorTabsProps): ReactElement {
   const workbench = useWorkbench();
   const dispatch = useWorkbenchDispatch();
-  const listRef = useRef<HTMLDivElement>(null);
-  const { tabs, activeTabId } = workbench;
+  const stripRef = useRef<HTMLDivElement | null>(null);
 
-  function focusTab(index: number): void {
-    const items = listRef.current?.querySelectorAll<HTMLElement>('[role="tab"]');
-    items?.[index]?.focus();
-  }
-
-  function onKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
-    if (tabs.length === 0) return;
-    const current = Math.max(
-      tabs.findIndex((tab) => tab.id === activeTabId),
-      0,
-    );
-    let next: number;
-    if (event.key === "Home") {
-      next = 0;
-    } else if (event.key === "End") {
-      next = tabs.length - 1;
-    } else {
-      const step = STEP_KEYS[event.key];
-      if (step === undefined) return;
-      // 端では反対の端へ回す。
-      next = (current + step + tabs.length) % tabs.length;
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      dispatch({ type: "STEP_TAB", step: event.key === "ArrowRight" ? 1 : -1 });
+      // Keep the focus on the strip: the newly selected tab takes the tab stop on the next render.
+      queueMicrotask(() => stripRef.current?.querySelector<HTMLElement>('[tabindex="0"]')?.focus());
+      return;
     }
-    event.preventDefault();
-    dispatch({ type: "ACTIVATE_TAB", id: tabs[next].id });
-    focusTab(next);
-  }
-
-  function tabLabel(tab: WorkbenchTab): string {
-    return tab.path === null ? tab.title : tab.path;
-  }
+    if (event.key === "Delete" && workbench.activeTabId !== null) {
+      event.preventDefault();
+      onRequestClose(workbench.activeTabId);
+    }
+  };
 
   return (
     <div
-      ref={listRef}
-      className="ci-tabstrip"
+      ref={stripRef}
+      className="ci-tabs"
       role="tablist"
-      aria-label="開いているタブ"
+      aria-label={text.editor.tabs}
       onKeyDown={onKeyDown}
+      data-testid="editor-tabs"
     >
-      {tabs.map((tab) => {
-        const selected = tab.id === activeTabId;
+      {workbench.tabs.map((tab) => {
+        const selected = tab.id === workbench.activeTabId;
         const dirty = isTabDirty(workbench, tab.id);
         return (
           <div
             key={tab.id}
-            role="tab"
-            id={`ci-tab-${tab.id}`}
-            aria-selected={selected}
-            aria-controls={`ci-tabpanel-${tab.id}`}
-            aria-label={tabLabel(tab)}
-            tabIndex={selected ? 0 : -1}
+            className={`ci-tab${selected ? " ci-tab--active" : ""}`}
             data-testid={`tab-${tab.id}`}
-            className={selected ? "ci-tab ci-tab--active" : "ci-tab"}
-            onClick={() => dispatch({ type: "ACTIVATE_TAB", id: tab.id })}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                dispatch({ type: "ACTIVATE_TAB", id: tab.id });
-              }
-            }}
           >
-            {dirty ? (
-              <span
-                className="ci-tab__dirty"
-                data-testid={`dirty-${tab.id}`}
-                aria-hidden="true"
-              >
-                ●
-              </span>
-            ) : null}
-            <span className="ci-tab__title">{tab.title}</span>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              aria-controls={`tabpanel-${tab.id}`}
+              id={`tabheader-${tab.id}`}
+              tabIndex={selected ? 0 : -1}
+              className="ci-tab__label"
+              onClick={() => dispatch({ type: "ACTIVATE_TAB", id: tab.id })}
+              title={tab.path ?? tab.title}
+            >
+              {tab.title}
+              {dirty ? (
+                <span
+                  className="ci-tab__dirty"
+                  aria-label={text.editor.unsaved}
+                  data-testid={`dirty-${tab.id}`}
+                />
+              ) : null}
+            </button>
             <button
               type="button"
               className="ci-tab__close"
-              aria-label={`${tab.title} を閉じる`}
+              aria-label={`${tab.title} ${text.editor.close}`}
               tabIndex={-1}
-              onClick={(event) => {
-                event.stopPropagation();
-                // 未保存の編集はタブを閉じると失われる。破棄してよいかを先に問う。
-                if (confirmClose(dirty)) {
-                  dispatch({ type: "CLOSE_TAB", id: tab.id });
-                }
-              }}
+              onClick={() => onRequestClose(tab.id)}
+              data-testid={`close-${tab.id}`}
             >
-              ×
+              <span className="codicon codicon-close" aria-hidden="true" />
             </button>
           </div>
         );

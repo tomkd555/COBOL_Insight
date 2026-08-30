@@ -1,14 +1,14 @@
 package jp.cobolinsight.transpile;
 
-import jp.cobolinsight.cobolfrontend.Che4zCobolParser;
-import jp.cobolinsight.engineapi.linemap.LineMappingEntry;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
-import jp.cobolinsight.engineapi.source.DecodedSource;
-import jp.cobolinsight.engineapi.source.EncodingInfo;
-import jp.cobolinsight.engineapi.spi.ParseOutcome;
-import jp.cobolinsight.engineapi.transpile.GeneratedFile;
-import jp.cobolinsight.engineapi.transpile.TargetLanguage;
-import jp.cobolinsight.engineapi.transpile.TranspileResult;
+import jp.cobolinsight.frontend.cobol.Che4zCobolParser;
+import jp.cobolinsight.core.linemap.LineMappingEntry;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.source.DecodedSource;
+import jp.cobolinsight.core.source.EncodingInfo;
+import jp.cobolinsight.core.spi.ParseOutcome;
+import jp.cobolinsight.core.transpile.GeneratedFile;
+import jp.cobolinsight.core.transpile.TargetLanguage;
+import jp.cobolinsight.core.transpile.TranspileResult;
 import jp.cobolinsight.transpile.emit.Transpiler;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -30,16 +30,18 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * GO TO を含む手続きの構造化制御対訳を検証する。SYK002 の無条件前方 GO TO(9000→4010)は順次実行へ、
- * 合成した検証用ソースの後方 GO TO はループへ、条件付き GO TO は if へ還元されること、生成 Java が
- * コンパイルできること、再生成が決定論であること、GO TO 起源の複製が N:1 で行対応へ載ることを確認する。
+ * Verifies the structured-control translation of procedures containing GO TO. Confirms that SYK002's
+ * unconditional forward GO TO (9000 -> 4010) is reduced to sequential execution, that a backward GO TO
+ * in a synthesized test source is reduced to a loop, that a conditional GO TO is reduced to an if, that
+ * the generated Java compiles, that regeneration is deterministic, and that a GO TO-originated
+ * duplication lands on the line map as N:1.
  */
 class GotoStructuringTest {
 
     private static final Path GOTO_DIR =
             repoRoot().resolve("src/engine/transpile/src/test/resources/goto");
 
-    /** 作業ディレクトリがモジュール配下でも解決できるよう、samples を持つ親をリポジトリルートとして遡る。 */
+    /** Walks up to the ancestor holding samples as the repo root, so this resolves even when the working directory is under a module. */
     private static Path repoRoot() {
         Path dir = Paths.get("").toAbsolutePath();
         while (dir != null && !Files.isDirectory(dir.resolve("samples"))) {
@@ -78,7 +80,7 @@ class GotoStructuringTest {
                 .orElseThrow(() -> new AssertionError("プログラムファイルが無い: " + suffix)).content();
     }
 
-    /** header で始まるメソッド本体を、次のメソッド宣言 delim の手前まで切り出す。 */
+    /** Cuts out the method body starting with header, up to just before the next method declaration delim. */
     private static String methodSlice(String program, String header, String delim) {
         int start = program.indexOf(header);
         assertTrue(start >= 0, "メソッドが無い: " + header);
@@ -86,7 +88,7 @@ class GotoStructuringTest {
         return end < 0 ? program.substring(start) : program.substring(start, end);
     }
 
-    // ---- SYK002: 無条件前方 GO TO(9000 → 4010)----
+    // ---- SYK002: unconditional forward GO TO (9000 -> 4010) ----
 
     @Test
     void syk002ForwardGotoBecomesSequentialControl() {
@@ -106,7 +108,7 @@ class GotoStructuringTest {
     void syk002DuplicatedTargetLineMapsToMultipleGeneratedLocations() {
         TranspileResult py = Transpiler.transpile(SampleModels.model("SYK002.cbl"),
                 SampleModels.sourceText("SYK002.cbl"), TargetLanguage.PYTHON);
-        // COBOL 130 行(4010 の REWRITE)は、_4010 の自メソッドと _9000 への複製の双方へ対応する(1:N)。
+        // COBOL line 130 (4010's REWRITE) maps to both its own _4010 method and its duplicate in _9000 (1:N).
         List<LineMappingEntry> rewrite = py.lineMap().stream()
                 .filter(e -> e.cobolLines().startLine() == 130 && e.cobolLines().endLine() == 130)
                 .filter(e -> e.generatedFile().endsWith("_program.py"))
@@ -119,7 +121,7 @@ class GotoStructuringTest {
                 "GO TO 行(124)に構造化の注記が載る");
     }
 
-    // ---- 合成: 後方 GO TO = ループ ----
+    // ---- Synthesized: backward GO TO = loop ----
 
     @Test
     void syntheticBackwardGotoBecomesWhileLoop() {
@@ -135,7 +137,7 @@ class GotoStructuringTest {
         assertTrue(java.contains("WS_COUNTER = WS_COUNTER + 1;"), java);
     }
 
-    // ---- 合成: 条件付き GO TO = if ----
+    // ---- Synthesized: conditional GO TO = if ----
 
     @Test
     void syntheticConditionalGotoBecomesIf() {
@@ -152,7 +154,7 @@ class GotoStructuringTest {
         assertTrue(java.contains("WS_RESULT = \"A\";"), java);
     }
 
-    // ---- 決定論 ----
+    // ---- Determinism ----
 
     @Test
     void gotoStructuringIsDeterministic() {
@@ -170,7 +172,7 @@ class GotoStructuringTest {
         }
     }
 
-    // ---- 生成 Java のコンパイル ----
+    // ---- Compiling the generated Java ----
 
     @Test
     void structuredGotoJavaCompiles(@TempDir Path tempDir) throws IOException {

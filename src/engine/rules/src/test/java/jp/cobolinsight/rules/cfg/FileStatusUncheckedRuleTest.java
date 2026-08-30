@@ -1,8 +1,8 @@
 package jp.cobolinsight.rules.cfg;
 
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.FindingLevel;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.FindingLevel;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -13,7 +13,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** R017 ファイルステータス未検査の境界fixture検証(検査済みで非検出・未検査で検出)。 */
+/** R017 boundary fixture verification for unchecked file status (not detected when checked, detected when not checked). */
 class FileStatusUncheckedRuleTest {
 
     @TempDir

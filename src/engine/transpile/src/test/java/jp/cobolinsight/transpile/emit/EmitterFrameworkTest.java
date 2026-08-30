@@ -1,8 +1,8 @@
 package jp.cobolinsight.transpile.emit;
 
-import jp.cobolinsight.engineapi.linemap.LineMappingEntry;
-import jp.cobolinsight.engineapi.linemap.MappingKind;
-import jp.cobolinsight.engineapi.source.LineRange;
+import jp.cobolinsight.core.linemap.LineMappingEntry;
+import jp.cobolinsight.core.linemap.MappingKind;
+import jp.cobolinsight.core.source.LineRange;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** 行追跡エミッタ基盤(識別子正規化・種別判定・行追跡・行対応の安定整列/採番)の単体検証。 */
+/** Unit tests for the line-tracking emitter framework (identifier sanitization, kind determination, line tracking, and stable sorting/numbering of the line map). */
 class EmitterFrameworkTest {
 
     @Test

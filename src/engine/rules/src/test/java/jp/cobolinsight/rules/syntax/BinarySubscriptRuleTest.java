@@ -1,8 +1,8 @@
 package jp.cobolinsight.rules.syntax;
 
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.FindingLevel;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.FindingLevel;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -13,7 +13,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** R006 添字への二進項目未使用の合成fixture検証。 */
+/** Synthetic fixture verification for R006 non-binary items used as a subscript. */
 class BinarySubscriptRuleTest {
 
     @TempDir
@@ -51,10 +51,11 @@ class BinarySubscriptRuleTest {
 
     @Test
     void detectsNonBinarySubscriptOnly() {
-        // 添字を使う MOVE は20〜26行の7つあり、検出されるのは添字項目が二進でない3件だけである。
-        // 20行は PIC 9(02)、25行は添字に使う WS-IDX-ITEM が PIC 9(02)、26行は USAGE DISPLAY の
-        // 集団項目配下。21行(COMP)・23行(集団項目の COMP を継承)・24行(COMPUTATIONAL)は二進、
-        // 22行はリテラル添字であり、いずれも対象外となる。
+        // There are 7 MOVE statements using a subscript on lines 20-26; only the 3 whose
+        // subscript item is not binary are detected. Line 20 is PIC 9(02); on line 25 the
+        // subscript WS-IDX-ITEM is PIC 9(02); line 26 is under a USAGE DISPLAY group item.
+        // Lines 21 (COMP), 23 (inherits COMP from its group item), and 24 (COMPUTATIONAL)
+        // are binary, and line 22 uses a literal subscript, so none of these are flagged.
         CobolSemanticModel model = Fixtures.parse(tempDir, "FIX006.cbl", SOURCE);
 
         List<Finding> findings = new BinarySubscriptRule()

@@ -1,0 +1,9 @@
+# Byte-exact fixtures and tests assume LF; force it on every platform (CI runners default to autocrlf).
+* text=auto eol=lf
+*.jar -text
+*.db -text
+*.png -text
+*.ico -text
+*.woff2 -text
+*.wasm -text
+samples/encoding/*_CP93?.cbl -text

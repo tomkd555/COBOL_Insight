@@ -1,8 +1,8 @@
 package jp.cobolinsight.transpile;
 
-import jp.cobolinsight.engineapi.transpile.GeneratedFile;
-import jp.cobolinsight.engineapi.transpile.TargetLanguage;
-import jp.cobolinsight.engineapi.transpile.TranspileResult;
+import jp.cobolinsight.core.transpile.GeneratedFile;
+import jp.cobolinsight.core.transpile.TargetLanguage;
+import jp.cobolinsight.core.transpile.TranspileResult;
 import jp.cobolinsight.transpile.emit.Transpiler;
 import org.junit.jupiter.api.Test;
 
@@ -21,11 +21,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 対訳結果を二層で検証する: (a) 同一入力を2回対訳して生成ファイルと行対応がバイト一致すること(決定論)、
- * (b) 全9本(SYK001〜SYK009)×{Python,Java}の全生成ファイル(ランタイムヘルパ・レコードクラス群・
- * プログラム)がコミット済み golden(/golden/&lt;programId&gt;/&lt;fileName&gt;)とバイト一致すること。
- * golden を作り直すときは {@code -Dgolden.regenerate=true} を付けて実行すると、golden ディレクトリを
- * 一掃してから全生成ファイルを書き出す(古い golden を残さない)。
+ * Verifies the transpilation result on two levels: (a) transpiling the same input twice produces
+ * byte-identical generated files and line map (determinism), and (b) every generated file (runtime
+ * helper, record classes, program) for all 9 samples (SYK001-SYK009) x {Python, Java} is byte-identical
+ * to the committed golden (/golden/&lt;programId&gt;/&lt;fileName&gt;). To regenerate the golden files, run
+ * with {@code -Dgolden.regenerate=true}; this wipes the golden directory clean before writing out all
+ * generated files (leaving no stale golden files behind).
  */
 class GoldenTranspileTest {
 
@@ -86,13 +87,13 @@ class GoldenTranspileTest {
         }
     }
 
-    /** golden ディレクトリ配下の実ファイルが、期待した生成物の集合と過不足なく一致することを確認する。 */
+    /** Confirms that the actual files under the golden directory match the expected set of generated files exactly, with none missing or extra. */
     private static void assertNoOrphanGolden(TreeSet<Path> expected) throws IOException {
         if (!Files.isDirectory(GOLDEN_DIR)) {
             return;
         }
         try (Stream<Path> walk = Files.walk(GOLDEN_DIR)) {
-            // 名前が . で始まるファイルは版数管理の設定(.gitattributes)であり、生成物ではない。
+            // Files whose name starts with . are version-control settings (.gitattributes), not generated output.
             List<Path> actual = walk.filter(Files::isRegularFile)
                     .filter(p -> !p.getFileName().toString().startsWith("."))
                     .sorted().toList();
@@ -144,7 +145,7 @@ class GoldenTranspileTest {
                 .replace('\\', '/');
     }
 
-    /** 作業ディレクトリがモジュール配下でも解決できるよう、samples を持つ親をリポジトリルートとして遡る。 */
+    /** Walks up to the ancestor holding samples as the repo root, so this resolves even when the working directory is under a module. */
     private static Path repoRoot() {
         Path dir = Paths.get("").toAbsolutePath();
         while (dir != null && !Files.isDirectory(dir.resolve("samples"))) {

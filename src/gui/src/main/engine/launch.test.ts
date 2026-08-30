@@ -1,60 +1,41 @@
-import { describe, it, expect } from "vitest";
-import { join } from "node:path";
+import { describe, expect, it } from "vitest";
 import { resolveEngineLaunch } from "./launch";
 
+const base = {
+  platform: "win32" as NodeJS.Platform,
+  resourcesPath: "C:/app/resources",
+  appRoot: "C:/repo/src/gui",
+};
+
 describe("resolveEngineLaunch", () => {
-  it("配布時(win32)は同梱の jpackage app-image exe を直接起動する", () => {
-    const launch = resolveEngineLaunch({
-      isPackaged: true,
-      platform: "win32",
-      resourcesPath: "C:/app/resources",
-      appRoot: "C:/app/resources/app.asar",
-    });
-    expect(launch.command).toBe(join("C:/app/resources", "engine", "COBOLInsight.exe"));
+  it("runs the bundled app-image executable in a distribution", () => {
+    const launch = resolveEngineLaunch({ ...base, isPackaged: true });
+    expect(launch.command).toBe("C:\\app\\resources\\engine\\COBOLInsight.exe");
     expect(launch.prefixArgs).toEqual([]);
   });
 
-  it("配布時(非 win32)は拡張子なしの app-image ランチャーを起動する", () => {
-    const launch = resolveEngineLaunch({
-      isPackaged: true,
-      platform: "linux",
-      resourcesPath: "/app/resources",
-      appRoot: "/app/resources/app.asar",
-    });
-    expect(launch.command).toBe(join("/app/resources", "engine", "COBOLInsight"));
+  it("uses the platform executable name outside Windows", () => {
+    const launch = resolveEngineLaunch({ ...base, isPackaged: true, platform: "linux" });
+    // path.join keeps the host's separator, so only the file name is asserted here.
+    expect(launch.command.endsWith("COBOLInsight")).toBe(true);
+    expect(launch.command).not.toContain(".exe");
   });
 
-  it("開発時(win32)は installDist の lib を classpath に java を起動する", () => {
+  it("runs the installDist classpath through JAVA_HOME in development", () => {
     const launch = resolveEngineLaunch({
+      ...base,
       isPackaged: false,
-      platform: "win32",
-      resourcesPath: "unused",
-      appRoot: "C:/repo/gui",
       javaHome: "C:/tools/jdk-21",
     });
-    expect(launch.command).toBe(join("C:/tools/jdk-21", "bin", "java.exe"));
-    const installLib = join("C:/repo/gui", "..", "engine", "cli", "build", "install", "cli", "lib", "*");
-    expect(launch.prefixArgs).toEqual(["-classpath", installLib, "jp.cobolinsight.cli.Main"]);
+    expect(launch.command).toBe("C:\\tools\\jdk-21\\bin\\java.exe");
+    expect(launch.prefixArgs[0]).toBe("-classpath");
+    // The trailing lib/* is expanded by java itself, so it must survive verbatim.
+    expect(launch.prefixArgs[1]).toBe("C:\\repo\\src\\engine\\app\\build\\install\\app\\lib\\*");
+    expect(launch.prefixArgs[2]).toBe("jp.cobolinsight.app.cli.Main");
   });
 
-  it("開発時に JAVA_HOME 未設定なら PATH 上の java を使う", () => {
-    const launch = resolveEngineLaunch({
-      isPackaged: false,
-      platform: "win32",
-      resourcesPath: "unused",
-      appRoot: "C:/repo/gui",
-    });
-    expect(launch.command).toBe("java.exe");
-  });
-
-  it("開発時(非 win32)は拡張子なしの java を使う", () => {
-    const launch = resolveEngineLaunch({
-      isPackaged: false,
-      platform: "darwin",
-      resourcesPath: "unused",
-      appRoot: "/repo/gui",
-    });
-    expect(launch.command).toBe("java");
-    expect(launch.prefixArgs[2]).toBe("jp.cobolinsight.cli.Main");
+  it("falls back to the java on PATH when JAVA_HOME is unset or empty", () => {
+    expect(resolveEngineLaunch({ ...base, isPackaged: false }).command).toBe("java.exe");
+    expect(resolveEngineLaunch({ ...base, isPackaged: false, javaHome: "" }).command).toBe("java.exe");
   });
 });

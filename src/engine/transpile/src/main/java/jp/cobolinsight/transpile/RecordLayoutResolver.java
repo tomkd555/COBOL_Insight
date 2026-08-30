@@ -1,8 +1,8 @@
 package jp.cobolinsight.transpile;
 
-import jp.cobolinsight.engineapi.picture.PictureType;
-import jp.cobolinsight.engineapi.semantic.DataItem;
-import jp.cobolinsight.engineapi.semantic.Occurs;
+import jp.cobolinsight.core.picture.PictureType;
+import jp.cobolinsight.core.semantic.DataItem;
+import jp.cobolinsight.core.semantic.Occurs;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,17 +11,19 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * データ項目木からレコードレイアウト({@link LayoutField})を解決する。項目長は
- * {@link PictureType#byteLength()}、累積オフセットは先行同順兄弟の byteLength×occurs の積算で求める。
- * REDEFINES 対象は元項目と同一開始オフセットを共有し、後続オフセットには加算しない。集団項目長は
- * 加算対象(REDEFINES でない)の子の総和。副作用なし・決定論的(子はリスト順に処理する)。
+ * Resolves a record layout ({@link LayoutField}) from a data item tree. Item length comes from
+ * {@link PictureType#byteLength()}; the cumulative offset is the running sum of byteLength x occurs
+ * over preceding same-level siblings. A REDEFINES target shares the same starting offset as the
+ * item it redefines and does not add to the following offset. A group item's length is the sum of
+ * the children that contribute to it (i.e. not REDEFINES). No side effects, deterministic
+ * (children are processed in list order).
  */
 public final class RecordLayoutResolver {
 
     private RecordLayoutResolver() {
     }
 
-    /** 01(または任意レベル)の項目を根としてレイアウトを解決する。根の offset は0。 */
+    /** Resolves the layout rooted at a level-01 (or any level) item. The root's offset is 0. */
     public static LayoutField resolve(DataItem record) {
         return resolveItem(record, 0);
     }
@@ -34,8 +36,8 @@ public final class RecordLayoutResolver {
                     Optional.of(pt), item.redefines(), item.conditionNames(), List.of());
         }
         List<LayoutField> children = new ArrayList<>();
-        // COBOL のデータ名は大小を区別しない。REDEFINES の対象名と宣言名の表記が揃わない資産が
-        // あるため、大文字化して突き合わせる。
+        // COBOL data names are case-insensitive. Some assets have inconsistent casing between a
+        // REDEFINES target name and the declared name, so uppercase both before matching.
         Map<String, Integer> siblingOffset = new HashMap<>();
         int cursor = startOffset;
         for (DataItem child : item.children()) {

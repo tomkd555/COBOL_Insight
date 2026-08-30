@@ -1,15 +1,18 @@
 package jp.cobolinsight.transpile.proc;
 
 /**
- * 手続き文の条件式の中間表現。関係比較・論理積・論理和・否定・直訳不能の5種。
- * 言語別の字面(文字列比較の {@code .equals}・論理演算子・否定)は {@link ExprWriter} が
- * {@link ProcedureDialect} を介して与える。
+ * Intermediate representation of a procedure statement's condition expression: five kinds—
+ * relational comparison, logical AND, logical OR, negation, and untranslatable. The
+ * language-specific textual form (string comparison via {@code .equals}, logical operators,
+ * negation) is supplied by {@link ExprWriter} through {@link ProcedureDialect}.
  */
 public sealed interface PCond permits PCond.Rel, PCond.And, PCond.Or, PCond.Negate, PCond.Raw {
 
     /**
-     * 直訳不能な条件({@link Raw})の注記を返す。原文を添えて可視化する。直訳できる条件は空文字列。
-     * IF・WHILE(inline/out-of-line PERFORM UNTIL/VARYING)の各構築箇所で共通に使う。
+     * Returns an annotation note for an untranslatable condition ({@link Raw}), making it visible
+     * by including the original text. Returns an empty string for a condition that can be
+     * translated directly. Used in common across the construction sites for IF and WHILE
+     * (inline/out-of-line PERFORM UNTIL/VARYING).
      */
     static String untranslatableNote(PCond cond) {
         return cond instanceof Raw raw
@@ -17,7 +20,7 @@ public sealed interface PCond permits PCond.Rel, PCond.And, PCond.Or, PCond.Nega
                 : "";
     }
 
-    /** 関係比較。stringCompare が真なら文字列比較(言語により {@code .equals}/{@code compareTo})。 */
+    /** Relational comparison. When stringCompare is true, this is a string comparison ({@code .equals}/{@code compareTo} depending on the language). */
     record Rel(PExpr left, RelOp op, PExpr right, boolean stringCompare) implements PCond {
     }
 
@@ -30,7 +33,10 @@ public sealed interface PCond permits PCond.Rel, PCond.And, PCond.Or, PCond.Nega
     record Negate(PCond inner) implements PCond {
     }
 
-    /** 直訳できない条件。原文を保持し、字面は恒真値へ落として注記で可視化する。 */
+    /**
+     * A condition that cannot be translated directly. Retains the original text; the generated
+     * form is reduced to a tautology and made visible via the note.
+     */
     record Raw(String text) implements PCond {
     }
 }

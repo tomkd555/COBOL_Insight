@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-/** Python の手続き対訳レンダリング。フラット変数を持つクラスと段落メソッドを出力する。 */
+/** Python procedure-division dialect rendering. Emits a class with flat variables and paragraph methods. */
 public final class PythonProcedureDialect implements ProcedureDialect {
 
     @Override
@@ -62,18 +62,21 @@ public final class PythonProcedureDialect implements ProcedureDialect {
         return "True";
     }
 
-    /** 後置で書く COBOL のクラス条件・符号条件の語。前置の述語呼出の字面へ組み替える対象。 */
+    /** Words for COBOL class conditions and sign conditions written postfix. Targets rewritten into prefix predicate-call notation. */
     private static final Set<String> POSTFIX_CONDITIONS = Set.of(
             "NUMERIC", "ALPHABETIC", "ALPHABETIC-LOWER", "ALPHABETIC-UPPER",
             "POSITIVE", "NEGATIVE", "ZERO");
 
     /**
-     * 直訳できない条件を原文から描画する。COBOL の関係演算子と論理演算子を Python の字面へ正規化し
-     * (= → ==、&lt;&gt; → !=、AND → and、OR → or、NOT に続く関係演算子は否定した演算子 =&gt;
-     * NOT = → !=・NOT &gt; → &lt;= 等)、被演算子の生名はそのまま残す。Python は未宣言名でも構文上は
-     * 妥当で、{@code while not (SQLCODE == 100):} のように原文の条件が読める。後置で書く
-     * クラス条件・符号条件は Python に対応する演算子が無いため、COBOL の語を保った前置の述語呼出
-     * ({@code NOT NUMERIC} → {@code not NUMERIC(項目)})へ組み替える。
+     * Renders a condition that cannot be translated literally, from the source text. Normalizes
+     * COBOL's relational and logical operators into Python notation
+     * (= &rarr; ==, &lt;&gt; &rarr; !=, AND &rarr; and, OR &rarr; or; a relational operator
+     * following NOT becomes its negated operator, e.g. NOT = &rarr; != and NOT &gt; &rarr; &lt;=),
+     * while leaving operand raw names untouched. Python's grammar accepts undeclared names, so the
+     * original condition reads naturally, as in {@code while not (SQLCODE == 100):}. Class
+     * conditions and sign conditions written postfix have no equivalent Python operator, so they
+     * are rewritten into prefix predicate-call notation that keeps the COBOL word
+     * ({@code NOT NUMERIC} &rarr; {@code not NUMERIC(項目)}).
      */
     @Override
     public String rawCondition(String cobolConditionText) {
@@ -107,8 +110,8 @@ public final class PythonProcedureDialect implements ProcedureDialect {
     }
 
     /**
-     * 「項目 [IS] [NOT] NUMERIC」のような後置の条件を「not NUMERIC(項目)」の並びへ組み替える。
-     * 該当しないトークンはそのまま通す。
+     * Rewrites a postfix condition like "operand [IS] [NOT] NUMERIC" into the sequence
+     * "not NUMERIC(operand)". Tokens that do not match pass through unchanged.
      */
     private static List<String> foldPostfixConditions(List<String> tokens) {
         List<String> folded = new ArrayList<>();
@@ -139,7 +142,7 @@ public final class PythonProcedureDialect implements ProcedureDialect {
         return POSTFIX_CONDITIONS.contains(token.toUpperCase(Locale.ROOT));
     }
 
-    /** 被演算子として置ける語か(演算子・論理語・クラス条件の語は被演算子ではない)。 */
+    /** Whether the token can stand as an operand (operators, logical words, and class-condition words are not operands). */
     private static boolean isOperand(String token) {
         return !token.isEmpty() && Character.isLetterOrDigit(token.charAt(0))
                 && !token.equalsIgnoreCase("AND") && !token.equalsIgnoreCase("OR")
@@ -147,7 +150,7 @@ public final class PythonProcedureDialect implements ProcedureDialect {
                 && !isPostfixCondition(token);
     }
 
-    /** COBOL の NOT に続く関係演算子を、否定した Python 演算子へ写す。関係演算子でなければ null。 */
+    /** Maps a relational operator following COBOL's NOT to its negated Python operator. Returns null if it is not a relational operator. */
     private static String negatedRelation(String op) {
         return switch (op) {
             case "=" -> "!=";
@@ -210,7 +213,7 @@ public final class PythonProcedureDialect implements ProcedureDialect {
 
     @Override
     public void emitProgramEpilogue(LineTrackingEmitter out) {
-        // Python はブロックをインデントで表すため、明示的な閉じは無い。
+        // Python represents blocks by indentation, so there is no explicit close.
     }
 
     @Override

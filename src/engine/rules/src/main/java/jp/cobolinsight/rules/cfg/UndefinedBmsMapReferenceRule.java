@@ -1,64 +1,58 @@
 package jp.cobolinsight.rules.cfg;
 
-import jp.cobolinsight.engineapi.bms.BmsMap;
-import jp.cobolinsight.engineapi.bms.BmsMapset;
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.Severity;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
-import jp.cobolinsight.engineapi.semantic.EmbeddedBlock;
-import jp.cobolinsight.engineapi.semantic.EmbeddedBlockKind;
-import jp.cobolinsight.engineapi.source.SourcePosition;
-import jp.cobolinsight.engineapi.spi.AnalysisContext;
-import jp.cobolinsight.engineapi.spi.AnalysisPhase;
-import jp.cobolinsight.engineapi.spi.Rule;
-import jp.cobolinsight.engineapi.spi.RuleDoc;
+import jp.cobolinsight.core.bms.BmsMap;
+import jp.cobolinsight.core.bms.BmsMapset;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.Severity;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.semantic.EmbeddedBlock;
+import jp.cobolinsight.core.semantic.EmbeddedBlockKind;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
+import jp.cobolinsight.core.source.SourcePosition;
+import jp.cobolinsight.core.spi.AnalysisContext;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
 /**
- * R031 未定義BMSマップ参照。EXEC CICS SEND/RECEIVE MAP が参照する MAP・MAPSET を BMS マップ
- * モデルと突合し、マップセットが存在しない、または該当マップがマップセットに定義されていない
- * 参照を検出する。定義の無いマップを参照すると、画面の送受信が実行時に失敗する。
+ * R031 Reference to an undefined BMS map. Cross-references the MAP/MAPSET referenced by an
+ * EXEC CICS SEND/RECEIVE MAP against the BMS map model, and detects a reference where the
+ * mapset does not exist, or the map is not defined within that mapset. Referencing an undefined
+ * map causes the screen send/receive to fail at runtime.
  */
 public final class UndefinedBmsMapReferenceRule implements Rule {
 
     private static final Pattern MAP_OPERAND = Pattern.compile("(?i)\\bMAP\\s*\\(");
 
-    @Override
-    public String id() {
-        return "R031";
-    }
+    private static final RuleMeta META = RuleMeta.named("R031", "存在しないBMSマップ・フィールドの参照", "CICS")
+            .summary("BMS のマップ定義に無いマップセット・マップを参照する"
+                    + "EXEC CICS SEND/RECEIVE MAP を検出します。")
+            .rationale("定義の無いマップを指す送受信は実行時に失敗し、"
+                    + "画面が表示されないまま異常終了します。")
+            .detection("SEND MAP・RECEIVE MAP の MAP・MAPSET を BMS マップモデルと"
+                    + "突き合わせ、マップセットが存在しない、"
+                    + "またはマップがそのマップセットに定義されていないものを検出します。")
+            .remedy("マップ名・マップセット名の綴りを BMS 定義と揃えるか、"
+                    + "不足しているマップを BMS へ定義します。")
+            .example("""
+                    EXEC CICS SEND MAP('MAPXX') MAPSET('MAPSET1') END-EXEC.
+                    """, """
+                    EXEC CICS SEND MAP('MAP01') MAPSET('MAPSET1') END-EXEC.
+                    """)
+            .severity(Severity.HIGH)
+            .commands(Command.LINT, Command.REPORT)
+            .targets(AssetKind.COBOL, AssetKind.BMS)
+            .needs(Needs.SEMANTIC, Needs.BMS)
+            .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("存在しないBMSマップ・フィールドの参照", "CICS")
-                .summary("BMS のマップ定義に無いマップセット・マップを参照する"
-                        + "EXEC CICS SEND/RECEIVE MAP を検出します。")
-                .rationale("定義の無いマップを指す送受信は実行時に失敗し、"
-                        + "画面が表示されないまま異常終了します。")
-                .detection("SEND MAP・RECEIVE MAP の MAP・MAPSET を BMS マップモデルと"
-                        + "突き合わせ、マップセットが存在しない、"
-                        + "またはマップがそのマップセットに定義されていないものを検出します。")
-                .remedy("マップ名・マップセット名の綴りを BMS 定義と揃えるか、"
-                        + "不足しているマップを BMS へ定義します。")
-                .example("""
-                        EXEC CICS SEND MAP('MAPXX') MAPSET('MAPSET1') END-EXEC.
-                        """, """
-                        EXEC CICS SEND MAP('MAP01') MAPSET('MAPSET1') END-EXEC.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.HIGH;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.CONTROL_FLOW;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override
@@ -79,7 +73,7 @@ public final class UndefinedBmsMapReferenceRule implements Rule {
                 if (isDefined(mapsets, map, mapset)) {
                     continue;
                 }
-                findings.add(Finding.of(id(), defaultSeverity().toLevel(),
+                findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         "参照するマップ " + map
                                 + (mapset == null ? "" : "(マップセット " + mapset + ")")
                                 + " は BMS マップ定義に存在しない。",
@@ -104,7 +98,7 @@ public final class UndefinedBmsMapReferenceRule implements Rule {
         return false;
     }
 
-    /** MAP オペランドが最初に現れる行。ブロック先頭(EXEC CICS 行)とは異なるため走査する。 */
+    /** The line where the MAP operand first appears. Scanned because it can differ from the block's first line (the EXEC CICS line). */
     private static int mapOperandLine(EmbeddedBlock block) {
         int startLine = block.range().start().line();
         List<String> lines = block.text().lines().toList();

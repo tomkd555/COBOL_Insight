@@ -1,8 +1,8 @@
 package jp.cobolinsight.rules.cfg;
 
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.FindingLevel;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.FindingLevel;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -12,7 +12,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** R014 節の流下の合成fixture検証。 */
+/** R014 synthetic fixture verification for section fall-through. */
 class SectionFallThroughRuleTest {
 
     @TempDir

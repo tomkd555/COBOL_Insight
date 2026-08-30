@@ -1,9 +1,11 @@
 package jp.cobolinsight.rules;
 
-import jp.cobolinsight.engineapi.finding.TextEdit;
-import jp.cobolinsight.fix.ByteSpliceApplier;
-import jp.cobolinsight.fix.ReparseResult;
-import jp.cobolinsight.fix.ReparseVerifier;
+import jp.cobolinsight.core.finding.TextEdit;
+import jp.cobolinsight.core.fix.ByteSpliceApplier;
+import jp.cobolinsight.core.fix.ReparseResult;
+import jp.cobolinsight.core.fix.ReparseVerifier;
+import jp.cobolinsight.core.encoding.EncodingCharsetProvider;
+import jp.cobolinsight.frontend.cobol.Che4zCobolParser;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -11,16 +13,18 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * FixProducer が返す編集を実際に原本へバイトスプライス適用し、修正後ソースが再パースできるかを
- * 検証するテスト補助。桁崩れ・トークン結合・リテラル破損を伴う編集は再パースが失敗するため、
- * 位置と置換文字列の単体検証に加えて、生成した修正が固定形式として成立することを裏づける。
+ * Test helper that actually byte-splices the edits returned by a FixProducer onto the
+ * original file and verifies that the fixed source can be re-parsed. An edit that causes
+ * column misalignment, token merging, or literal corruption fails re-parsing, so this
+ * backs up the unit-level checks on position and replacement text by confirming that the
+ * generated fix is a well-formed fixed-format source.
  */
 public final class FixApplyChecks {
 
     private FixApplyChecks() {
     }
 
-    /** 原本へ編集群を適用し、UTF-8 で復号して再パースした結果を返す。 */
+    /** Applies a set of edits to the original file, decodes as UTF-8, and returns the re-parse result. */
     public static ReparseResult applyAndReparse(String originalFile, List<TextEdit> edits,
             List<Path> copybookSearchPaths) {
         byte[] fixed;
@@ -29,6 +33,7 @@ public final class FixApplyChecks {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        return new ReparseVerifier().verify(originalFile, fixed, "UTF-8", copybookSearchPaths);
+        return new ReparseVerifier(new Che4zCobolParser(), new EncodingCharsetProvider())
+                .verify(originalFile, fixed, "UTF-8", copybookSearchPaths);
     }
 }

@@ -1,9 +1,9 @@
 package jp.cobolinsight.rules.syntax;
 
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.FindingLevel;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
-import jp.cobolinsight.engineapi.spi.AnalysisContext;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.FindingLevel;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.spi.AnalysisContext;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -14,7 +14,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** R002 未使用データ項目の合成fixture検証。 */
+/** Synthetic fixture verification for R002 unused data items. */
 class UnusedDataItemRuleTest {
 
     @TempDir
@@ -90,7 +90,7 @@ class UnusedDataItemRuleTest {
     void returnsNothingWithoutSourceTextIndex() {
         CobolSemanticModel model = Fixtures.parse(tempDir, "FIX002B.cbl",
                 SOURCE.replace("FIX002", "FIX002B"));
-        AnalysisContext context = jp.cobolinsight.engineapi.spi.AnalysisContext.of(
+        AnalysisContext context = jp.cobolinsight.core.spi.AnalysisContext.of(
                 List.of(model), List.of(), List.of(), List.of(),
                 java.util.Optional.empty(), Map.of());
 

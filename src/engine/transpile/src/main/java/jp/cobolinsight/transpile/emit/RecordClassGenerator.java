@@ -1,9 +1,9 @@
 package jp.cobolinsight.transpile.emit;
 
-import jp.cobolinsight.engineapi.picture.PictureType;
-import jp.cobolinsight.engineapi.semantic.ConditionName;
-import jp.cobolinsight.engineapi.semantic.DataItem;
-import jp.cobolinsight.engineapi.source.LineRange;
+import jp.cobolinsight.core.picture.PictureType;
+import jp.cobolinsight.core.semantic.ConditionName;
+import jp.cobolinsight.core.semantic.DataItem;
+import jp.cobolinsight.core.source.LineRange;
 import jp.cobolinsight.transpile.LayoutField;
 
 import java.util.ArrayList;
@@ -13,10 +13,12 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * データ項目木({@link DataItem})とレイアウト木({@link LayoutField})を同順で辿り、1つの 01 レコードを
- * {@link LanguageEmitter} 経由でクラスへ生成する言語非依存の走査。走査自体は言語に依らず、字面は emitter が担う。
- * 生成した各行は宣言行→生成行の対応として {@link LineTrackingEmitter} に記録する(REDEFINES/集団/OCCURS は
- * note と行数から 1:N・N:1 として可視化される)。
+ * A language-independent traversal that walks the data item tree ({@link DataItem}) and the layout
+ * tree ({@link LayoutField}) in the same order, generating one 01 record into a class via
+ * {@link LanguageEmitter}. The traversal itself is language-independent; the surface form is the
+ * emitter's responsibility. Each generated line is recorded in the {@link LineTrackingEmitter} as a
+ * declaration-line-to-generated-line correspondence (REDEFINES/groups/OCCURS are made visible as
+ * 1:N / N:1 from the note and line count).
  */
 public final class RecordClassGenerator {
 
@@ -113,8 +115,9 @@ public final class RecordClassGenerator {
     }
 
     /**
-     * COBOL は同じ名前の項目を別の集団の下に置けるため、正規化後の名前が衝突しうる。走査順に
-     * {@code _2}, {@code _3}, … を付けて一意にする(順序が決まるので生成は決定論的)。
+     * COBOL allows items with the same name to sit under different groups, so normalized names can
+     * collide. Appends {@code _2}, {@code _3}, ... in traversal order to make them unique
+     * (the order is fixed, so generation is deterministic).
      */
     private static String uniqueMember(String cobolName, Set<String> usedMembers) {
         String base = Identifiers.sanitize(cobolName);
@@ -131,7 +134,7 @@ public final class RecordClassGenerator {
         return new LineRange(line, line);
     }
 
-    /** 宣言元ソースの識別子として、パス末尾のファイル名を返す(コピー句と取込プログラムを区別する)。 */
+    /** Returns the trailing file name of the path as the declaring source's identifier (distinguishes a copybook from the including program). */
     private static String sourceId(String file) {
         int separator = Math.max(file.lastIndexOf('/'), file.lastIndexOf('\\'));
         return separator >= 0 ? file.substring(separator + 1) : file;

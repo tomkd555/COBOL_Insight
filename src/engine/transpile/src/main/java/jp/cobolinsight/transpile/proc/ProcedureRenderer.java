@@ -1,17 +1,19 @@
 package jp.cobolinsight.transpile.proc;
 
-import jp.cobolinsight.engineapi.linemap.MappingKind;
-import jp.cobolinsight.engineapi.source.LineRange;
-import jp.cobolinsight.engineapi.source.SourceRange;
+import jp.cobolinsight.core.linemap.MappingKind;
+import jp.cobolinsight.core.source.LineRange;
+import jp.cobolinsight.core.source.SourceRange;
 import jp.cobolinsight.transpile.emit.LineTrackingEmitter;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * {@link ProcedureIr}/{@link ProcStmt} の中間表現を {@link ProcedureDialect} 経由で対象言語へ描画し、
- * 各生成行に由来 COBOL 行の対応({@link LineTrackingEmitter#addMapping})を付す言語非依存の走査。
- * 段落見出しと複合文の見出しは COBOL 見出し行へ、単文は原文の行範囲へ対応づける。
+ * Language-agnostic walk that renders the {@link ProcedureIr}/{@link ProcStmt} intermediate
+ * representation into the target language via {@link ProcedureDialect}, attaching each generated
+ * line's originating COBOL line mapping ({@link LineTrackingEmitter#addMapping}).
+ * Paragraph headers and compound-statement headers map to the COBOL header line; simple statements
+ * map to their original line range.
  */
 public final class ProcedureRenderer {
 
@@ -41,7 +43,7 @@ public final class ProcedureRenderer {
         dialect.emitProgramEpilogue(out);
     }
 
-    /** 作業部の埋め込み SQL 指令を原文コメントとして出力し、原ソース行への対応を付す。 */
+    /** Emits Working-Storage embedded SQL directives as a source-text comment, with a mapping back to the original source lines. */
     private void renderDataDivisionSql(String sourceId, List<DataDivisionSql.Directive> directives) {
         for (DataDivisionSql.Directive directive : directives) {
             int start = out.nextLine();
@@ -64,7 +66,7 @@ public final class ProcedureRenderer {
         boolean anyExecutable = false;
         for (ProcStmt statement : statements) {
             renderOne(statement);
-            // Untranslated は原文コメントだけを出力するため、実行文として数えない。
+            // An Untranslated statement only emits a source-text comment, so it does not count as executable.
             anyExecutable |= !(statement instanceof ProcStmt.Untranslated);
         }
         if (!anyExecutable) {
@@ -103,7 +105,7 @@ public final class ProcedureRenderer {
         }
     }
 
-    /** EXEC CICS/SQL の注記スタブ。複数の COBOL 行を1つのスタブへ畳むため N:1(MANY_TO_ONE)で対応づける。 */
+    /** An annotated stub for EXEC CICS/SQL. Multiple COBOL lines fold into one stub, so the mapping is N:1 (MANY_TO_ONE). */
     private void renderEmbeddedStub(ProcStmt.EmbeddedStub stub) {
         SourceRange range = stub.range();
         int start = out.nextLine();
@@ -141,7 +143,7 @@ public final class ProcedureRenderer {
             dialect.emitAssign(out, ExprWriter.expr(loop.varyingVar(), dialect),
                     ExprWriter.expr(loop.varyingInit(), dialect));
         }
-        // COBOL の UNTIL は条件が成立した時点で反復を終える。while の継続条件はその否定になる。
+        // COBOL's UNTIL ends the iteration once the condition becomes true; the while loop's continuation condition is its negation.
         dialect.openWhile(out, ExprWriter.cond(new PCond.Negate(loop.until()), dialect));
         addMapping(start, out.lastLine(), loop.range(), loop.range().start().line(), loop.note());
         renderBlock(loop.body());

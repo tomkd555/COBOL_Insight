@@ -1,16 +1,16 @@
 package jp.cobolinsight.transpile.proc;
 
-import jp.cobolinsight.engineapi.cfg.CfgNode;
-import jp.cobolinsight.engineapi.cfg.CfgNodeKind;
-import jp.cobolinsight.engineapi.cfg.ControlFlowGraph;
-import jp.cobolinsight.engineapi.semantic.CompoundStatement;
-import jp.cobolinsight.engineapi.semantic.ControlKind;
-import jp.cobolinsight.engineapi.semantic.GoToStatement;
-import jp.cobolinsight.engineapi.semantic.Procedure;
-import jp.cobolinsight.engineapi.semantic.SimpleStatement;
-import jp.cobolinsight.engineapi.semantic.Statement;
-import jp.cobolinsight.engineapi.semantic.StatementBlock;
-import jp.cobolinsight.dataflow.GotoNormalizer;
+import jp.cobolinsight.core.cfg.CfgNode;
+import jp.cobolinsight.core.cfg.CfgNodeKind;
+import jp.cobolinsight.core.cfg.ControlFlowGraph;
+import jp.cobolinsight.core.semantic.CompoundStatement;
+import jp.cobolinsight.core.semantic.ControlKind;
+import jp.cobolinsight.core.semantic.GoToStatement;
+import jp.cobolinsight.core.semantic.Procedure;
+import jp.cobolinsight.core.semantic.SimpleStatement;
+import jp.cobolinsight.core.semantic.Statement;
+import jp.cobolinsight.core.semantic.StatementBlock;
+import jp.cobolinsight.analysis.dataflow.GotoNormalizer;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -26,16 +26,21 @@ import java.util.TreeSet;
 import java.util.function.Function;
 
 /**
- * GO TO を含む段落を、手続き単位の部分制御フローグラフに写し、{@link GotoNormalizer} で可約化してから
- * 順次・分岐(if)・反復(while)の構造化制御へ還元する。段落=メソッドの対訳では PERFORM は呼出、GO TO は
- * 手続き内の制御移動である。よって部分 CFG には PERFORM 呼出・復帰辺を張らず(whole-program CFG の
- * 過大近似による偽の不可約性を避ける)、GO TO 辺・段落間の流下辺・段落内の逐次辺だけを張る。
+ * Maps a paragraph containing GO TO into a per-procedure partial control-flow graph, reduces it to
+ * reducible form via {@link GotoNormalizer}, and then structures it into sequential / branch (if) /
+ * loop (while) control. Under the paragraph = method translation, PERFORM is a call and GO TO is an
+ * intra-procedure control transfer. The partial CFG therefore adds no PERFORM call/return edges
+ * (avoiding spurious irreducibility from the whole-program CFG's over-approximation) — only GO TO
+ * edges, fall-through edges between paragraphs, and sequential edges within a paragraph.
  *
- * <p>対象段落の飛び先とその流下先を含む region に限定し、可約 CFG を支配木・後支配木に基づく構造解析で
- * 還元する。GO TO の飛び先段落は自前のメソッドとしても出力されるため、region への取り込みは複製となり、
- * 同一 COBOL 行が複数生成箇所へ対応する(1:N)。GotoNormalizer が不可約領域を複製した場合は
- * originalNodeId で複製と分かり、複製側の対応へ注記を付す。構造化できない形は null を返し、呼び手は
- * 逐次走査(GO TO を注記付き非対訳とする)へ退避する。
+ * <p>The analysis is confined to the region containing the target paragraph's jump destinations and
+ * their fall-through targets, and reduces the reducible CFG through structural analysis based on the
+ * dominator and post-dominator trees. Because a GO TO's destination paragraph is also emitted as its
+ * own method, pulling it into the region duplicates it, so a single COBOL line maps to multiple
+ * generated locations (1:N). When GotoNormalizer duplicates an irreducible region, the duplicate is
+ * identified by originalNodeId, and the duplicate's mapping carries a note. A form that cannot be
+ * structured returns null, and the caller falls back to sequential traversal (rendering the GO TO as
+ * an annotated untranslated statement).
  */
 final class GotoStructurer {
 
@@ -58,7 +63,7 @@ final class GotoStructurer {
         this.indexByName = byName;
     }
 
-    /** procedure の文木のどこかに GO TO を含むか。 */
+    /** Whether the procedure's statement tree contains a GO TO anywhere. */
     static boolean containsGoTo(Procedure procedure) {
         for (Statement s : procedure.statements()) {
             if (containsGoTo(s)) {
@@ -85,7 +90,7 @@ final class GotoStructurer {
         };
     }
 
-    /** start を構造化制御へ還元した本体。GO TO を含まない、または還元できない場合は null。 */
+    /** The body with start reduced to structured control. Returns null if it has no GO TO or cannot be reduced. */
     List<ProcStmt> structure(Procedure start) {
         if (!containsGoTo(start)) {
             return null;
@@ -102,25 +107,25 @@ final class GotoStructurer {
         }
     }
 
-    // ---- 部分 CFG の構築 ----
+    // ---- Building the partial CFG ----
 
     private record RegionCfg(ControlFlowGraph cfg, Set<CfgNode> condJumps) {
     }
 
-    /** 手続き文を GO TO 構造化のための「流れ要素」へ平坦化した1件。 */
+    /** One item obtained by flattening a procedure statement into a "flow element" for GO TO structuring. */
     private sealed interface Item {
 
         Statement statement();
 
-        /** 単文または GO TO を含まない複合文(不透過な葉)。terminal は STOP RUN 等の強い終端。 */
+        /** A simple statement or a compound statement without GO TO (an opaque leaf). terminal marks a hard terminator such as STOP RUN. */
         record Leaf(Statement statement, boolean terminal) implements Item {
         }
 
-        /** 無条件 GO TO(単一飛び先)。 */
+        /** An unconditional GO TO (single destination). */
         record Jump(GoToStatement statement, String target) implements Item {
         }
 
-        /** IF 条件 GO TO(THEN が単一 GO TO のみ)。true で飛び先、false で流下。 */
+        /** An IF-conditioned GO TO (THEN holds only a single GO TO). true takes the jump destination, false falls through. */
         record CondJump(CompoundStatement statement, String target) implements Item {
         }
     }
@@ -204,7 +209,7 @@ final class GotoStructurer {
         return paraFirst.get(idx);
     }
 
-    /** 段落末尾からの流下先。開始段落(PERFORM で呼ばれる)は末尾で復帰するため出口へ。 */
+    /** The fall-through target from the end of a paragraph. The start paragraph (invoked via PERFORM) returns at its end, so it goes to the exit. */
     private CfgNode fallThroughTarget(int idx, int startIdx, List<Item> items, Set<Integer> regionSet,
             Map<Integer, CfgNode> paraFirst, CfgNode exit) {
         if (idx == startIdx || !fallsThrough(items)) {
@@ -255,7 +260,7 @@ final class GotoStructurer {
         };
     }
 
-    /** 段落が末尾で次段落へ流下するか(無条件 GO TO・強い終端・EXIT 段落境界では流下しない)。 */
+    /** Whether the paragraph falls through to the next paragraph at its end (it does not, on an unconditional GO TO, a hard terminator, or an EXIT paragraph boundary). */
     private static boolean fallsThrough(List<Item> items) {
         Item last = items.get(items.size() - 1);
         return switch (last) {
@@ -265,7 +270,7 @@ final class GotoStructurer {
         };
     }
 
-    /** procedure の文を流れ要素へ平坦化する。構造化対象外の GO TO 入れ子があれば null。 */
+    /** Flattens the procedure's statements into flow elements. Returns null if it contains a nested GO TO that is out of scope for structuring. */
     private List<Item> flatten(Procedure procedure) {
         List<Item> items = new ArrayList<>();
         for (Statement s : procedure.statements()) {
@@ -293,7 +298,7 @@ final class GotoStructurer {
         return items;
     }
 
-    /** IF 条件 GO TO 形(THEN が単一 GO TO・ELSE なし)なら飛び先、そうでなければ null。 */
+    /** The jump destination if this is an IF-conditioned GO TO form (THEN holds a single GO TO, no ELSE); otherwise null. */
     private static String condJumpTarget(CompoundStatement c) {
         if (c.kind() != ControlKind.BRANCH || c.blocks().size() != 1) {
             return null;
@@ -324,7 +329,7 @@ final class GotoStructurer {
                 && !ss.text().toUpperCase(Locale.ROOT).contains("PROGRAM");
     }
 
-    // ---- 構造解析(可約 CFG → 順次/if/while)----
+    // ---- Structural analysis (reducible CFG -> sequential/if/while) ----
 
     private final class Analysis {
 
@@ -513,11 +518,11 @@ final class GotoStructurer {
         return s.toUpperCase(Locale.ROOT);
     }
 
-    /** 構造化対象外の形(未対応の GO TO 入れ子・非可約・後支配不能等)を検知して退避する内部シグナル。 */
+    /** Internal signal used to bail out on detecting a form out of scope for structuring (an unsupported nested GO TO, irreducibility, failure to post-dominate, etc.). */
     private static final class Unsupported extends RuntimeException {
         Unsupported() {
-            // 構造化を打ち切るための内部シグナルであり、記録も再送出もしない。そのためメッセージと
-            // スタックトレースを持たせない。
+            // An internal signal used solely to abort structuring; it is never logged or rethrown, so it
+            // carries no message and no stack trace.
             super(null, null, false, false);
         }
     }

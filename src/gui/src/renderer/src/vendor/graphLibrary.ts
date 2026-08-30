@@ -1,7 +1,6 @@
 /**
- * 呼出関係図の描画ライブラリ。cytoscape へ ELK レイアウト(cytoscape-elk + elkjs)を1度だけ登録して返す。
- * どちらもローカル同梱物であり、CDN・外部ホストへは接続しない。図の全体一括描画は CLI の
- * call-graph --svg/--png へ寄せ、GUI 側はフィルタ・部分展開・詳細度制御を担う(裁定 A3)。
+ * The call-graph drawing library: cytoscape with the ELK layered layout (cytoscape-elk + elkjs)
+ * registered exactly once. Both are bundled locally; nothing is fetched from a CDN.
  */
 
 import cytoscape from "cytoscape";
@@ -9,7 +8,7 @@ import elk from "cytoscape-elk";
 
 let registered = false;
 
-/** ELK レイアウト登録済みの cytoscape を返す。2度目以降は登録を繰り返さない。 */
+/** cytoscape with the ELK layout registered. Later calls do not register it again. */
 export function graphLibrary(): typeof cytoscape {
   if (!registered) {
     cytoscape.use(elk);

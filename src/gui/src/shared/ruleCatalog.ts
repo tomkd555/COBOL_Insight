@@ -1,16 +1,16 @@
-import type { RuleCatalog, RuleCatalogEntry } from "./engine-api";
+import type { RuleCatalog, RuleCatalogEntry } from "./ipc";
 
 /**
- * engine の `rules --json` の出力を、画面が引くルールカタログへ写す。ルール名・カテゴリ・説明を
- * 画面側に置かず engine から受けるための入口であり、ここが唯一の変換点である。
- * main(IPC の応答を組む側)と renderer(テストで同じ形を組む側)の双方が使うため shared へ置く。
+ * Converts the engine's `rules --json` output into the catalog the screens read. This is the only
+ * conversion point: rule names, categories and prose are never authored in the GUI.
  *
- * 欄が欠けた要素は落とさず既定で補う。engine の版が画面より古く欄が足りない場合でも、
- * 一覧そのものは描けるようにするためである。id を持たない要素だけは引けないため外す。
+ * Missing fields are filled with defaults rather than dropping the entry, so a GUI newer than the
+ * engine still renders the list. Only an entry without an id is discarded, because nothing can
+ * address it.
  */
 export function parseRuleCatalog(summary: Record<string, unknown> | null): RuleCatalog {
   if (summary === null) {
-    throw new Error("engine の rules がルール一覧を返さなかった");
+    throw new Error("the engine's rules subcommand returned no rule listing");
   }
   const rules: RuleCatalogEntry[] = [];
   for (const element of asArray(summary["rules"])) {
@@ -19,11 +19,7 @@ export function parseRuleCatalog(summary: Record<string, unknown> | null): RuleC
       rules.push(entry);
     }
   }
-  return {
-    rules,
-    userRuleErrors: asArray(summary["userRuleErrors"]).map((error) => String(error)),
-    ruleConfigWarnings: asArray(summary["ruleConfigWarnings"]).map((warning) => String(warning)),
-  };
+  return { rules, ruleErrors: asArray(summary["ruleErrors"]).map((error) => String(error)) };
 }
 
 function toEntry(value: unknown): RuleCatalogEntry | null {
@@ -39,8 +35,12 @@ function toEntry(value: unknown): RuleCatalogEntry | null {
     phase: asString(prop(value, "phase")) ?? "SYNTAX",
     hasFix: prop(value, "hasFix") === true,
     source: prop(value, "source") === "user" ? "user" : "builtin",
-    // 欄が無いのは engine が古い場合であり、そのときルールはすべて効いている。
+    // An absent field means an older engine, where every rule is in effect.
     enabled: prop(value, "enabled") !== false,
+    defaultEnabled: prop(value, "defaultEnabled") !== false,
+    commands: asStringArray(prop(value, "commands")),
+    targets: asStringArray(prop(value, "targets")),
+    needs: asStringArray(prop(value, "needs")),
     summary: asString(prop(value, "summary")) ?? "",
     rationale: asString(prop(value, "rationale")) ?? "",
     detection: asString(prop(value, "detection")) ?? "",
@@ -58,6 +58,10 @@ function prop(value: unknown, key: string): unknown {
 
 function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
+}
+
+function asStringArray(value: unknown): string[] {
+  return asArray(value).filter((element): element is string => typeof element === "string");
 }
 
 function asString(value: unknown): string | undefined {

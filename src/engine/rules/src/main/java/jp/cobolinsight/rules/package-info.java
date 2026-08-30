@@ -1,5 +1,6 @@
 /**
- * ServiceLoaderで発見するルールプラグインを置く。構文・CFG・データフローの3段階でfindingsを算出し、
- * 各ルールが任意で FixProducer を提供する。findingsはSARIF形式で出力する。
+ * Holds the detection rules. BuiltinRules enumerates the built-in ones, and RuleSet layers the
+ * rules.json configuration on top. Each rule optionally provides a FixProducer. Findings are output
+ * in SARIF format.
  */
 package jp.cobolinsight.rules;

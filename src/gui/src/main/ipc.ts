@@ -1,112 +1,87 @@
 import { app, dialog, ipcMain } from "electron";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { access, mkdir, readdir, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
-import { createRequire } from "node:module";
+import { readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import initSqlJs, { type Database, type SqlJsStatic } from "sql.js";
 import {
+  CHANNELS,
   COPY_EXPANSION_FILE_NAME,
-  ENGINE_CHANNELS,
-  type CallgraphRequest,
+  type DecodeSourceRequest,
   type EngineInvocation,
   type EngineOutputPaths,
   type EngineResult,
-  type FixApplyRequest,
-  type FixPreviewRequest,
-  type FixResultRequest,
+  type FixDiffRequest,
   type ImportSourceRequest,
-  type LintRequest,
-  type ReportRequest,
-  type RuleConfigFile,
+  type ReportArtifactRequest,
   type RulesRequest,
+  type SaveAsRequest,
   type SaveSourceRequest,
-  type ScanRequest,
-  type SourceTextRequest,
-  type SqlAdviseRequest,
+  type SourceStamp,
+  type StatRequest,
   type TranspileArtifacts,
-  type TranspileArtifactsRequest,
   type TranspileRequest,
-  type UserRulesFile,
-} from "../shared/engine-api";
-import {
-  runEngine,
-  type EngineProcess,
-  type EngineSpawn,
-  type RunEngineDeps,
-} from "./engine/run";
+} from "../shared/ipc";
+import type { AppSettings } from "../shared/settings";
+import type { RulesFile } from "../shared/rulesFile";
+import { runEngine, type EngineProcess, type EngineSpawn, type RunEngineDeps } from "./engine/run";
 import { resolveEngineLaunch, type EngineLaunch } from "./engine/launch";
-import { parseSarif } from "./artifacts/sarif";
-import { parseCopyExpansion } from "./artifacts/copyExpansion";
-import { buildFixDiff } from "./artifacts/fix";
+import { decodeSource } from "./engine/decode";
+import { createCachedDecode } from "./engine/decodeCache";
+import { saveSource } from "./engine/save";
+import { listRules, validateRules, type RulesDeps } from "./engine/rules";
 import { readInventory } from "./artifacts/inventory";
+import { parseSarif } from "./artifacts/sarif";
 import { readGraph } from "./artifacts/graph";
-import { readSourceText, type SourceFileSystem } from "./artifacts/sourceText";
-import { saveSource, type SaveFileSystem } from "./artifacts/saveSource";
+import { parseCopyExpansion } from "./artifacts/copyExpansion";
+import { buildFixDiff } from "./artifacts/fixDiff";
+import { readGeneratedFiles, readLineMap } from "./artifacts/transpile";
+import { resolveSourceFile } from "./fs/pathGuard";
+import { importSource } from "./fs/importSource";
+import { dirExists, selectFolder } from "./fs/selectFolder";
+import { SETTINGS_FILE_NAME, readSettings, writeSettings } from "./fs/settings";
+import { RULES_FILE_NAME, readRulesFile, writeRulesFile } from "./fs/rulesFile";
 import {
-  RULE_CONFIG_FILE_NAME,
-  migrateDisabledRules,
-  readRuleConfig,
-  writeRuleConfig,
-  type RuleConfigFileSystem,
-} from "./artifacts/ruleConfig";
-import { importSource, type ImportFileSystem } from "./artifacts/importSource";
-import { readGeneratedFiles, readLineMap, type GeneratedFileSystem } from "./artifacts/transpile";
-import { parseRuleCatalog } from "../shared/ruleCatalog";
-import {
-  readUserRules,
-  writeUserRules,
-  type UserRuleFileSystem,
-} from "./artifacts/userRules";
-import {
-  SETTINGS_FILE_NAME,
-  readSettings,
-  writeSettings,
-  type SettingsFileSystem,
-} from "./artifacts/settings";
-import type { AppSettings } from "../shared/appSettings";
-import { selectInputFolder } from "./dialog/selectFolder";
-import { checkDirectoryExists, type DirectoryStat } from "./pathCheck";
-
-const nodeRequire = createRequire(import.meta.url);
+  decodeFileSystem,
+  directoryStat,
+  generatedFileSystem,
+  importFileSystem,
+  rulesFileSystem,
+  saveFileSystem,
+  userDataFileSystem,
+  withDatabase,
+} from "./nodeFs";
 
 /**
- * child_process.spawn を EngineSpawn へ薄く適合させる(stdio は既定の pipe)。shell を介さず
- * 引数配列のまま渡すため、パスやオプション値に空白・記号が含まれてもシェルは解釈しない。
+ * Adapts child_process.spawn to EngineSpawn (stdio defaults to pipe). No shell is involved, so
+ * spaces and punctuation in paths and option values are never reinterpreted.
  */
 const engineSpawn: EngineSpawn = (command, args, options) =>
-  spawn(command, args, {
-    env: options.env,
-    cwd: options.cwd,
-  }) as unknown as EngineProcess;
+  spawn(command, args, { env: options.env, cwd: options.cwd }) as unknown as EngineProcess;
 
 /**
- * engine の成果物を書く位置。userData は起動時に展開先直下の data/ へ向けてあり(書込不可なら
- * Electron 既定へ委ねる)、配布・開発のどちらでも書込可能な1つのディレクトリに定まる。
+ * Where the engine writes its artefacts. userData already points at the portable `data/` directory
+ * (or Electron's default when that is not writable), so this is one writable directory in both a
+ * distribution and a development run.
  */
 function outputPaths(): EngineOutputPaths {
   const dir = app.getPath("userData");
   return {
     db: join(dir, "cobol-insight.db"),
-    lintSarif: join(dir, "cobol-insight.sarif"),
-    // lint と別名にする。同名にすると後段の sql-lint が lint の結果を上書きする。
-    sqlAdviseSarif: join(dir, "cobol-insight-sql.sarif"),
+    sarif: join(dir, "cobol-insight.sarif"),
+    // A separate name from `sarif`: sharing one would make sql-lint overwrite the lint results.
+    sqlSarif: join(dir, "cobol-insight-sql.sarif"),
     copyExpansion: join(dir, COPY_EXPANSION_FILE_NAME),
-    // 解析成果物ではなく利用者が作る設定であるが、engine へ渡す位置を1か所に定めるため併せて持つ。
-    userRules: join(dir, "user-rules.json"),
-    ruleConfig: join(dir, RULE_CONFIG_FILE_NAME),
+    // Not an engine artefact but a file the GUI writes; it lives here so its path is decided once.
+    rules: join(dir, RULES_FILE_NAME),
   };
 }
 
-/**
- * 編集後の本文を engine の save へ渡すための一時ファイル。保存のたびに別名を作り、終われば消す。
- * 名前を固定すると、保存が重なったときに後の保存が前の本文を上書きしてしまう。
- */
-function editedTempPath(): string {
-  return join(app.getPath("userData"), `cobol-insight-edited-${randomUUID()}.tmp`);
+/** A scratch file under userData. A fresh name per call keeps concurrent operations apart. */
+function tempPath(prefix: string): string {
+  return join(app.getPath("userData"), `cobol-insight-${prefix}-${randomUUID()}.tmp`);
 }
 
-/** engine 起動対象を現在の実行環境から解決する。 */
+/** Resolves the engine launch target from the current runtime. */
 function currentLaunch(): EngineLaunch {
   return resolveEngineLaunch({
     isPackaged: app.isPackaged,
@@ -118,14 +93,14 @@ function currentLaunch(): EngineLaunch {
 }
 
 /**
- * 実行中の engine。同時に走るのは1つであり、キャンセルとアプリ終了時の後始末で参照する。
- * 起動が終われば null へ戻す。書き戻し(save)はここへ登録せず、キャンセルの対象にしない。
+ * The engine currently running. Only one runs at a time; cancellation and shutdown both need it.
+ * Write-back and decode are not registered here and are therefore not cancellable.
  */
 let runningEngine: EngineProcess | null = null;
 
 /**
- * 起動に共通の依存。出力先は引数で絶対指定するが、engine 側に既定値の経路が残った場合に備え、
- * 作業ディレクトリも書込可能な保存先へ向けておく。
+ * Dependencies shared by every launch. Output paths are given as absolute arguments, but the working
+ * directory also points at the writable storage in case any default path survives inside the engine.
  */
 function engineDeps(): RunEngineDeps {
   return { spawn: engineSpawn, env: process.env, cwd: app.getPath("userData") };
@@ -148,21 +123,21 @@ function invoke(invocation: EngineInvocation): Promise<EngineResult> {
 }
 
 /**
- * キャンセルの受け皿へ登録しない起動。キャンセルは解析(走査・検出)を止める操作であり、
- * 書き戻しの途中で子プロセスを殺すと、原本へ半端な本文が残る。
+ * A launch that is not registered for cancellation. Cancelling means stopping an analysis; killing
+ * the child midway through a write-back would leave half a file in the original.
  */
 function invokeUninterrupted(invocation: EngineInvocation): Promise<EngineResult> {
   return runEngine(engineDeps(), currentLaunch(), invocation);
 }
 
 /**
- * 保存を1件ずつ順に走らせる。engine の save は原本を読んで書き戻すため、保存が重なると後の
- * 起動が前の書き戻しを見ないまま原本を読み、片方の編集が消える。
+ * Runs saves one at a time. The engine's save reads the original and writes it back, so overlapping
+ * saves would have the later run read a state the earlier one had not yet written, losing one edit.
  */
 let savePending: Promise<unknown> = Promise.resolve();
 
 function queueSave<T>(task: () => Promise<T>): Promise<T> {
-  // 前の保存が失敗しても列は進める(失敗した保存の結果は、その保存の呼び手だけが受ける)。
+  // A failed save still lets the queue advance; only its own caller sees that failure.
   const next = savePending.then(task, task);
   savePending = next.then(
     () => undefined,
@@ -172,192 +147,129 @@ function queueSave<T>(task: () => Promise<T>): Promise<T> {
 }
 
 /**
- * 実行中の engine を止める。キャンセル操作とアプリ終了の双方から呼ぶ。止めないと、画面が
- * 待機状態を解いた後も解析が走り続け、次の起動と二重に動く。
+ * Stops the running engine. Called both by the cancel action and on shutdown: left alone, the
+ * analysis would keep running after the screen has left its waiting state and would collide with
+ * the next launch.
  */
 export function stopRunningEngine(): void {
   runningEngine?.kill();
   runningEngine = null;
 }
 
-let sqlJs: SqlJsStatic | null = null;
-
-/** sql.js を1度だけ初期化する。wasm はローカル同梱物から読み、外部取得しない。 */
-async function loadSqlJs(): Promise<SqlJsStatic> {
-  if (sqlJs === null) {
-    const wasmPath = nodeRequire.resolve("sql.js/dist/sql-wasm.wasm");
-    sqlJs = await initSqlJs({ locateFile: () => wasmPath });
-  }
-  return sqlJs;
-}
-
 /**
- * SQLite ファイルをバイト列として読み、メモリ上の DB として開いて読取関数へ渡し、必ず閉じる。
- * sql.js は読んだ複製を扱うため、engine が書くプロジェクトファイルへ書き戻すことはない。
+ * The real path and stamp of a file the renderer named, or null when it is absent or outside the
+ * allowed base directory. Both the stat channel and the decode cache identify a file through this.
  */
-async function withDatabase<T>(dbPath: string, read: (db: Database) => T): Promise<T> {
-  const SQL = await loadSqlJs();
-  const database = new SQL.Database(await readFile(dbPath));
+async function locateSourceFile(
+  request: StatRequest,
+): Promise<{ realPath: string; stamp: SourceStamp } | null> {
   try {
-    return read(database);
-  } finally {
-    database.close();
+    const realPath = await resolveSourceFile(decodeFileSystem, request.baseDir, request.path);
+    const stats = await stat(realPath);
+    return { realPath, stamp: { mtimeMs: stats.mtimeMs, byteSize: stats.size } };
+  } catch {
+    // An absent or out-of-bounds file is simply "no stamp"; no caller needs a finer distinction.
+    return null;
   }
 }
 
-/** translate 生成物の読取に使う fs 束ね。出力先直下の平坦なファイルだけを対象にする。 */
-const generatedFileSystem: GeneratedFileSystem = {
-  list: (dir) => readdir(dir),
-  readText: (absPath) => readFile(absPath, "utf-8"),
-};
-
-/** ソース本文の読取に使う fs 束ね。境界判定のため実体パスの解決も渡す。 */
-const sourceFileSystem: SourceFileSystem = {
-  readBytes: (absPath) => readFile(absPath),
-  realPath: (absPath) => realpath(absPath),
-};
-
-/** 書き戻しに使う fs 束ね。境界判定のため実体パスの解決も渡す。 */
-const saveFileSystem: SaveFileSystem = {
-  realPath: (absPath) => realpath(absPath),
-  writeText: (absPath, text) => writeFile(absPath, text, "utf-8"),
-  remove: (absPath) => rm(absPath, { force: true }),
-};
-
 /**
- * 利用者定義ルールの定義ファイル・ルールの有効無効の設定・画面の設定の読み書きに使う fs 束ね。
- * 書き先はいずれも userData 配下であり、パスは main が決める(renderer から任意のパスは受けない)。
+ * The cached decode. One cache serves the whole session: reopening an unchanged file costs a map
+ * lookup rather than another JVM launch.
  */
-const userDataFileSystem: UserRuleFileSystem & SettingsFileSystem & RuleConfigFileSystem = {
-  readText: (path) => readFile(path, "utf-8"),
-  writeText: (path, text) => writeFile(path, text, "utf-8"),
-  exists: (path) => access(path).then(() => true, () => false),
-};
+const cachedDecode = createCachedDecode({
+  locate: (request) => locateSourceFile(request),
+  decode: (request) =>
+    decodeSource(
+      {
+        fs: decodeFileSystem,
+        tempFile: () => tempPath("decode"),
+        run: (decodeRequest) => invokeUninterrupted({ subcommand: "decode", request: decodeRequest }),
+      },
+      request,
+    ),
+});
 
-/** 画面の設定の保存先。userData 直下に置き、engine は触らない。 */
 function settingsPath(): string {
   return join(app.getPath("userData"), SETTINGS_FILE_NAME);
 }
 
-/**
- * 旧版が settings.json へ書いていた無効ルールを rules-config.json へ移す。起動のたびに呼ぶが、
- * 設定ファイルが既にあれば何もしない。失敗しても起動を止めない(移せなければ、利用者が
- * ルール一覧で無効にし直せる)。
- */
-export async function migrateRuleConfig(): Promise<void> {
-  await migrateDisabledRules(userDataFileSystem, settingsPath(), outputPaths().ruleConfig);
+/** What the rules calls need: a scratch file for candidate text, and the engine subcommand. */
+function rulesDeps(): RulesDeps {
+  return {
+    fs: rulesFileSystem,
+    tempFile: () => tempPath("rules"),
+    run: (request) => invoke({ subcommand: "rules", request }),
+  };
 }
 
-/** コピー句探索パスの実在確認に使う fs 束ね。 */
-const directoryStat: DirectoryStat = {
-  stat: (path) => stat(path),
-};
-
-/** 取込の書出に使う fs 束ね。書き先は資産フォルダ配下に限る(境界判定は importSource が行う)。 */
-const importFileSystem: ImportFileSystem = {
-  makeDir: async (absPath) => {
-    await mkdir(absPath, { recursive: true });
-  },
-  exists: (absPath) => access(absPath).then(() => true, () => false),
-  realPath: (absPath) => realpath(absPath),
-  writeText: (absPath, text) => writeFile(absPath, text, "utf-8"),
-};
-
 /**
- * renderer→main の IPC ハンドラを登録する。各 run ハンドラは engine CLI を spawn し、read ハンドラは
- * 成果物ファイルを読んでパースする。ソケット・HTTP は用いない。app.whenReady 後に1度だけ呼ぶ。
+ * Registers the renderer-to-main IPC handlers. Call once, after app.whenReady.
  *
- * read ハンドラが受け取るパスは、直前の起動が返した成果物パス(EngineResult.outputs)を renderer が
- * 持ち回った値である。これに対しソース本文の読取だけは利用者が画面で選ぶ任意のパスを受けるため、
- * readSourceText 側で資産フォルダ配下に限る境界検査を行う。取込の書出も同じく利用者の入力を
- * 受けるため、importSource 側で資産フォルダ配下に限る境界検査を行う。
+ * The paths the artefact handlers receive are values the renderer carried over from a previous run's
+ * EngineResult.outputs. Decoding, the write-back, stat and the import instead receive paths the user
+ * chose on screen, and each of those goes through the pathGuard boundary check.
  */
-export function registerEngineIpc(): void {
-  ipcMain.handle(ENGINE_CHANNELS.runScan, (_event, request: ScanRequest) =>
-    invoke({ subcommand: "scan", request }),
-  );
-  ipcMain.handle(ENGINE_CHANNELS.runCallgraph, (_event, request: CallgraphRequest) =>
-    invoke({ subcommand: "call-graph", request }),
-  );
-  ipcMain.handle(ENGINE_CHANNELS.runLint, (_event, request: LintRequest) =>
-    invoke({ subcommand: "lint", request }),
-  );
-  ipcMain.handle(ENGINE_CHANNELS.runSqlLint, (_event, request: SqlAdviseRequest) =>
-    invoke({ subcommand: "sql-lint", request }),
-  );
-  ipcMain.handle(ENGINE_CHANNELS.runReport, (_event, request: ReportRequest) =>
-    invoke({ subcommand: "report", request }),
-  );
-  ipcMain.handle(ENGINE_CHANNELS.runTranspile, (_event, request: TranspileRequest) =>
-    invoke({ subcommand: "translate", request }),
-  );
-  ipcMain.handle(ENGINE_CHANNELS.runFixPreview, (_event, request: FixPreviewRequest) =>
-    invoke({ subcommand: "fix-preview", request }),
-  );
-  ipcMain.handle(ENGINE_CHANNELS.runFixApply, (_event, request: FixApplyRequest) =>
-    invoke({ subcommand: "fix-apply", request }),
-  );
+export function registerIpc(): void {
+  ipcMain.handle(CHANNELS.engineRun, async (_event, invocation: EngineInvocation) => {
+    const result = await invoke(invocation);
+    if (invocation.subcommand === "scan") {
+      // A scan records each file's codepage afresh. The cache key cannot tell that apart — the bytes
+      // and the stamp are unchanged and the renderer sends no codepage — so the entries are dropped.
+      cachedDecode.clear();
+    }
+    return result;
+  });
 
-  ipcMain.handle(ENGINE_CHANNELS.cancelRun, () => {
+  ipcMain.handle(CHANNELS.engineCancel, () => {
     stopRunningEngine();
   });
 
-  ipcMain.handle(ENGINE_CHANNELS.selectInputFolder, () =>
-    selectInputFolder(() => dialog.showOpenDialog({ properties: ["openDirectory"] })),
+  ipcMain.handle(CHANNELS.engineDecode, (_event, request: DecodeSourceRequest) =>
+    cachedDecode(request),
   );
 
-  ipcMain.handle(ENGINE_CHANNELS.checkDirectoryExists, (_event, path: string) =>
-    checkDirectoryExists(directoryStat, path),
-  );
-
-  ipcMain.handle(ENGINE_CHANNELS.getOutputPaths, () => outputPaths());
-
-  ipcMain.handle(ENGINE_CHANNELS.readSarif, async (_event, path: string) =>
-    parseSarif(await readFile(path, "utf-8")),
-  );
-  ipcMain.handle(ENGINE_CHANNELS.readFixResult, async (_event, request: FixResultRequest) => {
-    const [original, fixed] = await Promise.all([
-      readFile(request.originalPath, "utf-8"),
-      readFile(request.fixedPath, "utf-8"),
-    ]);
-    return buildFixDiff(request.relPath, original, fixed);
-  });
-  ipcMain.handle(ENGINE_CHANNELS.readReportHtml, (_event, path: string) =>
-    readFile(path, "utf-8"),
-  );
-  ipcMain.handle(ENGINE_CHANNELS.readReportText, (_event, path: string) =>
-    readFile(path, "utf-8"),
-  );
-  ipcMain.handle(ENGINE_CHANNELS.readAssetInventory, (_event, dbPath: string) =>
-    withDatabase(dbPath, readInventory),
-  );
-
-  ipcMain.handle(ENGINE_CHANNELS.readSourceText, (_event, request: SourceTextRequest) =>
-    readSourceText(sourceFileSystem, request),
-  );
-
-  ipcMain.handle(ENGINE_CHANNELS.saveSource, (_event, request: SaveSourceRequest) =>
+  ipcMain.handle(CHANNELS.engineSave, (_event, request: SaveSourceRequest) =>
     queueSave(() =>
       saveSource(
         {
           fs: saveFileSystem,
-          tempFile: editedTempPath,
+          tempFile: () => tempPath("edited"),
           dbPath: outputPaths().db,
-          run: (saveRequest) =>
-            invokeUninterrupted({ subcommand: "save", request: saveRequest }),
+          run: (saveRequest) => invokeUninterrupted({ subcommand: "save", request: saveRequest }),
         },
         request,
       ),
     ),
   );
 
-  ipcMain.handle(ENGINE_CHANNELS.readGraph, (_event, dbPath: string) =>
-    withDatabase(dbPath, readGraph),
+  ipcMain.handle(CHANNELS.engineRules, (_event, request: RulesRequest) =>
+    listRules(rulesDeps(), request),
+  );
+  ipcMain.handle(CHANNELS.engineValidateRules, (_event, raw: string) =>
+    validateRules(rulesDeps(), raw),
   );
 
+  ipcMain.handle(CHANNELS.artifactInventory, (_event, dbPath: string) =>
+    withDatabase(dbPath, readInventory),
+  );
+  ipcMain.handle(CHANNELS.artifactSarif, async (_event, path: string) =>
+    parseSarif(await readFile(path, "utf-8")),
+  );
+  ipcMain.handle(CHANNELS.artifactGraph, (_event, dbPath: string) => withDatabase(dbPath, readGraph));
+  ipcMain.handle(CHANNELS.artifactCopyExpansion, async (_event, path: string) =>
+    parseCopyExpansion(await readFile(path, "utf-8")),
+  );
+  ipcMain.handle(CHANNELS.artifactFixDiff, async (_event, request: FixDiffRequest) => {
+    const [original, fixed] = await Promise.all([
+      readFile(request.originalPath, "utf-8"),
+      readFile(request.fixedPath, "utf-8"),
+    ]);
+    return buildFixDiff(request.relPath, original, fixed);
+  });
   ipcMain.handle(
-    ENGINE_CHANNELS.readTranspileArtifacts,
-    async (_event, request: TranspileArtifactsRequest): Promise<TranspileArtifacts> => {
+    CHANNELS.artifactTranspile,
+    async (_event, request: TranspileRequest): Promise<TranspileArtifacts> => {
       const lineMap = await withDatabase(request.dbPath, (db) =>
         readLineMap(db, request.cobolRelPath),
       );
@@ -365,47 +277,45 @@ export function registerEngineIpc(): void {
       return { files, lineMap };
     },
   );
-
-  ipcMain.handle(ENGINE_CHANNELS.readCopyExpansion, async (_event, path: string) =>
-    parseCopyExpansion(await readFile(path, "utf-8")),
+  // Both report forms are UTF-8 text; the kind only tells the renderer how to present it.
+  ipcMain.handle(CHANNELS.artifactReport, (_event, request: ReportArtifactRequest) =>
+    readFile(request.path, "utf-8"),
   );
 
-  ipcMain.handle(ENGINE_CHANNELS.importSource, (_event, request: ImportSourceRequest) =>
+  ipcMain.handle(CHANNELS.fsOutputPaths, () => outputPaths());
+  ipcMain.handle(CHANNELS.fsSelectFolder, () =>
+    selectFolder(() => dialog.showOpenDialog({ properties: ["openDirectory"] })),
+  );
+  ipcMain.handle(CHANNELS.fsDirExists, (_event, path: string) => dirExists(directoryStat, path));
+  ipcMain.handle(
+    CHANNELS.fsStat,
+    async (_event, request: StatRequest): Promise<SourceStamp | null> =>
+      (await locateSourceFile(request))?.stamp ?? null,
+  );
+  ipcMain.handle(CHANNELS.fsImportSource, (_event, request: ImportSourceRequest) =>
     importSource(importFileSystem, request),
   );
-
-  ipcMain.handle(ENGINE_CHANNELS.listRules, async (_event, request: RulesRequest) => {
-    const result = await invoke({ subcommand: "rules", request });
-    return parseRuleCatalog(result.summary);
-  });
-
-  ipcMain.handle(ENGINE_CHANNELS.readUserRules, (_event, path: string) =>
-    readUserRules(userDataFileSystem, path),
-  );
-
+  // A copy of a generated report. The original artefact stays where the engine wrote it.
   ipcMain.handle(
-    ENGINE_CHANNELS.writeUserRules,
-    async (_event, path: string, file: UserRulesFile) => {
-      await writeUserRules(userDataFileSystem, path, file);
+    CHANNELS.fsSaveAs,
+    async (_event, request: SaveAsRequest): Promise<string | null> => {
+      const chosen = await dialog.showSaveDialog({ defaultPath: request.fileName });
+      if (chosen.canceled || chosen.filePath === undefined || chosen.filePath === "") {
+        return null;
+      }
+      await writeFile(chosen.filePath, request.text, "utf-8");
+      return chosen.filePath;
     },
   );
 
-  ipcMain.handle(ENGINE_CHANNELS.readRuleConfig, (_event, path: string) =>
-    readRuleConfig(userDataFileSystem, path),
-  );
-
-  ipcMain.handle(
-    ENGINE_CHANNELS.writeRuleConfig,
-    async (_event, path: string, file: RuleConfigFile) => {
-      await writeRuleConfig(userDataFileSystem, path, file);
-    },
-  );
-
-  ipcMain.handle(ENGINE_CHANNELS.readSettings, () =>
-    readSettings(userDataFileSystem, settingsPath()),
-  );
-
-  ipcMain.handle(ENGINE_CHANNELS.writeSettings, async (_event, settings: AppSettings) => {
+  ipcMain.handle(CHANNELS.settingsRead, () => readSettings(userDataFileSystem, settingsPath()));
+  ipcMain.handle(CHANNELS.settingsWrite, async (_event, settings: AppSettings) => {
     await writeSettings(userDataFileSystem, settingsPath(), settings);
+  });
+  ipcMain.handle(CHANNELS.rulesRead, (_event, path: string) =>
+    readRulesFile(userDataFileSystem, path),
+  );
+  ipcMain.handle(CHANNELS.rulesWrite, async (_event, path: string, file: RulesFile) => {
+    await writeRulesFile(userDataFileSystem, path, file);
   });
 }

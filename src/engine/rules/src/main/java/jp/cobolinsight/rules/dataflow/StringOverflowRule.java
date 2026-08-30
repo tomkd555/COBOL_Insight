@@ -1,18 +1,20 @@
 package jp.cobolinsight.rules.dataflow;
 
-import jp.cobolinsight.engineapi.cfg.CfgNode;
-import jp.cobolinsight.engineapi.cfg.ControlFlowGraph;
-import jp.cobolinsight.engineapi.cfg.ControlFlowGraphs;
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.Severity;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
-import jp.cobolinsight.engineapi.semantic.SimpleStatement;
-import jp.cobolinsight.engineapi.semantic.Statement;
-import jp.cobolinsight.engineapi.source.SourcePosition;
-import jp.cobolinsight.engineapi.spi.AnalysisContext;
-import jp.cobolinsight.engineapi.spi.AnalysisPhase;
-import jp.cobolinsight.engineapi.spi.Rule;
-import jp.cobolinsight.engineapi.spi.RuleDoc;
+import jp.cobolinsight.core.cfg.CfgNode;
+import jp.cobolinsight.core.cfg.ControlFlowGraph;
+import jp.cobolinsight.core.cfg.ControlFlowGraphs;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.Severity;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.semantic.SimpleStatement;
+import jp.cobolinsight.core.semantic.Statement;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
+import jp.cobolinsight.core.source.SourcePosition;
+import jp.cobolinsight.core.spi.AnalysisContext;
 import jp.cobolinsight.rules.SourceTextIndex;
 
 import java.util.ArrayList;
@@ -22,9 +24,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * R016 STRING/UNSTRING の受信領域あふれ。STRING 文で連結する送信項目・リテラルの合計長が受信項目長を
- * 超える構成、UNSTRING 文で送信項目長が分割後の全受信項目長の合計を超え保持しきれない構成を、共有
- * リゾルバのバイト長で検出する。長さを解決できない項目を含む文は対象外とする。
+ * R016 Overflow of the receiving area in STRING/UNSTRING. Using the shared resolver's byte lengths,
+ * detects a configuration where, in a STRING statement, the total length of the concatenated
+ * sending items and literals exceeds the receiving item's length, or, in an UNSTRING statement, the
+ * sending item's length exceeds the total of all receiving items after splitting and cannot be held.
+ * A statement containing an item whose length cannot be resolved is excluded.
  */
 public final class StringOverflowRule implements Rule {
 
@@ -37,41 +41,34 @@ public final class StringOverflowRule implements Rule {
                     + "|(?i)\\bWITH\\s+POINTER\\s+[\\p{L}\\p{N}$#_-]+"
                     + "|(?i)\\bTALLYING\\s+IN\\s+[\\p{L}\\p{N}$#_-]+");
 
-    @Override
-    public String id() {
-        return "R016";
-    }
+    private static final RuleMeta META =
+            RuleMeta.named("R016", "STRING/UNSTRING文の受信領域あふれ", "データ移動")
+                    .summary("STRING の連結結果が受信項目に収まらない、または UNSTRING の"
+                            + "送信項目が受信項目群に収まらない構成を検出します。")
+                    .rationale("収まらない分が切り捨てられ、"
+                            + "連結した文字列や分割した結果が途中で欠けます。")
+                    .detection("送信側の合計長と受信側の長さをバイト長で突き合わせ、"
+                            + "超えるものを検出します。長さを解決できない項目を含む文と、"
+                            + "ON OVERFLOW 句であふれ時の処理を書いてある文は対象外とします。")
+                    .remedy("受信項目の長さを広げるか、ON OVERFLOW 句であふれ時の処理を書きます。")
+                    .example("""
+                            01  WS-OUT  PIC X(10).
+                                STRING WS-A WS-B DELIMITED BY SIZE INTO WS-OUT.
+                            """, """
+                            01  WS-OUT  PIC X(30).
+                                STRING WS-A WS-B DELIMITED BY SIZE INTO WS-OUT
+                                    ON OVERFLOW PERFORM OVERFLOW-SHORI
+                                END-STRING.
+                            """)
+                    .severity(Severity.HIGH)
+                    .commands(Command.LINT, Command.REPORT)
+                    .targets(AssetKind.COBOL)
+                    .needs(Needs.SEMANTIC, Needs.CFG, Needs.SOURCE_TEXT)
+                    .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("STRING/UNSTRING文の受信領域あふれ", "データ移動")
-                .summary("STRING の連結結果が受信項目に収まらない、または UNSTRING の"
-                        + "送信項目が受信項目群に収まらない構成を検出します。")
-                .rationale("収まらない分が切り捨てられ、"
-                        + "連結した文字列や分割した結果が途中で欠けます。")
-                .detection("送信側の合計長と受信側の長さをバイト長で突き合わせ、"
-                        + "超えるものを検出します。長さを解決できない項目を含む文は対象外とします。")
-                .remedy("受信項目の長さを広げるか、ON OVERFLOW 句であふれ時の処理を書きます。")
-                .example("""
-                        01  WS-OUT  PIC X(10).
-                            STRING WS-A WS-B DELIMITED BY SIZE INTO WS-OUT.
-                        """, """
-                        01  WS-OUT  PIC X(30).
-                            STRING WS-A WS-B DELIMITED BY SIZE INTO WS-OUT
-                                ON OVERFLOW PERFORM OVERFLOW-SHORI
-                            END-STRING.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.HIGH;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.DATA_FLOW;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override
@@ -99,18 +96,30 @@ public final class StringOverflowRule implements Rule {
                 continue;
             }
             String verb = simple.verb().toUpperCase(Locale.ROOT);
+            if (hasOverflowHandler(simple.text())) {
+                continue;
+            }
             String message = "STRING".equals(verb) ? checkString(simple.text(), support)
                     : "UNSTRING".equals(verb) ? checkUnstring(simple.text(), support)
                     : null;
             if (message != null) {
-                findings.add(Finding.of(id(), defaultSeverity().toLevel(), message,
+                findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(), message,
                         new SourcePosition(model.sourceFile(), simple.range().start().line(), 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
             }
         }
     }
 
-    /** STRING の送信合計長 > 受信長 のとき警告文言、そうでなければ null。 */
+    /**
+     * Whether the statement has an ON OVERFLOW clause. Even though overflow can still occur, if
+     * handling for the overflow case is written, truncation does not pass silently. Since this is
+     * exactly the remedy for this rule, such statements are excluded.
+     */
+    private static boolean hasOverflowHandler(String text) {
+        return wordIndex(text, "OVERFLOW") >= 0;
+    }
+
+    /** The warning message when the STRING sending total length exceeds the receiving length; null otherwise. */
     private static String checkString(String text, DataFlowSupport support) {
         int into = wordIndex(text, "INTO");
         if (into < 0) {
@@ -127,7 +136,7 @@ public final class StringOverflowRule implements Rule {
                 + " を超える。受信領域あふれが起こる。";
     }
 
-    /** UNSTRING の送信長 > 分割後の全受信長合計 のとき警告文言、そうでなければ null。 */
+    /** The warning message when the UNSTRING sending length exceeds the total receiving length after splitting; null otherwise. */
     private static String checkUnstring(String text, DataFlowSupport support) {
         int into = wordIndex(text, "INTO");
         if (into < 0) {
@@ -151,9 +160,9 @@ public final class StringOverflowRule implements Rule {
     }
 
     /**
-     * region 内のオペランド長を合計する。文字列リテラルはその文字数、データ名は解決できたバイト長を
-     * 加える。動詞語・句キーワードなど長さを解決できない名前は読み飛ばす。オペランドが1つも無ければ
-     * null(判定不能)。
+     * Sums the operand lengths within region. A string literal adds its character count; a data
+     * name adds its resolved byte length. A name whose length cannot be resolved, such as a verb
+     * word or a clause keyword, is skipped. null (undecidable) if there are no operands at all.
      */
     private static Integer sumOperandLengths(String region, DataFlowSupport support) {
         int total = 0;
@@ -182,7 +191,7 @@ public final class StringOverflowRule implements Rule {
                     total += len;
                     any = true;
                 }
-                // 添字・参照修飾は読み飛ばす
+                // skip a subscript or reference modification
                 while (i < region.length() && region.charAt(i) == '(') {
                     int depth = 0;
                     while (i < region.length()) {

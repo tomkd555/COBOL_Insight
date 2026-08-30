@@ -1,11 +1,10 @@
 package jp.cobolinsight.rules.cfg;
 
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.FindingLevel;
-import jp.cobolinsight.engineapi.pipeline.AnalysisServices;
-import jp.cobolinsight.engineapi.spi.AnalysisContext;
-import jp.cobolinsight.engineapi.spi.AnalysisPhase;
-import jp.cobolinsight.engineapi.spi.Rule;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.FindingLevel;
+import jp.cobolinsight.core.spi.AnalysisContext;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.rules.BuiltinRules;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashSet;
@@ -16,9 +15,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * samples 全体を CONTROL_FLOW 段の13ルールで解析し、samples/期待結果.md が正解として挙げる
- * 検出位置と突き合わせる。R017 は包含関係だけを表明し(SYK001:85 と SYK002:130 を含み、
- * OPEN/CLOSE の行を検出しない)、他のルールは検出集合の完全一致で表明する。
+ * Analyzes the whole samples set with the 13 CONTROL_FLOW-stage rules and checks the result
+ * against the detection locations that samples/expected-results.md lists as the ground truth.
+ * R017 asserts only a containment relation (contains SYK001:85 and SYK002:130, and does not
+ * detect OPEN/CLOSE lines); the other rules assert an exact match of the detection set.
  */
 class CfgSamplesAcceptanceTest {
 
@@ -27,8 +27,8 @@ class CfgSamplesAcceptanceTest {
 
     private static Set<Hit> hitsOf(String ruleId) {
         AnalysisContext context = CfgFixtures.samples();
-        Rule rule = AnalysisServices.load().rules(AnalysisPhase.CONTROL_FLOW).stream()
-                .filter(r -> r.id().equals(ruleId)).findFirst().orElseThrow();
+        Rule rule = BuiltinRules.all().stream()
+                .filter(r -> r.meta().id().equals(ruleId)).findFirst().orElseThrow();
         Set<Hit> hits = new LinkedHashSet<>();
         for (Finding finding : rule.evaluate(context)) {
             hits.add(new Hit(baseName(finding.location().file()), finding.location().line(),
@@ -67,7 +67,7 @@ class CfgSamplesAcceptanceTest {
                 () -> "SYK002:130 REWRITE を含むこと: " + hits);
         assertTrue(hits.stream().allMatch(h -> h.level() == FindingLevel.ERROR),
                 () -> "全て error レベルであること: " + hits);
-        // OPEN/CLOSE 文の行を検出しないこと。
+        // Must not detect OPEN/CLOSE statement lines.
         for (Hit forbidden : List.of(
                 hit("SYK001.cbl", 79, FindingLevel.ERROR),
                 hit("SYK001.cbl", 134, FindingLevel.ERROR),
@@ -104,8 +104,9 @@ class CfgSamplesAcceptanceTest {
 
     @Test
     void fixtureOnlyRulesDetectNothingInSamples() {
-        // この6ルールに当たる欠陥は samples へ混入していない。検出の有無は合成fixtureのテストで
-        // 表明し、ここでは samples に偽陽性が出ないことだけを確認する。
+        // Samples contain no defects corresponding to these 6 rules. Whether they detect
+        // anything is asserted by the synthetic fixture tests; here we only confirm no
+        // false positives occur in samples.
         for (String ruleId : List.of("R009", "R010", "R014", "R019", "R029", "R030")) {
             assertEquals(Set.of(), hitsOf(ruleId), ruleId + " は samples で0件であること");
         }

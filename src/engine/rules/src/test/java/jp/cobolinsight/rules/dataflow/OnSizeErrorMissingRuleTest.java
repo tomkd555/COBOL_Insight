@@ -1,8 +1,8 @@
 package jp.cobolinsight.rules.dataflow;
 
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.FindingLevel;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.FindingLevel;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -12,7 +12,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** R004 ON SIZE ERROR 句の欠如の合成fixture検証。 */
+/** R004 synthetic fixture verification for a missing ON SIZE ERROR clause. */
 class OnSizeErrorMissingRuleTest {
 
     @TempDir

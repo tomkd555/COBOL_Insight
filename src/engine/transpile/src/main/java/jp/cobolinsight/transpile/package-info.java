@@ -1,5 +1,5 @@
 /**
- * Python/Javaへの決定論的・最適化なし逐語対訳を行う。COBOL行と生成行の1:N・N:1対応表と
- * GUIリンク用アンカーを生成する。
+ * Performs deterministic, unoptimized line-by-line translation to Python/Java. Generates a
+ * 1:N / N:1 correspondence table between COBOL lines and generated lines, plus anchors for GUI linking.
  */
 package jp.cobolinsight.transpile;

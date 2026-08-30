@@ -4,16 +4,17 @@ import type {
   GraphNode,
   GraphParagraph,
   GraphParagraphEdge,
-} from "../../shared/engine-api";
+} from "../../shared/ipc";
 import { mapRows, type QueryableDatabase } from "./sqlRows";
 
 /**
- * 走査済み SQLite から呼出関係グラフを読む純関数。呼出関係タブは call-graph サブコマンドを
- * 起動せず、scan が書いたこの表をそのまま読む(SVG・PNG の書き出しだけが call-graph を要する)。
+ * Reads the call graph from a scanned project file. The call-graph view does not launch the
+ * call-graph subcommand; it reads the tables scan already wrote (only SVG and PNG export need the
+ * subcommand).
  *
- * ノードは資産に対応する行(id < GRAPH_ID_BASE、SOURCE.id と同じ値)と、資産に対応しない
- * グラフ層の行(id ≥ GRAPH_ID_BASE、ジョブ・ステップ・データセットなど)の双方を返す。
- * 実行順を持つのはグラフ層の辺であり、資産どうしを結ぶ古い EXECUTION 行は seq 0 のまま残る。
+ * Nodes cover both the rows that correspond to assets (id < GRAPH_ID_BASE, the same value as
+ * SOURCE.id) and the graph-layer rows that do not (jobs, steps, datasets). Execution order lives on
+ * the graph-layer edges; the older EXECUTION rows between assets keep seq 0.
  */
 
 const NODE_QUERY = `
@@ -23,8 +24,8 @@ const NODE_QUERY = `
 `;
 
 /**
- * 辺は起点ごとに実行順で並べる。seq は 1 起点で、順序を決められない辺は 0 である。
- * 0 を先頭へ置くと順序の付いた辺の並びが崩れるため、0 は後ろへ回す。
+ * Edges are ordered by execution order within each origin. seq is 1-based and 0 means no order could
+ * be established; putting 0 first would break up the ordered run, so it is sorted last.
  */
 const EDGE_QUERY = `
   SELECT from_node AS fromNode,
@@ -37,7 +38,7 @@ const EDGE_QUERY = `
    ORDER BY from_node, CASE WHEN seq = 0 THEN 1 ELSE 0 END, seq, id
 `;
 
-/** 段落は PROGRAM を挟んで資産(SOURCE.id)へ結び付ける。並びはソースの現れる順である。 */
+/** Paragraphs reach their asset through PROGRAM. They are ordered as they appear in the source. */
 const PARAGRAPH_QUERY = `
   SELECT p.id AS id,
          g.source_id AS programSourceId,

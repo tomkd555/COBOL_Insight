@@ -1,8 +1,9 @@
 package jp.cobolinsight.transpile.emit;
 
 /**
- * OCCURS 集団の1次元。count は反復回数、stride は1要素分のバイト長(要素の先頭間隔)。
- * 入れ子の OCCURS では外側から内側の順にアクセサの index 引数へ対応づける。
+ * One dimension of an OCCURS group. count is the repetition count; stride is the byte length of one
+ * occurrence (the spacing between element starts). For nested OCCURS, dimensions map to accessor
+ * index arguments from outermost to innermost.
  */
 public record OccursDim(int count, int stride) {
 

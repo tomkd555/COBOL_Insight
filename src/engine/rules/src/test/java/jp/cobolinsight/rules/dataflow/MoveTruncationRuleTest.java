@@ -1,8 +1,8 @@
 package jp.cobolinsight.rules.dataflow;
 
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.FindingLevel;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.FindingLevel;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -13,7 +13,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** R003 MOVE による桁落ち・切り捨ての合成fixture検証。 */
+/** Synthetic-fixture verification for R003, digit loss/truncation caused by MOVE. */
 class MoveTruncationRuleTest {
 
     @TempDir

@@ -3,19 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <!--
-      ネットワーク・CDN 非接続を CSP で強制する。default-src 'self' により外部ホスト・外部フォント・
-      外部スクリプトへの接続を遮断し、ローカル同梱資産のみを許可する。外部オリジンは加えない。
+      The CSP is what enforces "no network, no CDN". default-src 'self' cuts off every external host,
+      font and script and permits only the locally bundled assets. No external origin is added.
 
-      script-src は 'self' を明示し、インラインスクリプトを許さない。
-      style-src の 'unsafe-inline' は Monaco に要る。Monaco は各行の位置を style 属性
-      (style="top:NNpx")で書き出すため、これが無いと style-src-attr が 'self' へ落ちて
-      すべての行が同じ y 座標へ重なり、原本と異なる見た目のソースを表示してしまう。
-      worker-src の blob: は Monaco の Worker 起動にだけ要る(バンドル済みの Worker コードを
-      Blob から起こす)。
+      script-src states 'self' and so forbids inline scripts.
+      style-src needs 'unsafe-inline' for Monaco: it positions every line with a style attribute
+      (style="top:NNpx"), and without it style-src-attr falls back to 'self', every line lands at the
+      same y coordinate, and the source on screen no longer matches the file.
+      worker-src's blob: is needed only to start Monaco's worker, which is raised from a Blob holding
+      the already-bundled worker code.
+      img-src's data: is needed only for the wavy underline Monaco draws beneath a finding, which it
+      builds as an inline SVG data URI. It permits no origin: a data: URI carries its own bytes.
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>COBOL Insight</title>

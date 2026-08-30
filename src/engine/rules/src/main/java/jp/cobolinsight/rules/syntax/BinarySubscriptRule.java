@@ -1,16 +1,18 @@
 package jp.cobolinsight.rules.syntax;
 
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.Severity;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
-import jp.cobolinsight.engineapi.semantic.CompoundStatement;
-import jp.cobolinsight.engineapi.semantic.DataItem;
-import jp.cobolinsight.engineapi.semantic.SimpleStatement;
-import jp.cobolinsight.engineapi.source.SourceRange;
-import jp.cobolinsight.engineapi.spi.AnalysisContext;
-import jp.cobolinsight.engineapi.spi.AnalysisPhase;
-import jp.cobolinsight.engineapi.spi.Rule;
-import jp.cobolinsight.engineapi.spi.RuleDoc;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.Severity;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.semantic.CompoundStatement;
+import jp.cobolinsight.core.semantic.DataItem;
+import jp.cobolinsight.core.semantic.SimpleStatement;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
+import jp.cobolinsight.core.source.SourceRange;
+import jp.cobolinsight.core.spi.AnalysisContext;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -22,53 +24,48 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * R006 添字への二進項目未使用。表(OCCURS句を持つ項目、またはその内側の項目)への添字付き参照の
- * うち、添字に使うデータ項目のUSAGE句がBINARY(COMP)以外である箇所を検出する。DISPLAY形式の
- * 添字は参照のたびに二進数への変換を伴い、表参照の性能を落とす。文テキスト上の
- * 「名前(添字)」形式を走査し、INDEXED BY の指標名やリテラル添字は対象外とする。
+ * R006 Non-binary item used as a subscript. Among subscripted references to a table (an
+ * item with an OCCURS clause, or an item nested inside one), detects places where the
+ * data item used as the subscript has a USAGE clause other than BINARY (COMP). A DISPLAY-
+ * format subscript is converted to binary on every reference, which slows down table
+ * access. Scans the "name(subscript)" form in the statement text; an INDEXED BY index name
+ * or a literal subscript is excluded.
  */
 public final class BinarySubscriptRule implements Rule {
 
-    // 添字自体が添字付き参照(入れ子)の場合も外側の表参照を捕捉するため、括弧1段の入れ子を許す。
+    // Allow one level of nested parentheses so that the outer table reference is still
+    // captured when the subscript itself is a subscripted (nested) reference.
     private static final Pattern SUBSCRIPTED = Pattern.compile(
             "([\\p{L}\\p{N}][\\p{L}\\p{N}-]*)\\s*\\(((?:[^()]|\\([^()]*\\))*)\\)");
-    // マッパーはUSAGE句の綴りをそのまま保持するため、COMPUTATIONALの完全綴りも含める。
+    // The mapper preserves the USAGE clause spelling as-is, so include the full spelling of
+    // COMPUTATIONAL as well.
     private static final Set<String> BINARY_USAGES = Set.of("COMP", "COMP-4", "COMP-5",
             "COMPUTATIONAL", "COMPUTATIONAL-4", "COMPUTATIONAL-5", "BINARY", "INDEX");
 
-    @Override
-    public String id() {
-        return "R006";
-    }
+    private static final RuleMeta META = RuleMeta.named("R006", "添字への二進項目未使用", "添字・指標")
+            .summary("表の添字に USAGE BINARY 以外のデータ項目を使っている参照を検出します。")
+            .rationale("DISPLAY 形式の添字は参照のたびに二進数へ変換されるため、"
+                    + "表を繰り返し参照する処理の実行時間が伸びます。")
+            .detection("文テキスト上の「名前(添字)」形式のうち、添字がデータ項目で、"
+                    + "その USAGE が BINARY(COMP)でないものを検出します。"
+                    + "INDEXED BY の指標名とリテラルの添字は対象外とします。")
+            .remedy("添字に使う項目を USAGE BINARY(COMP)で宣言するか、INDEXED BY の指標を使います。")
+            .example("""
+                    01  WS-IDX  PIC 9(4).
+                        MOVE WS-TBL(WS-IDX) TO WS-OUT.
+                    """, """
+                    01  WS-IDX  PIC 9(4) USAGE BINARY.
+                        MOVE WS-TBL(WS-IDX) TO WS-OUT.
+                    """)
+            .severity(Severity.LOW)
+            .commands(Command.LINT, Command.REPORT)
+            .targets(AssetKind.COBOL)
+            .needs(Needs.SEMANTIC)
+            .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("添字への二進項目未使用", "添字・指標")
-                .summary("表の添字に USAGE BINARY 以外のデータ項目を使っている参照を検出します。")
-                .rationale("DISPLAY 形式の添字は参照のたびに二進数へ変換されるため、"
-                        + "表を繰り返し参照する処理の実行時間が伸びます。")
-                .detection("文テキスト上の「名前(添字)」形式のうち、添字がデータ項目で、"
-                        + "その USAGE が BINARY(COMP)でないものを検出します。"
-                        + "INDEXED BY の指標名とリテラルの添字は対象外とします。")
-                .remedy("添字に使う項目を USAGE BINARY(COMP)で宣言するか、INDEXED BY の指標を使います。")
-                .example("""
-                        01  WS-IDX  PIC 9(4).
-                            MOVE WS-TBL(WS-IDX) TO WS-OUT.
-                        """, """
-                        01  WS-IDX  PIC 9(4) USAGE BINARY.
-                            MOVE WS-TBL(WS-IDX) TO WS-OUT.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.LOW;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.SYNTAX;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override
@@ -99,7 +96,7 @@ public final class BinarySubscriptRule implements Rule {
         return findings;
     }
 
-    /** 項目名→定義の索引と、添字付き参照の対象になりうる名前(自身または祖先がOCCURSを持つ)を集める。 */
+    /** Collects an item-name-to-definition index, plus the names that can be subscripted (the item itself or an ancestor has OCCURS). */
     private static void collect(List<DataItem> items, boolean ancestorOccurs,
             Map<String, DataItem> itemsByName, Set<String> tableNames) {
         for (DataItem item : items) {

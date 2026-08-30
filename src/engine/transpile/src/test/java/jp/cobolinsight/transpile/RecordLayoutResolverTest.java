@@ -1,16 +1,17 @@
 package jp.cobolinsight.transpile;
 
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
-import jp.cobolinsight.engineapi.semantic.DataItem;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.semantic.DataItem;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * SYKCPY1.cpy の期待バイトレイアウトを検証する。SYK003 は SYKCPY1 を置換なしで LINKAGE SECTION
- * に展開する。正解の出所は samples/期待結果.md とレコードレイアウト解決の規則(受注番号@0/受注日@10/YMD REDEFINES@10/
- * 得意先@18/金額合計@24 len6/明細件数@30 len2/明細行@32 要素22×10/処理区分@252、総長253)。
+ * Verifies the expected byte layout of SYKCPY1.cpy. SYK003 expands SYKCPY1 into the LINKAGE SECTION
+ * unmodified. The ground truth is samples/expected-results.md and the record-layout resolution rules
+ * (order number@0 / order date@10 / YMD REDEFINES@10 / customer@18 / total amount@24 len6 / detail
+ * count@30 len2 / detail line@32 element 22 x10 / process kind@252, total length 253).
  */
 class RecordLayoutResolverTest {
 

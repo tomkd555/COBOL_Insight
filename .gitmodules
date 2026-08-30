@@ -1,0 +1,8 @@
+[submodule "src/vendor/che4z"]
+	path = src/vendor/che4z
+	url = https://github.com/tomkd555/che-che4z-lsp-for-cobol.git
+	branch = ja-identifiers-2.5.1
+[submodule "src/vendor/mapa"]
+	path = src/vendor/mapa
+	url = https://github.com/tomkd555/mapa.git
+	branch = crlf-newline

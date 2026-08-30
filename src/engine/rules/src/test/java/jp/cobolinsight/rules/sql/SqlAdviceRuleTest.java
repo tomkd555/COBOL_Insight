@@ -1,23 +1,25 @@
 package jp.cobolinsight.rules.sql;
 
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.spi.AnalysisContext;
-import jp.cobolinsight.engineapi.sql.SqlStatementKind;
-import jp.cobolinsight.engineapi.sql.SqlStatementModel;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.spi.AnalysisContext;
+import jp.cobolinsight.core.sql.SqlStatementKind;
+import jp.cobolinsight.core.sql.SqlStatementModel;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * SQL指摘6ルール(S001〜S006)の検出。S001〜S003 が陽性になる文は samples に無いため、合成SQLで
- * 検証する。S004 と S006 は samples SYK006 のカーソル宣言 DECLARE SYKZAIKOCUR で陽性になり、
- * S005 は文の種別だけで判定するため該当する全ての文へ発火する。SqlStatementModel は本番と同じ
- * SqlParser SPI で組む({@link SqlAdviceFixtures})。
+ * Detection for the three SQL advisory rules (S001, S002, S004). Since samples contains no
+ * statement that triggers S001 or S002, those are verified with synthetic SQL. S004 fires on
+ * the cursor declaration DECLARE SYKZAIKOCUR in samples SYK006. SqlStatementModel is built
+ * with the same SqlParser SPI as production ({@link SqlAdviceFixtures}).
+ *
+ * <p>V2's measurements folded S003 (function applied to an indexed column) into S002, so it
+ * now fires both on a predicate that wraps the left side in an expression, a leading-% LIKE,
+ * and a comparison where either side wraps a column in a function or CAST.
  */
 class SqlAdviceRuleTest {
 
@@ -40,7 +42,7 @@ class SqlAdviceRuleTest {
         assertTrue(new SelectStarRule().evaluate(ctx).isEmpty());
     }
 
-    // ---- S002 非SARGableな述語 ----
+    // ---- S002 Non-sargable predicates ----
 
     @Test
     void s002FiresOnLeadingWildcardLike() {
@@ -55,9 +57,10 @@ class SqlAdviceRuleTest {
     void s002FiresOnColumnWrappedInArithmetic() {
         AnalysisContext ctx = SqlAdviceFixtures.context(SqlAdviceFixtures.model(
                 "SELECT SHOHIN_CD FROM SYKDB.ZAIKOM WHERE ZAIKO_SU - 5 = 10", 20));
-        assertEquals(1, new NonSargablePredicateRule().evaluate(ctx).size());
-        // 算術で列を包む述語はS003(関数・CAST)には当たらない
-        assertTrue(new FunctionOnIndexColumnRule().evaluate(ctx).isEmpty());
+        List<Finding> findings = new NonSargablePredicateRule().evaluate(ctx);
+        assertEquals(1, findings.size(), () -> "算術で列を包む述語を1件指摘すること: " + findings);
+        assertTrue(findings.get(0).message().contains("非SARGableな述語がある"),
+                findings.get(0).message());
     }
 
     @Test
@@ -67,34 +70,48 @@ class SqlAdviceRuleTest {
         assertTrue(new NonSargablePredicateRule().evaluate(ctx).isEmpty());
     }
 
-    // ---- S003 インデックス列への関数適用 ----
-
+    /** Formerly S003. Since the non-sargable check only looks at the left side, a function
+     * on the right side triggers a different message. */
     @Test
-    void s003FiresOnFunctionOnColumn() {
+    void s002FiresOnFunctionAppliedToColumn() {
         AnalysisContext ctx = SqlAdviceFixtures.context(SqlAdviceFixtures.model(
                 "SELECT SHOHIN_CD FROM SYKDB.ZAIKOM WHERE 'X' = UPPER(SHOHIN_NM)", 30));
-        List<Finding> findings = new FunctionOnIndexColumnRule().evaluate(ctx);
+        List<Finding> findings = new NonSargablePredicateRule().evaluate(ctx);
         assertEquals(1, findings.size(), () -> "列への関数適用を1件指摘すること: " + findings);
+        assertEquals("S002", findings.get(0).ruleId());
         assertEquals(30, findings.get(0).location().line());
-        // 右辺の関数なので、左辺のみを見るS002には当たらない
+        assertTrue(findings.get(0).message().contains("関数・CAST を適用している"),
+                findings.get(0).message());
+    }
+
+    @Test
+    void s002FiresOnCastAppliedToColumn() {
+        AnalysisContext ctx = SqlAdviceFixtures.context(SqlAdviceFixtures.model(
+                "SELECT SHOHIN_CD FROM SYKDB.ZAIKOM WHERE 30 = CAST(HIKIATE_SU AS INTEGER)", 35));
+        assertEquals(1, new NonSargablePredicateRule().evaluate(ctx).size());
+    }
+
+    /**
+     * A function applied to the left side triggers both the non-sargable check and the
+     * function-applied check. Pins down that the same location is not reported twice even
+     * after folding in S003 (this is the very reason S003 was folded in).
+     */
+    @Test
+    void s002ReportsALeftHandFunctionOnlyOnce() {
+        AnalysisContext ctx = SqlAdviceFixtures.context(SqlAdviceFixtures.model(
+                "SELECT SHOHIN_CD FROM SYKDB.ZAIKOM WHERE UPPER(SHOHIN_NM) = 'X'", 40));
+        List<Finding> findings = new NonSargablePredicateRule().evaluate(ctx);
+        assertEquals(1, findings.size(), () -> "同じ述語を1件だけ指摘すること: " + findings);
+    }
+
+    @Test
+    void s002SilentOnPlainColumnComparison() {
+        AnalysisContext ctx = SqlAdviceFixtures.context(SqlAdviceFixtures.model(
+                "SELECT SHOHIN_CD FROM SYKDB.ZAIKOM WHERE SHOHIN_NM = 'X'", 30));
         assertTrue(new NonSargablePredicateRule().evaluate(ctx).isEmpty());
     }
 
-    @Test
-    void s003FiresOnCastOnColumn() {
-        AnalysisContext ctx = SqlAdviceFixtures.context(SqlAdviceFixtures.model(
-                "SELECT SHOHIN_CD FROM SYKDB.ZAIKOM WHERE 30 = CAST(HIKIATE_SU AS INTEGER)", 35));
-        assertEquals(1, new FunctionOnIndexColumnRule().evaluate(ctx).size());
-    }
-
-    @Test
-    void s003SilentOnPlainColumnComparison() {
-        AnalysisContext ctx = SqlAdviceFixtures.context(SqlAdviceFixtures.model(
-                "SELECT SHOHIN_CD FROM SYKDB.ZAIKOM WHERE SHOHIN_NM = 'X'", 30));
-        assertTrue(new FunctionOnIndexColumnRule().evaluate(ctx).isEmpty());
-    }
-
-    // ---- S004 カーソルの宣言・後始末 ----
+    // ---- S004 Cursor declaration and cleanup ----
 
     @Test
     void s004FiresOnReadOnlyCursorMissingForClause() {
@@ -119,59 +136,7 @@ class SqlAdviceRuleTest {
         assertTrue(new CursorDeclarationRule().evaluate(ctx).isEmpty());
     }
 
-    // ---- S005 FETCH FIRST 句の未使用 ----
-
-    @Test
-    void s005FiresOnSelectAndCursorWithoutFetchFirst() {
-        AnalysisContext ctx = SqlAdviceFixtures.context(
-                SqlAdviceFixtures.model("SELECT SHOHIN_CD FROM SYKDB.ZAIKOM", 70),
-                SqlAdviceFixtures.model(
-                        "DECLARE C1 CURSOR FOR SELECT SHOHIN_CD FROM SYKDB.ZAIKOM", 75));
-        Set<Integer> lines = new FetchFirstMissingRule().evaluate(ctx).stream()
-                .map(f -> f.location().line()).collect(Collectors.toSet());
-        assertEquals(Set.of(70, 75), lines);
-    }
-
-    @Test
-    void s005SilentWhenFetchFirstPresent() {
-        AnalysisContext ctx = SqlAdviceFixtures.context(SqlAdviceFixtures.model(
-                "SELECT SHOHIN_CD FROM SYKDB.ZAIKOM FETCH FIRST 1 ROWS ONLY", 70));
-        assertTrue(new FetchFirstMissingRule().evaluate(ctx).isEmpty());
-    }
-
-    @Test
-    void s005SilentOnNonSelectStatement() {
-        AnalysisContext ctx = SqlAdviceFixtures.context(SqlAdviceFixtures.model(
-                "UPDATE SYKDB.ZAIKOM SET ZAIKO_SU = 0 WHERE SHOHIN_CD = 'X'", 70));
-        assertTrue(new FetchFirstMissingRule().evaluate(ctx).isEmpty());
-    }
-
-    // ---- S006 OPTIMIZE FOR 句の未使用 ----
-
-    @Test
-    void s006FiresOnCursorWithoutOptimizeFor() {
-        AnalysisContext ctx = SqlAdviceFixtures.context(SqlAdviceFixtures.model(
-                "DECLARE C1 CURSOR FOR SELECT SHOHIN_CD FROM SYKDB.ZAIKOM", 80));
-        List<Finding> findings = new OptimizeForMissingRule().evaluate(ctx);
-        assertEquals(1, findings.size());
-        assertEquals(80, findings.get(0).location().line());
-    }
-
-    @Test
-    void s006SilentWhenOptimizeForPresent() {
-        AnalysisContext ctx = SqlAdviceFixtures.context(SqlAdviceFixtures.model(
-                "DECLARE C1 CURSOR FOR SELECT SHOHIN_CD FROM SYKDB.ZAIKOM OPTIMIZE FOR 1 ROWS", 85));
-        assertTrue(new OptimizeForMissingRule().evaluate(ctx).isEmpty());
-    }
-
-    @Test
-    void s006SilentOnPlainSelect() {
-        AnalysisContext ctx = SqlAdviceFixtures.context(
-                SqlAdviceFixtures.model("SELECT SHOHIN_CD FROM SYKDB.ZAIKOM", 80));
-        assertTrue(new OptimizeForMissingRule().evaluate(ctx).isEmpty());
-    }
-
-    // ---- samples SYK006 / SYK007 での発火 ----
+    // ---- Firing on samples SYK006 / SYK007 ----
 
     @Test
     void samplesSyk006MatchesPrediction() {
@@ -180,49 +145,24 @@ class SqlAdviceRuleTest {
 
         assertTrue(new SelectStarRule().evaluate(ctx).isEmpty(), "S001は陰性");
         assertTrue(new NonSargablePredicateRule().evaluate(ctx).isEmpty(), "S002は陰性");
-        assertTrue(new FunctionOnIndexColumnRule().evaluate(ctx).isEmpty(), "S003は陰性");
 
         int cursorLine = firstStartLine(models, SqlStatementKind.DECLARE_CURSOR);
         List<Finding> s004 = new CursorDeclarationRule().evaluate(ctx);
         assertEquals(1, s004.size(), () -> "S004: " + s004);
         assertEquals(cursorLine, s004.get(0).location().line());
-
-        List<Finding> s006 = new OptimizeForMissingRule().evaluate(ctx);
-        assertEquals(1, s006.size(), () -> "S006: " + s006);
-        assertEquals(cursorLine, s006.get(0).location().line());
-
-        Set<Integer> s005Lines = new FetchFirstMissingRule().evaluate(ctx).stream()
-                .map(f -> f.location().line()).collect(Collectors.toSet());
-        assertEquals(startLines(models, SqlStatementKind.SELECT, SqlStatementKind.DECLARE_CURSOR),
-                s005Lines, "S005はSELECT(INTO含む)とカーソル宣言に一律発火");
     }
 
     @Test
     void samplesSyk007MatchesPrediction() {
-        List<SqlStatementModel> models = SqlAdviceFixtures.samplesSqlModels("SYK007.cbl");
         AnalysisContext ctx = SqlAdviceFixtures.samplesContext("SYK007.cbl");
 
         assertTrue(new SelectStarRule().evaluate(ctx).isEmpty(), "S001は陰性");
         assertTrue(new NonSargablePredicateRule().evaluate(ctx).isEmpty(), "S002は陰性");
-        assertTrue(new FunctionOnIndexColumnRule().evaluate(ctx).isEmpty(), "S003は陰性");
         assertTrue(new CursorDeclarationRule().evaluate(ctx).isEmpty(), "S004は陰性(カーソル宣言なし)");
-        assertTrue(new OptimizeForMissingRule().evaluate(ctx).isEmpty(), "S006は陰性(カーソル宣言なし)");
-
-        Set<Integer> s005Lines = new FetchFirstMissingRule().evaluate(ctx).stream()
-                .map(f -> f.location().line()).collect(Collectors.toSet());
-        assertEquals(startLines(models, SqlStatementKind.SELECT), s005Lines,
-                "S005はSELECT INTOに発火");
     }
 
     private static int firstStartLine(List<SqlStatementModel> models, SqlStatementKind kind) {
         return models.stream().filter(m -> m.kind() == kind)
                 .map(m -> m.range().start().line()).findFirst().orElseThrow();
-    }
-
-    private static Set<Integer> startLines(List<SqlStatementModel> models,
-            SqlStatementKind... kinds) {
-        Set<SqlStatementKind> selected = Set.of(kinds);
-        return models.stream().filter(m -> selected.contains(m.kind()))
-                .map(m -> m.range().start().line()).collect(Collectors.toSet());
     }
 }

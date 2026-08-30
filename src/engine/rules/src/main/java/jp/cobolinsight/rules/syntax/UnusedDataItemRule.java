@@ -1,14 +1,16 @@
 package jp.cobolinsight.rules.syntax;
 
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.Severity;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
-import jp.cobolinsight.engineapi.semantic.ConditionName;
-import jp.cobolinsight.engineapi.semantic.DataItem;
-import jp.cobolinsight.engineapi.spi.AnalysisContext;
-import jp.cobolinsight.engineapi.spi.AnalysisPhase;
-import jp.cobolinsight.engineapi.spi.Rule;
-import jp.cobolinsight.engineapi.spi.RuleDoc;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.Severity;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.semantic.ConditionName;
+import jp.cobolinsight.core.semantic.DataItem;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
+import jp.cobolinsight.core.spi.AnalysisContext;
 import jp.cobolinsight.rules.SourceTextIndex;
 
 import java.nio.file.Path;
@@ -22,15 +24,19 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * R002 未使用データ項目。WORKING-STORAGE SECTIONまたはLOCAL-STORAGE SECTIONで宣言され、
- * PROCEDURE DIVISION内のいずれの文からも参照されないデータ項目を検出する。LINKAGE SECTION・
- * FILE SECTIONの項目は対象外とする。項目の所属セクションは原ソーステキスト(SourceTextIndex)の
- * セクション見出し行から判定し、コピー句由来の項目はCOPY文の出現セクションで判定する。
- * 集団項目の名前が参照される場合はその子孫を、子孫の名前が参照される場合はその祖先を、
- * いずれも使用済みとみなす。誤検出の抑止として次の2点を対象外とする:
- * (1) ENVIRONMENT DIVISION内(SELECT文のFILE STATUS句など)で名前が参照される項目、
- * (2) 88レベル条件名を宣言する項目(項目と条件名を対で宣言し、手続き部では条件名だけを参照する
- * 慣用があるため、項目名が現れないことは欠陥ではない)。
+ * R002 Unused data item. Detects a data item that is declared in the WORKING-STORAGE
+ * SECTION or LOCAL-STORAGE SECTION but is not referenced by any statement in the
+ * PROCEDURE DIVISION. Items in the LINKAGE SECTION and FILE SECTION are excluded. An
+ * item's owning section is judged from the section-header lines of the original source
+ * text (SourceTextIndex); an item that comes from a copybook is judged by the section in
+ * which the COPY statement that pulls it in appears. When a group item's name is
+ * referenced, its descendants are also treated as used; when a descendant's name is
+ * referenced, its ancestors are also treated as used. To suppress false positives, the
+ * following two cases are excluded: (1) an item whose name is referenced within the
+ * ENVIRONMENT DIVISION (such as a SELECT statement's FILE STATUS clause), and (2) an item
+ * that declares an 88-level condition name (since it is customary to declare an item and
+ * its condition name as a pair and reference only the condition name in the procedure
+ * division, the item's name never appearing is not a defect).
  */
 public final class UnusedDataItemRule implements Rule {
 
@@ -41,41 +47,32 @@ public final class UnusedDataItemRule implements Rule {
     private static final Pattern COPY_NAME = Pattern.compile(
             "(?i)(?<![\\p{L}\\p{N}-])COPY\\s+([\\p{L}\\p{N}][\\p{L}\\p{N}-]*)");
 
-    @Override
-    public String id() {
-        return "R002";
-    }
+    private static final RuleMeta META = RuleMeta.named("R002", "未使用データ項目", "データフロー")
+            .summary("WORKING-STORAGE・LOCAL-STORAGE で宣言され、"
+                    + "手続き部のどの文からも参照されないデータ項目を検出します。")
+            .rationale("使われない宣言は記憶域を占めるだけでなく、"
+                    + "読む者に生きている項目と取り違えさせ、改修の判断を誤らせます。")
+            .detection("集団項目は子孫の参照を、子孫は祖先の参照をもって使用済みとみなします。"
+                    + "LINKAGE 節・FILE 節の項目、環境部で名前が現れる項目、"
+                    + "88レベル条件名を宣言する項目は対象外とします。")
+            .remedy("宣言を削ります。将来の使用を見込んで残すなら、その理由を注記に書きます。")
+            .example("""
+                    01  WS-WORK-AREA.
+                        05  WS-TOTAL      PIC 9(7).
+                        05  WS-OLD-TOTAL  PIC 9(7).
+                    """, """
+                    01  WS-WORK-AREA.
+                        05  WS-TOTAL      PIC 9(7).
+                    """)
+            .severity(Severity.LOW)
+            .commands(Command.LINT, Command.REPORT)
+            .targets(AssetKind.COBOL, AssetKind.COPYBOOK)
+            .needs(Needs.SEMANTIC, Needs.SOURCE_TEXT)
+            .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("未使用データ項目", "データフロー")
-                .summary("WORKING-STORAGE・LOCAL-STORAGE で宣言され、"
-                        + "手続き部のどの文からも参照されないデータ項目を検出します。")
-                .rationale("使われない宣言は記憶域を占めるだけでなく、"
-                        + "読む者に生きている項目と取り違えさせ、改修の判断を誤らせます。")
-                .detection("集団項目は子孫の参照を、子孫は祖先の参照をもって使用済みとみなします。"
-                        + "LINKAGE 節・FILE 節の項目、環境部で名前が現れる項目、"
-                        + "88レベル条件名を宣言する項目は対象外とします。")
-                .remedy("宣言を削ります。将来の使用を見込んで残すなら、その理由を注記に書きます。")
-                .example("""
-                        01  WS-WORK-AREA.
-                            05  WS-TOTAL      PIC 9(7).
-                            05  WS-OLD-TOTAL  PIC 9(7).
-                        """, """
-                        01  WS-WORK-AREA.
-                            05  WS-TOTAL      PIC 9(7).
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.LOW;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.SYNTAX;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override
@@ -105,7 +102,7 @@ public final class UnusedDataItemRule implements Rule {
         return findings;
     }
 
-    /** 手続き部の全文テキストから参照名トークンを集める。 */
+    /** Collects reference-name tokens from the full text of every statement in the procedure division. */
     private static Set<String> referencedNames(CobolSemanticModel model) {
         Set<String> referenced = new HashSet<>();
         Statements.walk(model, statement -> {
@@ -116,7 +113,7 @@ public final class UnusedDataItemRule implements Rule {
         return referenced;
     }
 
-    /** ENVIRONMENT DIVISION内の参照名トークン(SELECT文のFILE STATUS句などが該当する)。 */
+    /** Reference-name tokens within the ENVIRONMENT DIVISION (such as a SELECT statement's FILE STATUS clause). */
     private static Set<String> environmentDivisionTokens(String text) {
         Set<String> tokens = new HashSet<>();
         boolean inEnvironment = false;
@@ -140,7 +137,7 @@ public final class UnusedDataItemRule implements Rule {
         return tokens;
     }
 
-    /** REDEFINES の再定義元・再定義先は記憶域を共有するため、片方の参照で双方を使用済み扱いにする。 */
+    /** A REDEFINES's redefined item and redefining item share storage, so a reference to either marks both as used. */
     private static void propagateRedefines(List<DataItem> items, Set<String> referenced) {
         List<DataItem> flat = new ArrayList<>();
         flatten(items, flat);
@@ -171,8 +168,10 @@ public final class UnusedDataItemRule implements Rule {
     }
 
     /**
-     * トップレベル項目の所属セクション。主ソース内の項目は宣言行のセクションで、コピー句由来の
-     * 項目はそのコピー句を取り込むCOPY文の出現セクションで判定する。判定できない場合は null。
+     * The owning section of a top-level item. An item in the main source is judged by the
+     * section of its declaration line; an item that comes from a copybook is judged by the
+     * section in which the COPY statement that pulls it in appears. Returns null when it
+     * cannot be determined.
      */
     private static String sectionOf(DataItem top, CobolSemanticModel model, SectionLayout layout) {
         if (top.position().file().equals(model.sourceFile())) {
@@ -189,9 +188,10 @@ public final class UnusedDataItemRule implements Rule {
     }
 
     /**
-     * 未使用の最上位項目だけを報告する。自身の名前(または88レベル条件名)が参照される項目は、
-     * 子孫を含めて使用済みとみなし打ち切る。FILLERは名前で参照できないため自身は報告せず、
-     * 子だけを判定する。
+     * Reports only the topmost unused item. An item whose own name (or 88-level condition
+     * name) is referenced is treated as used, including its descendants, and recursion
+     * stops there. FILLER cannot be referenced by name, so it is never reported itself;
+     * only its children are judged.
      */
     private static void report(DataItem item, String section, Set<String> referenced,
             List<Finding> findings) {
@@ -244,10 +244,10 @@ public final class UnusedDataItemRule implements Rule {
         return false;
     }
 
-    /** 原ソーステキストのセクション見出しとCOPY文の位置づけ。 */
+    /** Section headers in the original source text and where COPY statements sit relative to them. */
     private static final class SectionLayout {
 
-        private final List<int[]> sectionStarts = new ArrayList<>(); // [行番号, セクション索引]
+        private final List<int[]> sectionStarts = new ArrayList<>(); // [line number, section index]
         private final List<String> sectionNames = new ArrayList<>();
         private final Map<String, String> sectionByCopyName = new HashMap<>();
         private final Set<String> ambiguousCopyNames = new HashSet<>();
@@ -287,7 +287,7 @@ public final class UnusedDataItemRule implements Rule {
             return layout;
         }
 
-        /** 指定行が属するセクション名。セクション見出しより前の行は null。 */
+        /** The name of the section a given line belongs to. A line before any section header returns null. */
         String sectionAtLine(int line) {
             String section = null;
             for (int[] start : sectionStarts) {
@@ -300,7 +300,7 @@ public final class UnusedDataItemRule implements Rule {
             return section;
         }
 
-        /** コピー句名(拡張子なし・大文字)→COPY文の出現セクション。曖昧な場合は null。 */
+        /** Maps a copybook name (no extension, uppercase) to the section its COPY statement appears in. Returns null when ambiguous. */
         String copySection(String copyBaseName) {
             if (ambiguousCopyNames.contains(copyBaseName)) {
                 return null;

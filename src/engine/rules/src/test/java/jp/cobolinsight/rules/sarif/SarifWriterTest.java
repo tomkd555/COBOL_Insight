@@ -1,18 +1,17 @@
 package jp.cobolinsight.rules.sarif;
 
-import jp.cobolinsight.engineapi.finding.CodeFlow;
-import jp.cobolinsight.engineapi.finding.CodeFlowStep;
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.FindingLevel;
-import jp.cobolinsight.engineapi.finding.FixSuggestion;
-import jp.cobolinsight.engineapi.finding.Severity;
-import jp.cobolinsight.engineapi.finding.TextEdit;
-import jp.cobolinsight.engineapi.source.SourcePosition;
-import jp.cobolinsight.engineapi.source.SourceRange;
-import jp.cobolinsight.engineapi.spi.AnalysisContext;
-import jp.cobolinsight.engineapi.spi.AnalysisPhase;
-import jp.cobolinsight.engineapi.spi.Rule;
-import jp.cobolinsight.engineapi.spi.RuleDoc;
+import jp.cobolinsight.core.finding.CodeFlow;
+import jp.cobolinsight.core.finding.CodeFlowStep;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.FindingLevel;
+import jp.cobolinsight.core.finding.FixSuggestion;
+import jp.cobolinsight.core.finding.Severity;
+import jp.cobolinsight.core.finding.TextEdit;
+import jp.cobolinsight.core.source.SourcePosition;
+import jp.cobolinsight.core.source.SourceRange;
+import jp.cobolinsight.core.spi.AnalysisContext;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -22,35 +21,22 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** SARIF 2.1.0 出力の構造・決定論の検証。 */
+/** Verifies the structure and determinism of SARIF 2.1.0 output. */
 class SarifWriterTest {
 
     private static Rule stubRule(String id, Severity severity) {
+        RuleMeta meta = RuleMeta.named(id, id + " の名称", "テスト")
+                .summary(id + " が検出する対象である。")
+                .rationale(id + " を放置したときの影響である。")
+                .detection(id + " の検出条件である。")
+                .remedy(id + " の対処である。")
+                .example("BAD " + id, "GOOD " + id)
+                .severity(severity)
+                .build();
         return new Rule() {
             @Override
-            public String id() {
-                return id;
-            }
-
-            @Override
-            public RuleDoc doc() {
-                return RuleDoc.named(id + " の名称", "テスト")
-                        .summary(id + " が検出する対象である。")
-                        .rationale(id + " を放置したときの影響である。")
-                        .detection(id + " の検出条件である。")
-                        .remedy(id + " の対処である。")
-                        .example("BAD " + id, "GOOD " + id)
-                        .build();
-            }
-
-            @Override
-            public Severity defaultSeverity() {
-                return severity;
-            }
-
-            @Override
-            public AnalysisPhase phase() {
-                return AnalysisPhase.SYNTAX;
+            public RuleMeta meta() {
+                return meta;
             }
 
             @Override
@@ -252,7 +238,8 @@ class SarifWriterTest {
         assertEquals(first, reversed, "同一入力集合なら並び順によらず同一のSARIFテキストになること");
     }
 
-    /** テスト検証用の最小JSONパーサー。値は Map・List・String・Long・Double・Boolean・null で表す。 */
+    /** Minimal JSON parser for test verification. Values are represented as
+     * Map, List, String, Long, Double, Boolean, or null. */
     static final class MiniJson {
 
         private final String text;

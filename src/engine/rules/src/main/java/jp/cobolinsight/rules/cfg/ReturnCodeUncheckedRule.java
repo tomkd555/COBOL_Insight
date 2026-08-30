@@ -1,20 +1,22 @@
 package jp.cobolinsight.rules.cfg;
 
-import jp.cobolinsight.engineapi.cfg.CfgNode;
-import jp.cobolinsight.engineapi.cfg.ControlFlowGraph;
-import jp.cobolinsight.engineapi.cfg.ControlFlowGraphs;
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.Severity;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
-import jp.cobolinsight.engineapi.semantic.CompoundStatement;
-import jp.cobolinsight.engineapi.semantic.Procedure;
-import jp.cobolinsight.engineapi.semantic.SimpleStatement;
-import jp.cobolinsight.engineapi.semantic.Statement;
-import jp.cobolinsight.engineapi.source.SourcePosition;
-import jp.cobolinsight.engineapi.spi.AnalysisContext;
-import jp.cobolinsight.engineapi.spi.AnalysisPhase;
-import jp.cobolinsight.engineapi.spi.Rule;
-import jp.cobolinsight.engineapi.spi.RuleDoc;
+import jp.cobolinsight.core.cfg.CfgNode;
+import jp.cobolinsight.core.cfg.ControlFlowGraph;
+import jp.cobolinsight.core.cfg.ControlFlowGraphs;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.Severity;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.semantic.CompoundStatement;
+import jp.cobolinsight.core.semantic.Procedure;
+import jp.cobolinsight.core.semantic.SimpleStatement;
+import jp.cobolinsight.core.semantic.Statement;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
+import jp.cobolinsight.core.source.SourcePosition;
+import jp.cobolinsight.core.spi.AnalysisContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,48 +24,42 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * R029 CALL後のRETURN-CODE未検査。CALL 文の後、次の CALL または終端に達するまでの前方経路で
- * RETURN-CODE を条件参照しない CALL を検出する。ただし当該プログラムが RETURN-CODE を1回以上
- * 参照する場合に限る(RETURN-CODE を使う設計でこの CALL だけ無検査という不整合を捉える)。
+ * R029 Unchecked RETURN-CODE after a CALL. Detects a CALL statement whose forward path, up to
+ * the next CALL or the program's terminal point, never references RETURN-CODE in a condition.
+ * This applies only when the program references RETURN-CODE at least once elsewhere (catching
+ * the inconsistency of a design that uses RETURN-CODE everywhere except this one unchecked
+ * CALL).
  */
 public final class ReturnCodeUncheckedRule implements Rule {
 
-    @Override
-    public String id() {
-        return "R029";
-    }
+    private static final RuleMeta META = RuleMeta
+            .named("R029", "呼び出し先プログラムの戻りコード(RETURN-CODE)未検査", "制御フロー")
+            .summary("RETURN-CODE を使う設計のプログラムで、"
+                    + "その検査を伴わない CALL を検出します。")
+            .rationale("呼び出し先の失敗に気付かないまま後続が進みます。"
+                    + "同じプログラム内で検査している CALL と扱いが不揃いになる点も誤りの兆候です。")
+            .detection("CALL の後、次の CALL または終端に達するまでの前方経路で"
+                    + "RETURN-CODE を条件参照しないものを検出します。"
+                    + "プログラム内で RETURN-CODE を1回以上参照している場合に限ります。")
+            .remedy("CALL の直後に RETURN-CODE を判定し、正常値以外を異常として処理します。")
+            .example("""
+                    CALL "SUBPGM2" USING WS-PARM.
+                    MOVE WS-PARM TO WS-OUT.
+                    """, """
+                    CALL "SUBPGM2" USING WS-PARM.
+                    IF RETURN-CODE NOT = ZERO
+                        PERFORM CALL-ERROR
+                    END-IF.
+                    """)
+            .severity(Severity.MEDIUM)
+            .commands(Command.LINT, Command.REPORT)
+            .targets(AssetKind.COBOL)
+            .needs(Needs.SEMANTIC, Needs.CFG)
+            .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("呼び出し先プログラムの戻りコード(RETURN-CODE)未検査", "制御フロー")
-                .summary("RETURN-CODE を使う設計のプログラムで、"
-                        + "その検査を伴わない CALL を検出します。")
-                .rationale("呼び出し先の失敗に気付かないまま後続が進みます。"
-                        + "同じプログラム内で検査している CALL と扱いが不揃いになる点も誤りの兆候です。")
-                .detection("CALL の後、次の CALL または終端に達するまでの前方経路で"
-                        + "RETURN-CODE を条件参照しないものを検出します。"
-                        + "プログラム内で RETURN-CODE を1回以上参照している場合に限ります。")
-                .remedy("CALL の直後に RETURN-CODE を判定し、正常値以外を異常として処理します。")
-                .example("""
-                        CALL "SUBPGM2" USING WS-PARM.
-                        MOVE WS-PARM TO WS-OUT.
-                        """, """
-                        CALL "SUBPGM2" USING WS-PARM.
-                        IF RETURN-CODE NOT = ZERO
-                            PERFORM CALL-ERROR
-                        END-IF.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.MEDIUM;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.CONTROL_FLOW;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override
@@ -91,7 +87,7 @@ public final class ReturnCodeUncheckedRule implements Rule {
                     ReturnCodeUncheckedRule::isCall,
                     ReturnCodeUncheckedRule::referencesReturnCodeInCondition);
             if (!checked) {
-                findings.add(Finding.of(id(), defaultSeverity().toLevel(),
+                findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         "CALL の後、RETURN-CODE を検査しないまま後続処理へ進んでいる。"
                                 + "他所では RETURN-CODE を参照しており、検査の欠落が不整合となる。",
                         new SourcePosition(model.sourceFile(),

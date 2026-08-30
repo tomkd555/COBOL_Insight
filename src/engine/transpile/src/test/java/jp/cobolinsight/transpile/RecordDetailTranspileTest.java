@@ -1,8 +1,8 @@
 package jp.cobolinsight.transpile;
 
-import jp.cobolinsight.engineapi.semantic.ConditionName;
-import jp.cobolinsight.engineapi.semantic.DataItem;
-import jp.cobolinsight.engineapi.source.SourcePosition;
+import jp.cobolinsight.core.semantic.ConditionName;
+import jp.cobolinsight.core.semantic.DataItem;
+import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.transpile.emit.JavaEmitter;
 import jp.cobolinsight.transpile.emit.LineTrackingEmitter;
 import jp.cobolinsight.transpile.emit.RecordClassGenerator;
@@ -14,7 +14,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** レコード対訳の細目。REDEFINES の名前照合と、88レベル VALUE の表意定数の写し方を検証する。 */
+/** Record-translation details. Verifies REDEFINES name matching and how figurative constants in level-88 VALUE clauses are mapped over. */
 class RecordDetailTranspileTest {
 
     private static final SourcePosition POSITION = SourcePosition.fileStart("t.cbl");

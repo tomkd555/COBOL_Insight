@@ -1,46 +1,62 @@
 /**
- * 逐語対訳ペインで表示する生成物(Python・Java)の構文着色。monaco が同梱する Monarch 文法を
- * ローカルから静的に取り込んで登録し、CDN も動的読込も使わない。
+ * Registering the mainframe languages and the editor theme with Monaco. Registration happens once
+ * per renderer: Monaco treats a second `register` of the same id as a duplicate language.
  *
- * 取り込み経路は monaco-editor 0.56 の exports 写像("./*" → "./esm/vs/*.js")に従う。
- * 言語サービス(補完・診断)は使わないため、文法と言語構成の登録だけを行う。
+ * Only the grammars and the theme are registered. No language service (completion, diagnostics) is
+ * involved, which is why the editor needs Monaco's one base worker and none of the per-language
+ * ones.
+ *
+ * Python and Java come from Monaco's own definitions, which the transpile pane shows the generated
+ * code in. Each `register` module registers the language with a lazy loader, so the grammar itself is
+ * only fetched once a model is opened in it; the package's default entry point, which would register
+ * every language Monaco ships, is still avoided.
  */
 
-import type { languages as monacoLanguages } from "monaco-editor/editor/editor.api";
-import { conf as javaConf, language as javaLanguage } from "monaco-editor/languages/definitions/java/java";
-import { conf as pythonConf, language as pythonLanguage } from "monaco-editor/languages/definitions/python/python";
-import type { TranspileLanguage } from "../../../shared/engine-api";
+// The generated code of the transpile pane. Side-effect imports: each registers one language.
+// Monaco's Python definition claims the .cpy extension, which here belongs to copybooks. Nothing is
+// opened by extension — every model is created with an explicit language id — so the claim is inert.
+import "monaco-editor/languages/definitions/python/register";
+import "monaco-editor/languages/definitions/java/register";
+import {
+  COBOL_INSIGHT_THEME,
+  LANGUAGE_ID,
+  bmsLanguage,
+  cobolInsightTheme,
+  cobolLanguage,
+  jclLanguage,
+  jsonLanguage,
+  type MonacoThemeData,
+  type MonarchLanguage,
+} from "./monarch";
 
-/** 文法と言語構成の登録に用いる monaco の最小の面。 */
-export interface GeneratedLanguageTarget {
+/** The smallest part of the Monaco API registration needs; the real API satisfies it. */
+export interface LanguageRegistrationTarget {
   languages: {
     register(language: { id: string }): void;
-    setMonarchTokensProvider(languageId: string, definition: monacoLanguages.IMonarchLanguage): void;
-    setLanguageConfiguration(
-      languageId: string,
-      configuration: monacoLanguages.LanguageConfiguration,
-    ): void;
+    setMonarchTokensProvider(languageId: string, definition: MonarchLanguage): void;
+  };
+  editor: {
+    defineTheme(themeName: string, theme: MonacoThemeData): void;
   };
 }
 
-/** 生成言語に対応する monaco の言語 ID。 */
-export const GENERATED_LANGUAGE_ID: Record<TranspileLanguage, string> = {
-  python: "python",
-  java: "java",
-};
-
 let registered = false;
 
-/** 生成物の言語(Python・Java)を monaco へ登録する。登録は1度だけ行う。 */
-export function registerGeneratedLanguages(monaco: GeneratedLanguageTarget): void {
+/** Registers the COBOL, JCL, BMS and JSON grammars and the theme. Repeated calls do nothing. */
+export function registerLanguages(monaco: LanguageRegistrationTarget): void {
   if (registered) {
     return;
   }
-  monaco.languages.register({ id: GENERATED_LANGUAGE_ID.python });
-  monaco.languages.setMonarchTokensProvider(GENERATED_LANGUAGE_ID.python, pythonLanguage);
-  monaco.languages.setLanguageConfiguration(GENERATED_LANGUAGE_ID.python, pythonConf);
-  monaco.languages.register({ id: GENERATED_LANGUAGE_ID.java });
-  monaco.languages.setMonarchTokensProvider(GENERATED_LANGUAGE_ID.java, javaLanguage);
-  monaco.languages.setLanguageConfiguration(GENERATED_LANGUAGE_ID.java, javaConf);
+  const definitions: readonly [string, MonarchLanguage][] = [
+    [LANGUAGE_ID.cobol, cobolLanguage()],
+    [LANGUAGE_ID.jcl, jclLanguage()],
+    [LANGUAGE_ID.bms, bmsLanguage()],
+    [LANGUAGE_ID.json, jsonLanguage()],
+  ];
+  for (const [id, definition] of definitions) {
+    monaco.languages.register({ id });
+    monaco.languages.setMonarchTokensProvider(id, definition);
+  }
+  monaco.editor.defineTheme(COBOL_INSIGHT_THEME, cobolInsightTheme());
   registered = true;
 }

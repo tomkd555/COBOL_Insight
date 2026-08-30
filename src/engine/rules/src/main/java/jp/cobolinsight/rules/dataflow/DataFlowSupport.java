@@ -1,10 +1,10 @@
 package jp.cobolinsight.rules.dataflow;
 
-import jp.cobolinsight.engineapi.picture.PictureType;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
-import jp.cobolinsight.engineapi.semantic.ConditionName;
-import jp.cobolinsight.engineapi.semantic.DataItem;
-import jp.cobolinsight.engineapi.semantic.Occurs;
+import jp.cobolinsight.core.picture.PictureType;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.semantic.ConditionName;
+import jp.cobolinsight.core.semantic.DataItem;
+import jp.cobolinsight.core.semantic.Occurs;
 import jp.cobolinsight.rules.SourceTextIndex;
 
 import java.nio.file.Path;
@@ -22,19 +22,22 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * データフロー解析のルールが共有するデータ項目リゾルバ。1プログラム分の意味モデルと原ソース索引から、
- * データ名の PICTURE(符号・桁)・OCCURS 上限・宣言節・88レベルの親項目・PROCEDURE DIVISION USING
- * 引数を解決する。解決はまず意味モデル {@link DataItem} を引き、必要な字句情報(宣言節・COPY 文)は
- * {@link SourceTextIndex} から補う(コピー句の解決手順は R017 と同一)。状態を1プログラムに閉じて持つ。
+ * Data item resolver shared by the dataflow analysis rules. From the semantic model and source
+ * text index of a single program, it resolves a data name's PICTURE (sign/digits), OCCURS upper
+ * bound, declaring section, the parent item of an 88-level condition name, and the PROCEDURE
+ * DIVISION USING parameters. Resolution first looks up the semantic model {@link DataItem}, then
+ * supplements any lexical information needed (declaring section, COPY statements) from
+ * {@link SourceTextIndex} (the COPY clause resolution procedure is the same as R017). Holds state
+ * scoped to a single program.
  */
 final class DataFlowSupport {
 
-    /** データ項目の宣言節。R001 の照会対象限定と R005 のリンケージ表除外に使う。 */
+    /** The declaring section of a data item. Used by R001 to restrict its query targets and by R005 to exclude LINKAGE tables. */
     enum Section {
         FILE, WORKING_STORAGE, LOCAL_STORAGE, LINKAGE, UNKNOWN
     }
 
-    /** 表参照 {@code TABLE(subscript, ...)}。subscripts は括弧内の各添字トークン(原表記)。 */
+    /** A table reference {@code TABLE(subscript, ...)}. subscripts are the individual subscript tokens inside the parentheses (verbatim). */
     record TableRef(String tableName, List<String> subscripts) {
     }
 
@@ -43,8 +46,8 @@ final class DataFlowSupport {
             "(?i)\\b(FILE|WORKING-STORAGE|LOCAL-STORAGE|LINKAGE)\\s+SECTION\\b");
     private static final Pattern USING_CLAUSE = Pattern.compile(
             "(?is)\\bPROCEDURE\\s+DIVISION\\b(.*?)\\.");
-    // データ名は英字を1文字以上含むという規定に合わせ、英字を必須とする。これにより数値リテラルを
-    // 名前として拾わない。
+    // Require at least one letter, matching the rule that a data name must contain at least one
+    // letter. This keeps numeric literals from being picked up as names.
     private static final Pattern NAME_TOKEN = Pattern.compile("[" + NAME_CHARS + "]*\\p{L}[" + NAME_CHARS + "]*");
     private static final Set<String> SPECIAL_REGISTERS =
             Set.of("SQLCODE", "SQLSTATE", "RETURN-CODE", "SQLCA", "WHEN-COMPILED");
@@ -73,7 +76,7 @@ final class DataFlowSupport {
         return paren >= 0 ? n.substring(0, paren).trim() : n;
     }
 
-    // ---- データ項目索引 ----
+    // ---- Data item index ----
 
     private void index(DataItem item, List<Integer> inheritedDims) {
         String name = norm(item.name());
@@ -137,7 +140,7 @@ final class DataFlowSupport {
         }
     }
 
-    // ---- 問い合わせ ----
+    // ---- Queries ----
 
     Optional<DataItem> item(String name) {
         return Optional.ofNullable(itemByName.get(norm(name)));
@@ -174,14 +177,15 @@ final class DataFlowSupport {
     }
 
     /**
-     * 表の各次元の OCCURS 上限を、外側の次元から順に返す。多次元表の添字は外側から並ぶため、
-     * この並びが添字の並びと対応する。表でなければ空。
+     * Returns the OCCURS upper bound of each dimension of a table, ordered from the outermost
+     * dimension. Since the subscripts of a multi-dimensional table are listed from the outermost
+     * dimension, this ordering matches the subscript ordering. Empty if not a table.
      */
     List<Integer> occursDims(String name) {
         return occursDimsByName.getOrDefault(norm(name), List.of());
     }
 
-    /** PICTURE を解析した型。意味モデルの picture/usage が空なら empty。 */
+    /** The type parsed from PICTURE. Empty if the semantic model's picture/usage is empty. */
     Optional<PictureType> pictureType(String name) {
         DataItem item = itemByName.get(norm(name));
         if (item == null || item.picture().isEmpty()) {
@@ -194,20 +198,22 @@ final class DataFlowSupport {
         }
     }
 
-    /** 数字項目かつ符号(S)なしの受信項目か(R028 の判定対象)。桁数・型が読めなければ false。 */
+    /** Whether this is a numeric item without a sign (S) as a receiving item (the target of R028's check). False if the digit count or type cannot be read. */
     boolean isUnsignedNumeric(String name) {
         return pictureType(name).filter(PictureType::isNumeric).map(pt -> !pt.signed()).orElse(false);
     }
 
-    /** 名前で引いたデータ項目の格納バイト長(R015/R016 用)。解決できなければ empty。 */
+    /** The storage byte length of the data item looked up by name (used by R015/R016). Empty if it cannot be resolved. */
     Optional<Integer> byteLength(String name) {
         return item(name).flatMap(this::byteLength);
     }
 
     /**
-     * データ項目の格納バイト長。基本項目は PICTURE+USAGE から、集団項目は配下基本項目の総和から
-     * 求める。配下の OCCURS は反復回数を掛け、REDEFINES 項目は元項目に重なるため加算しない。
-     * 配下に PICTURE を解決できない項目があれば empty。
+     * The storage byte length of a data item. For an elementary item this comes from
+     * PICTURE+USAGE; for a group item it is the sum over its descendant elementary items.
+     * A descendant's OCCURS is multiplied by its repetition count, and a REDEFINES item is not
+     * added because it overlaps the original item. Empty if any descendant item's PICTURE cannot
+     * be resolved.
      */
     Optional<Integer> byteLength(DataItem item) {
         if (item.picture().isPresent()) {
@@ -236,7 +242,7 @@ final class DataFlowSupport {
         return Optional.of(total);
     }
 
-    /** 宣言節。コピー句由来の項目は原プログラム内の COPY 文が属する節で判定する。 */
+    /** The declaring section. For an item that comes from a COPY clause, this is determined by the section containing the COPY statement in the original program. */
     Section sectionOf(String name) {
         String key = norm(name);
         Section cached = sectionCache.get(key);
@@ -262,7 +268,8 @@ final class DataFlowSupport {
                 return direct;
             }
         }
-        // コピー句由来: 原プログラム内の該当 COPY 文の節で判定する。
+        // From a COPY clause: determine it by the section of the matching COPY statement in the
+        // original program.
         String programText = texts.textOf(model.sourceFile()).orElse(null);
         if (programText == null) {
             return Section.UNKNOWN;
@@ -274,7 +281,7 @@ final class DataFlowSupport {
         return Section.UNKNOWN;
     }
 
-    /** src の1始まり line 以前で最も近い節見出しの節。無ければ UNKNOWN。 */
+    /** The section of the nearest section header at or before the 1-based line in src. UNKNOWN if none. */
     private static Section sectionBackward(String src, int line) {
         String[] lines = src.split("\n", -1);
         int idx = Math.min(line, lines.length) - 1;
@@ -293,7 +300,7 @@ final class DataFlowSupport {
         return Section.UNKNOWN;
     }
 
-    /** src 内で COPY <base> を記す最初の行(1始まり)。無ければ 0。 */
+    /** The first line (1-based) in src that names COPY <base>. 0 if none. */
     private static int copyLineOf(String src, String base) {
         Pattern copy = Pattern.compile(
                 "(?i)\\bCOPY\\s+" + Pattern.quote(base) + "(?![" + NAME_CHARS + "])");
@@ -313,11 +320,12 @@ final class DataFlowSupport {
         return dot < 0 ? name : name.substring(0, dot);
     }
 
-    // ---- 表参照の抽出 ----
+    // ---- Extracting table references ----
 
     /**
-     * 文テキスト中の表参照 {@code TABLE(subscript, ...)} を抽出する。文字列リテラルは除外し、
-     * 部分参照(コロンを含む {@code NAME(a:b)})は添字ではないため除外する。
+     * Extracts table references {@code TABLE(subscript, ...)} from statement text. String literals
+     * are excluded, and a reference modification (a {@code NAME(a:b)} containing a colon) is
+     * excluded because it is not a subscript.
      */
     List<TableRef> tableRefs(String text) {
         String masked = maskLiterals(text);
@@ -332,7 +340,7 @@ final class DataFlowSupport {
             }
             String inside = masked.substring(open + 1, close);
             if (inside.indexOf(':') >= 0) {
-                continue; // 部分参照
+                continue; // reference modification
             }
             List<String> subs = new ArrayList<>();
             for (String part : inside.split(",")) {

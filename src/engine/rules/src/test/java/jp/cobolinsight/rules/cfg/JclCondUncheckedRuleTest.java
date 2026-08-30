@@ -1,11 +1,11 @@
 package jp.cobolinsight.rules.cfg;
 
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.FindingLevel;
-import jp.cobolinsight.engineapi.jcl.JclExecKind;
-import jp.cobolinsight.engineapi.jcl.JclJobModel;
-import jp.cobolinsight.engineapi.jcl.JclStep;
-import jp.cobolinsight.engineapi.source.SourcePosition;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.FindingLevel;
+import jp.cobolinsight.core.jcl.JclExecKind;
+import jp.cobolinsight.core.jcl.JclJobModel;
+import jp.cobolinsight.core.jcl.JclStep;
+import jp.cobolinsight.core.source.SourcePosition;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -14,7 +14,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** R030 JCLの先行ステップ結果未検査の合成fixture検証(JclJobModelを直接構築)。 */
+/** R030 synthetic fixture verification for an unchecked preceding-step result in JCL (builds a JclJobModel directly). */
 class JclCondUncheckedRuleTest {
 
     private static JclStep step(String name, int line, Optional<String> cond) {
@@ -22,7 +22,7 @@ class JclCondUncheckedRuleTest {
                 new SourcePosition("jcl/FIX030.jcl", line, 1, SourcePosition.UNKNOWN_BYTE_OFFSET));
     }
 
-    private static jp.cobolinsight.engineapi.spi.AnalysisContext context(JclJobModel job) {
+    private static jp.cobolinsight.core.spi.AnalysisContext context(JclJobModel job) {
         return CfgFixtures.context(List.of(), Map.of(), List.of(), List.of(job));
     }
 

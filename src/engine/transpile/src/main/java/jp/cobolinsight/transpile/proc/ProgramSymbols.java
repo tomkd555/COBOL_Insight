@@ -1,8 +1,8 @@
 package jp.cobolinsight.transpile.proc;
 
-import jp.cobolinsight.engineapi.picture.PictureType;
-import jp.cobolinsight.engineapi.semantic.ConditionName;
-import jp.cobolinsight.engineapi.semantic.DataItem;
+import jp.cobolinsight.core.picture.PictureType;
+import jp.cobolinsight.core.semantic.ConditionName;
+import jp.cobolinsight.core.semantic.DataItem;
 import jp.cobolinsight.transpile.emit.FieldKind;
 import jp.cobolinsight.transpile.emit.Identifiers;
 
@@ -16,14 +16,16 @@ import java.util.Set;
 import java.util.TreeSet;
 
 /**
- * 手続き対訳のための記号表。基本項目ごとにフラットな生成側フィールド(数値=long/整数、英数字=文字列、
- * OCCURS=配列)を割り当て、88レベル条件名を親項目の値比較へ展開できるようにする。集団項目は
- * フィールド化せず、CALL 引数・集団 MOVE でのみ名前として参照する。名前は COBOL の大小無視に合わせ
- * ASCII を大文字化して正規化する(日本語はそのまま)。フィールド名の一意化は宣言順で決定論的に行う。
+ * Symbol table for the procedure translation. Assigns each elementary item a flat field on the
+ * generated side (numeric = long/integer, alphanumeric = string, OCCURS = array), so that 88-level
+ * condition names can be expanded into a comparison against the parent item's value. Group items are
+ * not turned into fields; they are referenced by name only in CALL arguments and group MOVEs. Names
+ * are normalized to match COBOL's case-insensitivity by uppercasing ASCII (Japanese text is left as
+ * is). Field-name uniquification is done deterministically in declaration order.
  */
 public final class ProgramSymbols {
 
-    /** 基本項目のフィールド割り当て。occursCounts は外側から内側の OCCURS 回数(空ならスカラ)。 */
+    /** Field assignment for an elementary item. occursCounts lists OCCURS counts from outermost to innermost (empty means scalar). */
     public record DataSymbol(String cobolName, String fieldName, boolean isString,
             List<Integer> occursCounts, Optional<String> valueClause) {
         public DataSymbol {
@@ -35,7 +37,7 @@ public final class ProgramSymbols {
         }
     }
 
-    /** 88レベル条件名。親基本項目の値と等しいかで判定する。 */
+    /** An 88-level condition name. Determined by equality with the parent elementary item's value. */
     public record ConditionSymbol(String cobolName, DataSymbol parent, List<String> values) {
         public ConditionSymbol {
             values = List.copyOf(values);
@@ -64,7 +66,7 @@ public final class ProgramSymbols {
                 builder.conditions, builder.groupNames);
     }
 
-    /** 宣言順の基本項目一覧(フィールド宣言に用いる)。 */
+    /** Elementary items in declaration order (used for field declarations). */
     public List<DataSymbol> declarations() {
         return declarations;
     }
@@ -81,7 +83,7 @@ public final class ProgramSymbols {
         return groupNames.contains(normalize(cobolName));
     }
 
-    /** 基本項目・集団・88 のいずれかとして既知の名前か。 */
+    /** Whether the name is known as an elementary item, a group, or an 88-level condition. */
     public boolean isKnown(String cobolName) {
         String n = normalize(cobolName);
         return byName.containsKey(n) || groupNames.contains(n) || conditions.containsKey(n);
@@ -128,8 +130,8 @@ public final class ProgramSymbols {
         }
 
         /**
-         * COBOL は同じ名前の項目を別の集団の下に置けるため、正規化後の名前が衝突しうる。宣言順に
-         * {@code _2}, {@code _3}, … を付けて一意にする。
+         * COBOL allows items with the same name under different groups, so normalized names can
+         * collide. Appends {@code _2}, {@code _3}, … in declaration order to make them unique.
          */
         private String uniqueField(String cobolName) {
             String base = Identifiers.sanitize(cobolName);

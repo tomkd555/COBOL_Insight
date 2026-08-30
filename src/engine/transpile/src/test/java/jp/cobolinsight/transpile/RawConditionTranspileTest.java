@@ -1,9 +1,9 @@
 package jp.cobolinsight.transpile;
 
-import jp.cobolinsight.engineapi.linemap.LineMappingEntry;
-import jp.cobolinsight.engineapi.transpile.GeneratedFile;
-import jp.cobolinsight.engineapi.transpile.TargetLanguage;
-import jp.cobolinsight.engineapi.transpile.TranspileResult;
+import jp.cobolinsight.core.linemap.LineMappingEntry;
+import jp.cobolinsight.core.transpile.GeneratedFile;
+import jp.cobolinsight.core.transpile.TargetLanguage;
+import jp.cobolinsight.core.transpile.TranspileResult;
 import jp.cobolinsight.transpile.emit.Transpiler;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -23,9 +23,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 直訳不能な条件(未宣言項目・特殊レジスタを含み {@code PCond.Raw} へ落ちる条件)が、恒真値へ黙って
- * 消えず、原文の条件テキストと注記付きで出ることを検証する。実素材は SYK006 の
- * {@code PERFORM 3100-抽出データフェッチ UNTIL SQLCODE = 100}(SQLCODE は未宣言の特殊レジスタ)。
+ * Verifies that an untranslatable condition (one involving an undeclared item or special register that
+ * falls through to {@code PCond.Raw}) is emitted with the original condition text and an annotation,
+ * rather than silently vanishing into a tautology. The real-world material is SYK006's
+ * {@code PERFORM 3100-抽出データフェッチ UNTIL SQLCODE = 100} (SQLCODE is an undeclared special register).
  */
 class RawConditionTranspileTest {
 

@@ -1,8 +1,8 @@
 package jp.cobolinsight.rules.dataflow;
 
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.FindingLevel;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.FindingLevel;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -13,7 +13,8 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** R001 未初期化変数の参照の合成fixture検証(条件付き初期化・明示代入なし・USING 引数の各扱い)。 */
+/** Synthetic fixture verification for R001 uninitialized variable references
+ * (handling of conditional initialization, no explicit assignment, and USING parameters). */
 class UninitializedVariableRuleTest {
 
     @TempDir

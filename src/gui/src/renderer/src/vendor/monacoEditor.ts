@@ -1,30 +1,33 @@
 /**
- * ソースビューア・diff で使う Monaco エディタ。vs のソースをローカルへバンドルし、CDN は参照しない。
+ * The Monaco editor, bundled locally; no CDN is referenced.
  *
- * Worker は Vite の `?worker&inline` で取り込み、生成コードを Blob(URL.createObjectURL)から起こす。
- * renderer は本番で file:// から読み込まれ、file:// のスクリプト URL からは Worker を起こせないため、
- * 別ファイルのままでは起動できない。この方式に伴い index.html の CSP は worker-src へ
- * 'self' blob: を許す(外部オリジンは許さない)。
+ * The worker is imported through Vite's `?worker&inline` and started from a Blob
+ * (URL.createObjectURL). In a distribution the renderer is loaded from file://, and a worker cannot
+ * be started from a file:// script URL, so a separate worker file would simply fail to launch. That
+ * is why index.html's CSP allows worker-src 'self' blob: (and no external origin).
  *
- * 言語サービス用の専用 Worker(json/css/html/typescript)は使わない。COBOL・Python・Java の
- * 構文着色は Monarch(構文のみ)で行い、基本 Worker 1つで足りる。
+ * The per-language service workers (json/css/html/typescript) are not used: COBOL, Python and Java
+ * are highlighted with Monarch, which is syntax only, so the one base worker suffices.
  *
- * 取り込み経路は monaco-editor 0.56 の exports 写像("./*" → "./esm/vs/*.js")に従う。
- * すなわち editor.api は "monaco-editor/editor/editor.api"、Worker は
- * "monaco-editor/editor/editor.worker" である。パッケージ既定の入口("monaco-editor")は
- * 全言語の登録を伴うため使わない。
+ * The import paths follow monaco-editor 0.56's exports map ("./*" -> "./esm/vs/*.js"): the API is
+ * "monaco-editor/editor/editor.api" and the worker is "monaco-editor/editor/editor.worker". The
+ * package's default entry point is avoided because it registers every language.
  */
 
 import * as monaco from "monaco-editor/editor/editor.api";
 import EditorWorker from "monaco-editor/editor/editor.worker?worker&inline";
-// アイコン字形(codicon)の @font-face と codicon.ttf を同梱する。editor.api の取り込みには
-// 含まれず、これを入れないと検索欄などの記号が字形として出ない。フォントは相対パスで
-// 参照されるため file:// からも読める。
+// The icon glyphs (codicon): the @font-face rule and codicon.ttf. They are not part of the
+// editor.api import, and without them the shell's icons render as blank boxes. The font is
+// referenced relatively, so it also loads from file://.
 import "monaco-editor/features/codicon/register";
+// The code-action contribution: the lightbulb, the chooser, and the editor.action.quickFix command.
+// editor.api carries the API for registering a provider but none of the interface that offers what a
+// provider returns, and the quick fix on a finding is reached from that interface alone.
+import "monaco-editor/features/codeAction/register";
 
 /**
- * Monaco が Worker 生成時に参照する global。ciMonaco は実描画 smoke(smoke/render.cjs)が
- * 本文へ打鍵するための口である。面の実体は Monaco が持ち、DOM からは辿れない。
+ * The globals Monaco reads when it creates a worker. ciMonaco is the handle the offscreen render
+ * smoke types into: the editor's model lives inside Monaco and cannot be reached from the DOM.
  */
 interface MonacoWorkerHost {
   MonacoEnvironment: monaco.Environment;
@@ -33,7 +36,7 @@ interface MonacoWorkerHost {
 
 let configured = false;
 
-/** Worker 生成を配線した Monaco の API を返す。配線は1度だけ行う。 */
+/** The Monaco API with worker creation wired up. The wiring happens once. */
 export function monacoEditor(): typeof monaco {
   if (!configured) {
     const host = self as unknown as MonacoWorkerHost;
@@ -42,4 +45,15 @@ export function monacoEditor(): typeof monaco {
     configured = true;
   }
   return monaco;
+}
+
+/**
+ * Registers the codicon font without starting the editor. The shell's icons are codicon glyphs, so
+ * the font has to be present before the first paint even where no editor is open.
+ *
+ * Importing this module is what registers the font; this function exists so the import is a
+ * deliberate call rather than a side effect a bundler might drop.
+ */
+export function monacoCodicons(): void {
+  // The side-effect import at the top of this module has already installed the @font-face rule.
 }

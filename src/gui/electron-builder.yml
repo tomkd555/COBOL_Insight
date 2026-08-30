@@ -1,0 +1,20 @@
+appId: jp.cobolinsight.gui
+productName: COBOL Insight
+files:
+  - out/**/*
+  - package.json
+asarUnpack:
+  - node_modules/sql.js/dist/sql-wasm.wasm
+# The jpackage app-image (engine plus its bundled JRE) ships inside the archive.
+# Build it first with `gradlew :engine:app:jpackageAppImage`, otherwise packaging fails here.
+extraResources:
+  - from: ../engine/app/build/jpackage/app-image/COBOLInsight
+    to: engine
+    filter:
+      - "**/*"
+directories:
+  output: ../../release
+win:
+  target: dir
+  signAndEditExecutable: false
+afterAllArtifactBuild: ./scripts/stage-release.cjs

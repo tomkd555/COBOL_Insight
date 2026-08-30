@@ -1,7 +1,8 @@
 /**
- * 作業面の状態。開いているタブ、選択中のタブ、左右・下のパネルの開閉と寸法を持つ。
+ * The workbench state: which tabs are open, which one is active, and the visibility and size of the
+ * side bar and the panel.
  *
- * タブの見出しはここが唯一の供給源である。画面ごとのラベル表を別に持たない。
+ * Tab titles have their single source here; no screen keeps a label table of its own.
  */
 
 import {
@@ -12,41 +13,28 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
+import { text } from "../text";
 
-/** タブの種類。source だけが資産1件に紐づき、残りは同種のタブを1枚だけ開く。 */
-export type TabKind = "source" | "graph" | "rules" | "report" | "settings" | "fix";
+/** Tab kinds. `source`, `fix` and `transpile` bind to one asset; the rest open at most one tab each. */
+export type TabKind = "source" | "graph" | "rules" | "report" | "settings" | "fix" | "transpile";
 
-/** source 以外のタブの見出し。 */
-const SINGLETON_TAB_TITLES: Readonly<Record<Exclude<TabKind, "source">, string>> = {
-  graph: "呼出関係図",
-  rules: "ルール",
-  report: "レポート",
-  settings: "設定",
-  fix: "修正案",
-};
+/** What the activity bar can put in the side bar. */
+export type SideView = "explorer" | "search" | "rules" | "problems";
 
-/** source 以外のタブの見出しを引く。 */
-export function singletonTabTitle(kind: Exclude<TabKind, "source">): string {
-  return SINGLETON_TAB_TITLES[kind];
-}
+/** What the panel can show. */
+export type PanelView = "problems" | "output";
 
 export interface WorkbenchTab {
-  /** タブの識別子。source は "source:<相対パス>"、それ以外は種類そのもの。 */
+  /** A source tab is "source:<relative path>"; every other kind is its own name. */
   readonly id: string;
   readonly kind: TabKind;
-  /** タブに出す見出し。source はファイル名。 */
+  /** The tab's caption. For a source tab this is the file name. */
   readonly title: string;
-  /** source タブが開いている資産の相対パス。他の種類では null。 */
+  /** The relative path a source tab shows; null for every other kind. */
   readonly path: string | null;
-  /** 開いた直後に見せる行。指定が無ければ null。 */
+  /** The line to reveal on opening, or null. */
   readonly line: number | null;
 }
-
-/** 下部パネルに出す面。 */
-export type BottomView = "findings" | "log";
-
-/** 左のアクティビティバーで選ぶ面。現時点で側パネルへ出せるのは資産一覧だけである。 */
-export type SideView = "explorer";
 
 export interface WorkbenchState {
   readonly tabs: readonly WorkbenchTab[];
@@ -54,83 +42,131 @@ export interface WorkbenchState {
   readonly sideVisible: boolean;
   readonly sideWidth: number;
   readonly sideView: SideView;
-  readonly bottomVisible: boolean;
-  readonly bottomHeight: number;
-  readonly bottomView: BottomView;
+  readonly panelVisible: boolean;
+  readonly panelHeight: number;
+  readonly panelView: PanelView;
   /**
-   * 保存していない編集後の本文(タブの ID → 全文)。選んでいないタブは描かないため、本文の面が
-   * 持つと切り替えのたびに編集が消える。未保存の印もこの有無がそのまま表す。
+   * Unsaved edited text, keyed by tab id. An inactive tab is not rendered, so the editor itself
+   * cannot hold the text without losing it on every switch. The presence of a key is the dirty flag.
    */
   readonly drafts: Readonly<Record<string, string>>;
   /**
-   * 直近の保存(資産の相対パスと時刻)。トーストは数秒で消えるため、保存できたことを
-   * ステータスバーに残す。次の編集で消す。
-   */
-  readonly lastSave: { readonly path: string; readonly at: number } | null;
-  /**
-   * 寸法の操作を終えた回数。ドラッグは1画素ごとに寸法を変えるため、その全部を保存すると1回の
-   * ドラッグで数十回の書き込みが走る。保存はこの回数の変化だけを合図に行う。
+   * How many times a resize has finished. Dragging changes the size on every pixel, and persisting
+   * all of that would mean dozens of writes per drag; the settings are saved on changes to this
+   * count alone.
    */
   readonly sizeCommitCount: number;
 }
 
-/** 側パネルの寸法。min はこのパネルが役目を果たす最小、oppositeMin は本文へ必ず残す最小である。 */
-export const SIDE_PANEL_LIMITS = { initial: 280, min: 200, oppositeMin: 520 } as const;
+/** Side bar sizing. `min` keeps the panel usable; `oppositeMin` is what the editor must keep. */
+export const SIDE_LIMITS = { initial: 280, min: 200, oppositeMin: 520 } as const;
 
-/** 下部パネルの寸法。min は表の見出しと 2 行、oppositeMin は本文に 10 行分である。 */
-export const BOTTOM_PANEL_LIMITS = { initial: 240, min: 120, oppositeMin: 200 } as const;
+/** Panel sizing. `min` is a header plus two rows; `oppositeMin` is ten lines of editor. */
+export const PANEL_LIMITS = { initial: 220, min: 120, oppositeMin: 200 } as const;
+
+/** Pane-size keys as stored in the settings. */
+export const PANE_SIZE_KEYS = { side: "sideWidth", panel: "panelHeight" } as const;
 
 export const initialWorkbenchState: WorkbenchState = {
   tabs: [],
   activeTabId: null,
   sideVisible: true,
-  sideWidth: SIDE_PANEL_LIMITS.initial,
+  sideWidth: SIDE_LIMITS.initial,
   sideView: "explorer",
-  bottomVisible: true,
-  bottomHeight: BOTTOM_PANEL_LIMITS.initial,
-  bottomView: "findings",
+  panelVisible: true,
+  panelHeight: PANEL_LIMITS.initial,
+  panelView: "problems",
   drafts: {},
-  lastSave: null,
   sizeCommitCount: 0,
 };
 
-/** 資産1件のタブの識別子。本文の面と、編集後の本文を引くときに使う。 */
+/** The id of an asset's tab, used both by the editor and by the draft lookup. */
 export function sourceTabId(path: string): string {
   return `source:${path}`;
 }
 
-/** 資産1件を開くタブ。同じ資産は1枚だけ開く。 */
+/** A tab for one asset. The same asset never opens twice. */
 export function sourceTab(path: string, line: number | null = null): WorkbenchTab {
   const name = path.split("/").pop() ?? path;
   return { id: sourceTabId(path), kind: "source", title: name, path, line };
 }
 
-/** 種類ごとに1枚だけ開くタブ。 */
-export function singletonTab(kind: Exclude<TabKind, "source">): WorkbenchTab {
-  return { id: kind, kind, title: singletonTabTitle(kind), path: null, line: null };
+/** The tab id of the custom-rule editor. No rule can be called this: custom ids start with U. */
+export const CUSTOM_RULES_TAB_ID = "rules:custom";
+
+/** The description of one rule, as the engine wrote it. */
+export function ruleTab(ruleId: string): WorkbenchTab {
+  return { id: `rules:${ruleId}`, kind: "rules", title: ruleId, path: ruleId, line: null };
+}
+
+/** The custom-rule editor. */
+export function customRulesTab(title: string): WorkbenchTab {
+  return { id: CUSTOM_RULES_TAB_ID, kind: "rules", title, path: null, line: null };
+}
+
+/**
+ * The call-graph editor. `path` carries the label of the node to centre on — the program a problems
+ * row named, say — or null to open on the graph's own roots.
+ */
+export function graphTab(title: string, focusLabel: string | null = null): WorkbenchTab {
+  return { id: "graph", kind: "graph", title, path: focusLabel, line: null };
+}
+
+/** The report editor. */
+export function reportTab(title: string): WorkbenchTab {
+  return { id: "report", kind: "report", title, path: null, line: null };
+}
+
+/** The settings editor. */
+export function settingsTab(title: string): WorkbenchTab {
+  return { id: "settings", kind: "settings", title, path: null, line: null };
+}
+
+/** The id of an asset's fix diff. It is its own tab, so the source stays open beside it. */
+export function fixTabId(path: string): string {
+  return `fix:${path}`;
+}
+
+/** A tab holding the fix proposal for one asset, against the original. */
+export function fixTab(path: string): WorkbenchTab {
+  const name = path.split("/").pop() ?? path;
+  return { id: fixTabId(path), kind: "fix", title: `${name}（${text.fixView.diff}）`, path, line: null };
+}
+
+/** The id of an asset's translation. Its own tab, so the COBOL source stays open beside it. */
+export function transpileTabId(path: string): string {
+  return `transpile:${path}`;
+}
+
+/** A tab holding the generated Python or Java for one asset, beside the COBOL. */
+export function transpileTab(path: string): WorkbenchTab {
+  const name = path.split("/").pop() ?? path;
+  return {
+    id: transpileTabId(path),
+    kind: "transpile",
+    title: `${name}（${text.transpileView.tab}）`,
+    path,
+    line: null,
+  };
 }
 
 export type WorkbenchAction =
   | { type: "OPEN_TAB"; tab: WorkbenchTab }
   | { type: "CLOSE_TAB"; id: string }
+  | { type: "CLOSE_ALL_TABS" }
   | { type: "ACTIVATE_TAB"; id: string }
   | { type: "STEP_TAB"; step: 1 | -1 }
-  | { type: "SET_DRAFT"; id: string; text: string | null }
-  | { type: "SAVED"; path: string; at: number }
+  | { type: "SET_DRAFT"; id: string; draft: string | null }
   | { type: "TOGGLE_SIDE" }
   | { type: "SHOW_SIDE"; view: SideView }
   | { type: "SET_SIDE_WIDTH"; width: number }
-  | { type: "TOGGLE_BOTTOM" }
-  | { type: "SHOW_BOTTOM"; view: BottomView }
-  | { type: "SET_BOTTOM_HEIGHT"; height: number }
+  | { type: "TOGGLE_PANEL" }
+  | { type: "SHOW_PANEL"; view: PanelView }
+  | { type: "SET_PANEL_HEIGHT"; height: number }
   | { type: "COMMIT_SIZE" }
-  | { type: "RESTORE_SIZES"; sideWidth?: number; bottomHeight?: number };
+  | { type: "RESTORE_SIZES"; sideWidth?: number; panelHeight?: number };
 
-/**
- * タブを閉じた後に選ぶタブ。閉じたタブの次を選び、末尾を閉じたときは手前を選ぶ。
- * 1枚も残らなければ null を返す。
- */
-/** 1件の編集後の本文を落とした集合を返す。 */
+/** Returns the drafts without the given tab's entry. */
 function withoutDraft(
   drafts: Readonly<Record<string, string>>,
   id: string,
@@ -140,6 +176,10 @@ function withoutDraft(
   return next;
 }
 
+/**
+ * Which tab to select after one is closed: the one that follows it, or the one before it when the
+ * last tab was closed. Null when nothing is left.
+ */
 function nextActiveId(
   tabs: readonly WorkbenchTab[],
   closedIndex: number,
@@ -163,11 +203,12 @@ export function workbenchReducer(state: WorkbenchState, action: WorkbenchAction)
       if (existing === undefined) {
         return { ...state, tabs: [...state.tabs, action.tab], activeTabId: action.tab.id };
       }
-      // 開いてあるタブは開き直さない。行の指定だけを新しい要求で置き換える。
+      // An open tab is not opened again; only what the request points at is replaced — the line for
+      // a source tab, and the node to centre on for the call graph.
       return {
         ...state,
         tabs: state.tabs.map((tab) =>
-          tab.id === action.tab.id ? { ...tab, line: action.tab.line } : tab,
+          tab.id === action.tab.id ? { ...tab, path: action.tab.path, line: action.tab.line } : tab,
         ),
         activeTabId: action.tab.id,
       };
@@ -186,6 +227,11 @@ export function workbenchReducer(state: WorkbenchState, action: WorkbenchAction)
       };
     }
 
+    case "CLOSE_ALL_TABS":
+      // A tab id names an asset by its path relative to the asset folder, so tabs opened from one
+      // folder mean nothing once another is chosen. The caller releases their models and decodes.
+      return { ...state, tabs: [], activeTabId: null, drafts: {} };
+
     case "ACTIVATE_TAB":
       return state.tabs.some((tab) => tab.id === action.id)
         ? { ...state, activeTabId: action.id }
@@ -196,31 +242,28 @@ export function workbenchReducer(state: WorkbenchState, action: WorkbenchAction)
         return state;
       }
       const current = state.tabs.findIndex((tab) => tab.id === state.activeTabId);
-      // 端では反対の端へ回す。選択が無いときは先頭から数える。
+      // Wrap around at either end; with nothing selected, count from the first tab.
       const next = (Math.max(current, 0) + action.step + state.tabs.length) % state.tabs.length;
       return { ...state, activeTabId: state.tabs[next].id };
     }
 
     case "SET_DRAFT": {
       const current = state.drafts[action.id];
-      if (action.text === null) {
+      if (action.draft === null) {
         return current === undefined
           ? state
           : { ...state, drafts: withoutDraft(state.drafts, action.id) };
       }
-      return current === action.text
+      return current === action.draft
         ? state
-        : { ...state, drafts: { ...state.drafts, [action.id]: action.text }, lastSave: null };
+        : { ...state, drafts: { ...state.drafts, [action.id]: action.draft } };
     }
-
-    case "SAVED":
-      return { ...state, lastSave: { path: action.path, at: action.at } };
 
     case "TOGGLE_SIDE":
       return { ...state, sideVisible: !state.sideVisible };
 
     case "SHOW_SIDE":
-      // 同じ面を選び直したときは畳む(アクティビティバーの押し直しで隠せる)。
+      // Choosing the current view again collapses the side bar, as the activity bar does.
       return state.sideVisible && state.sideView === action.view
         ? { ...state, sideVisible: false }
         : { ...state, sideVisible: true, sideView: action.view };
@@ -228,16 +271,16 @@ export function workbenchReducer(state: WorkbenchState, action: WorkbenchAction)
     case "SET_SIDE_WIDTH":
       return { ...state, sideWidth: action.width };
 
-    case "TOGGLE_BOTTOM":
-      return { ...state, bottomVisible: !state.bottomVisible };
+    case "TOGGLE_PANEL":
+      return { ...state, panelVisible: !state.panelVisible };
 
-    case "SHOW_BOTTOM":
-      return state.bottomVisible && state.bottomView === action.view
-        ? { ...state, bottomVisible: false }
-        : { ...state, bottomVisible: true, bottomView: action.view };
+    case "SHOW_PANEL":
+      return state.panelVisible && state.panelView === action.view
+        ? { ...state, panelVisible: false }
+        : { ...state, panelVisible: true, panelView: action.view };
 
-    case "SET_BOTTOM_HEIGHT":
-      return { ...state, bottomHeight: action.height };
+    case "SET_PANEL_HEIGHT":
+      return { ...state, panelHeight: action.height };
 
     case "COMMIT_SIZE":
       return { ...state, sizeCommitCount: state.sizeCommitCount + 1 };
@@ -245,11 +288,8 @@ export function workbenchReducer(state: WorkbenchState, action: WorkbenchAction)
     case "RESTORE_SIZES":
       return {
         ...state,
-        sideWidth: Math.max(SIDE_PANEL_LIMITS.min, Math.round(action.sideWidth ?? state.sideWidth)),
-        bottomHeight: Math.max(
-          BOTTOM_PANEL_LIMITS.min,
-          Math.round(action.bottomHeight ?? state.bottomHeight),
-        ),
+        sideWidth: Math.max(SIDE_LIMITS.min, Math.round(action.sideWidth ?? state.sideWidth)),
+        panelHeight: Math.max(PANEL_LIMITS.min, Math.round(action.panelHeight ?? state.panelHeight)),
       };
 
     default: {
@@ -264,6 +304,7 @@ const DispatchContext = createContext<Dispatch<WorkbenchAction> | null>(null);
 
 export interface WorkbenchProviderProps {
   children: ReactNode;
+  /** Overrides the initial state, so a test can render from any state. */
   initial?: WorkbenchState;
 }
 
@@ -279,7 +320,7 @@ export function WorkbenchProvider({ children, initial }: WorkbenchProviderProps)
 export function useWorkbench(): WorkbenchState {
   const state = useContext(StateContext);
   if (state === null) {
-    throw new Error("useWorkbench は WorkbenchProvider の内側で使う");
+    throw new Error("useWorkbench must be used inside WorkbenchProvider");
   }
   return state;
 }
@@ -287,22 +328,22 @@ export function useWorkbench(): WorkbenchState {
 export function useWorkbenchDispatch(): Dispatch<WorkbenchAction> {
   const dispatch = useContext(DispatchContext);
   if (dispatch === null) {
-    throw new Error("useWorkbenchDispatch は WorkbenchProvider の内側で使う");
+    throw new Error("useWorkbenchDispatch must be used inside WorkbenchProvider");
   }
   return dispatch;
 }
 
-/** 選択中のタブ。1枚も開いていなければ null。 */
+/** The active tab, or null when nothing is open. */
 export function activeTabOf(state: WorkbenchState): WorkbenchTab | null {
   return state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
 }
 
-/** そのタブの編集後の本文。編集していなければ null。 */
+/** That tab's edited text, or null when it has not been edited. */
 export function draftOf(state: WorkbenchState, id: string): string | null {
   return state.drafts[id] ?? null;
 }
 
-/** そのタブが未保存の編集を抱えているか。 */
+/** Whether the tab holds unsaved edits. */
 export function isTabDirty(state: WorkbenchState, id: string): boolean {
   return state.drafts[id] !== undefined;
 }

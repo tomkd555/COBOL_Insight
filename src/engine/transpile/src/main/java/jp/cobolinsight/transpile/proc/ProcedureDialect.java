@@ -1,14 +1,16 @@
 package jp.cobolinsight.transpile.proc;
 
-import jp.cobolinsight.engineapi.transpile.TargetLanguage;
+import jp.cobolinsight.core.transpile.TargetLanguage;
 import jp.cobolinsight.transpile.emit.LineTrackingEmitter;
 
 import java.util.List;
 
 /**
- * 手続き対訳の言語別レンダリング責務。走査・行対応は {@link ProcedureRenderer} が担い、本インターフェースは
- * 各要素(クラス枠・フィールド宣言・制御構造の開閉・代入・呼出・出力・注記)の字面を出力へ書き込む。
- * 制御構造の開閉メソッドは {@link LineTrackingEmitter} のインデントを自身で増減する。
+ * Per-language rendering responsibility for the procedure translation. Traversal and line mapping
+ * are handled by {@link ProcedureRenderer}; this interface writes the literal text of each element
+ * (class skeleton, field declarations, opening/closing control structures, assignment, invocation,
+ * output, notes) to the output. The control-structure open/close methods adjust the indentation of
+ * {@link LineTrackingEmitter} themselves.
  */
 public interface ProcedureDialect {
 
@@ -19,27 +21,27 @@ public interface ProcedureDialect {
         };
     }
 
-    /** インデント1レベル分の文字列。 */
+    /** String representing one indentation level. */
     default String indentUnit() {
         return "    ";
     }
 
-    /** DISPLAY 1オペランドの描画結果(文字列型か否かを含む)。 */
+    /** Rendering result for one DISPLAY operand (including whether it is a string type). */
     record DisplayPart(String text, boolean isString) {
     }
 
-    // ---- 式・条件の字面 ----
+    // ---- Literal text for expressions and conditions ----
 
-    /** データ参照の字面(例: Python は self.NAME、Java は NAME)。 */
+    /** Literal text for a data reference (e.g. self.NAME in Python, NAME in Java). */
     String ref(String fieldName);
 
-    /** 添字1次元の字面。COBOL の1始まり添字を0始まりへ補正する(Java は int へ縮小変換する)。 */
+    /** Literal text for one subscript dimension. Adjusts COBOL's 1-based subscript to 0-based (narrows to int in Java). */
     String subscript(String indexExpr);
 
-    /** 文字列リテラルの字面(引用・エスケープ込み)。 */
+    /** Literal text for a string literal (including quoting and escaping). */
     String stringLiteral(String content);
 
-    /** 関係比較の字面。stringCompare が真なら文字列比較の作法に従う。 */
+    /** Literal text for a relational comparison. When stringCompare is true, follows string comparison conventions. */
     String comparison(String left, RelOp op, String right, boolean stringCompare);
 
     String logicalAnd(String left, String right);
@@ -51,29 +53,30 @@ public interface ProcedureDialect {
     String trueLiteral();
 
     /**
-     * 直訳できない条件({@link PCond.Raw})を原文テキストから描画する。字面は言語ごとに異なるが、
-     * いずれも COBOL の生の被演算子名(未宣言項目・特殊レジスタ)を保ち、恒真値へ黙って落とさない。
+     * Renders an untranslatable condition ({@link PCond.Raw}) from its original text. The literal
+     * form differs by language, but each preserves COBOL's raw operand names (undeclared items,
+     * special registers) rather than silently collapsing to a tautology.
      */
     String rawCondition(String cobolConditionText);
 
-    // ---- ファイル枠・宣言 ----
+    // ---- File skeleton and declarations ----
 
-    /** 手続き対訳を収める生成ファイル名(拡張子込み)。 */
+    /** Generated file name (including extension) that holds the procedure translation. */
     String programFileName(String programId);
 
-    /** ファイル冒頭とクラス頭、フィールド宣言、CALL スタブまでを出力する(行対応は付けない)。 */
+    /** Emits the file header and class head, field declarations, and CALL stubs (no line mapping is attached). */
     void emitProgramPrologue(LineTrackingEmitter out, String programId, ProgramSymbols symbols);
 
-    /** クラスの閉じ(必要な言語のみ)を出力する。 */
+    /** Emits the class closing (only for languages that need one). */
     void emitProgramEpilogue(LineTrackingEmitter out);
 
-    // ---- 段落・節(メソッド)----
+    // ---- Paragraph/section (method) ----
 
     void openMethod(LineTrackingEmitter out, String methodName);
 
     void closeMethod(LineTrackingEmitter out);
 
-    // ---- 分岐(IF/EVALUATE の if/elif/else 連鎖)----
+    // ---- Branch (if/elif/else chain for IF/EVALUATE) ----
 
     void openIf(LineTrackingEmitter out, String cond);
 
@@ -83,7 +86,7 @@ public interface ProcedureDialect {
 
     void closeBranch(LineTrackingEmitter out);
 
-    // ---- 反復 ----
+    // ---- Loop ----
 
     void openWhile(LineTrackingEmitter out, String cond);
 
@@ -91,11 +94,11 @@ public interface ProcedureDialect {
 
     void emitTimesLoop(LineTrackingEmitter out, String methodName, String count);
 
-    // ---- 単文 ----
+    // ---- Simple statements ----
 
     void emitAssign(LineTrackingEmitter out, String target, String value);
 
-    /** 段落 PERFORM(メソッド呼出)。 */
+    /** PERFORM of a paragraph (method call). */
     void emitInvoke(LineTrackingEmitter out, String methodName);
 
     void emitDisplay(LineTrackingEmitter out, List<DisplayPart> parts);
@@ -106,17 +109,18 @@ public interface ProcedureDialect {
 
     void emitNoOp(LineTrackingEmitter out, String verb);
 
-    /** 実行文の無いブロックを言語上有効に保つ詰め物(Python は pass、Java は無し)。 */
+    /** Filler that keeps a block with no executable statements syntactically valid (pass in Python, nothing in Java). */
     void emitBlockFiller(LineTrackingEmitter out);
 
     void emitComment(LineTrackingEmitter out, String text);
 
-    /** 直訳不能な原文を注記付きコメント群として出力する。 */
+    /** Emits untranslatable original text as a group of noted comments. */
     void emitUntranslated(LineTrackingEmitter out, List<String> cobolLines, String note);
 
     /**
-     * EXEC CICS / EXEC SQL の直訳不能ブロックを注記スタブとして出力する。注記付きヘッダコメント・原文コメント群に
-     * 続けて、実行時に到達すると例外を投げる1行(Python は raise、Java は throw)を出力する。command は例外文言。
+     * Emits an untranslatable EXEC CICS / EXEC SQL block as a noted stub. Follows the noted header
+     * comment and the group of original-text comments with a single line that throws an exception if
+     * reached at runtime (raise in Python, throw in Java). command is the exception message.
      */
     void emitEmbeddedStub(LineTrackingEmitter out, String command, List<String> cobolLines,
             String note);

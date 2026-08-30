@@ -1,10 +1,10 @@
 package jp.cobolinsight.transpile.proc;
 
-/** 関係演算子。COBOL の記号・語形を正規化した6種。 */
+/** Relational operator: six kinds normalized from COBOL symbols and word forms. */
 public enum RelOp {
     EQ, NE, GT, LT, GE, LE;
 
-    /** 否定した関係演算子(NOT を前置した場合の等価変換)。 */
+    /** The negated relational operator (the equivalent conversion when NOT is prefixed). */
     public RelOp negate() {
         return switch (this) {
             case EQ -> NE;

@@ -1,76 +1,56 @@
-import { describe, it, expect } from "vitest";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { runEngine, type EngineProcess, type EngineSpawn } from "./run";
+import { describe, expect, it } from "vitest";
+import { parseRuleCatalog } from "../../shared/ruleCatalog";
 import { resolveEngineLaunch } from "./launch";
+import { runEngine, type EngineProcess, type EngineSpawn } from "./run";
 
 /**
- * 実 engine CLI(installDist)を spawn する統合テスト。純ロジックのユニットとは層を分ける。
- * 前提: gradle :engine:cli:installDist が済み、かつ JAVA_HOME が設定されていること。
- * 前提が欠ける環境では skip し、npm test 全体は失敗させない。
+ * Runs the real engine CLI once and parses its rule listing. This is the one test that proves the
+ * launch resolution, the argument assembly, the summary extraction and the catalog parsing agree
+ * with the engine as built.
+ *
+ * It self-skips when the development artefact or a JDK is missing, so a checkout that has not run
+ * `gradlew :engine:app:installDist` still has a green test suite.
  */
 
-const guiRoot = resolve(__dirname, "..", "..", "..");
-const repoRoot = resolve(guiRoot, "..", "..");
-const installLibDir = resolve(
-  guiRoot,
-  "..",
-  "engine",
-  "cli",
-  "build",
-  "install",
-  "cli",
-  "lib",
-);
+/** app.getAppPath() equivalent: this file sits at src/gui/src/main/engine. */
+const APP_ROOT = resolve(__dirname, "..", "..", "..");
+const INSTALL_DIR = join(APP_ROOT, "..", "engine", "app", "build", "install", "app");
+const JAVA_HOME = process.env["JAVA_HOME"];
 
-function javaExecutable(): string | null {
-  const javaHome = process.env["JAVA_HOME"];
-  if (javaHome === undefined || javaHome === "") {
-    return null;
-  }
-  const exe = join(javaHome, "bin", process.platform === "win32" ? "java.exe" : "java");
-  return existsSync(exe) ? exe : null;
-}
+const ready =
+  existsSync(join(INSTALL_DIR, "lib")) &&
+  JAVA_HOME !== undefined &&
+  JAVA_HOME !== "" &&
+  existsSync(join(JAVA_HOME, "bin"));
 
-const prerequisitesMet = existsSync(installLibDir) && javaExecutable() !== null;
-
-const nodeSpawn: EngineSpawn = (command, args, options) =>
+const engineSpawn: EngineSpawn = (command, args, options) =>
   spawn(command, args, { env: options.env, cwd: options.cwd }) as unknown as EngineProcess;
 
-describe.runIf(prerequisitesMet)("runEngine (実 CLI 統合)", () => {
-  it(
-    "installDist の CLI で samples を scan し、サマリ JSON と exit 0 を受ける",
-    async () => {
-      const launch = resolveEngineLaunch({
-        isPackaged: false,
-        platform: process.platform,
-        resourcesPath: "unused",
-        appRoot: guiRoot,
-        javaHome: process.env["JAVA_HOME"],
-      });
-      const workspace = mkdtempSync(join(tmpdir(), "cobol-insight-it-"));
-      const result = await runEngine(
-        { spawn: nodeSpawn, env: process.env },
-        launch,
-        {
-          subcommand: "scan",
-          request: {
-            inputDir: resolve(repoRoot, "samples"),
-            db: join(workspace, "project.db"),
-          },
-        },
-      );
+describe.skipIf(!ready)("the engine CLI, run for real", () => {
+  it("returns a rule catalog from `rules --json`", async () => {
+    const launch = resolveEngineLaunch({
+      isPackaged: false,
+      platform: process.platform,
+      resourcesPath: "",
+      appRoot: APP_ROOT,
+      javaHome: JAVA_HOME,
+    });
+    const result = await runEngine({ spawn: engineSpawn, env: process.env }, launch, {
+      subcommand: "rules",
+      request: {},
+    });
 
-      expect(result.exitCode).toBe(0);
-      expect(result.summary).not.toBeNull();
-      const analyzed = result.summary?.["analyzed"];
-      expect(Array.isArray(analyzed)).toBe(true);
-      expect(analyzed as string[]).toContain("cobol/SYK001.cbl");
-      expect(result.outputs.db).toBe(join(workspace, "project.db"));
-    },
-    120_000,
-  );
+    expect(result.exitCode, `engine stderr: ${result.stderr}`).toBe(0);
+    const catalog = parseRuleCatalog(result.summary);
+    expect(catalog.rules.length).toBeGreaterThan(0);
+    // Every rule carries an id and the prose the screens display; the GUI authors none of it.
+    for (const rule of catalog.rules) {
+      expect(rule.id).toMatch(/^[RSU]\d+$/);
+      expect(rule.name).not.toBe("");
+      expect(rule.summary).not.toBe("");
+    }
+  }, 120_000);
 });

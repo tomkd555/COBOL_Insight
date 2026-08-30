@@ -1,0 +1,110 @@
+package jp.cobolinsight.app.cli;
+
+import jp.cobolinsight.app.pipeline.Pipelines;
+import jp.cobolinsight.app.pipeline.ScanOutcome;
+import jp.cobolinsight.app.pipeline.Persist;
+import jp.cobolinsight.app.persistence.PersistenceDao;
+import jp.cobolinsight.app.persistence.PersistenceDatabase;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+/** Verifies incremental analysis driven by content hashing (only changed members are reanalyzed). */
+class ScanIncrementalTest {
+
+    private static final Path SAMPLES = Path.of("..", "..", "..", "samples").toAbsolutePath().normalize();
+
+    @TempDir
+    Path tempDir;
+
+    @Test
+    void onlyChangedMembersAndTheirDependentsAreReanalyzed() throws IOException {
+        Path assets = tempDir.resolve("assets");
+        for (String dir : List.of("bms", "cobol", "copybook", "jcl")) {
+            copyDirectory(SAMPLES.resolve(dir), assets.resolve(dir));
+        }
+        Path databaseFile = tempDir.resolve("scan.db");
+
+        ScanOutcome.Summary first = Pipelines.scan(assets, databaseFile,
+                List.of(assets.resolve("copybook")), Map.of()).summary();
+        assertEquals(16, first.analyzed().size());
+        assertEquals(0, first.exitCode());
+
+        // A copybook change includes the importing programs (SYK001-SYK003) in the reanalysis scope
+        appendCommentLine(assets.resolve("copybook").resolve("SYKCPY1.cpy"));
+        ScanOutcome.Summary second = Pipelines.scan(assets, databaseFile,
+                List.of(assets.resolve("copybook")), Map.of()).summary();
+        assertEquals(List.of("cobol/SYK001.cbl", "cobol/SYK002.cbl", "cobol/SYK003.cbl",
+                "copybook/SYKCPY1.cpy"), second.analyzed().stream().sorted().toList());
+        assertEquals(12, second.skipped().size());
+        assertEquals(0, second.exitCode());
+        assertEdgeCounts(databaseFile, 6, 6);
+
+        // A program change includes the JCL that calls it (SYKD010, SYKD030) in the reanalysis scope
+        appendCommentLine(assets.resolve("cobol").resolve("SYK001.cbl"));
+        ScanOutcome.Summary third = Pipelines.scan(assets, databaseFile,
+                List.of(assets.resolve("copybook")), Map.of()).summary();
+        assertEquals(List.of("cobol/SYK001.cbl", "jcl/SYKD010.jcl", "jcl/SYKD030.jcl"),
+                third.analyzed().stream().sorted().toList());
+        assertEquals(0, third.exitCode());
+        assertEdgeCounts(databaseFile, 6, 6);
+
+        // A deleted source disappears along with its rows and node
+        Files.delete(assets.resolve("jcl").resolve("SYKD030.jcl"));
+        ScanOutcome.Summary fourth = Pipelines.scan(assets, databaseFile,
+                List.of(assets.resolve("copybook")), Map.of()).summary();
+        assertEquals(List.of("jcl/SYKD030.jcl"), fourth.removed());
+        assertEquals(List.of(), fourth.analyzed());
+        assertEdgeCounts(databaseFile, 6, 4);
+        try (PersistenceDatabase database = PersistenceDatabase.open(databaseFile)) {
+            assertEquals(15, new PersistenceDao(database.connection()).findAllSources().size());
+        }
+    }
+
+    private static void assertEdgeCounts(Path databaseFile, int expectedCopy, int expectedExecution) {
+        try (PersistenceDatabase database = PersistenceDatabase.open(databaseFile)) {
+            PersistenceDao dao = new PersistenceDao(database.connection());
+            long copy = 0;
+            long execution = 0;
+            for (var source : dao.findAllSources()) {
+                for (var edge : dao.findEdgesFrom(source.id())) {
+                    // Excludes the call-graph layer (ID at or above the lower bound); counts only scan's incremental edges
+                    if (edge.id() >= Persist.GRAPH_ID_BASE) {
+                        continue;
+                    }
+                    if ("COPY".equals(edge.kind())) {
+                        copy++;
+                    } else if ("EXECUTION".equals(edge.kind())) {
+                        execution++;
+                    }
+                }
+            }
+            assertEquals(expectedCopy, copy, "COPYエッジ数");
+            assertEquals(expectedExecution, execution, "EXECUTIONエッジ数");
+        }
+    }
+
+    private static void copyDirectory(Path from, Path to) throws IOException {
+        Files.createDirectories(to);
+        try (Stream<Path> children = Files.list(from)) {
+            for (Path child : children.filter(Files::isRegularFile).toList()) {
+                Files.copy(child, to.resolve(child.getFileName().toString()));
+            }
+        }
+    }
+
+    private static void appendCommentLine(Path file) throws IOException {
+        Files.writeString(file, System.lineSeparator() + "      *TOUCH",
+                StandardCharsets.UTF_8, StandardOpenOption.APPEND);
+    }
+}

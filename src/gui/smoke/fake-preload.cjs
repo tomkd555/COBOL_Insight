@@ -1,27 +1,26 @@
 /*
- * 実描画 smoke 用の偽 preload。engine CLI を起動せずに画面を results 状態まで進めるため、
- * window.cobolInsight と同じ契約(src/shared/engine-api.ts の CobolInsightApi)を固定データで満たす。
+ * The fake preload for the offscreen render smoke. It satisfies the same contract as the real one
+ * (src/shared/ipc.ts, CobolInsightApi) with canned data, so the screens reach their results state
+ * without the engine ever being launched.
  *
- * 本番と同じ contextIsolation:true・sandbox:true で読み込むため、この1ファイルだけで完結させる
- * (sandbox 下の preload はローカルモジュールを require できない)。ファイルにも engine にも触れない。
+ * It is loaded with the production settings, contextIsolation:true and sandbox:true, which is why it
+ * has to be self-contained: a sandboxed preload cannot require a local module. It touches neither
+ * the filesystem nor the engine.
  */
 
 const { contextBridge } = require("electron");
 
 const DB_PATH = "C:\\smoke\\cobol-insight.db";
 const LINT_SARIF = "C:\\smoke\\lint.sarif";
-const SQL_SARIF = "C:\\smoke\\sql-advise.sarif";
-const CALLGRAPH_JSON = "C:\\smoke\\callgraph.json";
-const USER_RULES_PATH = "C:\\smoke\\data\\user-rules.json";
-const RULE_CONFIG_PATH = "C:\\smoke\\data\\rules-config.json";
+const SQL_SARIF = "C:\\smoke\\sql.sarif";
+const RULES_PATH = "C:\\smoke\\data\\rules.json";
 
-/** グラフ層のノード ID の下限。engine は資産の ID と混ざらないようこの帯を使う。 */
+/** The lower bound of the graph layer's ids: the engine keeps them clear of the asset ids. */
 const GRAPH_ID_BASE = 1_000_000_000_000;
 
 /**
- * ルール表と説明の描画を確かめるための最小のカタログ。組み込み2件と利用者定義1件を置く。
- * 実際の件数(37件)と説明の網羅は engine 側のテストと vitest が担うため、ここでは描画の成立
- * (行が並ぶ・説明が開く・利用者定義が別枠に出る)だけを見る。
+ * A minimal rule catalog: two built-in rules and one user-defined. The real count and the coverage
+ * of the prose are the engine's tests and vitest's business; the smoke only watches the rendering.
  */
 const RULES = [
   {
@@ -32,6 +31,11 @@ const RULES = [
     phase: "DATA_FLOW",
     hasFix: false,
     source: "builtin",
+    enabled: true,
+    defaultEnabled: true,
+    commands: ["lint"],
+    targets: ["COBOL"],
+    needs: ["dataflow"],
     summary: "値を設定される前に参照され得るデータ項目を検出します。",
     rationale: "記憶域に残った値をそのまま使うため、実行のたびに結果が変わります。",
     detection: "到達定義解析で、入口に置いた未初期化の定義が使用位置へ届くものを検出します。",
@@ -43,57 +47,63 @@ const RULES = [
     id: "R004",
     name: "ON SIZE ERROR句の欠如",
     category: "例外処理",
-    severity: "HIGH",
+    severity: "MEDIUM",
     phase: "DATA_FLOW",
     hasFix: true,
     source: "builtin",
-    summary: "結果が受信項目の桁を超え得るのに ON SIZE ERROR 句を持たない算術文を検出します。",
-    rationale: "桁あふれが検知されず、上位桁を失った値が後続へ渡ります。",
-    detection: "結果の範囲が受信項目の整数部の容量を超え得るものを検出します。",
-    remedy: "ON SIZE ERROR 句を付けるか、受信項目の桁を広げます。",
+    enabled: true,
+    defaultEnabled: true,
+    commands: ["lint"],
+    targets: ["COBOL"],
+    needs: ["dataflow"],
+    summary: "桁あふれを検知しない算術文を検出します。",
+    rationale: "上位桁を失った値が後続へ渡ります。",
+    detection: "結果の範囲が受信項目の容量を超え得るものを検出します。",
+    remedy: "ON SIZE ERROR 句を付けます。",
     badExample: "COMPUTE WS-RESULT = WS-QTY * WS-PRICE.",
-    goodExample: "COMPUTE WS-RESULT = WS-QTY * WS-PRICE\n    ON SIZE ERROR PERFORM OVERFLOW-SHORI\nEND-COMPUTE.",
+    goodExample: "COMPUTE WS-RESULT = WS-QTY * WS-PRICE ON SIZE ERROR CONTINUE END-COMPUTE.",
   },
   {
-    id: "U001",
-    name: "コンソール入力の使用",
-    category: "社内規約",
-    severity: "MEDIUM",
+    id: "S001",
+    name: "SELECT * の使用",
+    category: "SQL",
+    severity: "LOW",
     phase: "SYNTAX",
     hasFix: false,
-    source: "user",
-    summary: "正規表現「FROM\\s+CONSOLE」に一致する行を検出します。",
-    rationale: "運用手順の外で値が入り、記録が残りません。",
-    detection: "対象は COBOL の各行です。注記行を除き、8〜72桁の範囲を対象とします。",
-    remedy: "入力をパラメータファイルから受け取ります。",
-    badExample: "",
-    goodExample: "",
+    source: "builtin",
+    enabled: true,
+    defaultEnabled: true,
+    commands: ["sql-lint"],
+    targets: ["COBOL"],
+    needs: ["sql"],
+    summary: "列を明示しない SELECT を検出します。",
+    rationale: "表の定義が変わると取得する列が変わります。",
+    detection: "SELECT 句が * のものを検出します。",
+    remedy: "必要な列を並べます。",
+    badExample: "EXEC SQL SELECT * FROM ZAIKOM END-EXEC.",
+    goodExample: "EXEC SQL SELECT SOKO-CD FROM ZAIKOM END-EXEC.",
   },
 ];
 
-/**
- * ルールの有効・無効。engine は rules-config.json を読んで enabled を決めるため、偽 preload でも
- * 書いた内容がそのまま次の listRules へ効くようにする(切替が往復することを smoke が見る)。
- */
-let ruleConfig = { version: 1, disabledRules: [] };
+const INVENTORY = [
+  { id: 1, path: "bms/SYKMAP1.bms", name: "SYKMAP1.bms", type: "BMS", codepage: "Shift_JIS", byteSize: 1140, findingCount: 0 },
+  { id: 2, path: "cobol/SYK001.cbl", name: "SYK001.cbl", type: "PROGRAM", codepage: "Shift_JIS", byteSize: 4200, findingCount: 1 },
+  { id: 3, path: "cobol/SYK002.cbl", name: "SYK002.cbl", type: "PROGRAM", codepage: "Shift_JIS", byteSize: 3800, findingCount: 1 },
+  { id: 4, path: "copybook/SYKCPY1.cpy", name: "SYKCPY1.cpy", type: "COPYBOOK", codepage: null, byteSize: 640, findingCount: 0 },
+  { id: 5, path: "jcl/SYKD010.jcl", name: "SYKD010.jcl", type: "JCL", codepage: "Shift_JIS", byteSize: 900, findingCount: 0 },
+  { id: 6, path: "encoding/SYKENC1_CP930.cbl", name: "SYKENC1_CP930.cbl", type: "PROGRAM", codepage: "IBM930", byteSize: 1200, findingCount: 0 },
+];
 
-/** 利用者定義ルールの定義ファイルの中身。上の U001 に対応する。 */
-const USER_RULE = {
-  id: "U001",
-  name: "コンソール入力の使用",
-  category: "社内規約",
-  severity: "MEDIUM",
-  targets: ["COBOL"],
-  pattern: "FROM\\s+CONSOLE",
-  excludePattern: "",
-  ignoreCase: false,
-  wholeLine: false,
-  message: "コンソール入力は運用規約で禁止されている",
-  rationale: "運用手順の外で値が入り、記録が残りません。",
-  remedy: "入力をパラメータファイルから受け取ります。",
-};
+const FINDINGS = [
+  { ruleId: "R004", level: "warning", message: "ON SIZE ERROR 句が無い。", file: "cobol/SYK001.cbl", startLine: 10, startColumn: 12 },
+  { ruleId: "R001", level: "error", message: "WK-ORDER-ID が未初期化のまま参照されている。", file: "cobol/SYK002.cbl", startLine: 24, startColumn: 12 },
+];
 
-/** 固定形式 80 桁の COBOL 原本。DBCS 混在行・識別欄・COPY 文・リテラル中の COPY を含む。 */
+const SQL_FINDINGS = [
+  { ruleId: "S001", level: "warning", message: "SELECT * を列指定へ改める。", file: "cobol/SYK001.cbl", startLine: 30, startColumn: 12 },
+];
+
+/** Fixed-format 80-column COBOL, with a full-width comment line, a COPY statement and DBCS text. */
 const COBOL_TEXT = [
   "000100 IDENTIFICATION DIVISION.                                        SYK00110",
   "000200 PROGRAM-ID. SYK001.                                             SYK00120",
@@ -106,72 +116,123 @@ const COBOL_TEXT = [
   "000900     DISPLAY 'PLEASE COPY THIS TEXT'.                            SYK00190",
   "001000     MOVE 受注番号 TO WK-ORDER-ID.                               SYK00200",
   "001100     STOP RUN.                                                   SYK00210",
-].join("\r\n");
-
-/** 修正後ソース。原本の 10 行目へ ON SIZE ERROR 句を足した状態にし、差分が1箇所出るようにする。 */
-const FIXED_COBOL_TEXT = COBOL_TEXT.split("\r\n")
-  .map((line, index) =>
-    index === 9
-      ? "001000     MOVE 受注番号 TO WK-ORDER-ID ON SIZE ERROR CONTINUE.      SYK00200"
-      : line,
-  )
-  .join("\r\n");
-
-/** fix preview が標準出力へ書く unified diff。コピー句の修正案の表示に使う。 */
-const FIX_UNIFIED_DIFF = [
-  "--- a/copybook/SYKCPY1.cpy",
-  "+++ b/copybook/SYKCPY1.cpy",
-  "@@ -2,1 +2,1 @@",
-  "-000200     05  ORDER-ID      PIC X(10).                                CPY00120",
-  "+000200     05  ORDER-ID      PIC X(12).                                CPY00120",
-  "",
 ].join("\n");
+
+/*
+ * One EBCDIC CP930 asset, copied from what the engine actually returns for
+ * samples/encoding/SYKENC1_CP930.cbl: the text, and the byte-column boundaries of every line.
+ *
+ * The boundaries are the point of the fixture. Line 3 holds double-byte characters, and CP930 wraps
+ * a double-byte run in shift-out and shift-in bytes, so byte column 73 — where the identification
+ * area starts — falls on character 53, not on character 73 as it would in a line of single-byte
+ * characters. Anything that counted characters instead of bytes would put the decoration elsewhere.
+ */
+const CP930_PATH = "encoding/SYKENC1_CP930.cbl";
+
+const CP930_TEXT = [
+  "      *================================================================*",
+  "      *  PROGRAM-ID : SYKENC1                                         *",
+  "      *  文字コード検証用サンプルプログラム                             *",
+  "      *  日本語コメントと日本語混じりの見出しを含む。                    *",
+  "      *================================================================*",
+  "       IDENTIFICATION DIVISION.",
+  "       PROGRAM-ID.  SYKENC1.",
+  "       PROCEDURE DIVISION.",
+  "           STOP RUN.",
+].join("\n");
+
+const CP930_LINES = [
+  { byteLength: 73, boundaries: [6, 7, 11, 72] },
+  { byteLength: 72, boundaries: [6, 7, 11, -1] },
+  { byteLength: 76, boundaries: [6, 7, 10, 53] },
+  { byteLength: 77, boundaries: [6, 7, 10, 48] },
+  { byteLength: 73, boundaries: [6, 7, 11, 72] },
+  { byteLength: 32, boundaries: [6, 7, 11, -1] },
+  { byteLength: 29, boundaries: [6, 7, 11, -1] },
+  { byteLength: 27, boundaries: [6, 7, 11, -1] },
+  { byteLength: 21, boundaries: [6, 7, 11, -1] },
+];
 
 const COPYBOOK_TEXT = [
   "000100 01  SYK-ORDER-REC.                                              CPY00110",
   "000200     05  ORDER-ID      PIC X(10).                                CPY00120",
   "000300     05  ORDER-QTY     PIC 9(5).                                 CPY00130",
-].join("\r\n");
-
-const GENERATED_PYTHON = [
-  "# 逐語対訳(Python)",
-  "class Syk001:",
-  "    def main_proc(self):",
-  "        print('PLEASE COPY THIS TEXT')",
-  "        self.wk_order_id = self.order_no",
-  "        return 0",
 ].join("\n");
 
-const GENERATED_JAVA = [
-  "// 逐語対訳(Java)",
-  "public class Syk001 {",
-  "  void mainProc() {",
-  "    System.out.println(\"PLEASE COPY THIS TEXT\");",
-  "  }",
+/*
+ * The COPY expansion table for the first asset. Line 5 of COBOL_TEXT is its COPY statement, and the
+ * lines are the copybook's, which is what the view zone between lines 5 and 6 has to show.
+ */
+const COPY_EXPANSION = {
+  programs: [
+    {
+      path: "cobol/SYK001.cbl",
+      programId: "SYK001",
+      expansions: [
+        {
+          copyStatementLine: 5,
+          copybookName: "SYKCPY1",
+          copybookPath: "copybook/SYKCPY1.cpy",
+          lines: COPYBOOK_TEXT.split("\n").map((text, index) => ({
+            copybookLine: index + 1,
+            text,
+          })),
+        },
+      ],
+    },
+  ],
+};
+
+/*
+ * The translation of the first asset, in both languages, with the line correspondence the engine
+ * persists into LINE_MAP. Only the four statements of the procedure division are mapped, which is
+ * what lets the smoke tell a real mapping from a pane that merely scrolled to the same line number.
+ */
+const PYTHON_TEXT = [
+  "def main():",
+  "    print('PLEASE COPY THIS TEXT')",
+  "    wk_order_id = juchu_bango",
+  "    return",
+].join("\n");
+
+const JAVA_TEXT = [
+  "public final class SYK001 {",
+  "    public static void main(String[] args) {",
+  "        System.out.println(\"PLEASE COPY THIS TEXT\");",
+  "        wkOrderId = juchuBango;",
+  "        return;",
+  "    }",
   "}",
 ].join("\n");
 
-const INVENTORY = [
-  { id: 1, path: "bms/SYKMAP1.bms", name: "SYKMAP1.bms", type: "BMS", codepage: "windows-31j", byteSize: 1140, findingCount: 0 },
-  { id: 2, path: "cobol/SYK001.cbl", name: "SYK001.cbl", type: "PROGRAM", codepage: "windows-31j", byteSize: 4200, findingCount: 1 },
-  { id: 3, path: "cobol/SYK002.cbl", name: "SYK002.cbl", type: "PROGRAM", codepage: "windows-31j", byteSize: 3800, findingCount: 1 },
-  { id: 4, path: "copybook/SYKCPY1.cpy", name: "SYKCPY1.cpy", type: "COPYBOOK", codepage: "windows-31j", byteSize: 640, findingCount: 0 },
-  { id: 5, path: "jcl/SYKD010.jcl", name: "SYKD010.jcl", type: "JCL", codepage: "windows-31j", byteSize: 900, findingCount: 0 },
-];
+/** COBOL line -> generated line, per generated file. The Java form sits one line further down. */
+function lineMapRows(genFile, offset) {
+  return [
+    [7, 1],
+    [9, 2],
+    [10, 3],
+    [11, 4],
+  ].map(([cobolLine, genLine], index) => ({
+    id: index + 1,
+    cobolLineStart: cobolLine,
+    cobolLineEnd: cobolLine,
+    genFile,
+    genLineStart: genLine + offset,
+    genLineEnd: genLine + offset,
+    kind: "1:1",
+    note: "",
+    anchorId: `A${index + 1}`,
+  }));
+}
 
-const FINDINGS = [
-  { ruleId: "R004", level: "warning", message: "ON SIZE ERROR 句が無い。", file: "cobol/SYK001.cbl", startLine: 10, startColumn: 12 },
-  { ruleId: "R001", level: "error", message: "WK-ORDER-ID が未初期化のまま参照されている。", file: "cobol/SYK002.cbl", startLine: 24, startColumn: 12 },
-];
+const TRANSPILE = {
+  files: [
+    { name: "syk001.py", language: "python", text: PYTHON_TEXT },
+    { name: "SYK001.java", language: "java", text: JAVA_TEXT },
+  ],
+  lineMap: [...lineMapRows("syk001.py", 0), ...lineMapRows("SYK001.java", 1)],
+};
 
-const SQL_ADVICE = [
-  { ruleId: "S001", level: "warning", message: "SELECT * を列指定へ改める。", file: "cobol/SYK001.cbl", startLine: 10, startColumn: 12 },
-];
-
-/**
- * 走査済みプロジェクトファイルから読む呼出関係。ジョブ→ステップ→プログラム→段落まで辿れる形に
- * し、段落は FALLTHROUGH・PERFORM・GOTO の3種の流れを持たせる。実行順は seq が決める。
- */
 const GRAPH = {
   nodes: [
     { id: 2, type: "PROGRAM", label: "SYK001" },
@@ -179,164 +240,95 @@ const GRAPH = {
     { id: GRAPH_ID_BASE + 1, type: "JOB", label: "SYKD010" },
     { id: GRAPH_ID_BASE + 2, type: "STEP", label: "STEP010" },
     { id: GRAPH_ID_BASE + 3, type: "STEP", label: "STEP020" },
-    { id: GRAPH_ID_BASE + 4, type: "DATASET", label: "SYKT.D250718.ORDER.DAILY" },
   ],
   edges: [
-    { from: GRAPH_ID_BASE + 1, to: GRAPH_ID_BASE + 2, kind: "EXECUTION", resolution: "CONSTANT", seq: 1, line: 20 },
+    // The two steps are listed out of execution order on purpose: the screen has to order them by
+    // seq, not by the order they were read in.
     { from: GRAPH_ID_BASE + 1, to: GRAPH_ID_BASE + 3, kind: "EXECUTION", resolution: "CONSTANT", seq: 2, line: 30 },
+    { from: GRAPH_ID_BASE + 1, to: GRAPH_ID_BASE + 2, kind: "EXECUTION", resolution: "CONSTANT", seq: 1, line: 20 },
     { from: GRAPH_ID_BASE + 2, to: 2, kind: "EXECUTION", resolution: "CONSTANT", seq: 1, line: 20 },
-    { from: GRAPH_ID_BASE + 3, to: 3, kind: "EXECUTION", resolution: "CONSTANT", seq: 1, line: 30 },
-    { from: GRAPH_ID_BASE + 2, to: GRAPH_ID_BASE + 4, kind: "REFERENCE", resolution: "CONSTANT", seq: 0, line: null },
     { from: 2, to: 3, kind: "CALL", resolution: "CONSTANT", seq: 1, line: 11 },
   ],
   paragraphs: [
     { id: 21, programSourceId: 2, name: "MAIN-PROC", startLine: 8, endLine: 9 },
     { id: 22, programSourceId: 2, name: "READ-ORDER", startLine: 10, endLine: 10 },
-    { id: 23, programSourceId: 2, name: "ERROR-EXIT", startLine: 11, endLine: 11 },
   ],
   paragraphEdges: [
     { programSourceId: 2, from: 21, to: 22, toName: "READ-ORDER", kind: "PERFORM", line: 9, seq: 1 },
-    { programSourceId: 2, from: 21, to: 23, toName: "ERROR-EXIT", kind: "GOTO", line: 9, seq: 2 },
-    { programSourceId: 2, from: 21, to: 22, toName: "READ-ORDER", kind: "FALLTHROUGH", line: null, seq: 3 },
-    { programSourceId: 2, from: 22, to: 23, toName: "ERROR-EXIT", kind: "FALLTHROUGH", line: null, seq: 1 },
   ],
 };
 
-const LINE_MAP = [
-  { id: 1, cobolLineStart: 8, cobolLineEnd: 8, genFile: "syk001.py", genLineStart: 3, genLineEnd: 3, kind: "1:1", note: "", anchorId: "MAIN-PROC" },
-  { id: 2, cobolLineStart: 9, cobolLineEnd: 9, genFile: "syk001.py", genLineStart: 4, genLineEnd: 4, kind: "1:1", note: "", anchorId: "" },
-  { id: 3, cobolLineStart: 10, cobolLineEnd: 10, genFile: "syk001.py", genLineStart: 5, genLineEnd: 5, kind: "1:1", note: "全角の変数名は逐語対訳できない", anchorId: "" },
-  { id: 4, cobolLineStart: 8, cobolLineEnd: 8, genFile: "Syk001.java", genLineStart: 3, genLineEnd: 3, kind: "1:1", note: "", anchorId: "mainProc" },
-];
+/**
+ * How many times each file has been changed outside the tool. A file's stamp is derived from this,
+ * so a save that follows a `touch` finds the original no longer the one it read.
+ */
+const touched = new Map();
 
-function engineResult(subcommand, outputs, summary, stdout) {
+function stampOf(path) {
+  const revision = touched.get(path) ?? 0;
+  return { mtimeMs: 1000 + revision, byteSize: 100 + revision };
+}
+
+/** The stored settings and the rule file, held in memory so a write is visible to the next read. */
+let settings = {
+  severityThreshold: "warning",
+  defaultEncoding: "",
+  copybookPaths: [],
+  // Empty, so the fix write-out falls back to the directory beside the project file.
+  fixOutDir: "",
+  lastInputDir: "",
+  paneSizes: {},
+};
+let rulesFile = { version: 2, rules: {}, custom: [] };
+
+function engineResult(subcommand, outputs, summary) {
   return {
     subcommand,
     exitCode: 0,
     summary: summary === undefined ? null : summary,
-    stdout: stdout === undefined ? "" : stdout,
+    stdout: "",
     stderr: "",
-    outputs,
+    outputs: outputs === undefined ? {} : outputs,
   };
 }
 
-/** fix preview のサマリ。COBOL 1件とコピー句1件を返し、両方の表示経路を検査対象にする。 */
-const FIX_PREVIEW_SUMMARY = {
-  fixedFiles: ["cobol/SYK001.cbl"],
-  copybookFixes: [
-    { copybook: "copybook/SYKCPY1.cpy", importers: ["cobol/SYK001.cbl", "cobol/SYK002.cbl"] },
-  ],
-  fixCount: 2,
-  analysisErrors: 0,
-};
-
-const REPORT_HTML = [
-  "<style>body{font-family:sans-serif}h1{font-size:18px}</style>",
-  "<h1>COBOL Insight 解析レポート</h1>",
-  "<table><tr><th>資産</th><td>5</td></tr><tr><th>指摘</th><td>2</td></tr></table>",
-].join("");
-
 const api = {
-  runScan: () => Promise.resolve(engineResult("scan", { db: DB_PATH })),
-  runCallgraph: (request) =>
-    Promise.resolve(
-      engineResult("call-graph", {
-        db: DB_PATH,
-        ...(request.jsonFile === undefined ? {} : { json: CALLGRAPH_JSON }),
-        ...(request.svgFile === undefined ? {} : { svg: request.svgFile }),
-        ...(request.pngFile === undefined ? {} : { png: request.pngFile }),
-      }),
-    ),
-  runLint: () => Promise.resolve(engineResult("lint", { sarif: LINT_SARIF })),
-  runSqlLint: () => Promise.resolve(engineResult("sql-lint", { sarif: SQL_SARIF })),
-  runReport: (request) =>
-    Promise.resolve(
-      engineResult(
-        "report",
-        {
-          ...(request.htmlFile === undefined ? {} : { html: request.htmlFile }),
-          ...(request.textFile === undefined ? {} : { text: request.textFile }),
-        },
-        { assets: 5, findings: 2, sqlAdvice: 1, callEdges: 6, analysisErrors: 0 },
-      ),
-    ),
-  runTranspile: () => Promise.resolve(engineResult("translate", { outDir: "C:\\smoke\\transpile" })),
-  runFixPreview: () =>
-    Promise.resolve(engineResult("fix-preview", {}, FIX_PREVIEW_SUMMARY, FIX_UNIFIED_DIFF)),
-  runFixApply: (request) =>
-    Promise.resolve(
-      engineResult(
-        "fix-apply",
-        { outDir: request.outDir === undefined ? "C:\\smoke\\fix" : request.outDir },
-        {
-          writtenFiles: ["cobol/SYK001.cbl"],
-          copybookFixes: FIX_PREVIEW_SUMMARY.copybookFixes,
-          fixCount: 1,
-          analysisErrors: 0,
-          reparseFailures: 0,
-        },
-      ),
-    ),
-  cancelRun: () => Promise.resolve(undefined),
-  selectInputFolder: () => Promise.resolve("C:\\smoke\\assets"),
-  checkDirectoryExists: () => Promise.resolve(true),
-  getOutputPaths: () =>
-    Promise.resolve({
-      db: DB_PATH,
-      lintSarif: LINT_SARIF,
-      sqlAdviseSarif: SQL_SARIF,
-      copyExpansion: "C:\\smoke\\data\\cobol-insight-copy-expansion.json",
-      userRules: USER_RULES_PATH,
-      ruleConfig: RULE_CONFIG_PATH,
-    }),
-  listRules: () =>
-    Promise.resolve({
-      rules: RULES.map((rule) => ({
-        ...rule,
-        enabled: !ruleConfig.disabledRules.includes(rule.id),
-      })),
-      userRuleErrors: [],
-      ruleConfigWarnings: [],
-    }),
-  readUserRules: () => Promise.resolve({ version: 1, rules: [USER_RULE] }),
-  writeUserRules: () => Promise.resolve(undefined),
-  readRuleConfig: () => Promise.resolve(ruleConfig),
-  writeRuleConfig: (_path, file) => {
-    ruleConfig = file;
-    return Promise.resolve(undefined);
+  run: (invocation) => {
+    switch (invocation.subcommand) {
+      case "scan":
+        return Promise.resolve(engineResult("scan", { db: DB_PATH }));
+      case "lint":
+        return Promise.resolve(engineResult("lint", { sarif: LINT_SARIF }));
+      case "sql-lint":
+        return Promise.resolve(engineResult("sql-lint", { sarif: SQL_SARIF }));
+      default:
+        return Promise.resolve(engineResult(invocation.subcommand));
+    }
   },
-  readSettings: () =>
-    Promise.resolve({
-      severityThreshold: "warning",
-      defaultEncoding: "手動: Shift_JIS",
-      copybookPaths: [],
-      paneSizes: {},
-    }),
-  writeSettings: () => Promise.resolve(undefined),
-  readSarif: (path) => Promise.resolve(path === SQL_SARIF ? SQL_ADVICE : FINDINGS),
-  readGraph: () => Promise.resolve(GRAPH),
-  readFixResult: (request) =>
-    Promise.resolve({
-      relPath: request.relPath,
-      originalText: COBOL_TEXT,
-      fixedText: FIXED_COBOL_TEXT,
-    }),
-  readReportHtml: () => Promise.resolve(REPORT_HTML),
-  readReportText: () => Promise.resolve("COBOL Insight 解析レポート\n資産 5 ・ 指摘 2"),
-  readAssetInventory: () => Promise.resolve(INVENTORY),
-  readSourceText: (request) => {
-    const text = request.path.includes("SYKCPY1") ? COPYBOOK_TEXT : COBOL_TEXT;
-    const lines = text.split(/\r\n|\n/);
-    const limited = request.maxLines === undefined ? lines : lines.slice(0, request.maxLines);
+  cancel: () => Promise.resolve(undefined),
+  decode: (request) => {
+    if (request.path === CP930_PATH) {
+      return Promise.resolve({
+        text: CP930_TEXT,
+        codepage: "x-IBM930",
+        detected: false,
+        soSiPresent: true,
+        lines: CP930_LINES,
+        stamp: stampOf(request.path),
+        error: "",
+      });
+    }
     return Promise.resolve({
-      text: limited.join("\n"),
+      text: request.path.includes("SYKCPY1") ? COPYBOOK_TEXT : COBOL_TEXT,
       codepage: "Shift_JIS",
-      truncated: limited.length < lines.length,
-      unsupported: false,
+      detected: true,
+      soSiPresent: false,
+      lines: [],
+      stamp: stampOf(request.path),
+      error: "",
     });
   },
-  /** 書き戻しは行わず、engine が返す要約だけを模す(原本にも engine にも触れない)。 */
-  saveSource: (request) =>
+  save: (request) =>
     Promise.resolve({
       written: true,
       path: `C:/smoke/assets/${request.path}`,
@@ -346,21 +338,66 @@ const api = {
       error: "",
       exitCode: 0,
     }),
-  readCopyExpansion: () => Promise.resolve({ programs: [] }),
-  readTranspileArtifacts: () =>
+  rules: () =>
     Promise.resolve({
-      files: [
-        { name: "Syk001.java", language: "java", text: GENERATED_JAVA },
-        { name: "syk001.py", language: "python", text: GENERATED_PYTHON },
-      ],
-      lineMap: LINE_MAP,
+      rules: RULES.map((rule) => ({
+        ...rule,
+        enabled: rulesFile.rules[rule.id]?.enabled !== false,
+      })),
+      ruleErrors: [],
     }),
+  validateRules: () => Promise.resolve({ ok: true, errors: [], parsed: { rules: RULES, ruleErrors: [] } }),
+
+  readInventory: () => Promise.resolve(INVENTORY),
+  readSarif: (path) => Promise.resolve(path === SQL_SARIF ? SQL_FINDINGS : FINDINGS),
+  readGraph: () => Promise.resolve(GRAPH),
+  readCopyExpansion: () => Promise.resolve(COPY_EXPANSION),
+  readFixDiff: (request) =>
+    Promise.resolve({
+      relPath: request.relPath,
+      originalText: COBOL_TEXT,
+      // One line differs, so the diff view has something to line up.
+      fixedText: COBOL_TEXT.replace("STOP RUN.", "GOBACK.  "),
+    }),
+  readTranspile: () => Promise.resolve(TRANSPILE),
+  readReport: () => Promise.resolve("<h1>COBOL Insight 解析レポート</h1>"),
+
+  outputPaths: () =>
+    Promise.resolve({
+      db: DB_PATH,
+      sarif: LINT_SARIF,
+      sqlSarif: SQL_SARIF,
+      copyExpansion: "C:\\smoke\\data\\cobol-insight-copy-expansion.json",
+      rules: RULES_PATH,
+    }),
+  selectFolder: () => Promise.resolve("C:\\smoke\\assets"),
+  dirExists: () => Promise.resolve(true),
+  stat: (request) => Promise.resolve(stampOf(request.path)),
+
+  /*
+   * Not part of the contract the real preload publishes: the smoke's way of standing in for an edit
+   * made outside the tool. Bumping a file's stamp is what makes the next save find a changed
+   * original and raise the conflict dialog.
+   */
+  touch: (path) => {
+    touched.set(path, (touched.get(path) ?? 0) + 1);
+    return Promise.resolve(undefined);
+  },
   importSource: (request) =>
-    Promise.resolve({
-      status: "written",
-      relPath: `cobol/${request.fileName}.cbl`,
-      lineCount: request.lines.length,
-    }),
+    Promise.resolve({ status: "written", relPath: request.fileName, lineCount: request.lines.length }),
+  saveAs: (request) => Promise.resolve(`C:\\smoke\\${request.fileName}`),
+
+  readSettings: () => Promise.resolve(settings),
+  writeSettings: (next) => {
+    settings = next;
+    return Promise.resolve(undefined);
+  },
+  readRules: () => Promise.resolve(rulesFile),
+  writeRules: (_path, file) => {
+    rulesFile = file;
+    return Promise.resolve(undefined);
+  },
+
   versions: {
     chrome: process.versions.chrome,
     node: process.versions.node,
@@ -369,3 +406,11 @@ const api = {
 };
 
 contextBridge.exposeInMainWorld("cobolInsight", api);
+
+/**
+ * What the smoke needs to see but the application does not: the rule file as the last write left
+ * it, so a toggle on screen can be shown to have reached the file.
+ */
+contextBridge.exposeInMainWorld("cobolInsightSmoke", {
+  rulesFile: () => rulesFile,
+});

@@ -1,8 +1,9 @@
 package jp.cobolinsight.transpile.emit;
 
 /**
- * COBOL 名を Python/Java 双方で有効な識別子へ正規化する。両言語とも Unicode 識別子(日本語を含む)を
- * 受け付けるため、識別子に使えない文字(ハイフン等)を下線へ置換し、先頭が数字なら下線を前置する。
+ * Normalizes a COBOL name into an identifier valid in both Python and Java. Since both languages
+ * accept Unicode identifiers (including Japanese), characters not usable in an identifier (such as
+ * a hyphen) are replaced with an underscore, and an underscore is prepended if the name starts with a digit.
  */
 public final class Identifiers {
 

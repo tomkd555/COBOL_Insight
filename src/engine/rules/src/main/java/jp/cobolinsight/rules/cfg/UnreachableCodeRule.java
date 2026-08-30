@@ -1,23 +1,25 @@
 package jp.cobolinsight.rules.cfg;
 
-import jp.cobolinsight.engineapi.cfg.CfgNode;
-import jp.cobolinsight.engineapi.cfg.CfgNodeKind;
-import jp.cobolinsight.engineapi.cfg.ControlFlowGraph;
-import jp.cobolinsight.engineapi.cfg.ControlFlowGraphs;
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.Severity;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
-import jp.cobolinsight.engineapi.semantic.GoToStatement;
-import jp.cobolinsight.engineapi.semantic.PerformRelation;
-import jp.cobolinsight.engineapi.semantic.Procedure;
-import jp.cobolinsight.engineapi.semantic.ProcedureKind;
-import jp.cobolinsight.engineapi.semantic.SimpleStatement;
-import jp.cobolinsight.engineapi.semantic.Statement;
-import jp.cobolinsight.engineapi.source.SourcePosition;
-import jp.cobolinsight.engineapi.spi.AnalysisContext;
-import jp.cobolinsight.engineapi.spi.AnalysisPhase;
-import jp.cobolinsight.engineapi.spi.Rule;
-import jp.cobolinsight.engineapi.spi.RuleDoc;
+import jp.cobolinsight.core.cfg.CfgNode;
+import jp.cobolinsight.core.cfg.CfgNodeKind;
+import jp.cobolinsight.core.cfg.ControlFlowGraph;
+import jp.cobolinsight.core.cfg.ControlFlowGraphs;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.Severity;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.semantic.GoToStatement;
+import jp.cobolinsight.core.semantic.PerformRelation;
+import jp.cobolinsight.core.semantic.Procedure;
+import jp.cobolinsight.core.semantic.ProcedureKind;
+import jp.cobolinsight.core.semantic.SimpleStatement;
+import jp.cobolinsight.core.semantic.Statement;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
+import jp.cobolinsight.core.source.SourcePosition;
+import jp.cobolinsight.core.spi.AnalysisContext;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -25,47 +27,41 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * R011 到達不能コード・使われない段落。2つの下位判定を1ルールで返す。
- * (a) 到達不能コード: 構築済みCFGで ENTRY から到達できない STATEMENT ノードの文。
- * (b) 使われない段落: どの PERFORM・GO TO からも参照されず、本流の流下経路上にもない段落。
- * (b) はCFGの流下辺が過大近似となるため、CFG到達性ではなく意味モデルで判定する。
+ * R011 Unreachable code and unused paragraphs. Combines two sub-checks into one rule.
+ * (a) Unreachable code: the statement of a STATEMENT node in the built CFG that cannot be
+ * reached from ENTRY.
+ * (b) Unused paragraph: a paragraph that is neither referenced by any PERFORM/GO TO nor on the
+ * mainline fall-through path.
+ * (b) is judged using the semantic model rather than CFG reachability, because the CFG's
+ * fall-through edges are an over-approximation.
  */
 public final class UnreachableCodeRule implements Rule {
 
-    @Override
-    public String id() {
-        return "R011";
-    }
+    private static final RuleMeta META = RuleMeta.named("R011", "到達不能コード", "制御フロー")
+            .summary("制御が届かない文と、どこからも呼ばれない段落を検出します。")
+            .rationale("実行されない記述が残ると、読む者が生きた処理と取り違え、"
+                    + "改修を効かない場所へ加えます。")
+            .detection("(a) 制御フローグラフで入口から到達できない文と、"
+                    + "(b) PERFORM・GO TO のいずれからも参照されず流下経路上にもない段落の"
+                    + "2つを検出します。(b) は流下辺が過大に見積もられるため、"
+                    + "到達性ではなく意味モデルで判定します。")
+            .remedy("不要なら削ります。必要な処理なら、呼び出しか分岐を加えて到達させます。")
+            .example("""
+                        GOBACK.
+                        MOVE WS-A TO WS-B.
+                    """, """
+                        MOVE WS-A TO WS-B.
+                        GOBACK.
+                    """)
+            .severity(Severity.MEDIUM)
+            .commands(Command.LINT, Command.REPORT)
+            .targets(AssetKind.COBOL)
+            .needs(Needs.SEMANTIC, Needs.CFG)
+            .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("到達不能コード", "制御フロー")
-                .summary("制御が届かない文と、どこからも呼ばれない段落を検出します。")
-                .rationale("実行されない記述が残ると、読む者が生きた処理と取り違え、"
-                        + "改修を効かない場所へ加えます。")
-                .detection("(a) 制御フローグラフで入口から到達できない文と、"
-                        + "(b) PERFORM・GO TO のいずれからも参照されず流下経路上にもない段落の"
-                        + "2つを検出します。(b) は流下辺が過大に見積もられるため、"
-                        + "到達性ではなく意味モデルで判定します。")
-                .remedy("不要なら削ります。必要な処理なら、呼び出しか分岐を加えて到達させます。")
-                .example("""
-                            GOBACK.
-                            MOVE WS-A TO WS-B.
-                        """, """
-                            MOVE WS-A TO WS-B.
-                            GOBACK.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.MEDIUM;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.CONTROL_FLOW;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override
@@ -81,7 +77,7 @@ public final class UnreachableCodeRule implements Rule {
         return findings;
     }
 
-    /** (a) CFGでENTRYから到達できないSTATEMENTノードの文。 */
+    /** (a) The statement of a STATEMENT node unreachable from ENTRY in the CFG. */
     private void detectUnreachable(CobolSemanticModel model, ControlFlowGraph cfg,
             List<Finding> findings) {
         Set<CfgNode> reachable = cfg.reachableNodes();
@@ -89,15 +85,15 @@ public final class UnreachableCodeRule implements Rule {
             if (node.kind() != CfgNodeKind.STATEMENT || reachable.contains(node)) {
                 continue;
             }
-            node.statement().ifPresent(statement -> findings.add(Finding.of(id(),
-                    defaultSeverity().toLevel(),
+            node.statement().ifPresent(statement -> findings.add(Finding.of(META.id(),
+                    META.defaultSeverity().toLevel(),
                     "この文は制御フロー上どの経路からも到達せず、実行されることがない。",
                     new SourcePosition(model.sourceFile(), statement.range().start().line(), 1,
                             SourcePosition.UNKNOWN_BYTE_OFFSET))));
         }
     }
 
-    /** (b) 参照されず本流上にもない段落。 */
+    /** (b) A paragraph that is neither referenced nor on the mainline path. */
     private void detectUnusedParagraphs(AnalysisContext context, CobolSemanticModel model,
             List<Finding> findings) {
         List<Procedure> procedures = model.procedures();
@@ -110,7 +106,7 @@ public final class UnreachableCodeRule implements Rule {
 
         for (int i = 0; i < procedures.size(); i++) {
             Procedure procedure = procedures.get(i);
-            // 先頭の手続きは手続き部の入口であり、どこからも参照されなくても実行される。
+            // The first procedure is the procedure division's entry point, and runs even if never referenced.
             if (i == 0 || procedure.kind() != ProcedureKind.PARAGRAPH) {
                 continue;
             }
@@ -119,7 +115,7 @@ public final class UnreachableCodeRule implements Rule {
                     || mainline.contains(name)) {
                 continue;
             }
-            findings.add(Finding.of(id(), defaultSeverity().toLevel(),
+            findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                     "段落 " + procedure.name()
                             + " はどの PERFORM・GO TO からも参照されず、本流の流下経路上にもない。",
                     new SourcePosition(model.sourceFile(), procedure.range().start().line(), 1,
@@ -127,7 +123,7 @@ public final class UnreachableCodeRule implements Rule {
         }
     }
 
-    /** PERFORM の対象段落と、THRU 範囲(定義順の連続集合)に含まれる段落名。 */
+    /** PERFORM target paragraphs, plus paragraph names contained in a THRU range (a contiguous set in definition order). */
     private static Set<String> performTargets(CobolSemanticModel model) {
         List<Procedure> procedures = model.procedures();
         Set<String> targets = new LinkedHashSet<>();
@@ -164,8 +160,10 @@ public final class UnreachableCodeRule implements Rule {
     }
 
     /**
-     * 本流 = 先頭手続きから定義順に流下し、無条件終端(STOP/GOBACK/EXIT PROGRAM、または単一
-     * 飛び先の無条件 GO TO)を含む段落に達した時点で打ち切る。打ち切りまでの段落名の集合。
+     * The mainline = falling through in definition order from the first procedure, stopping once
+     * a paragraph containing an unconditional terminal (STOP/GOBACK/EXIT PROGRAM, or an
+     * unconditional GO TO with a single target) is reached. The set of paragraph names up to that
+     * stopping point.
      */
     private static Set<String> mainline(List<Procedure> procedures) {
         Set<String> mainline = new LinkedHashSet<>();

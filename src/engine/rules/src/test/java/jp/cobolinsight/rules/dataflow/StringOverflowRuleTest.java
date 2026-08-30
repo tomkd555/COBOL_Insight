@@ -1,8 +1,8 @@
 package jp.cobolinsight.rules.dataflow;
 
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.FindingLevel;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.FindingLevel;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -13,7 +13,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** R016 STRING/UNSTRING の受信領域あふれの合成fixture検証。 */
+/** R016 synthetic fixture verification for STRING/UNSTRING receiving-field overflow. */
 class StringOverflowRuleTest {
 
     @TempDir
@@ -84,6 +84,28 @@ class StringOverflowRuleTest {
         assertEquals(1, findings.size(), () -> "UNSTRING の受信あふれを1件検出すること: " + findings);
         assertEquals("R016", findings.get(0).ruleId());
         assertTrue(findings.get(0).message().contains("WS-SRC"), findings.get(0).message());
+    }
+
+    /** When ON OVERFLOW is written, an overflow is never silently truncated. */
+    @Test
+    void ignoresOverflowThatIsHandled() {
+        String text = program("F016E",
+                "       01  WS-SRC  PIC X(30).\n"
+                        + "       01  WS-A    PIC X(05).\n"
+                        + "       01  WS-B    PIC X(05).\n"
+                        + "       01  WS-DST  PIC X(10).",
+                "           UNSTRING WS-SRC INTO WS-A WS-B",
+                "               ON OVERFLOW",
+                "                   DISPLAY 'UNSTRING OVERFLOW'",
+                "           END-UNSTRING",
+                "           STRING WS-SRC DELIMITED BY SIZE",
+                "               INTO WS-DST",
+                "               ON OVERFLOW",
+                "                   DISPLAY 'STRING OVERFLOW'",
+                "           END-STRING",
+                "           STOP RUN.");
+        assertEquals(List.of(), run("F016E", text),
+                "ON OVERFLOW であふれ時の処理を書いた STRING・UNSTRING は対象外");
     }
 
     @Test

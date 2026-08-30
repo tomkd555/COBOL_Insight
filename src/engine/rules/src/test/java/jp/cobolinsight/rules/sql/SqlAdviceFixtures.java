@@ -1,17 +1,17 @@
 package jp.cobolinsight.rules.sql;
 
-import jp.cobolinsight.cobolfrontend.Che4zCobolParser;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
-import jp.cobolinsight.engineapi.semantic.EmbeddedBlock;
-import jp.cobolinsight.engineapi.semantic.EmbeddedBlockKind;
-import jp.cobolinsight.engineapi.source.DecodedSource;
-import jp.cobolinsight.engineapi.source.EncodingInfo;
-import jp.cobolinsight.engineapi.source.SourcePosition;
-import jp.cobolinsight.engineapi.source.SourceRange;
-import jp.cobolinsight.engineapi.spi.AnalysisContext;
-import jp.cobolinsight.engineapi.spi.ParseOutcome;
-import jp.cobolinsight.engineapi.sql.SqlStatementModel;
-import jp.cobolinsight.sqlfrontend.JsqlSqlParser;
+import jp.cobolinsight.frontend.cobol.Che4zCobolParser;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.semantic.EmbeddedBlock;
+import jp.cobolinsight.core.semantic.EmbeddedBlockKind;
+import jp.cobolinsight.core.source.DecodedSource;
+import jp.cobolinsight.core.source.EncodingInfo;
+import jp.cobolinsight.core.source.SourcePosition;
+import jp.cobolinsight.core.source.SourceRange;
+import jp.cobolinsight.core.spi.AnalysisContext;
+import jp.cobolinsight.core.spi.ParseOutcome;
+import jp.cobolinsight.core.sql.SqlStatementModel;
+import jp.cobolinsight.frontend.sql.Db2zSqlParser;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -24,21 +24,22 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * SQL指摘(Sルール)テストの補助。合成SQL・samples の埋め込みSQLを、本番と同じ SqlParser SPI
- * (sql-frontend の {@link JsqlSqlParser})で {@link SqlStatementModel} へ変換し、それを
- * {@code sqlStatements} に載せた AnalysisContext を組む。sql-frontend が算出した構造シグナルを
- * 消費側ルールへそのまま流す点は、本番経路(ScanRunner.persistSqlStatements)と同じである。
+ * Test support for SQL advisory (S-rule) tests. Converts synthetic SQL and the samples'
+ * embedded SQL into {@link SqlStatementModel} using the same SqlParser SPI as production
+ * (sql-frontend's {@link Db2zSqlParser}), and builds an AnalysisContext carrying them in
+ * {@code sqlStatements}. Passing the structural signals computed by sql-frontend straight
+ * through to the consuming rule mirrors the production path (ScanRunner.persistSqlStatements).
  */
 final class SqlAdviceFixtures {
 
     static final Path SAMPLES = Path.of("..", "..", "..", "samples").toAbsolutePath().normalize();
     private static final String SYNTHETIC_FILE = "synthetic.cbl";
-    private static final JsqlSqlParser SQL_PARSER = new JsqlSqlParser();
+    private static final Db2zSqlParser SQL_PARSER = new Db2zSqlParser();
 
     private SqlAdviceFixtures() {
     }
 
-    /** 単一行の合成SQLを、指定行に位置づけた SqlStatementModel へ変換する。 */
+    /** Converts a single-line synthetic SQL statement into a SqlStatementModel positioned at the given line. */
     static SqlStatementModel model(String sql, int line) {
         SourcePosition start = new SourcePosition(SYNTHETIC_FILE, line, 1,
                 SourcePosition.UNKNOWN_BYTE_OFFSET);
@@ -52,13 +53,13 @@ final class SqlAdviceFixtures {
                         + outcome.failureFinding().map(Object::toString).orElse("原因不明")));
     }
 
-    /** SqlStatementModel 群を sqlStatements に載せた AnalysisContext。 */
+    /** An AnalysisContext carrying the given SqlStatementModel instances in sqlStatements. */
     static AnalysisContext context(SqlStatementModel... statements) {
         return AnalysisContext.of(List.of(), List.of(), List.of(statements), List.of(),
                 Optional.empty(), Map.of());
     }
 
-    /** samples/cobol/<name>.cbl を実パーサーで解析し、埋め込みSQLの SqlStatementModel を集める。 */
+    /** Parses samples/cobol/<name>.cbl with the real parser and collects the SqlStatementModel of its embedded SQL. */
     static List<SqlStatementModel> samplesSqlModels(String cobolBaseName) {
         Path file = SAMPLES.resolve("cobol").resolve(cobolBaseName);
         String text = readText(file);
@@ -76,7 +77,7 @@ final class SqlAdviceFixtures {
         return statements;
     }
 
-    /** samples の埋め込みSQLを sqlStatements に載せた AnalysisContext。 */
+    /** An AnalysisContext carrying the samples' embedded SQL in sqlStatements. */
     static AnalysisContext samplesContext(String cobolBaseName) {
         return AnalysisContext.of(List.of(), List.of(), samplesSqlModels(cobolBaseName),
                 List.of(), Optional.empty(), Map.of());

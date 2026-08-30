@@ -1,24 +1,26 @@
 package jp.cobolinsight.rules.cfg;
 
-import jp.cobolinsight.engineapi.cfg.CfgNode;
-import jp.cobolinsight.engineapi.cfg.ControlFlowGraph;
-import jp.cobolinsight.engineapi.cfg.ControlFlowGraphs;
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.FixSuggestion;
-import jp.cobolinsight.engineapi.finding.Severity;
-import jp.cobolinsight.engineapi.finding.TextEdit;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
-import jp.cobolinsight.engineapi.semantic.CompoundStatement;
-import jp.cobolinsight.engineapi.semantic.EmbeddedBlock;
-import jp.cobolinsight.engineapi.semantic.EmbeddedBlockKind;
-import jp.cobolinsight.engineapi.semantic.SimpleStatement;
-import jp.cobolinsight.engineapi.source.SourcePosition;
-import jp.cobolinsight.engineapi.source.SourceRange;
-import jp.cobolinsight.engineapi.spi.AnalysisContext;
-import jp.cobolinsight.engineapi.spi.AnalysisPhase;
-import jp.cobolinsight.engineapi.spi.FixProducer;
-import jp.cobolinsight.engineapi.spi.Rule;
-import jp.cobolinsight.engineapi.spi.RuleDoc;
+import jp.cobolinsight.core.cfg.CfgNode;
+import jp.cobolinsight.core.cfg.ControlFlowGraph;
+import jp.cobolinsight.core.cfg.ControlFlowGraphs;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.FixSuggestion;
+import jp.cobolinsight.core.finding.Severity;
+import jp.cobolinsight.core.finding.TextEdit;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.semantic.CompoundStatement;
+import jp.cobolinsight.core.semantic.EmbeddedBlock;
+import jp.cobolinsight.core.semantic.EmbeddedBlockKind;
+import jp.cobolinsight.core.semantic.SimpleStatement;
+import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.source.AssetKind;
+import jp.cobolinsight.core.source.SourcePosition;
+import jp.cobolinsight.core.source.SourceRange;
+import jp.cobolinsight.core.spi.AnalysisContext;
+import jp.cobolinsight.core.spi.FixProducer;
 import jp.cobolinsight.rules.FixEdits;
 import jp.cobolinsight.rules.SourceTextIndex;
 
@@ -33,52 +35,44 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * R018 SQLCODE未検査。データ変更DML(INSERT/UPDATE/DELETE)の EXEC SQL 実行後、次の EXEC SQL に
- * 達するまでの前方経路で SQLCODE・SQLSTATE を条件参照しない箇所を検出する。検査を欠くと、更新の
- * 失敗を検知せずに後続処理が続く。SQLCODE は次の SQL で上書きされるため、境界は次の EXEC SQL 文
- * とする。SELECT INTO・FETCH は対象外。
+ * R018 Unchecked SQLCODE. After a data-changing DML (INSERT/UPDATE/DELETE) EXEC SQL executes,
+ * detects points on the forward path up to the next EXEC SQL where SQLCODE/SQLSTATE is never
+ * referenced in a condition. Without a check, subsequent processing continues without detecting
+ * an update failure. Because SQLCODE gets overwritten by the next SQL statement, the boundary is
+ * set at the next EXEC SQL statement. SELECT INTO and FETCH are out of scope.
  */
 public final class SqlCodeUncheckedRule implements Rule {
 
-    @Override
-    public String id() {
-        return "R018";
-    }
+    private static final RuleMeta META = RuleMeta.named("R018", "SQLCODE/SQLSTATE未検査", "例外処理")
+            .summary("INSERT・UPDATE・DELETE の後、次の EXEC SQL までに"
+                    + "SQLCODE・SQLSTATE を検査しない箇所を検出します。")
+            .rationale("更新の失敗を検知せずに後続が進み、"
+                    + "更新されたつもりのデータで処理を続けてしまいます。")
+            .detection("データ変更 DML の実行後、次の EXEC SQL に達するまでの前方経路で"
+                    + "SQLCODE・SQLSTATE を条件参照しないものを検出します。境界を次の EXEC SQL と"
+                    + "するのは、SQLCODE が次の SQL で上書きされるためです。"
+                    + "SELECT INTO・FETCH は対象外とします。")
+            .remedy("DML の直後に SQLCODE を判定し、0 以外を異常として処理します。")
+            .example("""
+                    EXEC SQL UPDATE CUSTOMER SET NAME = :WS-NAME
+                             WHERE ID = :WS-ID END-EXEC.
+                    PERFORM NEXT-SHORI.
+                    """, """
+                    EXEC SQL UPDATE CUSTOMER SET NAME = :WS-NAME
+                             WHERE ID = :WS-ID END-EXEC.
+                    IF SQLCODE NOT = ZERO
+                        PERFORM SQL-ERROR
+                    END-IF.
+                    """)
+            .severity(Severity.HIGH)
+            .commands(Command.LINT, Command.REPORT, Command.FIX)
+            .targets(AssetKind.COBOL)
+            .needs(Needs.SEMANTIC, Needs.CFG, Needs.SOURCE_TEXT)
+            .build();
 
     @Override
-    public RuleDoc doc() {
-        return RuleDoc.named("SQLCODE/SQLSTATE未検査", "例外処理")
-                .summary("INSERT・UPDATE・DELETE の後、次の EXEC SQL までに"
-                        + "SQLCODE・SQLSTATE を検査しない箇所を検出します。")
-                .rationale("更新の失敗を検知せずに後続が進み、"
-                        + "更新されたつもりのデータで処理を続けてしまいます。")
-                .detection("データ変更 DML の実行後、次の EXEC SQL に達するまでの前方経路で"
-                        + "SQLCODE・SQLSTATE を条件参照しないものを検出します。境界を次の EXEC SQL と"
-                        + "するのは、SQLCODE が次の SQL で上書きされるためです。"
-                        + "SELECT INTO・FETCH は対象外とします。")
-                .remedy("DML の直後に SQLCODE を判定し、0 以外を異常として処理します。")
-                .example("""
-                        EXEC SQL UPDATE CUSTOMER SET NAME = :WS-NAME
-                                 WHERE ID = :WS-ID END-EXEC.
-                        PERFORM NEXT-SHORI.
-                        """, """
-                        EXEC SQL UPDATE CUSTOMER SET NAME = :WS-NAME
-                                 WHERE ID = :WS-ID END-EXEC.
-                        IF SQLCODE NOT = ZERO
-                            PERFORM SQL-ERROR
-                        END-IF.
-                        """)
-                .build();
-    }
-
-    @Override
-    public Severity defaultSeverity() {
-        return Severity.HIGH;
-    }
-
-    @Override
-    public AnalysisPhase phase() {
-        return AnalysisPhase.CONTROL_FLOW;
+    public RuleMeta meta() {
+        return META;
     }
 
     @Override
@@ -95,7 +89,7 @@ public final class SqlCodeUncheckedRule implements Rule {
     }
 
     private void evaluate(CobolSemanticModel model, ControlFlowGraph cfg, List<Finding> findings) {
-        // EXEC SQL 文ノード(全SQL。境界に使う)と、range→ノードの索引を作る。
+        // Build the set of EXEC SQL statement nodes (all SQL; used as boundaries) and a range->node index.
         Set<CfgNode> execSqlNodes = Collections.newSetFromMap(new IdentityHashMap<>());
         Map<SourceRange, CfgNode> byRange = new HashMap<>();
         for (CfgNode node : cfg.nodes()) {
@@ -123,7 +117,7 @@ public final class SqlCodeUncheckedRule implements Rule {
             boolean checked = CfgSupport.forwardHasMatch(cfg, start,
                     execSqlNodes::contains, SqlCodeUncheckedRule::referencesSqlCode);
             if (!checked) {
-                findings.add(Finding.of(id(), defaultSeverity().toLevel(),
+                findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         "EXEC SQL " + keyword + " " + targetTable(block.text(), keyword)
                                 + " の実行後、SQLCODE・SQLSTATE を検査していない。"
                                 + "更新が失敗しても後続処理が継続する。",
@@ -134,7 +128,7 @@ public final class SqlCodeUncheckedRule implements Rule {
     }
 
     @Override
-    public Optional<FixProducer> fixProducer() {
+    public Optional<FixProducer> fix() {
         return Optional.of(new SqlCodeFixProducer());
     }
 
@@ -143,10 +137,11 @@ public final class SqlCodeUncheckedRule implements Rule {
     }
 
     /**
-     * 未検査のデータ変更 DML の EXEC SQL 直後(END-EXEC 行の次行)へ SQLCODE 判定文を挿入する。
-     * Finding.location の行(=END-EXEC 行)を anchor に、同一終端行の DML ブロックを再同定する。
-     * 挿入する IF は常に明示的な END-IF で閉じ、終止ピリオドは END-EXEC が文を閉じている場合に
-     * のみ付ける。
+     * Inserts an SQLCODE check statement right after an unchecked data-changing DML's EXEC SQL
+     * (on the line after the END-EXEC line). Re-identifies the DML block with the same terminal
+     * line using Finding.location's line (= the END-EXEC line) as the anchor. The inserted IF is
+     * always closed with an explicit END-IF, and a terminating period is added only when
+     * END-EXEC itself closes a sentence.
      */
     private static final class SqlCodeFixProducer implements FixProducer {
 
@@ -170,9 +165,10 @@ public final class SqlCodeUncheckedRule implements Rule {
             if (block == null) {
                 return Optional.empty();
             }
-            // END-EXEC が終止ピリオドで文を閉じているときだけ、挿入する IF も終止ピリオドで閉じる。
-            // 囲む文(IF/PERFORM など)の途中にある EXEC SQL の直後へピリオドを置くと外側の文を
-            // 途中で終止させるため、その場合は明示的な END-IF だけで閉じる。
+            // Only close the inserted IF with a terminating period when END-EXEC itself closes a
+            // sentence with one. Placing a period right after an EXEC SQL that sits in the middle
+            // of an enclosing statement (IF/PERFORM, etc.) would prematurely terminate the outer
+            // statement, so in that case close with only an explicit END-IF.
             String source = context.artifact(SourceTextIndex.class)
                     .flatMap(index -> index.textOf(model.sourceFile())).orElse(null);
             String terminator = source == null
@@ -195,7 +191,7 @@ public final class SqlCodeUncheckedRule implements Rule {
         return upper.contains("SQLCODE") || upper.contains("SQLSTATE");
     }
 
-    /** EXEC SQL を除いた先頭のSQLキーワード(大文字)。 */
+    /** The leading SQL keyword (uppercase), with EXEC SQL stripped off. */
     private static String leadingSqlKeyword(String blockText) {
         String normalized = blockText.replaceAll("\\s+", " ").toUpperCase(Locale.ROOT).trim();
         int index = normalized.indexOf("EXEC SQL");

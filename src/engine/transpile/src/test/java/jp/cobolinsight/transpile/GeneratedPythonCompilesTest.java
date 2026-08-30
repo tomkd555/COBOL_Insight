@@ -1,8 +1,8 @@
 package jp.cobolinsight.transpile;
 
-import jp.cobolinsight.engineapi.transpile.GeneratedFile;
-import jp.cobolinsight.engineapi.transpile.TargetLanguage;
-import jp.cobolinsight.engineapi.transpile.TranspileResult;
+import jp.cobolinsight.core.transpile.GeneratedFile;
+import jp.cobolinsight.core.transpile.TargetLanguage;
+import jp.cobolinsight.core.transpile.TranspileResult;
 import jp.cobolinsight.transpile.emit.Transpiler;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -19,8 +19,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
- * 全9本の生成 Python(ランタイムヘルパ・レコードクラス群・プログラム)が {@code py_compile} で構文検査を
- * 通ることを確認する。Python インタプリタが PATH に無い環境ではゲートを壊さないよう本検査をスキップする。
+ * Confirms that all 9 generated Python sources (runtime helper, record classes, program) pass the
+ * {@code py_compile} syntax check. Skips this check on environments where the Python interpreter is
+ * not on PATH, so it does not break the gate there.
  */
 class GeneratedPythonCompilesTest {
 
@@ -53,7 +54,7 @@ class GeneratedPythonCompilesTest {
         }
     }
 
-    /** py・python・python3 の順に {@code --version} が通るものを探す。 */
+    /** Looks for one of py, python, python3, in that order, for which {@code --version} succeeds. */
     private static Optional<String> locatePython() {
         for (String candidate : List.of("py", "python", "python3")) {
             try {
@@ -63,7 +64,7 @@ class GeneratedPythonCompilesTest {
                     return Optional.of(candidate);
                 }
             } catch (IOException | InterruptedException e) {
-                // 次の候補を試す。
+                // Try the next candidate.
             }
         }
         return Optional.empty();

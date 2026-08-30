@@ -1,44 +1,65 @@
 /*
- * 実描画 smoke。ビルド済みの renderer(out/renderer/index.html)を Electron の offscreen
- * レンダリングで実際に描かせ、jsdom では確かめられない次の点を検査する。
+ * The offscreen render smoke. It draws the built renderer (out/renderer/index.html) with Electron's
+ * offscreen rendering and checks what jsdom cannot see.
  *
- *   1. シェルが4領域(アクティビティバー・側パネル・本文領域・下部パネル)で組み上がる
- *   2. 資産フォルダを選ぶと解析が走り、資産ツリーが並ぶ
- *   3. 資産を開くと Monaco が起動し、行が別々の y 座標に並ぶ
- *      (CSP の style-src に 'unsafe-inline' が無いと全行が同じ y へ重なる。この検査がそれを捕らえる)
- *   4. 本文へ打鍵すると、そのタブに未保存の印が立つ
- *   5. 下部パネルの指摘表が並び、行を押すとその資産のタブが開く
- *   6. Cytoscape が canvas を作り、そこへノードを描く(不透明な画素がある)
- *   7. 実行順の一覧が、engine の seq のとおりに下位を並べる
- *   8. ルールのタブがトグルを並べ、切り替えが設定ファイル経由で往復する
- *   9. 200% 拡大でも横スクロールが出ない(縦横 2 方向のスクロールにならない)
- *  10. console にエラーと CSP 拒否("Refused to ...")が出ない
+ * The checklist, numbered as the plan numbers it:
  *
- * 画面の要素は data-testid で選ぶ。表示文字とクラス名で選ぶと、文言や見た目を直すたびに
- * この smoke が壊れる。engine CLI は起動しない。preload を smoke/fake-preload.cjs へ差し替え、
- * window.cobolInsight を固定データで満たして画面を results 状態まで進める。本番と同じ
- * contextIsolation:true・sandbox:true で読み込む。失敗した検査があれば非ゼロで終了する。
+ *   1. the shell is built from four regions (activity bar, side bar, editor area, panel)
+ *   2. choosing a folder runs the analysis and fills the asset tree with kind badges
+ *   3. opening an asset starts Monaco and its lines land on distinct y coordinates
+ *      (without 'unsafe-inline' in style-src every line collapses onto the same y)
+ *   4. typing into the body raises the unsaved mark on that tab
+ *   5. the problems rows open the asset's tab
+ *   6. Cytoscape paints the call graph onto a canvas
+ *   7. the execution-order tree orders its children by the engine's seq
+ *   8. the rules view lists its toggles and a change round-trips through the rule file
+ *  16. the import dialog cuts the pasted columns and writes a source file into the asset folder
+ *   9. a 200% zoom produces no horizontal scrollbar (never two scroll directions at once)
+ *  10. the console carries no error and no CSP refusal ("Refused to ...")
+ *  11. Ctrl+Shift+P opens the palette, typing filters it, and Enter runs the command
+ *  12. a CP930 asset opens as readable text and its identification area is marked at the
+ *      byte-correct character, not the 73rd character
+ *  13. switching away from an edited tab and back keeps the edit, and Ctrl+Z takes it back
+ *  14. saving a file that changed underneath raises the conflict dialog instead of overwriting
+ *  15. a finding whose rule has a fix offers a quick fix, which opens the diff tab
+ *  17. the transpile view lines the generated code up with the COBOL through the line map
+ *  19. a COPY statement carries its expansion as a view zone, which its own control collapses
  *
- * 実行: npm run smoke:render(electron-vite build のあとに electron smoke/render.cjs)
+ * TODO 18: the report view renders the engine's HTML.
+ *
+ * Elements are selected by data-testid: selecting by visible text or class name would break this
+ * smoke every time the wording or the styling changed. The engine is never launched — the preload is
+ * replaced with smoke/fake-preload.cjs, whose canned data carries the screens to their results
+ * state. It loads with the production settings, contextIsolation:true and sandbox:true. A failed
+ * check exits non-zero.
+ *
+ * Run: npm run smoke:render (electron-vite build, then electron smoke/render.cjs)
  */
 
 const { app, BrowserWindow } = require("electron");
 const { existsSync } = require("node:fs");
 const { join } = require("node:path");
 
-/** 各待機の上限。描画の初期化(Monaco の Worker 起動・ELK のレイアウト)を含むため長めに取る。 */
+/** The ceiling on each wait. Generous, because it covers rendering start-up. */
 const WAIT_TIMEOUT_MS = 30000;
 
 const RENDERER_HTML = join(__dirname, "..", "out", "renderer", "index.html");
 const FAKE_PRELOAD = join(__dirname, "fake-preload.cjs");
 
-/** 偽 preload が返すグラフのノード ID の下限。実行順の一覧の鍵を組むために持つ。 */
-const GRAPH_ID_BASE = 1_000_000_000_000;
-
-/** 検査結果。ok=false が1件でもあれば非ゼロ終了する。 */
+/** The check results. A single ok=false exits non-zero. */
 const results = [];
-/** console に出たエラーと CSP 拒否。 */
+/** The errors and CSP refusals the console carried. */
 const consoleErrors = [];
+
+/**
+ * Messages Chromium reports on the error channel that are not faults.
+ *
+ * The ResizeObserver notice is raised when an observer's callback resizes what it observes within
+ * the same frame, which is exactly what Monaco's automaticLayout does when an editor is mounted into
+ * a tab that is itself still being laid out. The specification calls for the remaining work to be
+ * delivered on the next frame, and it is; nothing is lost.
+ */
+const BENIGN = [/^ResizeObserver loop /];
 
 function record(name, ok, detail) {
   results.push({ name, ok, detail });
@@ -49,12 +70,12 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** ページ内で式を評価する。CSP は executeJavaScript の注入を妨げない。 */
+/** Evaluates an expression in the page. The CSP does not block executeJavaScript. */
 function evaluate(win, expression) {
   return win.webContents.executeJavaScript(expression, true);
 }
 
-/** 式が真の値を返すまで待ち、その値を返す。時間内に成立しなければ例外を投げる。 */
+/** Waits until the expression returns a truthy value and returns it; throws when it never does. */
 async function waitUntil(win, expression, description) {
   const deadline = Date.now() + WAIT_TIMEOUT_MS;
   let last;
@@ -65,10 +86,10 @@ async function waitUntil(win, expression, description) {
     }
     await delay(120);
   }
-  throw new Error(`時間内に成立しなかった: ${description}（最後の評価値 ${JSON.stringify(last)}）`);
+  throw new Error(`never became true: ${description} (last value ${JSON.stringify(last)})`);
 }
 
-/** data-testid で引いた要素を押す式。要素が現れるまで待つ用途を兼ねる。 */
+/** An expression that clicks the element with that data-testid; doubles as a wait for it. */
 function clickTestId(testId, inner) {
   const selector = `[data-testid=${JSON.stringify(testId)}]${inner === undefined ? "" : ` ${inner}`}`;
   return `(() => {
@@ -79,7 +100,7 @@ function clickTestId(testId, inner) {
   })()`;
 }
 
-/** 選択子に一致する要素の数を返す式。0 件のときは null を返し、待機の合図にする。 */
+/** An expression returning how many elements match, or null at zero so it can be waited on. */
 function countOf(selector) {
   return `(() => {
     const count = document.querySelectorAll(${JSON.stringify(selector)}).length;
@@ -87,15 +108,7 @@ function countOf(selector) {
   })()`;
 }
 
-/** 選択子に一致する要素の data-testid を並び順のまま返す式。 */
-function testIdsOf(selector) {
-  return `(() => {
-    const ids = [...document.querySelectorAll(${JSON.stringify(selector)})].map((e) => e.dataset.testid);
-    return ids.length > 0 ? ids : null;
-  })()`;
-}
-
-/** 検査1: シェルの4領域。 */
+/** Check 1: the four regions of the shell. */
 async function checkShell(win) {
   const present = await waitUntil(
     win,
@@ -104,78 +117,487 @@ async function checkShell(win) {
       const found = ids.filter((id) => document.querySelector('[data-testid="' + id + '"]') !== null);
       return found.length === ids.length ? found : null;
     })()`,
-    "シェルの4領域",
+    "the four regions of the shell",
   );
-  record("シェルが4領域で組み上がる", present.length === 4, present.join(" / "));
+  record("1. the shell is built from four regions", present.length === 4, present.join(" / "));
 }
 
-/** 検査2: 資産フォルダの選択から解析、資産ツリーの表示まで。 */
+/** Check 2: choosing a folder through to the asset tree. */
 async function checkAssetTree(win) {
-  await waitUntil(win, clickTestId("select-folder"), "資産フォルダの選択");
-  const rows = await waitUntil(win, countOf('[data-testid^="tree-"]'), "資産ツリーの表示");
-  const badges = await evaluate(win, `document.querySelectorAll('[data-testid^="tree-"] .ci-badge').length`);
-  record("資産ツリーが種別バッジ付きで並ぶ", rows > 0 && badges === 5, `行 ${rows} 件・バッジ ${badges} 件`);
-}
-
-/** 検査3: 資産を開いたときの Monaco の実描画。行が重なっていないことを y 座標で確かめる。 */
-async function checkSourceTab(win) {
-  await waitUntil(win, clickTestId("tree-cobol/SYK001.cbl"), "資産の押下");
-  await waitUntil(win, `document.querySelector('[data-testid="tabpanel-source:cobol/SYK001.cbl"]') !== null`, "資産タブの表示");
-  const lines = await waitUntil(
+  await waitUntil(win, clickTestId("select-folder"), "the folder picker");
+  const rows = await waitUntil(win, countOf('[data-testid^="tree-"]'), "the asset tree");
+  const badges = await evaluate(
     win,
-    `(() => {
-      const tops = [...document.querySelectorAll('[data-testid="editorarea"] .view-line')]
-        .map((line) => Math.round(line.getBoundingClientRect().top));
-      return tops.length >= 5 ? tops : null;
-    })()`,
-    "Monaco の行描画",
+    `document.querySelectorAll('[data-testid^="tree-"] .ci-badge').length`,
   );
-  const unique = new Set(lines);
   record(
-    "Monaco の行が別々の y 座標に並ぶ",
-    unique.size === lines.length && unique.size >= 5,
-    `view-line ${lines.length} 本・異なる y ${unique.size} 個（y=${[...unique].slice(0, 4).join(",")}…）`,
+    "2. the asset tree fills with kind badges",
+    rows > 0 && badges >= 5,
+    `${rows} rows, ${badges} badges`,
   );
-
-  const identification = await waitUntil(
-    win,
-    countOf(".ci-code__identification"),
-    "識別欄の装飾",
-  );
-  record("識別欄(73〜80桁)の装飾が描かれる", identification > 0, `装飾 ${identification} 箇所`);
 }
 
-/**
- * 検査4: 本文への打鍵と未保存の印。面の実体は Monaco が持ち DOM からは辿れないため、
- * renderer が公開する ciMonaco から編集できる面を引いて打鍵する。
- */
-async function checkEditing(win) {
+/** The one editor of the group, reached through the handle vendor/monacoEditor publishes. */
+const EDITOR = `window.ciMonaco.editor.getEditors()[0]`;
+
+/** Opens one asset from the tree and waits until the editor is showing it. */
+async function openAsset(win, path) {
+  await waitUntil(win, clickTestId(`tree-${path}`), `the tree row for ${path}`);
   await waitUntil(
     win,
     `(() => {
-      const monaco = window.ciMonaco;
-      if (monaco === undefined) return false;
-      const editors = monaco.editor.getEditors()
-        .filter((editor) => !editor.getOption(monaco.editor.EditorOption.readOnly));
-      if (editors.length === 0) return false;
-      const editor = editors[editors.length - 1];
-      editor.setPosition({ lineNumber: 11, column: 1 });
-      editor.trigger('smoke', 'type', { text: '*' });
-      return true;
+      const editor = ${EDITOR};
+      const model = editor === undefined ? null : editor.getModel();
+      return model !== null && model.getValueLength() > 0 ? true : null;
     })()`,
-    "本文への打鍵",
+    `the editor showing ${path}`,
   );
-  const marker = await waitUntil(
-    win,
-    countOf('[data-testid="dirty-source:cobol/SYK001.cbl"]'),
-    "未保存の印",
-  );
-  record("打鍵するとタブに未保存の印が立つ", marker === 1, `印 ${marker} 個`);
 }
 
-/** 検査5: 指摘の表と、行から資産を開く経路。 */
+/** A fragment only the first asset's text carries, for telling which model the editor is showing. */
+const SYK001_MARK = "SYK00110";
+
+/**
+ * Selects an already-open source tab and waits until the editor is showing that tab's model. The
+ * model is swapped in an effect, so clicking the tab and typing straight away would type into the
+ * model of the tab that was open before.
+ */
+async function activateSourceTab(win, path, mark) {
+  await waitUntil(win, clickTestId(`tab-source:${path}`, "button"), `the tab for ${path}`);
+  await waitUntil(
+    win,
+    `(() => {
+      const model = ${EDITOR} === undefined ? null : ${EDITOR}.getModel();
+      return model !== null && model.getValue().includes(${JSON.stringify(mark)}) ? true : null;
+    })()`,
+    `the editor showing ${path}`,
+  );
+}
+
+/** Types one character at the start of the document, through Monaco's own input handling. */
+function typeAtStart(text) {
+  return `(() => {
+    const editor = ${EDITOR};
+    if (editor === undefined) return false;
+    editor.focus();
+    editor.setPosition({ lineNumber: 1, column: 1 });
+    editor.trigger('smoke', 'type', { text: ${JSON.stringify(text)} });
+    return true;
+  })()`;
+}
+
+/**
+ * Check 3: Monaco really lays its lines out. Without 'unsafe-inline' in style-src the editor's
+ * generated stylesheet is refused and every line collapses onto the same y coordinate, which is a
+ * regression no jsdom test can see.
+ */
+async function checkEditorLayout(win) {
+  await openAsset(win, "cobol/SYK001.cbl");
+  const layout = await waitUntil(
+    win,
+    `(() => {
+      const lines = [...document.querySelectorAll('.monaco-editor .view-line')];
+      if (lines.length < 3) return null;
+      const tops = new Set(lines.map((line) => Math.round(line.getBoundingClientRect().top)));
+      return { lines: lines.length, distinct: tops.size };
+    })()`,
+    "the editor's rendered lines",
+  );
+  record(
+    "3. Monaco renders its lines at distinct y coordinates",
+    layout.lines >= 3 && layout.distinct === layout.lines,
+    `${layout.lines} lines, ${layout.distinct} distinct tops`,
+  );
+}
+
+/**
+ * Check 19: the COPY expansion. The scan's table puts the copybook's lines under the COPY statement
+ * on line 5 of the first asset, and they are drawn as a Monaco view zone rather than as text — so the
+ * model must not carry them, or a save would write the copybook into the program.
+ */
+async function checkCopyExpansion(win) {
+  await openAsset(win, "cobol/SYK001.cbl");
+  const zone = await waitUntil(
+    win,
+    `(() => {
+      const node = document.querySelector('[data-testid="copy-zone-5"]');
+      if (node === null) return null;
+      return {
+        text: node.textContent,
+        inModel: ${EDITOR}.getModel().getValue().includes('SYK-ORDER-REC'),
+      };
+    })()`,
+    "the COPY expansion view zone",
+  );
+
+  await waitUntil(win, clickTestId("copy-zone-toggle-5"), "the collapse control");
+  const collapsed = await waitUntil(
+    win,
+    `(() => {
+      const toggle = document.querySelector('[data-testid="copy-zone-toggle-5"]');
+      const node = document.querySelector('[data-testid="copy-zone-5"]');
+      if (toggle === null || node === null) return null;
+      const lines = node.querySelector('.ci-copy__lines');
+      const hidden = lines !== null && lines.hidden === true;
+      return toggle.getAttribute('aria-expanded') === 'false' && hidden ? 'collapsed' : null;
+    })()`,
+    "the collapsed expansion",
+  );
+  // Leave it open again, so the checks that follow see the editor as the ones before them left it.
+  await waitUntil(win, clickTestId("copy-zone-toggle-5"), "the expand control");
+
+  /*
+   * The anchor has to follow the edits. Inserting a line at the top moves the COPY statement from
+   * line 5 to line 6, and the editor action — which is also the keyboard's only way in, since Monaco
+   * will not hand focus to a control inside a view zone — has to find the zone at its new line. An
+   * anchor left on the scan's line number would toggle nothing here.
+   */
+  await waitUntil(
+    win,
+    `(() => {
+      const editor = ${EDITOR};
+      if (editor === undefined) return false;
+      editor.setPosition({ lineNumber: 1, column: 1 });
+      editor.trigger('smoke', 'type', { text: '\\n' });
+      editor.setPosition({ lineNumber: 6, column: 1 });
+      const action = editor.getAction('cobolInsight.toggleCopyExpansion');
+      if (action === null || action === undefined) return false;
+      action.run();
+      return true;
+    })()`,
+    "the toggle action on the line the COPY statement moved to",
+  );
+  const followed = await waitUntil(
+    win,
+    `(() => {
+      const toggle = document.querySelector('[data-testid="copy-zone-toggle-5"]');
+      if (toggle === null) return null;
+      return toggle.getAttribute('aria-expanded') === 'false' ? 'followed' : null;
+    })()`,
+    "the expansion the action collapsed at its new line",
+  );
+  // Undo the inserted line and open the expansion again, back to the state this check started from.
+  await evaluate(win, `${EDITOR}.getAction('cobolInsight.toggleCopyExpansion').run()`);
+  await evaluate(win, `${EDITOR}.trigger('smoke', 'undo', null)`);
+  await waitUntil(
+    win,
+    `document.querySelector('[data-testid="dirty-source:cobol/SYK001.cbl"]') === null ? 'clean' : null`,
+    "the inserted line undone",
+  );
+
+  record(
+    "19. a COPY statement carries its expansion as a collapsible view zone",
+    zone.text.includes("SYK-ORDER-REC") &&
+      zone.inModel === false &&
+      collapsed === "collapsed" &&
+      followed === "followed",
+    `zone held ${JSON.stringify(zone.text.slice(0, 48))}`,
+  );
+}
+
+/** Check 4: typing raises the unsaved mark on the tab. */
+async function checkDirtyMark(win) {
+  await waitUntil(win, typeAtStart("X"), "typing into the editor");
+  const marked = await waitUntil(
+    win,
+    `document.querySelector('[data-testid="dirty-source:cobol/SYK001.cbl"]') !== null`,
+    "the unsaved mark",
+  );
+  record("4. typing raises the unsaved mark on the tab", marked === true);
+}
+
+/**
+ * Check 13: the text model belongs to the tab, not to the editor, so switching away and back keeps
+ * both the edit and the undo stack. The edit made by check 4 is the one carried across.
+ */
+async function checkEditSurvivesSwitch(win) {
+  await openAsset(win, "cobol/SYK002.cbl");
+  await activateSourceTab(win, "cobol/SYK001.cbl", SYK001_MARK);
+  const kept = await waitUntil(
+    win,
+    `${EDITOR}.getValue().startsWith('X') ? 'kept' : null`,
+    "the edit after switching back",
+  );
+  await evaluate(win, `${EDITOR}.trigger('smoke', 'undo', null)`);
+  const undone = await waitUntil(
+    win,
+    `(() => {
+      const clean = !${EDITOR}.getValue().startsWith('X');
+      const mark = document.querySelector('[data-testid="dirty-source:cobol/SYK001.cbl"]');
+      return clean && mark === null ? 'undone' : null;
+    })()`,
+    "the undo",
+  );
+  record(
+    "13. an edit survives a tab switch and Ctrl+Z takes it back",
+    kept === "kept" && undone === "undone",
+  );
+}
+
+/**
+ * Check 12: an EBCDIC CP930 asset opens as readable text, and its identification area is marked at
+ * the character byte column 73 actually falls on. The fixture's third line holds double-byte
+ * characters wrapped in shift bytes, so that is character 53 — anything counting characters instead
+ * of bytes would mark character 73 or nothing at all.
+ */
+async function checkEbcdicColumns(win) {
+  await openAsset(win, "encoding/SYKENC1_CP930.cbl");
+  const marked = await waitUntil(
+    win,
+    `(() => {
+      const model = ${EDITOR}.getModel();
+      if (model === null || model.getLineCount() < 3) return null;
+      const line = model.getLineContent(3);
+      if (!line.includes('文字コード')) return null;
+      const rendered = [...document.querySelectorAll('.monaco-editor .view-line')].find(
+        (element) => element.textContent.replace(/\\u00a0/g, ' ').startsWith('      *  文字'),
+      );
+      if (rendered === undefined) return null;
+      const areas = [...rendered.querySelectorAll('.ci-code__identification')];
+      if (areas.length === 0) return null;
+      return {
+        expected: line.slice(53),
+        marked: areas.map((area) => area.textContent.replace(/\\u00a0/g, ' ')).join(''),
+        readable: line.includes('文字コード検証用'),
+      };
+    })()`,
+    "the identification area of the CP930 fixture",
+  );
+  record(
+    "12. a CP930 asset opens readable and its identification area starts at the right character",
+    marked.readable === true && marked.marked === marked.expected && marked.expected !== "",
+    `marked ${JSON.stringify(marked.marked)}, expected ${JSON.stringify(marked.expected)}`,
+  );
+}
+
+/**
+ * Check 14: a file that changed under the editor is not overwritten silently. The fake preload's
+ * `touch` stands in for the outside edit by moving the file's stamp.
+ */
+async function checkSaveConflict(win) {
+  await activateSourceTab(win, "cobol/SYK001.cbl", SYK001_MARK);
+  await waitUntil(win, typeAtStart("Y"), "an unsaved edit");
+  await waitUntil(
+    win,
+    `document.querySelector('[data-testid="dirty-source:cobol/SYK001.cbl"]') !== null`,
+    "the unsaved mark on the asset about to be saved",
+  );
+  await evaluate(win, `window.cobolInsight.touch('cobol/SYK001.cbl')`);
+  await evaluate(
+    win,
+    `window.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true }))`,
+  );
+  const raised = await waitUntil(
+    win,
+    `(() => {
+      if (document.querySelector('[data-testid="save-conflict"]') !== null) return { ok: true };
+      // A notification instead means the save went through, which is the failure worth naming.
+      const toast = document.querySelector('[data-testid^="toast-"]');
+      if (toast !== null) return { ok: false, toast: toast.textContent };
+      return null;
+    })()`,
+    "the conflict dialog",
+  ).catch((error) => ({
+    ok: false,
+    reason: error.message,
+  }));
+  record(
+    "14. saving over a changed original raises the conflict dialog",
+    raised.ok === true,
+    raised.ok === true ? undefined : JSON.stringify(raised),
+  );
+
+  if (raised.ok !== true) {
+    return;
+  }
+  // Take the overwrite, so the later checks start from a saved file rather than a dialog.
+  await waitUntil(win, clickTestId("save-conflict-overwrite"), "the overwrite button");
+  await waitUntil(
+    win,
+    `document.querySelector('[data-testid="save-conflict"]') === null ? 'closed' : null`,
+    "the dialog closing",
+  );
+}
+
+/**
+ * Check 15: a finding whose rule can be fixed offers the quick fix, and taking it opens the diff
+ * tab for that asset. The canned lint result puts R004 — the one rule in the fake catalog with
+ * hasFix — on line 10 of the first asset.
+ */
+async function checkQuickFix(win) {
+  await activateSourceTab(win, "cobol/SYK001.cbl", SYK001_MARK);
+  const started = await waitUntil(
+    win,
+    `(() => {
+      const editor = ${EDITOR};
+      const model = editor.getModel();
+      const markers = window.ciMonaco.editor.getModelMarkers({ resource: model.uri });
+      if (markers.length === 0) return null;
+      if (!markers.some((marker) => marker.code === 'R004')) {
+        return { ok: false, codes: markers.map((marker) => marker.code) };
+      }
+      editor.focus();
+      editor.setPosition({ lineNumber: 10, column: 1 });
+      // Through trigger rather than getAction: the code-action commands are contributed as editor
+      // commands, which getAction does not list.
+      editor.trigger('smoke', 'editor.action.quickFix', {});
+      return { ok: true };
+    })()`,
+    "the quick fix action",
+  );
+  if (started.ok !== true) {
+    record("15. a fixable finding offers a quick fix that opens the diff tab", false, JSON.stringify(started));
+    return;
+  }
+  const chosen = await waitUntil(
+    win,
+    `(() => {
+      const rows = [...document.querySelectorAll('.action-widget .monaco-list-row')];
+      const titles = rows.map((row) => row.textContent.trim());
+      // The first row is the group header ("Quick Fix"); the action itself follows it.
+      const action = rows.find((row) => row.textContent.includes('修正案'));
+      if (action === undefined) return null;
+      action.click();
+      return { titles };
+    })()`,
+    "the quick fix chooser",
+  );
+  const opened = await waitUntil(
+    win,
+    `document.querySelector('[data-testid="tab-fix:cobol/SYK001.cbl"]') !== null`,
+    "the diff tab the quick fix opened",
+  ).catch(() => false);
+  record(
+    "15. a fixable finding offers a quick fix that opens the diff tab",
+    opened === true,
+    `offered ${JSON.stringify(chosen.titles)}`,
+  );
+}
+
+/** Runs a command by its title through the palette, which is the only route the shell offers. */
+async function runCommand(win, title) {
+  await evaluate(
+    win,
+    `window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true, bubbles: true }))`,
+  );
+  await waitUntil(
+    win,
+    `(() => {
+      const input = document.querySelector('[data-testid="command-palette-input"]');
+      if (input === null) return false;
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      setter.call(input, ${JSON.stringify(title)});
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    })()`,
+    `typing ${title} into the palette`,
+  );
+  await evaluate(
+    win,
+    `document.querySelector('[data-testid="command-palette-input"]')
+       .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))`,
+  );
+}
+
+/** Chooses an option in a select the way a person would, so React sees the change. */
+function chooseOption(testId, value) {
+  return `(() => {
+    const field = document.querySelector('[data-testid=${JSON.stringify(testId)}]');
+    if (field === null) return false;
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value').set;
+    setter.call(field, ${JSON.stringify(value)});
+    field.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  })()`;
+}
+
+/**
+ * The two editors of the transpile view, told apart by the element each was created in. Telling them
+ * apart by their text would not do: the COBOL and its translation share the program's name.
+ */
+const TRANSPILE_PANES = `(() => {
+  const editors = window.ciMonaco.editor.getEditors();
+  const paneAt = (testId) => {
+    const host = document.querySelector('[data-testid="' + testId + '"]');
+    if (host === null) return undefined;
+    return editors.find(
+      (editor) => editor.getModel() !== null && host.contains(editor.getContainerDomNode()),
+    );
+  };
+  return { cobol: paneAt('transpile-cobol'), generated: paneAt('transpile-generated') };
+})()`;
+
+/**
+ * Check 17: the transpile view. It opens for the asset in the active source tab, and moving the
+ * caret in the COBOL moves the caret in the generated code to the line LINE_MAP names — line 10 of
+ * the COBOL is line 3 of the Python and line 4 of the Java, so a pane that merely followed the line
+ * number would land on 10 in both.
+ */
+async function checkTranspile(win) {
+  await activateSourceTab(win, "cobol/SYK001.cbl", SYK001_MARK);
+  await runCommand(win, "変換");
+  await waitUntil(
+    win,
+    `document.querySelector('[data-testid="transpile-cobol"]') !== null`,
+    "the transpile view",
+  );
+  await waitUntil(
+    win,
+    `(() => {
+      const panes = ${TRANSPILE_PANES};
+      if (panes.cobol === undefined || panes.generated === undefined) return null;
+      if (!panes.generated.getModel().getValue().includes('def main')) return null;
+      panes.cobol.setPosition({ lineNumber: 10, column: 1 });
+      return true;
+    })()`,
+    "the two panes showing the Python",
+  );
+  const python = await waitUntil(
+    win,
+    `(() => {
+      const panes = ${TRANSPILE_PANES};
+      const line = panes.generated === undefined ? 0 : panes.generated.getPosition().lineNumber;
+      return line === 0 ? null : line;
+    })()`,
+    "the caret the Python pane followed to",
+  );
+
+  await waitUntil(win, chooseOption("transpile-language", "java"), "the language selector");
+  await waitUntil(
+    win,
+    `(() => {
+      const panes = ${TRANSPILE_PANES};
+      if (panes.cobol === undefined || panes.generated === undefined) return null;
+      if (!panes.generated.getModel().getValue().includes('public final class')) return null;
+      panes.cobol.setPosition({ lineNumber: 1, column: 1 });
+      panes.cobol.setPosition({ lineNumber: 10, column: 1 });
+      return true;
+    })()`,
+    "the two panes showing the Java",
+  );
+  const java = await waitUntil(
+    win,
+    `(() => {
+      const panes = ${TRANSPILE_PANES};
+      const line = panes.generated === undefined ? 0 : panes.generated.getPosition().lineNumber;
+      return line === 0 ? null : line;
+    })()`,
+    "the caret the Java pane followed to",
+  );
+
+  record(
+    "17. the transpile view lines the generated code up through the line map",
+    python === 3 && java === 4,
+    `COBOL line 10 reached Python line ${python} and Java line ${java}`,
+  );
+
+  // Back to the source, so the pane is unmounted and its two editors are disposed.
+  await activateSourceTab(win, "cobol/SYK001.cbl", SYK001_MARK);
+}
+
+/** Check 5: the problems table and the route from a row into the source. */
 async function checkFindings(win) {
-  const rows = await waitUntil(win, countOf('[data-testid^="finding-"]'), "指摘表の行");
+  const rows = await waitUntil(win, countOf('[data-testid^="finding-"]'), "the problems rows");
   await waitUntil(
     win,
     `(() => {
@@ -185,101 +607,290 @@ async function checkFindings(win) {
       row.click();
       return true;
     })()`,
-    "指摘の行の押下",
+    "a problems row",
   );
   const opened = await waitUntil(
     win,
     `document.querySelector('[data-testid="tab-source:cobol/SYK002.cbl"]') !== null`,
-    "指摘から開いたタブ",
+    "the tab the row opened",
   );
-  record("指摘の行を押すとその資産のタブが開く", rows >= 3 && opened === true, `指摘 ${rows} 行`);
+  record("5. a problems row opens the asset's tab", rows >= 3 && opened === true, `${rows} rows`);
 }
 
-/** 検査6・7: Cytoscape の実描画と、実行順の一覧の並び。 */
-async function checkGraph(win) {
-  await waitUntil(win, clickTestId("activity-graph"), "呼出関係のアクティビティの押下");
-  await waitUntil(win, countOf('[data-testid="graph-canvas"] canvas'), "Cytoscape の canvas 生成");
+/**
+ * Checks 6 and 7: the call graph. Cytoscape draws to a canvas, which jsdom cannot exercise at all,
+ * so this is the only place the drawing is proved to happen: the canvas has to carry pixels that are
+ * not fully transparent. The execution-order tree beside it has to list the two steps in the order
+ * the engine's seq gives them, which is the reverse of the order the canned edges are written in.
+ */
+async function checkCallGraph(win) {
+  await waitUntil(win, clickTestId("activity-graph"), "the call-graph tab");
+  await waitUntil(
+    win,
+    `document.querySelector('[data-testid="graph-canvas"] canvas') !== null`,
+    "the cytoscape canvas",
+  );
 
-  // canvas へ実際に描かれたかを画素で確かめる。レイアウト(ELK)は非同期なので描画まで待つ。
+  // The layout runs asynchronously; poll until something has been painted.
   const painted = await waitUntil(
     win,
     `(() => {
       const canvases = [...document.querySelectorAll('[data-testid="graph-canvas"] canvas')];
+      let opaque = 0;
       for (const canvas of canvases) {
         if (canvas.width === 0 || canvas.height === 0) continue;
-        const context = canvas.getContext('2d', { willReadFrequently: true });
-        if (context === null) continue;
-        const data = context.getImageData(0, 0, canvas.width, canvas.height).data;
-        let opaque = 0;
-        for (let index = 3; index < data.length; index += 4) {
-          if (data[index] !== 0) opaque += 1;
+        const image = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+        // Every fourth byte is alpha; a stride keeps a large canvas cheap to scan.
+        for (let index = 3; index < image.length; index += 4 * 37) {
+          if (image[index] > 0) opaque += 1;
         }
-        if (opaque > 0) return opaque;
       }
-      return null;
+      return opaque > 0 ? opaque : null;
     })()`,
-    "canvas への描画",
+    "opaque pixels on the graph canvas",
   );
-  record("Cytoscape がノードを描く", painted > 0, `不透明画素 ${painted} 個`);
+  record("6. Cytoscape paints the call graph onto a canvas", painted > 0, `${painted} opaque pixels`);
 
-  const job = `trace-job:${GRAPH_ID_BASE + 1}`;
-  await waitUntil(win, countOf(`[data-testid="${job}"]`), "実行順の一覧の起点");
-  // 節そのものを押すと資産が開く。開閉だけを起こすため、行の中の開閉ボタンを押す。
-  await waitUntil(win, clickTestId(job, ".ci-trace__marker"), "起点の展開");
   const steps = await waitUntil(
     win,
     `(() => {
-      const rows = [...document.querySelectorAll('[data-testid="trace-tree"] [role="treeitem"]')];
-      const labels = rows.map((row) => row.querySelector('.ci-trace__label').textContent.trim());
-      return labels.length >= 3 ? labels : null;
+      const rows = [...document.querySelectorAll('[data-testid="trace-tree"] [role="treeitem"]')]
+        .map((row) => row.textContent);
+      const found = rows.filter((label) => label.includes('STEP0'));
+      return found.length >= 2 ? found : null;
     })()`,
-    "起点の下位の表示",
+    "the steps in the execution-order tree",
   );
-  // engine が記録した seq のとおり、STEP010 → STEP020 の順で並ぶ。
-  record(
-    "実行順の一覧が seq のとおりに下位を並べる",
-    steps[0] === "SYKD010" && steps[1] === "STEP010" && steps[2] === "STEP020",
-    steps.slice(0, 3).join(" → "),
-  );
+  const ordered = steps.findIndex((label) => label.includes("STEP010")) <
+    steps.findIndex((label) => label.includes("STEP020"));
+  record("7. the execution-order tree orders its children by seq", ordered, steps.join(" / "));
+
+  // The toolbar drives cytoscape imperatively, which jsdom cannot exercise either. Nothing is
+  // asserted here beyond the buttons working: an exception would surface in the console check.
+  for (const button of ["graph-zoom-in", "graph-zoom-out", "graph-fit", "graph-recenter"]) {
+    await waitUntil(win, clickTestId(button), `the ${button} button`);
+    await delay(120);
+  }
 }
 
-/** 検査8: ルールの一覧と、有効・無効の切替の往復。 */
+/**
+ * Check 8: the rules view. Its toggles are drawn from the engine's catalogue, and switching one off
+ * has to travel out through the rule file and back through the catalogue, not merely flip a
+ * checkbox on screen.
+ */
 async function checkRules(win) {
-  await waitUntil(win, clickTestId("activity-rules"), "ルールのアクティビティの押下");
-  const switches = await waitUntil(win, countOf('[data-testid^="rule-switch-"]'), "ルールのトグル");
-  const ids = await evaluate(win, testIdsOf('[data-testid^="rule-switch-"]'));
-  record("ルールのタブがトグルを並べる", switches === 3, `${ids.join(" / ")}`);
+  await waitUntil(win, clickTestId("activity-rules"), "the rules view");
+  const toggles = await waitUntil(win, countOf('[data-testid^="rule-toggle-"]'), "the rule toggles");
+  const severities = await evaluate(
+    win,
+    `document.querySelectorAll('[data-testid^="rule-severity-"]').length`,
+  );
 
-  await waitUntil(win, clickTestId("rule-switch-R001"), "トグルの押下");
-  const off = await waitUntil(
+  await waitUntil(win, clickTestId("rule-toggle-R001"), "the toggle of R001");
+  const roundTripped = await waitUntil(
     win,
     `(() => {
-      const toggle = document.querySelector('[data-testid="rule-switch-R001"]');
-      return toggle !== null && toggle.getAttribute('aria-checked') === 'false' ? 'off' : null;
+      const box = document.querySelector('[data-testid="rule-toggle-R001"]');
+      const written = window.cobolInsightSmoke.rulesFile().rules.R001;
+      if (box === null || written === undefined) return null;
+      return box.checked === false && written.enabled === false ? 'round-tripped' : null;
     })()`,
-    "設定ファイル経由の反映",
+    "the toggle round trip through the rule file",
   );
-  record("トグルの切替が設定ファイル経由で往復する", off === "off", "R001 を無効にした");
+  record(
+    "8. a rules toggle round-trips through the rule file",
+    toggles >= 3 && severities >= 3 && roundTripped === "round-tripped",
+    `${toggles} toggles, ${severities} severity selects`,
+  );
+
+  // Leave the side bar on the explorer, which the later checks expect to be there.
+  await waitUntil(win, clickTestId("activity-explorer"), "the explorer");
+  await delay(200);
 }
 
-/** 検査10: console のエラーと CSP 拒否。 */
-function checkConsole() {
+/**
+ * The two editors the checks above never open: the custom-rule editor (its form is built from a
+ * union of three detection shapes) and the settings screen. Neither is in the plan's numbered list;
+ * this only proves they draw, since nothing else on this route would notice if they threw.
+ */
+async function checkRuleAndSettingsEditors(win) {
+  await waitUntil(win, clickTestId("activity-rules"), "the rules view");
+  await waitUntil(win, clickTestId("rules-open-custom"), "the custom-rule editor");
+  await waitUntil(win, clickTestId("custom-add"), "the button that adds a rule");
+  const form = await waitUntil(
+    win,
+    `document.querySelector('[data-testid="custom-rule-U001"]') !== null`,
+    "the form of the added rule",
+  );
+  await waitUntil(win, clickTestId("custom-pane-raw"), "the raw pane");
+  const raw = await waitUntil(
+    win,
+    `(() => {
+      const area = document.querySelector('[data-testid="custom-raw"]');
+      return area === null ? null : area.value;
+    })()`,
+    "the raw JSON of the custom rules",
+  );
+
+  await waitUntil(win, clickTestId("activity-explorer"), "the explorer");
+  await evaluate(
+    win,
+    `window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true, bubbles: true }))`,
+  );
+  await waitUntil(
+    win,
+    `(() => {
+      const input = document.querySelector('[data-testid="command-palette-input"]');
+      if (input === null) return false;
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      setter.call(input, '設定を開く');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    })()`,
+    "typing the settings command",
+  );
+  await evaluate(
+    win,
+    `document.querySelector('[data-testid="command-palette-input"]')
+       .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))`,
+  );
+  const settings = await waitUntil(
+    win,
+    `document.querySelector('[data-testid="settings-save"]') !== null`,
+    "the settings screen",
+  );
+
+  const parsedRaw = (() => {
+    try {
+      return JSON.parse(raw)[0].id === "U001";
+    } catch {
+      return false;
+    }
+  })();
   record(
-    "console にエラーと CSP 拒否が出ない",
-    consoleErrors.length === 0,
-    consoleErrors.length === 0 ? "0 件" : consoleErrors.slice(0, 5).join(" | "),
+    "the custom-rule editor and the settings screen render",
+    form === true && parsedRaw && settings === true,
+    parsedRaw ? "form and raw agree" : `raw pane held ${raw}`,
+  );
+}
+
+/** Sets a field's value the way a person typing into it would, so React sees the change. */
+function typeInto(testId, value, prototype) {
+  return `(() => {
+    const field = document.querySelector('[data-testid=${JSON.stringify(testId)}]');
+    if (field === null) return false;
+    const setter = Object.getOwnPropertyDescriptor(window.${prototype}.prototype, 'value').set;
+    setter.call(field, ${JSON.stringify(value)});
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  })()`;
+}
+
+/**
+ * Check 15: the terminal import. The pasted screen carries a line-number area the column range has
+ * to cut away, and the preview is what the user checks that against before saving.
+ */
+async function checkImportDialog(win) {
+  const pasted = ["000100 IDENTIFICATION DIVISION.", "000200 PROGRAM-ID. SYK900."].join("\n");
+  await waitUntil(win, clickTestId("explorer-import"), "the import dialog");
+  await waitUntil(win, typeInto("import-paste", pasted, "HTMLTextAreaElement"), "the pasted text");
+  await waitUntil(win, typeInto("import-column-from", "8", "HTMLInputElement"), "the first column");
+  await waitUntil(win, typeInto("import-column-to", "72", "HTMLInputElement"), "the last column");
+  await waitUntil(win, typeInto("import-filename", "SYK900.cbl", "HTMLInputElement"), "the name");
+  const preview = await waitUntil(
+    win,
+    `(() => {
+      const block = document.querySelector('[data-testid="import-preview"]');
+      return block === null ? null : block.textContent;
+    })()`,
+    "the preview of the cut text",
+  );
+
+  await waitUntil(win, clickTestId("import-save"), "the save button");
+  const saved = await waitUntil(
+    win,
+    `document.querySelector('[data-testid="import-saved"]') !== null`,
+    "the saved message",
+  );
+  await waitUntil(win, clickTestId("import-close"), "the close button");
+  await delay(200);
+  record(
+    "16. the import dialog cuts the columns and writes the file",
+    preview.includes("IDENTIFICATION DIVISION.") && !preview.includes("000100") && saved === true,
+    "the line-number area was cut away",
   );
 }
 
 /**
- * 検査9: ページ拡大でも横スクロールが出ないことを確かめる。シェルへ CSS ピクセルの幅の下限を
- * 無条件に敷くと、拡大でビューポートが縮んだときだけ横スクロールが出て、各ペインの縦スクロールと
- * 合わせて縦横 2 方向のスクロールになる(WCAG 1.4.10 の Reflow に反する)。
+ * Check 11: the command palette. Ctrl+Shift+P opens it, typing filters it, and Enter runs the
+ * highlighted command, which here toggles the panel.
+ */
+async function checkCommandPalette(win) {
+  const before = await evaluate(
+    win,
+    `document.querySelector('[data-testid="bottompanel"]') !== null`,
+  );
+  await evaluate(
+    win,
+    `window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true, bubbles: true }))`,
+  );
+  await waitUntil(
+    win,
+    `document.querySelector('[data-testid="command-palette-input"]') !== null`,
+    "the command palette",
+  );
+
+  const filtered = await waitUntil(
+    win,
+    `(() => {
+      const input = document.querySelector('[data-testid="command-palette-input"]');
+      if (input === null) return false;
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      setter.call(input, 'パネル');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    })()`,
+    "typing into the palette",
+  );
+  const matches = await waitUntil(
+    win,
+    countOf('[data-testid^="command-"]:not([data-testid$="input"]):not([data-testid$="empty"])'),
+    "the filtered commands",
+  );
+
+  await evaluate(
+    win,
+    `document.querySelector('[data-testid="command-palette-input"]')
+       .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))`,
+  );
+  const toggled = await waitUntil(
+    win,
+    `(document.querySelector('[data-testid="bottompanel"]') !== null) !== ${before} ? 'toggled' : null`,
+    "the panel toggled by the command",
+  );
+  record(
+    "11. the palette opens, filters and runs a command",
+    filtered === true && matches >= 1 && toggled === "toggled",
+    `${matches} commands matched`,
+  );
+
+  // Restore the panel so the later checks see the layout they expect.
+  await evaluate(
+    win,
+    `window.dispatchEvent(new KeyboardEvent('keydown', { key: 'j', ctrlKey: true, bubbles: true }))`,
+  );
+  await delay(200);
+}
+
+/**
+ * Check 9: a page zoom must not produce a horizontal scrollbar. A pixel min-width on the shell would
+ * do exactly that once the zoom shrank the viewport, leaving the page scrolling in both directions
+ * alongside the panes' own vertical scrolling (WCAG 1.4.10, Reflow).
  */
 async function checkZoomReflow(win) {
   const original = win.webContents.getZoomFactor();
   try {
-    // 200% 拡大。1440px のウィンドウでビューポートは 720 CSS px 相当となり、下限 1120px を下回る。
+    // 200%: a 1440px window becomes a 720 CSS px viewport, well under any 1120px floor.
     win.webContents.setZoomFactor(2);
     await delay(400);
     const overflow = await evaluate(
@@ -290,7 +901,7 @@ async function checkZoomReflow(win) {
       })()`,
     );
     record(
-      "200% 拡大でも横スクロールが出ない",
+      "9. a 200% zoom produces no horizontal scrollbar",
       overflow.scroll <= overflow.client,
       `scrollWidth ${overflow.scroll} / clientWidth ${overflow.client}`,
     );
@@ -300,16 +911,25 @@ async function checkZoomReflow(win) {
   }
 }
 
+/** Check 10: console errors and CSP refusals. */
+function checkConsole() {
+  record(
+    "10. the console carries no error and no CSP refusal",
+    consoleErrors.length === 0,
+    consoleErrors.length === 0 ? "0" : consoleErrors.slice(0, 5).join(" | "),
+  );
+}
+
 async function main() {
   if (!existsSync(RENDERER_HTML)) {
-    console.error(`renderer のビルド成果物が無い: ${RENDERER_HTML}`);
-    console.error("npm run build を実行してから smoke を走らせる。");
+    console.error(`the renderer has not been built: ${RENDERER_HTML}`);
+    console.error("run npm run build before the smoke.");
     app.exit(1);
     return;
   }
 
   const win = new BrowserWindow({
-    // 本番の既定寸法(main の windowOptions)にそろえる。
+    // The production default size (see src/main/window.ts).
     width: 1440,
     height: 900,
     show: false,
@@ -318,46 +938,70 @@ async function main() {
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,
-      // 表示環境に依存せず実際に描画させる(画素まで確かめるため)。
+      // Render for real regardless of the display environment.
       offscreen: true,
     },
   });
 
   win.webContents.on("console-message", (...args) => {
-    // Electron 33 は (event, level, message, line, sourceId)、以降は詳細オブジェクトを渡す。
+    // Electron 33 passes (event, level, message, line, sourceId); later versions pass a detail object.
     const detail = typeof args[1] === "object" && args[1] !== null ? args[1] : null;
     const level = detail === null ? args[1] : detail.level;
     const message = detail === null ? args[2] : detail.message;
     const isError = level === 3 || level === "error";
-    if (isError || /Refused to /.test(String(message))) {
-      consoleErrors.push(String(message));
+    const text = String(message);
+    if ((isError || /Refused to /.test(text)) && !BENIGN.some((pattern) => pattern.test(text))) {
+      consoleErrors.push(text);
     }
   });
   win.webContents.on("preload-error", (_event, path, error) => {
-    consoleErrors.push(`preload の失敗 ${path}: ${error.message}`);
+    consoleErrors.push(`the preload failed at ${path}: ${error.message}`);
   });
   win.webContents.on("render-process-gone", (_event, details) => {
-    consoleErrors.push(`renderer が停止した: ${details.reason}`);
+    consoleErrors.push(`the renderer stopped: ${details.reason}`);
   });
 
   try {
     await win.loadFile(RENDERER_HTML);
-    await checkShell(win);
-    await checkAssetTree(win);
-    await checkSourceTab(win);
-    await checkEditing(win);
-    await checkFindings(win);
-    await checkGraph(win);
-    await checkRules(win);
-    await checkZoomReflow(win);
+    // Each check is run on its own: one that fails should not hide the ones that follow it, and the
+    // order matters only in that the editor checks build on the tab the one before them opened.
+    for (const check of [
+      checkShell,
+      checkAssetTree,
+      checkFindings,
+      checkCallGraph,
+      checkEditorLayout,
+      checkCopyExpansion,
+      checkDirtyMark,
+      checkEditSurvivesSwitch,
+      checkEbcdicColumns,
+      checkSaveConflict,
+      checkQuickFix,
+      checkTranspile,
+      checkRules,
+      checkRuleAndSettingsEditors,
+      checkImportDialog,
+      checkCommandPalette,
+      checkZoomReflow,
+    ]) {
+      try {
+        await check(win);
+      } catch (error) {
+        record(
+          `${check.name} ran to completion`,
+          false,
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    }
     checkConsole();
   } catch (error) {
-    record("smoke の進行", false, error instanceof Error ? error.message : String(error));
+    record("the smoke ran to completion", false, error instanceof Error ? error.message : String(error));
     checkConsole();
   }
 
   const failed = results.filter((result) => !result.ok);
-  console.log(`\n実描画 smoke: ${results.length - failed.length} / ${results.length} 件が合格`);
+  console.log(`\nrender smoke: ${results.length - failed.length} / ${results.length} checks passed`);
   app.exit(failed.length === 0 ? 0 : 1);
 }
 

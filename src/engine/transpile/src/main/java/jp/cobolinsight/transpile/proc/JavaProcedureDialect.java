@@ -6,7 +6,7 @@ import jp.cobolinsight.transpile.emit.LineTrackingEmitter;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Java の手続き対訳レンダリング。フラット変数を持つクラスと段落メソッドを出力する。 */
+/** Java procedure-division dialect rendering. Emits a class with flat variables and paragraph methods. */
 public final class JavaProcedureDialect implements ProcedureDialect {
 
     @Override
@@ -67,15 +67,18 @@ public final class JavaProcedureDialect implements ProcedureDialect {
 
     @Override
     public String trueLiteral() {
-        // 直訳できない条件の代替。定数 true を while に置くと本体が到達不能になり javac が失敗する。
-        // Boolean.TRUE は定数式ではないため到達性解析を通り、値は真のままである。
+        // Substitute for a condition that cannot be translated literally. Putting the constant true
+        // in a while makes the body unreachable and fails javac.
+        // Boolean.TRUE is not a constant expression, so it passes reachability analysis while its value remains true.
         return "Boolean.TRUE";
     }
 
     /**
-     * 直訳できない条件を原文から描画する。COBOL の生の被演算子名(未宣言項目・特殊レジスタ)を
-     * ガードの実行式へ置くと javac がシンボル解決に失敗するため、コンパイル可能な {@link #trueLiteral()} を
-     * 置き、原文の条件はその場のブロックコメントで逐語に残す(恒真値へ黙って落とさない)。
+     * Renders a condition that cannot be translated literally, from the source text. Placing the
+     * COBOL source's raw operand names (undeclared items, special registers) into the guard's
+     * executable expression would fail javac's symbol resolution, so this places the compilable
+     * {@link #trueLiteral()} instead and keeps the original condition verbatim in an inline block
+     * comment (never silently falling back to a tautology).
      */
     @Override
     public String rawCondition(String cobolConditionText) {
@@ -213,8 +216,9 @@ public final class JavaProcedureDialect implements ProcedureDialect {
         }
         List<String> rendered = new ArrayList<>();
         for (DisplayPart part : parts) {
-            // 数値項目は long として宣言される。先頭が文字列でないと + が連結ではなく加算になり、
-            // 複数の値の合計を1つ印字してしまう。先頭だけ String.valueOf で包めば連結になる。
+            // Numeric items are declared as long. If the first part is not a string, + becomes
+            // addition instead of concatenation, printing the sum of the values instead. Wrapping
+            // only the first part in String.valueOf forces concatenation.
             rendered.add(rendered.isEmpty() && !part.isString()
                     ? "String.valueOf(" + part.text() + ")" : part.text());
         }
@@ -239,8 +243,9 @@ public final class JavaProcedureDialect implements ProcedureDialect {
 
     @Override
     public void emitReturn(LineTrackingEmitter out, String verb) {
-        // COBOL では GOBACK/STOP RUN 以降の文が同段落に残る場合がある。無条件 return は後続を
-        // 到達不能にして Java のコンパイルを妨げるため、if (true) で包んで到達性解析を通す。
+        // In COBOL, statements after GOBACK/STOP RUN can remain in the same paragraph. An
+        // unconditional return would make them unreachable and break the Java compile, so this
+        // wraps it in if (true) to pass reachability analysis.
         out.emit("if (true) return; // " + verb);
     }
 
@@ -251,7 +256,7 @@ public final class JavaProcedureDialect implements ProcedureDialect {
 
     @Override
     public void emitBlockFiller(LineTrackingEmitter out) {
-        // Java は空ブロック・コメントのみのブロックが有効なため詰め物は要らない。
+        // Java allows an empty block or a block containing only a comment, so no filler is needed.
     }
 
     @Override
@@ -274,7 +279,7 @@ public final class JavaProcedureDialect implements ProcedureDialect {
         for (String line : cobolLines) {
             out.emit("// " + line);
         }
-        // if (true) で包み、後続文を到達可能に保つ(EXEC ブロックは連続して現れる)。
+        // Wrapped in if (true) to keep subsequent statements reachable (EXEC blocks can appear consecutively).
         out.emit("if (true) throw new UnsupportedOperationException("
                 + stringLiteral(command + " は直訳不能") + ");");
     }

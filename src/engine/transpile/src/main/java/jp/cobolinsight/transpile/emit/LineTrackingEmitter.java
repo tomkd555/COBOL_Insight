@@ -1,16 +1,18 @@
 package jp.cobolinsight.transpile.emit;
 
-import jp.cobolinsight.engineapi.linemap.MappingKind;
-import jp.cobolinsight.engineapi.source.LineRange;
+import jp.cobolinsight.core.linemap.MappingKind;
+import jp.cobolinsight.core.source.LineRange;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 出力行を追記しつつ、各行が由来する COBOL 行範囲を保持して {@link PendingMapping} を組む行追跡エミッタ基盤。
- * 対象言語に依存しない。改行は render 時に LF をハードコードし、末尾にも1つ付す(決定論・BOMなし前提)。
- * インデントは 1 レベル {@code indentUnit} 分で、空行にはインデントを付けない。
- * 生成器はレンダリング前後で {@link #nextLine()}/{@link #lastLine()} を読み、出力した行範囲を対応表へ記録する。
+ * The line-tracking emitter foundation: appends output lines while retaining the COBOL line range
+ * each line originates from, and assembles {@link PendingMapping} entries. Independent of the target
+ * language. Line breaks are hard-coded as LF at render time, with one trailing LF as well
+ * (deterministic, assumes no BOM). Indentation is one level per {@code indentUnit}; blank lines get
+ * no indentation. Generators read {@link #nextLine()}/{@link #lastLine()} before and after
+ * rendering, and record the emitted line range into the correspondence table.
  */
 public final class LineTrackingEmitter {
 
@@ -23,7 +25,7 @@ public final class LineTrackingEmitter {
         this.indentUnit = indentUnit;
     }
 
-    /** 現在のインデントで1行を追記する。空文字列はインデントなしの空行になる。 */
+    /** Appends one line at the current indentation. An empty string becomes a blank line with no indentation. */
     public void emit(String text) {
         if (text.isEmpty()) {
             lines.add("");
@@ -32,7 +34,7 @@ public final class LineTrackingEmitter {
         }
     }
 
-    /** 空行を1行追記する。 */
+    /** Appends one blank line. */
     public void blank() {
         lines.add("");
     }
@@ -47,18 +49,19 @@ public final class LineTrackingEmitter {
         }
     }
 
-    /** 次の {@link #emit} が占める1始まりの行番号。 */
+    /** The 1-based line number that the next {@link #emit} call will occupy. */
     public int nextLine() {
         return lines.size() + 1;
     }
 
-    /** 直近に追記した行の1始まりの行番号。 */
+    /** The 1-based line number of the most recently appended line. */
     public int lastLine() {
         return lines.size();
     }
 
     /**
-     * COBOL 行範囲から生成行範囲 [genStart, genEnd] への対応を記録する。種別は両範囲の行数から決める。
+     * Records a correspondence from a COBOL line range to the generated line range [genStart, genEnd].
+     * The kind is determined from the line counts of both ranges.
      */
     public void addMapping(String cobolSourceId, LineRange cobolLines, String generatedFile,
             int genStart, int genEnd, String note) {
@@ -69,8 +72,9 @@ public final class LineTrackingEmitter {
     }
 
     /**
-     * 種別を明示して対応を記録する。直訳不能ブロック(EXEC CICS/SQL)を1つの注記スタブへ畳む N:1 のように、
-     * 行数からは導けない意味上の種別を指定するために使う。
+     * Records a correspondence with an explicit kind. Used to specify a semantic kind that cannot be
+     * derived from line counts, such as N:1 folding of an untranslatable block (EXEC CICS/SQL) into
+     * a single annotation stub.
      */
     public void addMapping(String cobolSourceId, LineRange cobolLines, String generatedFile,
             int genStart, int genEnd, MappingKind kind, String note) {
@@ -82,7 +86,7 @@ public final class LineTrackingEmitter {
         return List.copyOf(mappings);
     }
 
-    /** 全行を LF 連結し、末尾にも LF を付した生成テキストを返す。 */
+    /** Returns the generated text with all lines joined by LF, plus one trailing LF. */
     public String render() {
         StringBuilder sb = new StringBuilder();
         for (String line : lines) {
@@ -91,7 +95,7 @@ public final class LineTrackingEmitter {
         return sb.toString();
     }
 
-    /** 両範囲の行数から対応種別を決める。双方が複数行のときは、行数の多い側で 1:N・N:1 を決める。 */
+    /** Determines the correspondence kind from the line counts of both ranges. When both are multi-line, the side with more lines decides between 1:N and N:1. */
     static MappingKind kindOf(LineRange cobolLines, LineRange generatedLines) {
         int cobolCount = cobolLines.endLine() - cobolLines.startLine() + 1;
         int genCount = generatedLines.endLine() - generatedLines.startLine() + 1;

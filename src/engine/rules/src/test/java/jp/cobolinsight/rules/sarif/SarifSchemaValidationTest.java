@@ -5,24 +5,23 @@ import com.networknt.schema.InputFormat;
 import com.networknt.schema.Schema;
 import com.networknt.schema.SchemaRegistry;
 import com.networknt.schema.SpecificationVersion;
-import jp.cobolinsight.cobolfrontend.Che4zCobolParser;
-import jp.cobolinsight.engineapi.finding.CodeFlow;
-import jp.cobolinsight.engineapi.finding.CodeFlowStep;
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.FindingLevel;
-import jp.cobolinsight.engineapi.finding.FixSuggestion;
-import jp.cobolinsight.engineapi.finding.Severity;
-import jp.cobolinsight.engineapi.finding.TextEdit;
-import jp.cobolinsight.engineapi.pipeline.AnalysisServices;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
-import jp.cobolinsight.engineapi.source.DecodedSource;
-import jp.cobolinsight.engineapi.source.EncodingInfo;
-import jp.cobolinsight.engineapi.source.SourcePosition;
-import jp.cobolinsight.engineapi.source.SourceRange;
-import jp.cobolinsight.engineapi.spi.AnalysisContext;
-import jp.cobolinsight.engineapi.spi.AnalysisPhase;
-import jp.cobolinsight.engineapi.spi.ParseOutcome;
-import jp.cobolinsight.engineapi.spi.Rule;
+import jp.cobolinsight.frontend.cobol.Che4zCobolParser;
+import jp.cobolinsight.core.finding.CodeFlow;
+import jp.cobolinsight.core.finding.CodeFlowStep;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.FindingLevel;
+import jp.cobolinsight.core.finding.FixSuggestion;
+import jp.cobolinsight.core.finding.Severity;
+import jp.cobolinsight.core.finding.TextEdit;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.source.DecodedSource;
+import jp.cobolinsight.core.source.EncodingInfo;
+import jp.cobolinsight.core.source.SourcePosition;
+import jp.cobolinsight.core.source.SourceRange;
+import jp.cobolinsight.core.spi.AnalysisContext;
+import jp.cobolinsight.core.spi.ParseOutcome;
+import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.rules.BuiltinRules;
 import jp.cobolinsight.rules.SourceTextIndex;
 import org.junit.jupiter.api.Test;
 
@@ -43,9 +42,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
- * SarifWriter の出力が SARIF 2.1.0 の公式JSONスキーマ(src/test/resources/sarif)に違反しない
- * ことの検証。合成した finding 群と、samples/ 全体を構文段の全ルールで lint した結果の両方を
- * 対象とする。
+ * Verifies that SarifWriter output does not violate the official SARIF 2.1.0 JSON schema
+ * (src/test/resources/sarif). Covers both a set of synthetic findings and the result of
+ * linting the entire samples/ tree with every syntax-level rule.
  */
 class SarifSchemaValidationTest {
 
@@ -59,9 +58,9 @@ class SarifSchemaValidationTest {
 
     @Test
     void syntheticFindingsProduceSchemaValidSarif() {
-        List<Rule> rules = AnalysisServices.load().rules(AnalysisPhase.SYNTAX);
-        // 1件目のファイル名には空白・#・非ASCII文字を含める。URI へ変換したうえでスキーマへ
-        // 適合することまで確認する。
+        List<Rule> rules = BuiltinRules.all();
+        // Give the first file a name containing a space, '#', and non-ASCII characters,
+        // to confirm it still conforms to the schema after conversion to a URI.
         List<Finding> findings = List.of(
                 Finding.of("R026", FindingLevel.ERROR, "認証情報の直書き",
                         new SourcePosition("cobol\\B 資産#1.cbl", 5, 12,
@@ -80,7 +79,8 @@ class SarifSchemaValidationTest {
         assertEquals(List.of(), errors, "SARIF 2.1.0スキーマ違反が0件であること");
     }
 
-    /** 挿入(空範囲)と置換の2編集を持つ修正案。fixes の直列化がスキーマへ適合することを検証する。 */
+    /** A fix suggestion with two edits: an insertion (empty range) and a replacement.
+     * Verifies that fixes serialization conforms to the schema. */
     private static FixSuggestion fixSuggestion() {
         SourcePosition insertAt =
                 new SourcePosition("cobol/A.cbl", 20, 40, SourcePosition.UNKNOWN_BYTE_OFFSET);
@@ -93,10 +93,11 @@ class SarifSchemaValidationTest {
                         new TextEdit(replacement, "END-ADD")));
     }
 
-    /** 汚染経路付きの finding が codeFlows(threadFlows → locations)としてスキーマへ適合すること。 */
+    /** Verifies that a finding with a taint path conforms to the schema as codeFlows
+     * (threadFlows -> locations). */
     @Test
     void codeFlowFindingsProduceSchemaValidSarif() {
-        List<Rule> rules = AnalysisServices.load().rules(AnalysisPhase.SYNTAX);
+        List<Rule> rules = BuiltinRules.all();
         List<Finding> findings = List.of(
                 new Finding("R020", FindingLevel.ERROR, "動的SQLへの外部入力の組込",
                         new SourcePosition("cobol/A.cbl", 30, 12,
@@ -118,7 +119,7 @@ class SarifSchemaValidationTest {
 
     @Test
     void samplesLintResultProducesSchemaValidSarif() {
-        List<Rule> rules = AnalysisServices.load().rules(AnalysisPhase.SYNTAX);
+        List<Rule> rules = BuiltinRules.all();
         Map<String, String> texts = new LinkedHashMap<>();
         List<CobolSemanticModel> models = new ArrayList<>();
         for (Path file : listFiles(SAMPLES.resolve("copybook"), ".cpy")) {
@@ -168,8 +169,9 @@ class SarifSchemaValidationTest {
     }
 
     /**
-     * テキストを DecodedSource へ包む。offsets は文字位置からUTF-8バイト位置への対応表であり、
-     * サロゲートペアの2文字目にもコードポイント先頭のバイト位置を入れる。
+     * Wraps text in a DecodedSource. offsets maps character positions to UTF-8 byte positions,
+     * and also assigns the code point's starting byte position to the second char of a
+     * surrogate pair.
      */
     private static DecodedSource decoded(String path, String text) {
         int[] offsets = new int[text.length()];

@@ -1,11 +1,11 @@
 package jp.cobolinsight.rules.syntax;
 
-import jp.cobolinsight.cobolfrontend.Che4zCobolParser;
-import jp.cobolinsight.engineapi.semantic.CobolSemanticModel;
-import jp.cobolinsight.engineapi.source.DecodedSource;
-import jp.cobolinsight.engineapi.source.EncodingInfo;
-import jp.cobolinsight.engineapi.spi.AnalysisContext;
-import jp.cobolinsight.engineapi.spi.ParseOutcome;
+import jp.cobolinsight.frontend.cobol.Che4zCobolParser;
+import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.source.DecodedSource;
+import jp.cobolinsight.core.source.EncodingInfo;
+import jp.cobolinsight.core.spi.AnalysisContext;
+import jp.cobolinsight.core.spi.ParseOutcome;
 import jp.cobolinsight.rules.SourceTextIndex;
 
 import java.io.IOException;
@@ -17,13 +17,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/** 合成fixtureのCOBOLソースを実パーサーで解析し、ルールへ渡すAnalysisContextを組み立てる。 */
+/** Parses synthetic fixture COBOL source with the real parser and assembles the
+ * AnalysisContext passed to rules. */
 final class Fixtures {
 
     private Fixtures() {
     }
 
-    /** fixtureテキストをファイルへ書き出して解析する。失敗はテスト失敗とする。 */
+    /** Writes the fixture text to a file and parses it. A failure fails the test. */
     static CobolSemanticModel parse(Path dir, String fileName, String text, Path... copybookDirs) {
         Path file = dir.resolve(fileName);
         try {
@@ -37,15 +38,16 @@ final class Fixtures {
                 fileName + " のパースが失敗した: " + outcome.failureFinding().orElse(null)));
     }
 
-    /** 意味モデルとソーステキスト索引だけを持つ構文段階のAnalysisContext。 */
+    /** A syntax-stage AnalysisContext holding only the semantic model and the source text index. */
     static AnalysisContext context(List<CobolSemanticModel> models, Map<String, String> texts) {
         return AnalysisContext.of(models, List.of(), List.of(), List.of(), Optional.empty(),
                 Map.of(SourceTextIndex.class, new SourceTextIndex(texts)));
     }
 
     /**
-     * テキストを DecodedSource へ包む。offsets は文字位置からUTF-8バイト位置への対応表であり、
-     * サロゲートペアの2文字目にもコードポイント先頭のバイト位置を入れる。
+     * Wraps text in a DecodedSource. offsets maps character positions to UTF-8 byte positions,
+     * and also assigns the code point's starting byte position to the second char of a
+     * surrogate pair.
      */
     static DecodedSource decoded(String path, String text) {
         int[] offsets = new int[text.length()];

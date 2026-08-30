@@ -1,10 +1,10 @@
 package jp.cobolinsight.rules.dataflow;
 
-import jp.cobolinsight.engineapi.finding.Finding;
-import jp.cobolinsight.engineapi.finding.FixSuggestion;
-import jp.cobolinsight.engineapi.finding.TextEdit;
-import jp.cobolinsight.engineapi.spi.AnalysisContext;
-import jp.cobolinsight.fix.ByteSpliceApplier;
+import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.FixSuggestion;
+import jp.cobolinsight.core.finding.TextEdit;
+import jp.cobolinsight.core.spi.AnalysisContext;
+import jp.cobolinsight.core.fix.ByteSpliceApplier;
 import jp.cobolinsight.rules.FixApplyChecks;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -20,8 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * R004 の FixProducer 検証。ON SIZE ERROR 句を欠く算術文に対し、終止ピリオドを END-COMPUTE の
- * 後へ付け替えつつ ON SIZE ERROR ハンドラを挿入する TextEdit を返すことを確認する。
+ * FixProducer verification for R004. Confirms that, for an arithmetic statement lacking an
+ * ON SIZE ERROR clause, it returns a TextEdit that inserts an ON SIZE ERROR handler while
+ * relocating the terminating period to after END-COMPUTE.
  */
 class OnSizeErrorMissingFixTest {
 
@@ -38,13 +39,15 @@ class OnSizeErrorMissingFixTest {
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("SYK007 の R004 検出が前提"));
 
-        FixSuggestion suggestion = rule.fixProducer().orElseThrow().produce(finding, context)
+        FixSuggestion suggestion = rule.fix().orElseThrow().produce(finding, context)
                 .orElseThrow(() -> new AssertionError("R004 の修正案が返ること"));
         assertEquals(1, suggestion.edits().size());
         TextEdit edit = suggestion.edits().get(0);
 
-        // 算術文の内容終端は80行47桁(終止ピリオドの直前)。ここへ空範囲で ON SIZE ERROR 句を
-        // 挿入する。原本の終止ピリオドが挿入直後に残るため、END-COMPUTE の後にピリオドが回る。
+        // The arithmetic statement's content ends at line 80, column 47 (just before the
+        // terminating period). An ON SIZE ERROR clause is inserted here as a zero-width range.
+        // Since the original terminating period stays right after the insertion, it ends up
+        // after END-COMPUTE.
         assertEquals(80, edit.range().start().line());
         assertEquals(47, edit.range().start().column());
         assertEquals(80, edit.range().end().line());
@@ -52,7 +55,8 @@ class OnSizeErrorMissingFixTest {
         assertEquals("\n           ON SIZE ERROR DISPLAY 'SIZE ERROR: WS-引当率' END-COMPUTE",
                 edit.replacement());
 
-        // 生成した編集を原本へ適用した修正後ソースが再パースできること(桁規則が保たれること)。
+        // The fixed source obtained by applying the generated edit to the original must reparse
+        // (column rules preserved).
         assertTrue(FixApplyChecks.applyAndReparse(file, suggestion.edits(),
                         List.of(DataFlowFixtures.SAMPLES.resolve("copybook"))).success(),
                 "R004 修正後ソースが再パースできること");
@@ -60,9 +64,11 @@ class OnSizeErrorMissingFixTest {
 
     @Test
     void keepsMovedPeriodInsideColumn72WhenReceiverNameIsOneByteLonger() {
-        // samples から生まれる挿入行はちょうど72バイトで、原本の終止ピリオドを同じ行へ移す余地が
-        // 無い。受信名が1バイト長い入力(挿入文が61バイトで、B領域に収まる上限に等しい)でも、
-        // 73桁目の識別欄へ食い込まないことを表明する。
+        // The insertion line arising from samples is exactly 72 bytes, leaving no room to move
+        // the original terminating period onto the same line. Asserts that even with input
+        // whose receiver name is one byte longer (the inserted statement is 61 bytes, equal to
+        // the limit that fits in area B), the result does not spill into the identification
+        // area at column 73.
         String text = String.join("\n",
                 "       IDENTIFICATION DIVISION.",
                 "       PROGRAM-ID. FIX004P.",
@@ -81,7 +87,7 @@ class OnSizeErrorMissingFixTest {
                 DataFlowFixtures.context(List.of(model), Map.of(model.sourceFile(), text));
         OnSizeErrorMissingRule rule = new OnSizeErrorMissingRule();
         Finding finding = rule.evaluate(context).get(0);
-        FixSuggestion suggestion = rule.fixProducer().orElseThrow().produce(finding, context)
+        FixSuggestion suggestion = rule.fix().orElseThrow().produce(finding, context)
                 .orElseThrow();
         assertEquals(61, "ON SIZE ERROR DISPLAY 'SIZE ERROR: WS-引当率X' END-COMPUTE"
                 .getBytes(StandardCharsets.UTF_8).length, "挿入文はB領域の予算61バイトに等しい");
@@ -100,7 +106,8 @@ class OnSizeErrorMissingFixTest {
 
     @Test
     void producesEndVerbMatchingArithmeticVerb() {
-        // GIVING 形式(END-MULTIPLY)でも動詞に合わせた END-句で閉じることを合成fixtureで確認する。
+        // Confirms with a synthetic fixture that even the GIVING form (END-MULTIPLY) closes with
+        // the END clause matching the verb.
         String text = String.join("\n",
                 "       IDENTIFICATION DIVISION.",
                 "       PROGRAM-ID. FIX004M.",
@@ -120,7 +127,7 @@ class OnSizeErrorMissingFixTest {
                 DataFlowFixtures.context(List.of(model), Map.of(model.sourceFile(), text));
         OnSizeErrorMissingRule rule = new OnSizeErrorMissingRule();
         Finding finding = rule.evaluate(context).get(0);
-        FixSuggestion suggestion = rule.fixProducer().orElseThrow().produce(finding, context)
+        FixSuggestion suggestion = rule.fix().orElseThrow().produce(finding, context)
                 .orElseThrow();
         String replacement = suggestion.edits().get(0).replacement();
         assertTrue(replacement.contains("END-MULTIPLY"), replacement);
