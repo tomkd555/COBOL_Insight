@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { text } from "../text";
+import { text } from "../i18n/text";
 import { RUN_STAGE_COUNT, useProject } from "../state/projectStore";
 
 export interface TitleBarProps {

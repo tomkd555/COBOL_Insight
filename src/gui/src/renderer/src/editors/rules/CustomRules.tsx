@@ -1,5 +1,5 @@
 import { useMemo, type ReactElement } from "react";
-import { text } from "../../text";
+import { text } from "../../i18n/text";
 import type { CustomRule } from "../../../../shared/rulesFile";
 import {
   NOT_AN_ARRAY,

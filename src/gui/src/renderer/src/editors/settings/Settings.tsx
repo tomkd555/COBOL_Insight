@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactElement } from "react";
-import { text } from "../../text";
+import { text } from "../../i18n/text";
 import { api, errorMessage } from "../../api";
 import { CODEPAGES } from "../../../../shared/codepage";
 import { SEVERITIES, type Severity } from "../../model/severity";

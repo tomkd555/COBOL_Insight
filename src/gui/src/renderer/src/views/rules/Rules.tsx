@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactElement } from "react";
-import { text } from "../../text";
+import { text } from "../../i18n/text";
 import { useProject } from "../../state/projectStore";
 import { useRulesState } from "../../state/rulesStore";
 import { useRules } from "../../state/useRules";

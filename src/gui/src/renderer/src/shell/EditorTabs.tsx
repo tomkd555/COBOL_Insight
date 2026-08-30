@@ -1,5 +1,5 @@
 import { useRef, type KeyboardEvent, type ReactElement } from "react";
-import { text } from "../text";
+import { text } from "../i18n/text";
 import { isTabDirty, useWorkbench, useWorkbenchDispatch } from "../state/workbenchStore";
 
 export interface EditorTabsProps {

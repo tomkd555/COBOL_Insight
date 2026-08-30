@@ -1,6 +1,6 @@
 import { useReducer, type ReactElement } from "react";
 import { api, errorMessage } from "../../api";
-import { text } from "../../text";
+import { text } from "../../i18n/text";
 import { useProject } from "../../state/projectStore";
 import { useSettings } from "../../state/settingsStore";
 import type { Notify } from "../../state/useShellStartup";

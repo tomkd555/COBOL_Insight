@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { api, errorMessage } from "./api";
-import { text } from "./text";
+import { text } from "./i18n/text";
 import { ProjectProvider, useProject } from "./state/projectStore";
 import {
   PANEL_LIMITS,

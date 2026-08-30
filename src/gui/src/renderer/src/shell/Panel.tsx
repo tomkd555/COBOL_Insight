@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { text } from "../text";
+import { text } from "../i18n/text";
 import { useWorkbench, useWorkbenchDispatch, type PanelView } from "../state/workbenchStore";
 import { Problems } from "../views/problems/Problems";
 import { Output } from "../views/output/Output";

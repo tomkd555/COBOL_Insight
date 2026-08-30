@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { text } from "../text";
+import { text } from "../i18n/text";
 import { artifactCount, useProject } from "../state/projectStore";
 import { useWorkbenchDispatch } from "../state/workbenchStore";
 import { useEditorStatus } from "../state/editorStatusStore";

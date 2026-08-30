@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, type KeyboardEvent, type ReactElement } from "react";
-import { text } from "../../text";
+import { text } from "../../i18n/text";
 import { artifactItems, useProject } from "../../state/projectStore";
 import {
   ASSET_TYPE_FILTERS,

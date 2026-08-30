@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactElement } from "react";
 import type { FixDiff as FixDiffData } from "../../../../shared/ipc";
 import { api, errorMessage } from "../../api";
-import { text } from "../../text";
+import { text } from "../../i18n/text";
 import { useProject } from "../../state/projectStore";
 import { useSettings } from "../../state/settingsStore";
 import { artifactSubdir, fixOutDirOf } from "../../model/artifactPaths";

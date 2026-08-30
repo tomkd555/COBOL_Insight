@@ -1,5 +1,5 @@
 import { useRef, type KeyboardEvent, type ReactElement } from "react";
-import { text } from "../text";
+import { text } from "../i18n/text";
 import {
   graphTab,
   reportTab,
@@ -12,7 +12,6 @@ import {
 /** The activity bar entries, in order. Icons are Monaco's codicons; no icon package is involved. */
 const ENTRIES: readonly { view: SideView; icon: string; label: string }[] = [
   { view: "explorer", icon: "codicon-files", label: text.activity.explorer },
-  { view: "search", icon: "codicon-search", label: text.activity.search },
   { view: "rules", icon: "codicon-checklist", label: text.activity.rules },
   { view: "problems", icon: "codicon-warning", label: text.activity.problems },
 ];

@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactElement } from "react";
-import { text } from "../../text";
+import { text } from "../../i18n/text";
 import { artifactItems, useProject } from "../../state/projectStore";
 import { useSettings } from "../../state/settingsStore";
 import { graphTab, useWorkbenchDispatch } from "../../state/workbenchStore";

@@ -1,5 +1,5 @@
 import { useEffect, type ReactElement } from "react";
-import { text } from "../text";
+import { text } from "../i18n/text";
 
 /** How long a toast stays before it fades on its own, in milliseconds. */
 const AUTO_DISMISS_MS = 6000;

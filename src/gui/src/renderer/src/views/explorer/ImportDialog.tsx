@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactElement } from "react";
-import { text } from "../../text";
+import { text } from "../../i18n/text";
 import { api, errorMessage } from "../../api";
 import { Modal } from "../../ui/Modal";
 import { clipColumns, columnRuler, displayWidth, importRelPath } from "../../model/importModel";

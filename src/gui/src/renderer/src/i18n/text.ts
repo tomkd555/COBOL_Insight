@@ -8,14 +8,13 @@
 export const text = {
   app: {
     name: "COBOL Insight",
-    run: "解析を実行",
+    run: "解析",
     cancel: "中止",
     running: "解析中",
   },
 
   activity: {
     explorer: "資産",
-    search: "検索",
     rules: "ルール",
     problems: "指摘",
     label: "画面の切り替え",
@@ -23,7 +22,6 @@ export const text = {
 
   sideBar: {
     explorerTitle: "資産エクスプローラー",
-    searchTitle: "検索",
     rulesTitle: "ルール",
     problemsTitle: "指摘",
     label: "サイドバー",
@@ -97,7 +95,7 @@ export const text = {
 
   problems: {
     title: "指摘",
-    empty: "解析を実行すると、ここに指摘が並びます。",
+    empty: "解析すると、ここに指摘が並びます。",
     loading: "検出しています…",
     noMatch: "絞り込みに一致する指摘がありません。",
     clean: "指摘はありません。",
@@ -128,13 +126,13 @@ export const text = {
 
   output: {
     title: "出力",
-    empty: "解析を実行すると、ここに実行ログが出ます。",
+    empty: "解析すると、ここに実行ログが出ます。",
     clear: "ログを消す",
   },
 
   sourceView: {
     loading: "本文を読み込んでいます…",
-    error: "本文を表示できませんでした。",
+    error: "本文を表示できませんでした。文字コードの指定を変えて開き直してください。",
     codepage: "文字コード",
     detected: "自動判別",
     lines: (count: number): string => `${count} 行`,
@@ -151,8 +149,9 @@ export const text = {
     expand: "開く",
     collapse: "閉じる",
     toggleLabel: (name: string): string => `${name} の展開の開閉`,
-    action: "カーソル行の COPY の展開を開閉する",
-    glyphHint: "この COPY の展開を開閉します。",
+    // product-ui: ignore C14 Monaco editor command title (not a rendered <button>); the checker buckets it as "button" only because the catalog key is literally "action".
+    action: "カーソル行のCOPYの展開を開閉する",
+    glyphHint: "このCOPYの展開を開閉します。",
   },
 
   transpileView: {
@@ -163,7 +162,7 @@ export const text = {
     python: "Python",
     java: "Java",
     loading: "変換しています…",
-    error: "変換結果を取得できませんでした。",
+    error: "変換結果を取得できませんでした。もう一度実行してください。",
     empty: "この資産の変換結果はありませんでした。",
     noMap: "行の対応が記録されていません。",
     left: (path: string): string => `${path}（原本）`,
@@ -199,7 +198,7 @@ export const text = {
   fixView: {
     title: "修正案",
     loading: "修正案を作っています…",
-    error: "修正案を取得できませんでした。",
+    error: "修正案を取得できませんでした。もう一度実行してください。",
     empty: "この資産に対する修正案はありませんでした。",
     original: "原本",
     fixed: "修正案",
@@ -210,7 +209,7 @@ export const text = {
 
   graph: {
     title: "呼出関係",
-    empty: "解析を実行すると、ここに呼出関係図が出ます。",
+    empty: "解析すると、ここに呼出関係図が出ます。",
     loading: "呼出関係を読み込んでいます…",
     laying: "配置を計算しています…",
     error: "呼出関係を読めませんでした。",
@@ -260,6 +259,7 @@ export const text = {
       EXECUTION: "実行（EXEC PGM）",
       CALL: "呼出（CALL・XCTL・LINK）",
       REFERENCE: "参照（データセット・Db2表）",
+      // product-ui: ignore C14 graph legend label (not a rendered <button>); the checker buckets it as "button" only because "action" is a substring of "TRANSACTION".
       TRANSACTION_TRANSITION: "トランザクション遷移",
       MAP_REFERENCE: "BMSマップ参照",
     },
@@ -281,10 +281,10 @@ export const text = {
 
   report: {
     title: "レポート",
-    generateHtml: "HTML を生成",
+    generateHtml: "HTMLを生成",
     generateText: "テキストを生成",
     export: "書き出す",
-    exportLabel: "レポートを別の場所へ書き出す",
+    exportLabel: "別の場所へ書き出す",
     generating: "レポートを生成しています…",
     notGenerated: "レポートはまだ生成していません。",
     noProject: "先に資産フォルダを解析してください。",
@@ -318,12 +318,11 @@ export const text = {
     categoryView: "表示",
     categoryRun: "実行",
     selectFolder: "資産フォルダを選ぶ",
-    run: "解析を実行する",
+    run: "解析する",
     cancel: "解析を中止する",
     toggleSideBar: "サイドバーの表示を切り替える",
     togglePanel: "パネルの表示を切り替える",
     showExplorer: "資産エクスプローラーを開く",
-    showSearch: "検索を開く",
     showRules: "ルールを開く",
     showProblems: "指摘を開く",
     showOutput: "出力を開く",
@@ -361,7 +360,7 @@ export const text = {
 
   rules: {
     search: "ルールを絞り込む",
-    searchLabel: "ルールの ID・名前・概要で絞り込む",
+    searchLabel: "ID・名前・概要で絞り込む",
     empty: "ルールを読み込んでいます…",
     noMatch: "絞り込みに一致するルールがありません。",
     enableAll: "表示中をすべて有効",
@@ -394,14 +393,14 @@ export const text = {
     paneLabel: "編集の仕方",
     rawLabel: "custom 配列の JSON",
     rawInvalid: (detail: string): string => `JSON として読めません。${detail}`,
-    rawNotArray: "custom はルール定義の配列で書きます。",
-    rawBlocked: "JSON を直せるまでフォームへは戻れません。",
+    rawNotArray: "customはルール定義の配列で書きます。",
+    rawBlocked: "JSONを直せるまでフォームへは戻れません。",
     add: "ルールを足す",
     remove: "このルールを消す",
     validate: "検証する",
     save: "保存する",
     empty: "利用者定義ルールはまだありません。",
-    validationOk: "engine はこの内容を受け付けました。",
+    validationOk: "engineはこの内容を受け付けました。",
     validationFailed: "engine がこの内容を受け付けませんでした。",
     dirty: "未保存の変更があります。",
     fieldId: "ID",
@@ -426,7 +425,7 @@ export const text = {
     fieldAfterTextRegex: "起点の文の正規表現",
     fieldDataItem: "検査するデータ項目",
     fieldScope: "追う範囲",
-    fieldOnEveryPath: "すべての経路で検査を求める",
+    fieldOnEveryPath: "全経路で検査を求める",
     listHint: "読点または改行で区切ります。",
     messageHint: "${match} と書くと、一致した文字列に置き換わります。",
     matchKind: {
@@ -444,8 +443,8 @@ export const text = {
       untilProgramEnd: "プログラムの終わりまで",
     },
     problem: {
-      idFormat: "ID は U で始め、英数字・ハイフン・下線を1〜15文字続けます。",
-      idDuplicate: "この ID は他のルールと重なっています。",
+      idFormat: "IDはUで始め、英数字・ハイフン・下線を1〜15文字続けます。",
+      idDuplicate: "このIDは他のルールと重なっています。",
       nameRequired: "名前を書きます。",
       messageRequired: "指摘の文言を書きます。",
       regexRequired: "正規表現を書きます。",
@@ -463,7 +462,7 @@ export const text = {
     themeLight: "ライト",
     encoding: "既定の文字コード",
     encodingAuto: "自動判別",
-    encodingNote: "資産ごとの指定が無いときに engine へ渡します。",
+    encodingNote: "資産ごとの指定がないときにengineへ渡します。",
     copybookPaths: "コピー句の探索パス",
     copybookAdd: "パスを足す",
     copybookRemove: "このパスを消す",
@@ -484,7 +483,7 @@ export const text = {
     paste: "端末から複写した本文",
     pastePlaceholder: "端末エミュレータの画面で範囲を選んで複写し、ここへ貼り付けます。",
     kind: "資産の種別",
-    copybookNote: "コピー句には、COPY 文から引けるよう拡張子 .cpy を補います。",
+    copybookNote: "コピー句には、COPY文から引けるよう拡張子 .cpyを補います。",
     destDir: "保存先",
     destDirPlaceholder: "資産フォルダの直下",
     destDirNote: "資産フォルダからの相対パス。",
@@ -504,7 +503,7 @@ export const text = {
     save: "保存",
     saving: "保存しています…",
     cancel: "やめる",
-    encodingNote: "保存は UTF-8 で行います。",
+    encodingNote: "保存はUTF-8で行います。",
     exists: (relPath: string): string =>
       `${relPath} は既にあります。上書きすると元の内容は失われます。`,
     overwrite: "上書きする",

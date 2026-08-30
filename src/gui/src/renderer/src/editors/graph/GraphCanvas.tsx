@@ -1,6 +1,6 @@
 import { useEffect, useImperativeHandle, useRef, type ReactElement, type Ref } from "react";
 import type cytoscape from "cytoscape";
-import { text } from "../../text";
+import { text } from "../../i18n/text";
 import { graphLibrary } from "../../vendor/graphLibrary";
 import {
   SELECTED_NODE_CLASS,

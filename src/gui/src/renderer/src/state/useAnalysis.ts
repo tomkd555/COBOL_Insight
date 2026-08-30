@@ -9,7 +9,7 @@
 import { useCallback, useRef } from "react";
 import type { EngineCommonOptions, EngineOutputPaths } from "../../../shared/ipc";
 import { api, errorMessage } from "../api";
-import { text } from "../text";
+import { text } from "../i18n/text";
 import {
   useProject,
   useProjectDispatch,

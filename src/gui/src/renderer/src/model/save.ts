@@ -11,7 +11,7 @@
  */
 
 import type { SarifFinding, SaveResult, SourceStamp } from "../../../shared/ipc";
-import { text } from "../text";
+import { text } from "../i18n/text";
 
 import { REPARSE_RULE_ID } from "./markers";
 

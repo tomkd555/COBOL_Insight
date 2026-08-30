@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { text } from "../../text";
+import { text } from "../../i18n/text";
 import { useSettings } from "../../state/settingsStore";
 import { PALETTE_CHORD } from "../../state/keybindings";
 
