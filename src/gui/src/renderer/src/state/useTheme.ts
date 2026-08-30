@@ -19,8 +19,9 @@ import { registerLanguages } from "../vendor/monacoLanguages";
 import { COBOL_INSIGHT_THEME } from "../vendor/monarch";
 import { useSettings } from "./settingsStore";
 
-export function useTheme(): ThemeName {
-  const { theme: choice, restored } = useSettings();
+/** The theme the settings and the operating system resolve to. No side effect. */
+export function useResolvedTheme(): ThemeName {
+  const { theme: choice } = useSettings();
   const [prefersDark, setPrefersDark] = useState(systemPrefersDark);
 
   useEffect(() => {
@@ -33,14 +34,25 @@ export function useTheme(): ThemeName {
     return () => query.removeEventListener("change", onChange);
   }, []);
 
-  const theme = resolveTheme(choice, prefersDark);
+  return resolveTheme(choice, prefersDark);
+}
 
+/** Applies the resolved theme. Called once, from the shell; other views read `useResolvedTheme`. */
+export function useTheme(): ThemeName {
+  const { theme: choice, restored } = useSettings();
+  const theme = useResolvedTheme();
+
+  // Until the settings are read, the choice is the default and the document already carries the
+  // class the start-up applied from the cache; writing now would flash the wrong palette.
   useEffect(() => {
+    if (!restored) {
+      return;
+    }
     applyTheme(theme);
     const monaco = monacoEditor();
     registerLanguages(monaco);
     monaco.editor.setTheme(COBOL_INSIGHT_THEME[theme]);
-  }, [theme]);
+  }, [theme, restored]);
 
   // The cache mirrors the stored choice; before the settings are read it would only overwrite the
   // value the start-up just used.

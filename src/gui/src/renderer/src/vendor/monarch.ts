@@ -352,12 +352,12 @@ export function cobolInsightTheme(theme: ThemeName): MonacoThemeData {
       { token: "operator", foreground: c("d4d4d4", "2b2f38") },
     ],
     colors: {
-      "editor.background": c("#1f2126", "#f6f7f9"),
+      "editor.background": c("#101418", "#f4f7fa"),
       "editor.foreground": c("#e3e5ea", "#2b2f38"),
       "editorLineNumber.foreground": c("#868d99", "#6b7280"),
       "editorLineNumber.activeForeground": c("#6aa7ff", "#2a66d0"),
       "editorRuler.foreground": c("#6e7582", "#8a92a0"),
-      "editorGutter.background": c("#1f2126", "#f6f7f9"),
+      "editorGutter.background": c("#101418", "#f4f7fa"),
     },
   };
 }

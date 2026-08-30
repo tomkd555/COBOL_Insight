@@ -151,7 +151,7 @@ function Legend({
   open: boolean;
 }): ReactElement {
   return (
-    <details className="ci-graph__legend" open={open} data-testid="graph-legend">
+    <details key={String(open)} className="ci-graph__legend" open={open} data-testid="graph-legend">
       <summary className="ci-graph__subtitle">{text.graph.legend}</summary>
       <ul className="ci-graph__legend-list">
         {nodeKindStyles(theme)

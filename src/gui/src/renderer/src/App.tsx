@@ -383,7 +383,7 @@ function Shell(): ReactElement {
             <>
               <button
                 type="button"
-                className="ci-button"
+                className="ci-button ci-button--danger"
                 onClick={sourceSave.overwrite}
                 data-testid="save-conflict-overwrite"
               >
@@ -396,6 +396,14 @@ function Shell(): ReactElement {
                 data-testid="save-conflict-diff"
               >
                 {text.save.showDiff}
+              </button>
+              <button
+                type="button"
+                className="ci-button"
+                onClick={sourceSave.dismissConflict}
+                data-testid="save-conflict-cancel"
+              >
+                {text.save.conflictCancel}
               </button>
               <button
                 type="button"

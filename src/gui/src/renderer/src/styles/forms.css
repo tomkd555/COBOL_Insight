@@ -269,6 +269,12 @@
   text-decoration: none;
 }
 
+/* The radio input inside is visually hidden; its keyboard focus is drawn on the chip. */
+.ci-chip:has(:focus-visible) {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
 [role="radiogroup"] .ci-chip--on {
   background: color-mix(in oklch, var(--color-primary) 15%, var(--color-surface));
   border-color: var(--color-primary);

@@ -176,7 +176,7 @@ export function Explorer({ onSelectFolder, onOpenAsset }: ExplorerProps): ReactE
             role="treeitem"
             aria-level={row.depth + 1}
             aria-expanded={row.kind === "folder" ? row.expanded : undefined}
-            aria-selected={row.path === focusedPath || row.path === activeTabPath}
+            aria-selected={(focusedPath ?? activeTabPath) === row.path}
             tabIndex={row.path === tabStop ? 0 : -1}
             className={`ci-tree__row ci-tree__row--${row.kind}`}
             style={{ paddingInlineStart: `${row.depth * 12 + 8}px` }}

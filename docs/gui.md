@@ -29,6 +29,8 @@ npm run check
 npm run smoke:shots     # builds, runs the smoke once per theme, writes out/screenshots/<theme>/*.png
 ```
 
+The scripts belong to the `product-ui` and `shippable-text` skills of the Claude Code user profile,
+not to this repository; without them, `npm run check` and `npm run smoke:shots` are the gates.
 `check_slop.py` fails on any colour literal outside `theme.css`; `check_copy.py` reads the string catalog
 `src/renderer/src/i18n/text.ts` (the `i18n` path is what makes it a catalog) against `voice` in
 `tokens.json`; the screenshots are what a design review looks at, since the renderer needs the preload

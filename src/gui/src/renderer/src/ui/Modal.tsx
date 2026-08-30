@@ -36,11 +36,11 @@ export function Modal({ title, children, actions, onDismiss, testId, wide }: Mod
         onDismiss();
         return;
       }
-      if (event.key !== "Tab" || focusable === undefined || focusable.length === 0) {
+      if (event.key !== "Tab" || enabled.length === 0) {
         return;
       }
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
+      const first = enabled[0];
+      const last = enabled[enabled.length - 1];
       if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
         last.focus();

@@ -46,7 +46,7 @@ export function TitleBar({ onRun, onCancel, onSelectFolder }: TitleBarProps): Re
           />
           <button
             type="button"
-            className="ci-titlebar__action"
+            className="ci-button ci-titlebar__action"
             onClick={onCancel}
             data-testid="cancel-run"
           >
@@ -57,7 +57,7 @@ export function TitleBar({ onRun, onCancel, onSelectFolder }: TitleBarProps): Re
       ) : (
         <button
           type="button"
-          className="ci-titlebar__action ci-titlebar__action--primary"
+          className="ci-button ci-button--primary ci-titlebar__action"
           onClick={onRun}
           disabled={project.inputDir === null}
           data-testid="run-analysis"

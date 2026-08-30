@@ -99,47 +99,11 @@
   width: 96px;
 }
 
+/* A .ci-button with a glyph before its label. */
 .ci-titlebar__action {
   display: flex;
   align-items: center;
   gap: var(--ci-space-1);
-  height: 28px;
-  padding: 0 var(--ci-space-3);
-  background: var(--color-surface);
-  border: 1px solid var(--ci-border-strong);
-  border-radius: var(--ci-radius);
-  color: var(--color-foreground);
-  cursor: pointer;
-  white-space: nowrap;
-  transition:
-    background-color var(--duration-fast) var(--ease-standard),
-    border-color var(--duration-fast) var(--ease-standard);
-}
-
-.ci-titlebar__action:hover:not(:disabled) {
-  background: var(--ci-bg-hover);
-}
-
-.ci-titlebar__action--primary {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--color-primary-foreground);
-}
-
-.ci-titlebar__action--primary:hover:not(:disabled) {
-  background: var(--color-primary);
-}
-
-.ci-titlebar__action:disabled {
-  background: var(--color-muted);
-  border-color: var(--color-border);
-  color: var(--color-muted-foreground);
-  cursor: default;
-}
-
-.ci-titlebar__action--primary:disabled {
-  background: color-mix(in oklch, var(--color-primary) 35%, var(--color-background));
-  border-color: transparent;
 }
 
 /* ---------------------------------------------------------------- activity bar */

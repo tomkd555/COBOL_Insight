@@ -52,8 +52,8 @@ export function buildWindowOptions(
     center: true,
     show: false,
     title: "COBOL Insight",
-    // The frame's colour until the renderer paints: the two backgrounds of tokens.json.
-    backgroundColor: dark ? "#1f2126" : "#f6f7f9",
+    // The frame's colour until the renderer paints: tokens.json's two `background` values as hex.
+    backgroundColor: dark ? "#101418" : "#f4f7fa",
     webPreferences: {
       preload: preloadPath,
       contextIsolation: true,

@@ -14,7 +14,7 @@ import {
   type GraphFilter,
 } from "../../model/graphFilter";
 import { buildGraphElements, NODE_KINDS, isGraphNodeKind } from "../../model/graphLayout";
-import { useTheme } from "../../state/useTheme";
+import { useResolvedTheme } from "../../state/useTheme";
 import { nodeDetail } from "../../model/graphDetail";
 import { buildTrace, flattenTrace, initialExpanded, type TraceNode } from "../../model/traceTree";
 import { GraphCanvas, type GraphCanvasHandle } from "./GraphCanvas";
@@ -44,7 +44,7 @@ const EMPTY_GRAPH: GraphData = { nodes: [], edges: [], paragraphs: [], paragraph
  * the tree and the canvas in both directions, so the keyboard reaches everything the mouse does.
  */
 export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
-  const theme = useTheme();
+  const theme = useResolvedTheme();
   const project = useProject();
   const dispatch = useWorkbenchDispatch();
   const canvasRef = useRef<GraphCanvasHandle>(null);

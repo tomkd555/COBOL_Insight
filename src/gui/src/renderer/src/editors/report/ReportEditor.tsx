@@ -118,6 +118,9 @@ export function ReportEditor({ notify }: ReportEditorProps): ReactElement {
       {view.kind === "no-project" ? (
         <p className="ci-report__state">{text.report.noProject}</p>
       ) : null}
+      {view.kind === "not-generated" ? (
+        <p className="ci-report__state">{text.report.notGenerated}</p>
+      ) : null}
       {view.kind === "generating" ? (
         <p className="ci-report__state" data-testid="report-generating">
           {text.report.generating}

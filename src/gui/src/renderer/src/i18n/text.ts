@@ -288,6 +288,7 @@ export const text = {
     exportLabel: "別の場所へ書き出す",
     generating: "レポートを生成しています…",
     noProject: "先に資産フォルダを解析してください。",
+    notGenerated: "生成すると、ここにレポートが出ます。",
     failed: (reason: string): string => `レポートを生成できませんでした。${reason}`,
     preview: "レポートの内容",
     path: "出力先",

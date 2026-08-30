@@ -190,7 +190,7 @@ const cachedDecode = createCachedDecode({
     ),
 });
 
-function settingsPath(): string {
+export function settingsPath(): string {
   return join(app.getPath("userData"), SETTINGS_FILE_NAME);
 }
 

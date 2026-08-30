@@ -1,6 +1,8 @@
 import { app, BrowserWindow, Menu, nativeTheme, screen } from "electron";
 import { join } from "node:path";
-import { registerIpc, stopRunningEngine } from "./ipc";
+import { registerIpc, settingsPath, stopRunningEngine } from "./ipc";
+import { readSettings } from "./fs/settings";
+import { userDataFileSystem } from "./nodeFs";
 import { ensureWritable, resolvePortableUserData } from "./fs/portable";
 import { buildWindowOptions } from "./window";
 
@@ -24,12 +26,15 @@ function applyPortableUserData(): void {
  * from the local Vite server in development and from the local index.html in a distribution. No
  * network traffic is involved either way.
  */
-function createWindow(): void {
+async function createWindow(): Promise<void> {
+  // The frame is painted before the renderer resolves the theme, so the stored choice is read here.
+  const { theme } = await readSettings(userDataFileSystem, settingsPath());
+  const dark = theme === "dark" || (theme !== "light" && nativeTheme.shouldUseDarkColors);
   const window = new BrowserWindow(
     buildWindowOptions(
       join(__dirname, "../preload/index.js"),
       screen.getPrimaryDisplay().workAreaSize,
-      nativeTheme.shouldUseDarkColors,
+      dark,
     ),
   );
 
@@ -55,11 +60,11 @@ app.whenReady().then(() => {
     Menu.setApplicationMenu(null);
   }
   registerIpc();
-  createWindow();
+  void createWindow();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
+      void createWindow();
     }
   });
 });
