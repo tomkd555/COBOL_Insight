@@ -3,21 +3,21 @@ package jp.cobolinsight.frontend.cobol;
 import java.net.URI;
 import java.nio.file.Paths;
 
-/** URI とファイルパス表現の相互変換。 */
+/** Converts between a URI and a file-path representation. */
 final class UriPaths {
 
     private UriPaths() {
     }
 
     /**
-     * Che4z が暗黙に差し込むコード(SQLCA など)の URI か。実ファイルが無いため、原文の取得や
-     * コピー句展開の対応表からは除く。
+     * Is this the URI of code Che4z implicitly inserts (such as SQLCA)? Since it has no real
+     * file, it is excluded from original-text retrieval and the copybook expansion mapping.
      */
     static boolean isImplicit(String uri) {
         return uri == null || uri.startsWith("implicit:") || uri.contains("implicit-code");
     }
 
-    /** file URI をファイルシステムのパス文字列へ変換する。変換できない場合は URI のまま返す。 */
+    /** Converts a file URI to a filesystem path string. Returns the URI unchanged if it cannot be converted. */
     static String toPathString(String uri) {
         try {
             return Paths.get(new URI(uri)).toString();

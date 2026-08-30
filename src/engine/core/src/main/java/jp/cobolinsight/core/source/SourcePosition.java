@@ -1,8 +1,8 @@
 package jp.cobolinsight.core.source;
 
 /**
- * 原ソース上の1点。行・桁は1始まり。byteOffset は原バイト列上のオフセットで、不明の場合は
- * {@link #UNKNOWN_BYTE_OFFSET}。
+ * A single point in the original source. Line and column are 1-based. byteOffset is the offset
+ * in the original byte array, or {@link #UNKNOWN_BYTE_OFFSET} when unknown.
  */
 public record SourcePosition(String file, int line, int column, int byteOffset) {
 
@@ -23,7 +23,7 @@ public record SourcePosition(String file, int line, int column, int byteOffset) 
         }
     }
 
-    /** ファイル先頭(行1・桁1)を指す位置。行・桁を特定できない場合に用いる。 */
+    /** A position pointing to the start of the file (line 1, column 1). Used when the line and column cannot be determined. */
     public static SourcePosition fileStart(String file) {
         return new SourcePosition(file, 1, 1, UNKNOWN_BYTE_OFFSET);
     }

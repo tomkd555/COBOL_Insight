@@ -2,7 +2,7 @@ package jp.cobolinsight.core.source;
 
 import java.util.Objects;
 
-/** 同一ファイル内の範囲。start と end が同一位置の空範囲を許す。 */
+/** A range within a single file. An empty range where start and end are the same position is allowed. */
 public record SourceRange(SourcePosition start, SourcePosition end) {
 
     public SourceRange {

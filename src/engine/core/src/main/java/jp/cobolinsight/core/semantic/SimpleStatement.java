@@ -4,7 +4,7 @@ import jp.cobolinsight.core.source.SourceRange;
 
 import java.util.Objects;
 
-/** 入れ子を持たない単文。verb は文の動詞(MOVE・DISPLAY など)、text は文の全文。 */
+/** A non-nested simple statement. verb is the statement's verb (MOVE, DISPLAY, etc.), text is the full statement text. */
 public record SimpleStatement(String verb, String text, SourceRange range) implements Statement {
 
     public SimpleStatement {

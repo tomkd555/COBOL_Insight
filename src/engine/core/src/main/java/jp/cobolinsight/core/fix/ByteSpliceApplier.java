@@ -15,28 +15,31 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * 原バイト列へ最小編集を局所適用するバイトスプライス適用器。
+ * A byte-splice applier that locally applies minimal edits to the original byte sequence.
  *
- * <p>各 {@link TextEdit} の {@link jp.cobolinsight.core.source.SourceRange} は
- * (行・桁)基準で、行・桁ともに1始まりである({@link SourcePosition} の規約)。桁は
- * {@link ByteOffsetTable#byteOffsetAt(int, int)} が受ける0始まりへ {@code column-1} で
- * 変換してバイトオフセットを引く。範囲の終端は排他で、start と end が同一の空範囲は挿入点を表す。
+ * <p>Each {@link TextEdit}'s {@link jp.cobolinsight.core.source.SourceRange} is based on
+ * (line, column), with both line and column starting at 1 (the {@link SourcePosition}
+ * convention). Columns are converted to the 0-based values expected by
+ * {@link ByteOffsetTable#byteOffsetAt(int, int)} via {@code column-1} before looking up the byte
+ * offset. The end of a range is exclusive, and an empty range where start and end are equal
+ * represents an insertion point.
  *
- * <p>編集は範囲昇順・非重複を前提とし、位置ずれを避けるため後方から適用する。無編集は原バイト列を
- * 恒等で返す。置換テキストは原本と同一のエンコーディングでバイト化するため、出力は原本と同一の
- * エンコーディングになる。
+ * <p>Edits are assumed to be in ascending, non-overlapping order and are applied from the end
+ * backward to avoid position drift. When there are no edits, the original byte sequence is
+ * returned unchanged. The replacement text is byte-encoded in the same encoding as the original,
+ * so the output ends up in the same encoding as the original.
  */
 public final class ByteSpliceApplier {
 
     private final SourceDecoder decoder = new SourceDecoder();
 
-    /** 原本ファイルを自動判別で再復号し、編集群を適用した修正後バイト列を返す。 */
+    /** Re-decodes the original file with automatic detection and returns the fixed byte sequence with the edits applied. */
     public byte[] apply(Path originalFile, List<TextEdit> edits) throws IOException {
         byte[] original = Files.readAllBytes(originalFile);
         return apply(decoder.decode(original), edits);
     }
 
-    /** 復号済みソースへ編集群を適用した修正後バイト列を返す。 */
+    /** Returns the fixed byte sequence obtained by applying the edits to the decoded source. */
     public byte[] apply(DecodedSource decoded, List<TextEdit> edits) {
         if (edits.isEmpty()) {
             return decoded.originalBytes();
@@ -54,7 +57,7 @@ public final class ByteSpliceApplier {
             int start = byteOffsetOf(table, edit.range().start());
             int end = byteOffsetOf(table, edit.range().end());
             String replacement = withSeparator(edit.replacement(), separator);
-            // 最終行の直後へ挿入する場合、原本が改行で終わっていなければ改行から書き始める。
+            // When inserting right after the last line, start with a line break if the original does not end with one.
             if (start == originalBytes.length && !endsWithBreak) {
                 replacement = separator + replacement;
             }
@@ -74,7 +77,7 @@ public final class ByteSpliceApplier {
         return table.byteOffsetAt(position.line(), position.column() - 1);
     }
 
-    /** 原本の改行様式。CRLF だけで構成される原本は CRLF、それ以外は LF とする。 */
+    /** The original's line-break style. An original consisting solely of CRLF is treated as CRLF; otherwise LF. */
     private static String lineSeparatorOf(byte[] original) {
         int breaks = 0;
         int crlf = 0;
@@ -89,7 +92,7 @@ public final class ByteSpliceApplier {
         return breaks > 0 && breaks == crlf ? "\r\n" : "\n";
     }
 
-    /** 置換テキストの改行を原本の改行様式へそろえる。混在した改行を作らないためである。 */
+    /** Aligns line breaks in the replacement text to the original's line-break style, so as not to produce mixed line breaks. */
     private static String withSeparator(String replacement, String separator) {
         String normalized = replacement.replace("\r\n", "\n");
         return separator.equals("\n") ? normalized : normalized.replace("\n", separator);

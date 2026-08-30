@@ -12,8 +12,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * COPY 文のインライン展開の検証。原本の COPY 文の行番号・コピー句名・展開後の各行(コピー句内の
- * 由来行と REPLACING 適用後のテキスト)がそろうことを確認する。
+ * Verifies inline expansion of COPY statements: that the original COPY statement's line number,
+ * the copybook name, and each expanded line (its originating line within the copybook and the
+ * text after REPLACING is applied) all line up.
  */
 class CopyInlineExpansionTest {
 

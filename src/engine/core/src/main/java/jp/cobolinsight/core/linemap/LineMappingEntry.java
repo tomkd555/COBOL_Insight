@@ -5,8 +5,10 @@ import jp.cobolinsight.core.source.LineRange;
 import java.util.Objects;
 
 /**
- * 逐語対訳の行対応表の1行。COBOL行と生成行(Python/Java)を双方向に対応づける。
- * note は直訳不能構文の注記で、直訳可能な場合は空文字列。anchorId はGUIリンク用アンカー。
+ * One row of the line-by-line translation mapping table. Bidirectionally maps COBOL lines to
+ * generated lines (Python/Java). note is a remark for constructs that cannot be translated
+ * literally, and is an empty string when a literal translation is possible. anchorId is the
+ * anchor used for GUI links.
  */
 public record LineMappingEntry(String cobolSourceId, LineRange cobolLines, String generatedFile,
         LineRange generatedLines, MappingKind mappingKind, String note, String anchorId) {

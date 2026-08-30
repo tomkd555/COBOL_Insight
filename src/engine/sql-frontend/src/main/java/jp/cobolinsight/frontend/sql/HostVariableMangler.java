@@ -5,9 +5,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * JSqlParser へ渡す前の前処理。ハイフン入り・日本語を含むホスト変数(指示変数 :host:ind を含む)を、
- * JSqlParser が解析できる連番トークン(:HV1, :HV2, …)へ可逆変換する。
- * 同一の原データ名(指示変数の組を含む)には同一トークンを割り当てるため衝突しない。
+ * Preprocessing before handing text to JSqlParser. Reversibly converts host variables containing
+ * hyphens or Japanese characters (including indicator variables :host:ind) into sequential tokens
+ * (:HV1, :HV2, ...) that JSqlParser can parse.
+ * The same original data name (including an indicator-variable pair) is always assigned the same
+ * token, so there is no collision.
  */
 public final class HostVariableMangler {
 
@@ -76,12 +78,12 @@ public final class HostVariableMangler {
         return new ParsedName(text.substring(from, i), i);
     }
 
-    /** 日本語のデータ名も受けるため、Unicode の文字と数字、およびハイフンとアンダースコアを名前の文字とする。 */
+    /** Accepts Japanese data names too, so Unicode letters, digits, hyphen and underscore count as name characters. */
     private static boolean isNameChar(char c) {
         return Character.isLetterOrDigit(c) || c == '-' || c == '_';
     }
 
-    /** COBOL のデータ名はハイフンで始まらず終わらず、数字だけにもならない。違反の理由を返し、正しければ null を返す。 */
+    /** A COBOL data name never starts or ends with a hyphen and is never all digits. Returns the reason for a violation, or null if valid. */
     private static String validateName(String name) {
         if (name.startsWith("-") || name.endsWith("-")) {
             return "ハイフンで始まる・終わる名前は使えない";
@@ -93,7 +95,7 @@ public final class HostVariableMangler {
     }
 
     private static MangleResult notAnalyzable(String message, String sqlText, int offset) {
-        // 該当箇所を示す手掛かりとして、位置から20文字までを理由に添える。
+        // Append up to 20 characters from the offset to the reason, as a clue to the location.
         int end = Math.min(sqlText.length(), offset + 20);
         return new MangleResult.NotAnalyzable(
                 message + ": 位置 " + offset + " 付近 \"" + sqlText.substring(offset, end) + "\"");

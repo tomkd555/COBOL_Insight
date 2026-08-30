@@ -4,22 +4,25 @@ import java.util.Locale;
 import java.util.Objects;
 
 /**
- * PICTURE 句と USAGE を解析した結果。副作用なし・不変。
+ * The result of parsing a PICTURE clause and USAGE. No side effects, immutable.
  *
- * <p>{@code integerDigits} と {@code fractionDigits} は数字項目の整数部・小数部の桁数を表す。
- * {@code totalDigits} は数字項目では {@code integerDigits + fractionDigits}、英数字・英字項目では
- * 文字位置数である。
- * {@code V}(暗黙小数点)と {@code S}(符号)は桁として数えず、{@code signed} に反映する。
+ * <p>{@code integerDigits} and {@code fractionDigits} give the digit counts of the integer and
+ * fractional parts of a numeric item. {@code totalDigits} is {@code integerDigits + fractionDigits}
+ * for numeric items, and the character position count for alphanumeric/alphabetic items.
+ * {@code V} (implied decimal point) and {@code S} (sign) are not counted as digits; they are
+ * reflected in {@code signed} instead.
  */
 public record PictureType(PictureCategory category, boolean signed, int integerDigits,
         int fractionDigits, int totalDigits, boolean isNumeric, Usage usage) {
 
     /**
-     * 格納バイト長を算出する。
+     * Computes the stored byte length.
      * <ul>
-     *   <li>DISPLAY: 桁数(数字項目は総桁数、英数字は文字数)。符号はオーバーパンチで加算なし。
-     *   <li>PACKED_DECIMAL(COMP-3): {@code ceil((総桁数 + 1) / 2)}。
-     *   <li>BINARY(COMP/COMP-4/COMP-5): 桁数により 1-4桁→2、5-9桁→4、10-18桁→8 バイト。
+     *   <li>DISPLAY: the digit count (total digits for numeric items, character count for
+     *       alphanumeric items). The sign uses overpunch, so it adds no bytes.
+     *   <li>PACKED_DECIMAL (COMP-3): {@code ceil((total digits + 1) / 2)}.
+     *   <li>BINARY (COMP/COMP-4/COMP-5): by digit count, 1-4 digits -> 2, 5-9 digits -> 4,
+     *       10-18 digits -> 8 bytes.
      * </ul>
      */
     public int byteLength() {
@@ -40,7 +43,7 @@ public record PictureType(PictureCategory category, boolean signed, int integerD
         return 8;
     }
 
-    /** PICTURE と USAGE を解析する。{@code usage} が無指定(null/空)なら DISPLAY として扱う。 */
+    /** Parses a PICTURE clause and USAGE. If {@code usage} is unspecified (null/empty), treats it as DISPLAY. */
     public static PictureType parse(String picture, String usage) {
         Objects.requireNonNull(picture, "picture");
         String pic = picture.trim().toUpperCase(Locale.ROOT);
@@ -96,10 +99,10 @@ public record PictureType(PictureCategory category, boolean signed, int integerD
                     charPositions += count;
                 }
                 case 'P' -> {
-                    // 想定小数位取り。格納位置を持たないため桁数に数えない。
+                    // Assumed decimal scaling position. Not counted as a digit since it has no storage position.
                 }
                 default -> {
-                    // Z・*・,・.・$・+・- などの編集用記号。文字位置は占めるが数字桁には数えない。
+                    // Editing symbols such as Z, *, comma, period, $, +, -. They occupy a character position but are not counted as numeric digits.
                     hasEdit = true;
                     charPositions += count;
                 }

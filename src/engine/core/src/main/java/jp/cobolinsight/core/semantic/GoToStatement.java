@@ -7,8 +7,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * GO TO文。DEPENDING ON形式は複数の飛び先と変数名を持つ。ALTER対象の飛び先未指定形式を
- * 許すため、targets は空を許容する。
+ * A GO TO statement. The DEPENDING ON form has multiple targets and a variable name. targets is
+ * allowed to be empty in order to permit the target-unspecified form that ALTER modifies.
  */
 public record GoToStatement(List<String> targets, Optional<String> dependingOn, SourceRange range)
         implements Statement {

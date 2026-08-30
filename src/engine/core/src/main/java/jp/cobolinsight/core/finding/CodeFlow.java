@@ -2,7 +2,7 @@ package jp.cobolinsight.core.finding;
 
 import java.util.List;
 
-/** SARIF の codeFlow に対応する経路。汚染追跡由来の finding が経路を保持するために使う。 */
+/** A path corresponding to a SARIF codeFlow. Used by findings originating from taint tracking to hold their path. */
 public record CodeFlow(List<CodeFlowStep> steps) {
 
     public CodeFlow {

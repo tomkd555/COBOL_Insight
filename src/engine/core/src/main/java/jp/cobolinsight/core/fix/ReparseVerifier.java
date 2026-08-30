@@ -11,11 +11,13 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * 修正後ソースを COBOL パーサーで再パースし、固定形式の桁崩れ・トークン結合・リテラル破損などで
- * パースできない修正を検出する検証ゲート。
+ * A verification gate that reparses the fixed source with the COBOL parser and detects fixes
+ * that cannot be parsed due to fixed-format column corruption, token merging, literal
+ * corruption, and the like.
  *
- * <p>パーサーと文字コード復号器は呼出側が渡す。core は実装モジュールへコンパイル依存を持たず、
- * 実装の選択は app の EngineWiring が一箇所で行う。
+ * <p>The parser and character decoder are passed in by the caller. core holds no compile
+ * dependency on implementation modules; app's EngineWiring is the single place that chooses the
+ * implementation.
  */
 public final class ReparseVerifier {
 
@@ -27,25 +29,26 @@ public final class ReparseVerifier {
         this.charsetProvider = charsetProvider;
     }
 
-    /** 復号済みソースを再パースする。 */
+    /** Reparses the decoded source. */
     public ReparseResult verify(DecodedSource fixedSource, List<Path> copybookSearchPaths) {
         ParseOutcome<CobolSemanticModel> outcome = parser.parse(fixedSource, copybookSearchPaths);
         return new ReparseResult(outcome.isSuccess(), outcome.failureFinding());
     }
 
     /**
-     * 修正後バイト列を指定コードページで復号して再パースする。桁を修正適用時と同じ文字コードで
-     * 数えるため、原本と同一のコードページ名を渡す。
+     * Decodes the fixed byte sequence with the given code page and reparses it. The same code
+     * page name as the original is passed in so that columns are counted using the same
+     * character encoding as when the fix was applied.
      */
     public ReparseResult verify(String path, byte[] fixedBytes, String charsetName,
             List<Path> copybookSearchPaths) {
         return verify(charsetProvider.decode(path, fixedBytes, charsetName), copybookSearchPaths);
     }
 
-    /** 復号済みテキストを再パースする。 */
+    /** Reparses the decoded text. */
     public ReparseResult verify(String path, String fixedText, List<Path> copybookSearchPaths) {
-        // パーサーが読むのは path とテキストだけである。復号済みテキストを UTF-8 へ符号化して
-        // 同一テキストへ復号し直し、engine-api の DecodedSource を得る。
+        // The parser only reads the path and the text. The decoded text is encoded to UTF-8 and
+        // decoded back to the same text, to obtain engine-api's DecodedSource.
         return verify(path, fixedText.getBytes(StandardCharsets.UTF_8), "UTF-8", copybookSearchPaths);
     }
 

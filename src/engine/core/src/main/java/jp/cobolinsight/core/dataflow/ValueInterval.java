@@ -1,8 +1,9 @@
 package jp.cobolinsight.core.dataflow;
 
 /**
- * 整数区間 [lo, hi]。片側または両側が非有界の場合は該当フラグを立てる。非有界側の lo/hi
- * フィールドは意味を持たない。区間値域解析(R005/R028)がノード入口の変数の取り得る値を表す。
+ * Integer interval [lo, hi]. If one or both sides are unbounded, the corresponding flag is set.
+ * The lo/hi field on an unbounded side is meaningless. Interval analysis (R005/R028) uses this
+ * to represent the possible values of a variable at a node's entry.
  */
 public record ValueInterval(long lo, long hi, boolean loUnbounded, boolean hiUnbounded) {
 
@@ -12,37 +13,37 @@ public record ValueInterval(long lo, long hi, boolean loUnbounded, boolean hiUnb
         }
     }
 
-    /** 有界区間 [lo, hi]。 */
+    /** Bounded interval [lo, hi]. */
     public static ValueInterval of(long lo, long hi) {
         return new ValueInterval(lo, hi, false, false);
     }
 
-    /** 単一値 {v}。 */
+    /** Single value {v}. */
     public static ValueInterval point(long v) {
         return new ValueInterval(v, v, false, false);
     }
 
-    /** 両側非有界 (-∞, +∞)。 */
+    /** Unbounded on both sides (-∞, +∞). */
     public static ValueInterval unbounded() {
         return new ValueInterval(0L, 0L, true, true);
     }
 
-    /** 区間の上端が max を超え得るか。 */
+    /** Whether the interval's upper end may exceed max. */
     public boolean mayExceed(long max) {
         return hiUnbounded || hi > max;
     }
 
-    /** 区間が 0 以下の値を含み得るか。 */
+    /** Whether the interval may contain a value of 0 or less. */
     public boolean mayBeNonPositive() {
         return loUnbounded || lo <= 0L;
     }
 
-    /** 区間が負の値を含み得るか。 */
+    /** Whether the interval may contain a negative value. */
     public boolean mayBeNegative() {
         return loUnbounded || lo < 0L;
     }
 
-    /** v が区間に含まれるか。 */
+    /** Whether v is contained in the interval. */
     public boolean contains(long v) {
         return (loUnbounded || lo <= v) && (hiUnbounded || v <= hi);
     }

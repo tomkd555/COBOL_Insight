@@ -11,7 +11,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** samples/cobol 9本の全件パースと、SPI 登録・決定論の検証。 */
+/** Verifies parsing of all 9 samples/cobol files, SPI registration, and determinism. */
 class Che4zCobolParserSamplesTest {
 
     @ParameterizedTest

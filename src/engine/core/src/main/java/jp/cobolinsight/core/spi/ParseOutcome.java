@@ -7,8 +7,9 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * パース結果。成功と失敗を型で区別する。1ファイルの失敗は解析全体を止めず、
- * error レベルの finding として記録して残りの解析を継続する。
+ * A parse result. The type distinguishes success from failure. A single file's failure does not
+ * stop the analysis as a whole; it is recorded as an error-level finding and the rest of the
+ * analysis continues.
  */
 public sealed interface ParseOutcome<T> permits ParseOutcome.Success, ParseOutcome.Failure {
 

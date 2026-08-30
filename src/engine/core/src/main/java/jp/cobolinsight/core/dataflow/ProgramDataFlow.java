@@ -7,46 +7,50 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * 1プログラムの不動点解析結果。問い合わせは {@link CfgNode} の同一性で引く(結果を算出した
- * CFG と同一インスタンスを渡す前提)。変数名は正規化(大文字化)して照合する。
+ * Fixed-point analysis result for a single program. Queries are keyed by {@link CfgNode} identity
+ * (callers must pass the same CFG instance that produced the result). Variable names are matched
+ * after normalization (uppercasing).
  *
- * <p>生成は dataflow モジュールが担い、消費は rules が担う。rules は dataflow へ依存しないため、
- * 両者をつなぐ契約型は双方が依存する engine-api に置く。
- * {@link jp.cobolinsight.core.cfg.ControlFlowGraphs} も同じ配置を採る。
+ * <p>Produced by the dataflow module and consumed by rules. Since rules does not depend on
+ * dataflow, the contract type connecting the two lives in engine-api, which both depend on.
+ * {@link jp.cobolinsight.core.cfg.ControlFlowGraphs} follows the same placement.
  */
 public interface ProgramDataFlow {
 
-    /** 対象プログラムの PROGRAM-ID。 */
+    /** PROGRAM-ID of the target program. */
     String programId();
 
     /**
-     * VALUE 句を持たない WORKING-STORAGE / LINKAGE 項目が、未初期化のまま useNode の入口へ
-     * 到達し得るか(R001)。到達定義解析で入口に合成した「未初期化定義」が届くかで判定する。
+     * Whether a WORKING-STORAGE / LINKAGE item without a VALUE clause can reach the entry of
+     * useNode still uninitialized (R001). Determined by whether the synthetic "uninitialized
+     * definition" seeded at the entry by reaching-definitions analysis reaches there.
      */
     boolean mayReachUninitialized(CfgNode useNode, String varName);
 
-    /** ノード入口での varName の整数区間(R005/R028)。追跡対象外は empty。 */
+    /** Integer interval for varName at the node's entry (R005/R028). Empty if not tracked. */
     Optional<ValueInterval> intervalAt(CfgNode node, String varName);
 
-    /** ノード入口で当該種別の汚染下にある変数(R020=EXTERNAL_INPUT、R027=SENSITIVE)。 */
+    /** Variables tainted of the given kind at the node's entry (R020=EXTERNAL_INPUT, R027=SENSITIVE). */
     Set<String> taintedAt(CfgNode node, TaintKind kind);
 
     /**
-     * ノード入口で汚染下にある varName について、汚染源から当該ノードの入口に至るまでに汚染を
-     * 得たノードの列(汚染源が先頭)。問い合わせたノード自身は含まない。汚染下でない場合は空。
+     * For a varName tainted at the node's entry, the sequence of nodes (taint source first) at
+     * which the taint was acquired, from the taint source up to that node's entry. Does not
+     * include the queried node itself. Empty if not tainted.
      *
-     * <p>may 解析のため経路は複数あり得る。返すのは汚染源に根を持つ最短の1本であり、経路の
-     * 網羅ではない。機密名義(SENSITIVE)の汚染源はデータ部の宣言であって文を持たないため、
-     * 経路は宣言項目からの最初の代入から始まる。
+     * <p>Because this is a may-analysis, multiple paths can exist. This returns the single
+     * shortest path rooted at a taint source, not an exhaustive set of paths. A SENSITIVE taint
+     * source is a data-division declaration, not a statement, so the path starts from the first
+     * assignment to the declared item.
      */
     List<TaintStep> taintPathTo(CfgNode node, String varName, TaintKind kind);
 
-    /** このノードで定義(代入)される変数。 */
+    /** Variables defined (assigned) at this node. */
     Set<String> defsAt(CfgNode node);
 
-    /** このノードで参照される変数。 */
+    /** Variables referenced at this node. */
     Set<String> usesAt(CfgNode node);
 
-    /** ノード出口で生存する変数。 */
+    /** Variables live at the node's exit. */
     Set<String> liveOut(CfgNode node);
 }

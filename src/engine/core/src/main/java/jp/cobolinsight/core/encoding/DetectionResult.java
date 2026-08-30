@@ -1,12 +1,12 @@
 package jp.cobolinsight.core.encoding;
 
 /**
- * 文字コード判別の結果。
+ * Result of character-code detection.
  *
- * @param codePage    判別または推定したコードページ
- * @param confidence  確信度(0〜100)
- * @param soSiPresent SO/SI(0x0E/0x0F)を含むか
- * @param estimated   内容判別ではない推定か(EBCDIC推定・フォールバック)
+ * @param codePage    the detected or estimated code page
+ * @param confidence  confidence (0-100)
+ * @param soSiPresent whether SO/SI (0x0E/0x0F) is present
+ * @param estimated   whether this is an estimate rather than content-based detection (EBCDIC estimate or fallback)
  */
 public record DetectionResult(CodePage codePage, int confidence, boolean soSiPresent, boolean estimated) {
 }

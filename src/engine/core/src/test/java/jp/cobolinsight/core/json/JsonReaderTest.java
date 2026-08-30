@@ -38,7 +38,7 @@ class JsonReaderTest {
         assertEquals("a\\b\"c\nA", JsonReader.asObject(value).get("p"));
     }
 
-    /** 正規表現の \\d などをそのまま書けることを、利用者定義ルールの前提として確かめる。 */
+    /** Confirms that a regex escape such as \\d can be written verbatim, as a precondition for user-defined rules. */
     @Test
     void readsRegexWithEscapedBackslash() {
         Object value = JsonReader.parse("{\"pattern\":\"\\\\bMOVE\\\\s+\\\\d+\"}");

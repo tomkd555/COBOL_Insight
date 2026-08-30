@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** 固定形式の桁境界の正典({@link FixedFormatColumns})の検証。 */
+/** Verifies the canonical fixed-format column boundaries ({@link FixedFormatColumns}). */
 class FixedFormatColumnsTest {
 
     @Test

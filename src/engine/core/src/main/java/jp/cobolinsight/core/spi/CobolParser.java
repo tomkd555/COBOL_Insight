@@ -7,8 +7,9 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * COBOL構文・意味解析の契約。COPY/REPLACE展開と EXEC SQL / EXEC CICS 抽出を含めて
- * 正規化意味モデルを構築する。コピー句の同名解決は探索パス順の先勝ちとする。
+ * The contract for COBOL syntax and semantic analysis. Builds the normalized semantic model,
+ * including COPY/REPLACE expansion and EXEC SQL / EXEC CICS extraction. When multiple copybooks
+ * share a name, resolution takes the first match in search-path order.
  */
 public interface CobolParser {
 

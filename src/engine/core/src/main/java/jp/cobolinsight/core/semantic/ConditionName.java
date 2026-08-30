@@ -5,7 +5,7 @@ import jp.cobolinsight.core.source.SourcePosition;
 import java.util.List;
 import java.util.Objects;
 
-/** 88レベルの条件名。values は VALUE句の値(範囲は "low THRU high" 形式のまま)を保持する。 */
+/** A level-88 condition name. values holds the VALUE clause's values (ranges stay in "low THRU high" form). */
 public record ConditionName(String name, List<String> values, SourcePosition position) {
 
     public ConditionName {

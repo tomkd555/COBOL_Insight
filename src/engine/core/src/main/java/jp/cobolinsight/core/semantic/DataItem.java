@@ -7,8 +7,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * データ部の項目。レベルは 1〜49・66・77(88レベルは {@link ConditionName} として保持)。
- * children により集団項目と基本項目の親子関係を表す。
+ * An item in the data division. Level is 1-49, 66, or 77 (level 88 is held as a {@link ConditionName}).
+ * children represents the parent-child relationship between group items and elementary items.
  */
 public record DataItem(int level, String name, Optional<String> picture, Optional<String> usage,
         Optional<String> value, Optional<String> redefines, Optional<Occurs> occurs,

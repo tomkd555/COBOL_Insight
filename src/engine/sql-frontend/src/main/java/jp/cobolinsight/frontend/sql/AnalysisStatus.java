@@ -1,6 +1,6 @@
 package jp.cobolinsight.frontend.sql;
 
-/** SQL文解析の成否。NOT_ANALYZABLE は解析対象外(理由を statusReason に持つ)。 */
+/** Outcome of SQL statement analysis. NOT_ANALYZABLE means not analyzable (the reason is held in statusReason). */
 public enum AnalysisStatus {
     ANALYZED,
     NOT_ANALYZABLE

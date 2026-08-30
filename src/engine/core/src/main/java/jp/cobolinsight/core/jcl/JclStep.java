@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-/** EXECステップ。condition はステップ単位のCOND句のテキスト表現。 */
+/** An EXEC step. condition is the textual representation of the step-level COND clause. */
 public record JclStep(String name, JclExecKind execKind, String target, Optional<String> condition,
         List<JclDdStatement> ddStatements, SourcePosition position) {
 

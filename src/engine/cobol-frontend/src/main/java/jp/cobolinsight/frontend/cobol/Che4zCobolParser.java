@@ -17,9 +17,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * パッチ済み Che4z をライブラリとして直接呼び出す {@link CobolParser} 実装。
- * Che4z の AST・シンボル情報と CST 補完から正規化意味モデルを構築する。
- * ファイル単位の失敗(解析例外・error 診断)は ParseOutcome.Failure として返す。
+ * {@link CobolParser} implementation that calls the patched Che4z directly as a library.
+ * Builds a normalized semantic model from Che4z's AST/symbol information plus CST capture.
+ * A per-file failure (parse exception or error diagnostic) is returned as ParseOutcome.Failure.
  */
 public final class Che4zCobolParser implements CobolParser {
 

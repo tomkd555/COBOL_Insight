@@ -8,17 +8,18 @@ import java.nio.charset.CodingErrorAction;
 import java.util.Arrays;
 
 /**
- * 生バイト列を復号してUTF-16へ正規化し、原バイト列とオフセット表を保持した
- * {@link DecodedSource} を返す。手動指定のコードページは自動判別に優先する。
+ * Decodes a raw byte array and normalizes it to UTF-16, returning a {@link DecodedSource} that
+ * retains the original byte array and offset table. A manually specified code page takes
+ * precedence over automatic detection.
  */
 public final class SourceDecoder {
 
-    /** 復号後の先頭に現れるバイト順マーク(U+FEFF)。 */
+    /** Byte order mark (U+FEFF) that may appear at the start of the decoded output. */
     private static final char BYTE_ORDER_MARK = '﻿';
 
     private final CodePageDetector detector = new CodePageDetector();
 
-    /** 自動判別で復号する。 */
+    /** Decodes using automatic detection. */
     public DecodedSource decode(byte[] bytes) {
         DetectionResult detection = detector.detect(bytes);
         EncodingInfo info = new EncodingInfo(
@@ -26,7 +27,7 @@ public final class SourceDecoder {
         return decodeWith(bytes, info);
     }
 
-    /** 手動指定のコードページで復号する。自動判別の結果は用いない。 */
+    /** Decodes using a manually specified code page. The result of automatic detection is not used. */
     public DecodedSource decode(byte[] bytes, CodePage codePage) {
         EncodingInfo info = new EncodingInfo(codePage, 100, CodePageDetector.containsSoSi(bytes), true);
         return decodeWith(bytes, info);
@@ -37,17 +38,20 @@ public final class SourceDecoder {
                 .onMalformedInput(CodingErrorAction.REPORT)
                 .onUnmappableCharacter(CodingErrorAction.REPORT);
         ByteBuffer in = ByteBuffer.wrap(bytes);
-        // 1文字の産出には最低1バイトを要するため、産出される文字数はバイト数を超えない。
+        // Producing one character requires at least one byte, so the number of characters
+        // produced never exceeds the number of bytes.
         CharBuffer out = CharBuffer.allocate(bytes.length + 1);
-        // 末尾に、文字位置 charCount(全バイト長を指す要素)の枠を1つ余分に取る。
+        // Reserve one extra slot at the end for the character position charCount (the element
+        // pointing at the total byte length).
         int[] charStarts = new int[bytes.length + 1];
         int pendingStart = 0;
 
-        // 1バイトずつ入力を広げて復号し、産出された文字を未対応バイト群の先頭へ対応付ける。
-        // SO/SIのように文字を産出せず消費されたバイトは対応付けから除く。
+        // Decode by widening the input one byte at a time, mapping each produced character to
+        // the start of the not-yet-mapped byte run. Bytes consumed without producing a
+        // character, such as SO/SI, are excluded from the mapping.
         if (bytes.length == 0) {
-            // CharsetDecoder.flush は endOfInput=true の decode を済ませていないと呼べない。
-            // 入力が空のときは下のループが1度も回らないため、ここで呼ぶ。
+            // CharsetDecoder.flush cannot be called until a decode with endOfInput=true has
+            // completed. When the input is empty the loop below never runs, so call it here.
             charsetDecoder.decode(in, out, true);
         }
         for (int limit = 1; limit <= bytes.length; limit++) {
@@ -61,8 +65,10 @@ public final class SourceDecoder {
         requireNoError(charsetDecoder.flush(out), info, bytes.length);
         record(charStarts, out, before, pendingStart, bytes.length);
 
-        // バイト順マークは符号化の印であって本文の文字ではない。本文に残すと1行目の桁が1つずれ、
-        // 固定形式の一連番号領域・標識領域の桁がすべてずれる。原バイト列とオフセット表は保つ。
+        // The byte order mark is an encoding signal, not a character of the source text. Leaving
+        // it in the text would shift line 1's columns by one, throwing off every column in the
+        // fixed-format sequence-number and indicator-area fields. The original byte array and
+        // offset table are preserved regardless.
         String decoded = new String(out.array(), 0, out.position());
         int from = decoded.isEmpty() || decoded.charAt(0) != BYTE_ORDER_MARK ? 0 : 1;
         String text = decoded.substring(from);

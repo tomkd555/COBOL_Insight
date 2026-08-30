@@ -12,10 +12,10 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** SYKCPY1 の内容(REDEFINES・OCCURS・COMP-3・88レベル)が DataItem へ変換されることの検証。 */
+/** Verifies that SYKCPY1's contents (REDEFINES, OCCURS, COMP-3, level 88) are mapped to DataItem. */
 class DataItemMappingTest {
 
-    /** SYK003 は SYKCPY1 を置換なしで LINKAGE SECTION に展開する。 */
+    /** SYK003 expands SYKCPY1 into the LINKAGE SECTION without any substitution. */
     private DataItem sykcpy1Record() {
         CobolSemanticModel model = TestSources.model("SYK003.cbl");
         return find(model.dataItems(), "SYK1-受注レコード");

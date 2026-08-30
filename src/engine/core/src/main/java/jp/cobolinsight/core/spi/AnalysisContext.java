@@ -11,8 +11,9 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * ルール評価時に参照できる解析成果。engine-api が型を持たない成果物(CFG・データフロー事実
- * など)は、生成側モジュールの型をキーとして {@link #artifact(Class)} で受け渡す。
+ * The analysis results available when evaluating rules. Artifacts engine-api has no type for
+ * (CFG, dataflow facts, etc.) are passed through {@link #artifact(Class)}, keyed by the
+ * producing module's type.
  */
 public interface AnalysisContext {
 
@@ -24,13 +25,13 @@ public interface AnalysisContext {
 
     List<BmsMapset> bmsMapsets();
 
-    /** 呼出関係グラフ。linker 実行前の段階では empty。 */
+    /** The call relationship graph. Empty before the linker has run. */
     Optional<CallGraph> callGraph();
 
-    /** 型をキーとする付帯成果物の取得。未登録の型に対しては empty を返す。 */
+    /** Retrieves an ancillary artifact keyed by type. Returns empty for an unregistered type. */
     <T> Optional<T> artifact(Class<T> type);
 
-    /** artifacts のキーは値の型と一致していなければならない。 */
+    /** Each key in artifacts must match the type of its value. */
     static AnalysisContext of(List<CobolSemanticModel> cobolPrograms, List<JclJobModel> jclJobs,
             List<SqlStatementModel> sqlStatements, List<BmsMapset> bmsMapsets,
             Optional<CallGraph> callGraph, Map<Class<?>, Object> artifacts) {

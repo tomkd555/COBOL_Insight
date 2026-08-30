@@ -14,7 +14,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** EXEC SQL / EXEC CICS の抽出(件数・種別・位置・オペランド)の検証。 */
+/** Verifies EXEC SQL / EXEC CICS extraction (count, kind, position, operands). */
 class EmbeddedBlockMappingTest {
 
     private static List<EmbeddedBlock> blocksOf(String fileName, EmbeddedBlockKind kind) {

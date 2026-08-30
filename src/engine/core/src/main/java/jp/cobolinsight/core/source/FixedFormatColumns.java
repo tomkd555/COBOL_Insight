@@ -1,45 +1,49 @@
 package jp.cobolinsight.core.source;
 
 /**
- * COBOL 固定形式の桁境界の正典。桁番号は1起点で、参照する側が0起点を要するときは
- * {@code -1} して導出する。起点の変換を利用側の1行に閉じ込め、同じ物理量を複数の起点で
- * 持たないためである。
+ * The canonical column boundaries of COBOL fixed format. Column numbers are 1-based; a caller
+ * that needs 0-based numbers derives them by subtracting {@code -1}. The origin conversion is
+ * confined to a single line at each call site, so the same physical quantity is never carried in
+ * more than one origin.
  *
- * <p>ここの値は COBOL の言語規格が定める固定形式の領域であり、本ツールが選んだ数値ではない。
+ * <p>The values here are the fixed-format regions defined by the COBOL language standard, not
+ * numbers this tool chose on its own.
  */
 public final class FixedFormatColumns {
 
-    /** 一連番号領域の開始桁。 */
+    /** The start column of the sequence number area. */
     public static final int SEQUENCE_START = 1;
-    /** 一連番号領域の終了桁。 */
+    /** The end column of the sequence number area. */
     public static final int SEQUENCE_END = 6;
-    /** 標識領域の桁。注記(*)・行送り(/)・継続(-)を置く。 */
+    /** The column of the indicator area. Holds comment (*), page eject (/), or continuation (-). */
     public static final int INDICATOR_COLUMN = 7;
-    /** A領域の開始桁。本文はここから始まる。 */
+    /** The start column of Area A. The content begins here. */
     public static final int AREA_A_START = 8;
-    /** A領域の終了桁。 */
+    /** The end column of Area A. */
     public static final int AREA_A_END = 11;
-    /** B領域の開始桁。 */
+    /** The start column of Area B. */
     public static final int AREA_B_START = 12;
-    /** 本文を収められる最終桁。 */
+    /** The last column that can hold content. */
     public static final int CONTENT_END = 72;
-    /** 識別領域の開始桁。ここから先は本文ではない。 */
+    /** The start column of the identification area. Everything from here on is not content. */
     public static final int IDENTIFICATION_START = 73;
 
     private FixedFormatColumns() {
     }
 
     /**
-     * 標識領域(7桁目)の文字。行がそこへ届かない場合は空白を返す。
-     * 桁はバイト位置ではなく文字位置で数えるので、呼び出す側は桁と一致する写し方で復号しておく。
+     * The character in the indicator area (column 7). Returns a space if the line does not reach
+     * that far. Columns are counted by character position, not byte position, so the caller must
+     * have decoded the line in a way that keeps its columns aligned.
      */
     public static char indicator(String line) {
         return line.length() < INDICATOR_COLUMN ? ' ' : line.charAt(INDICATOR_COLUMN - 1);
     }
 
     /**
-     * 本文(8〜72桁)。行が短ければ収まる範囲だけを返し、8桁目に届かない行には空文字を返す。
-     * 一連番号領域と識別領域を落とすので、返り値の先頭は8桁目に対応する。
+     * The content (columns 8-72). Returns only the range the line covers if it is short, and an
+     * empty string for a line that does not reach column 8. The sequence number area and the
+     * identification area are dropped, so the head of the return value corresponds to column 8.
      */
     public static String body(String line) {
         if (line.length() < AREA_A_START) {

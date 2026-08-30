@@ -16,9 +16,10 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * 1プログラムの制御フローグラフ。ノードは生成順(意味モデルの定義順)、後続リストは辺の
- * 追加順を保ち、同一入力から常に同一のグラフを生成する(決定論)。文からノードへの索引は
- * 意味モデルの文インスタンスの同一性で引く。
+ * The control flow graph of a single program. Nodes are kept in generation order (the definition
+ * order in the semantic model), successor lists preserve edge-addition order, and the same input
+ * always produces the same graph (determinism). The statement-to-node index is looked up by the
+ * identity of the semantic model's statement instances.
  */
 public final class ControlFlowGraph {
 
@@ -58,7 +59,7 @@ public final class ControlFlowGraph {
         return programId;
     }
 
-    /** 全ノード(生成順)。 */
+    /** All nodes (generation order). */
     public List<CfgNode> nodes() {
         return nodes;
     }
@@ -71,29 +72,31 @@ public final class ControlFlowGraph {
         return exit;
     }
 
-    /** 直接後続(辺の追加順)。 */
+    /** Direct successors (edge-addition order). */
     public List<CfgNode> successors(CfgNode node) {
         return successors.getOrDefault(node, List.of());
     }
 
-    /** 直接先行(ノード生成順)。 */
+    /** Direct predecessors (node generation order). */
     public List<CfgNode> predecessors(CfgNode node) {
         return predecessors.getOrDefault(node, List.of());
     }
 
-    /** 意味モデルの文(同一インスタンス)に対応するノード。 */
+    /** The node corresponding to a semantic-model statement (same instance). */
     public Optional<CfgNode> nodeOf(Statement statement) {
         return Optional.ofNullable(nodeByStatement.get(statement));
     }
 
-    /** 辺の総数。 */
+    /** Total number of edges. */
     public int edgeCount() {
         return successors.values().stream().mapToInt(List::size).sum();
     }
 
     /**
-     * 入口から後続辺を単純にたどって到達できるノード集合。全ての辺種(PERFORM復帰辺・段落流下辺を
-     * 含む)をたどる。到達順を保つため反復順序は決定的。到達不能コード検出(R011)の基盤に使う。
+     * The set of nodes reachable by simply following successor edges from the entry. Follows every
+     * edge kind (including PERFORM return edges and paragraph fall-through edges). Iteration order is
+     * deterministic to preserve reachability order. Used as the basis for unreachable-code detection
+     * (R011).
      */
     public Set<CfgNode> reachableNodes() {
         Set<CfgNode> visited = new LinkedHashSet<>();

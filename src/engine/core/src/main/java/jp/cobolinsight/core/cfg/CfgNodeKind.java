@@ -1,11 +1,11 @@
 package jp.cobolinsight.core.cfg;
 
-/** CFGノードの種別。 */
+/** CFG node kinds. */
 public enum CfgNodeKind {
-    /** プログラム入口。文を持たない。 */
+    /** Program entry. Has no statement. */
     ENTRY,
-    /** プログラム出口。文を持たない。 */
+    /** Program exit. Has no statement. */
     EXIT,
-    /** 手続き部の1文(複合文は条件ノードとして本体の文と別に持つ)。 */
+    /** A single statement in the Procedure Division (a compound statement keeps its condition as a node separate from its body statements). */
     STATEMENT
 }

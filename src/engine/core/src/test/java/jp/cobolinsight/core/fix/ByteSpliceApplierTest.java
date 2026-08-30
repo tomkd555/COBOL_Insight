@@ -48,7 +48,7 @@ class ByteSpliceApplierTest {
     @Test
     void insertionAtLineStartUsesZeroWidthRange() {
         DecodedSource decoded = decode("ABCDE\nFGHIJ", CodePage.UTF_8);
-        // 2行目先頭(column=1)へ "X" を挿入。
+        // Inserts "X" at the start of line 2 (column=1).
         byte[] result = applier.apply(decoded, List.of(edit(2, 1, 2, 1, "X")));
         assertArrayEquals("ABCDE\nXFGHIJ".getBytes(StandardCharsets.UTF_8), result);
     }
@@ -56,7 +56,7 @@ class ByteSpliceApplierTest {
     @Test
     void replacementCoversEndExclusiveRange() {
         DecodedSource decoded = decode("ABCDE\nFGHIJ", CodePage.UTF_8);
-        // column は1始まり。start=2 は B、end=5 は排他で B,C,D を置換する。
+        // column is 1-based. start=2 is B; end=5 is exclusive, so B, C, D are replaced.
         byte[] result = applier.apply(decoded, List.of(edit(1, 2, 1, 5, "xyz")));
         assertArrayEquals("AxyzE\nFGHIJ".getBytes(StandardCharsets.UTF_8), result);
     }
@@ -71,16 +71,16 @@ class ByteSpliceApplierTest {
     @Test
     void multipleNonOverlappingEditsAppliedIndependentOfOrder() {
         DecodedSource decoded = decode("ABCDE\nFGHIJ", CodePage.UTF_8);
-        // 入力順が範囲昇順でなくても結果は同一(内部で昇順ソート・後方適用)。
+        // The result is the same regardless of input order (internally sorted ascending, applied from the back).
         byte[] result = applier.apply(decoded, List.of(
-                edit(2, 1, 2, 1, "Z"),   // 2行目先頭へ挿入
-                edit(1, 1, 1, 2, "a")));  // 1行目 A を a へ
+                edit(2, 1, 2, 1, "Z"),   // insert at the start of line 2
+                edit(1, 1, 1, 2, "a")));  // change A on line 1 to a
         assertArrayEquals("aBCDE\nZFGHIJ".getBytes(StandardCharsets.UTF_8), result);
     }
 
     @Test
     void shiftJisByteOffsetsRespectFullWidthWidth() {
-        // A(1) B(1) 日(2) C(1) = 5バイト。日 の後(C の前、column=4)へ ASCII "Z" を挿入。
+        // A(1) B(1) 日(2) C(1) = 5 bytes. Inserts ASCII "Z" after 日 (before C, column=4).
         DecodedSource decoded = decode("AB日C", CodePage.SHIFT_JIS);
         byte[] original = decoded.originalBytes();
         byte[] result = applier.apply(decoded, List.of(edit(1, 4, 1, 4, "Z")));
@@ -105,7 +105,7 @@ class ByteSpliceApplierTest {
     void applyReadsAndReDecodesOriginalFile() throws IOException {
         Path tmp = Files.createTempFile("splice", ".cbl");
         try {
-            // 自動判別が一意に効くよう ASCII で検証する(パス読込→再復号→スプライスの配線確認)。
+            // Verifies with ASCII so auto-detection resolves unambiguously (checks the path-read -> redecode -> splice wiring).
             Files.write(tmp, "ABCDE\nFGHIJ".getBytes(StandardCharsets.UTF_8));
             byte[] result = applier.apply(tmp, List.of(edit(2, 1, 2, 1, "X")));
             assertArrayEquals("ABCDE\nXFGHIJ".getBytes(StandardCharsets.UTF_8), result);
@@ -117,7 +117,7 @@ class ByteSpliceApplierTest {
     @Test
     void insertionAfterLastLineOfFileWithoutTrailingBreakAddsBreak() {
         DecodedSource decoded = decode("ABCDE\nFGHIJ", CodePage.UTF_8);
-        // 最終行(2行目)の直後は3行目先頭で表す。原本が改行で終わらないため改行から書き始める。
+        // The position right after the last line (line 2) is represented as the start of line 3. Since the original does not end with a newline, the insertion starts with one.
         byte[] result = applier.apply(decoded, List.of(edit(3, 1, 3, 1, "KLMNO\n")));
         assertArrayEquals("ABCDE\nFGHIJ\nKLMNO\n".getBytes(StandardCharsets.UTF_8), result);
     }

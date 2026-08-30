@@ -1,30 +1,32 @@
 package jp.cobolinsight.core.callgraph;
 
-/** 呼出関係グラフのノード11種別。 */
+/** The 11 node kinds of the call graph. */
 public enum NodeKind {
-    /** JCLのJOB単位。 */
+    /** A JCL JOB unit. */
     JOB,
-    /** JCLのEXECステップ単位。 */
+    /** A JCL EXEC step unit. */
     STEP,
-    /** COBOLプログラム(PROGRAM-ID)。 */
+    /** A COBOL program (PROGRAM-ID). */
     PROGRAM,
-    /** COBOLの段落・節。 */
+    /** A COBOL paragraph or section. */
     PARAGRAPH,
-    /** DD文が参照するデータセット。 */
+    /** A dataset referenced by a DD statement. */
     DATASET,
-    /** 埋め込みSQLが参照するDb2の表・ビュー。 */
+    /** A Db2 table or view referenced by embedded SQL. */
     DB2_TABLE,
-    /** 定数伝播で解決できない動的CALL先(指定変数名を属性に保持)。 */
+    /** A dynamic CALL target that constant propagation cannot resolve (holds the named variable in its attributes). */
     UNRESOLVED,
-    /** DFSORT・IDCAMS・IEBGENER、およびPL/I・アセンブラの外部リーフ(種別タグを属性に保持)。 */
+    /** DFSORT, IDCAMS, IEBGENER, and external leaves for PL/I and Assembler (holds a kind tag in its attributes). */
     EXTERNAL_UTILITY,
-    /** CICSトランザクション(トランザクションID)。 */
+    /** A CICS transaction (transaction ID). */
     TRANSACTION,
-    /** BMSのマップセット・マップ。 */
+    /** A BMS mapset or map. */
     BMS_MAP,
     /**
-     * 復号・構文解析に失敗して呼出関係を読み取れない資産(相対パスと失敗理由を属性に保持)。
-     * 呼出関係が不明なため辺を持たない孤立ノードとして置き、図が全体を表すという誤読を防ぐ。
+     * An asset whose call relationships could not be read because decoding or parsing failed
+     * (holds the relative path and failure reason in its attributes). Since its call relationships
+     * are unknown, it is placed as an isolated node with no edges, to prevent the diagram from being
+     * misread as representing the whole picture.
      */
     UNANALYZABLE
 }

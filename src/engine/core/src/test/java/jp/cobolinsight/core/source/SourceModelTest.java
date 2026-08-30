@@ -17,7 +17,7 @@ class SourceModelTest {
     void sourcePositionRejectsInvalidCoordinates() {
         assertThrows(IllegalArgumentException.class, () -> new SourcePosition("A.cbl", 0, 1, -1));
         assertThrows(IllegalArgumentException.class, () -> new SourcePosition("A.cbl", 1, 0, -1));
-        // byteOffset は不明を表す -1 を許し、-2 以下は受け付けない
+        // byteOffset allows -1 to represent unknown, but does not accept -2 or lower
         assertThrows(IllegalArgumentException.class, () -> new SourcePosition("A.cbl", 1, 1, -2));
     }
 

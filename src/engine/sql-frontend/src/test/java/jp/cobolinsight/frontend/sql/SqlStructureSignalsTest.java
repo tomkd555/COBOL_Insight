@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** SQL指摘 S001〜S006 の構造シグナルが合成SQLで正しく立つことの検証。 */
+/** Verifies that the structure signals for SQL findings S001-S006 come up correctly for synthetic SQL. */
 class SqlStructureSignalsTest {
 
     private final SqlStatementAnalyzer analyzer = new SqlStatementAnalyzer();
@@ -45,7 +45,7 @@ class SqlStructureSignalsTest {
         assertTrue(s.functionOnColumnPredicates().isEmpty());
     }
 
-    // ---- S002 非SARGable述語 ----
+    // ---- S002 non-SARGable predicates ----
 
     @Test
     void where左辺の関数適用は非sargableかつ列への関数適用() {
@@ -87,7 +87,7 @@ class SqlStructureSignalsTest {
         assertTrue(s.functionOnColumnPredicates().isEmpty());
     }
 
-    // ---- S003 列への関数適用/CAST ----
+    // ---- S003 function applied to a column / CAST ----
 
     @Test
     void 列への関数適用を日本語ホスト変数付きで検出し原名へ復元する() {
@@ -119,7 +119,7 @@ class SqlStructureSignalsTest {
         assertTrue(s.nonSargablePredicates().isEmpty());
     }
 
-    // ---- S005 FETCH FIRST / S006 OPTIMIZE FOR / 参考 WITH UR ----
+    // ---- S005 FETCH FIRST / S006 OPTIMIZE FOR / reference: WITH UR ----
 
     @Test
     void fetchFirstを検出する() {
@@ -150,7 +150,7 @@ class SqlStructureSignalsTest {
         assertFalse(s.hasWithUr());
     }
 
-    // ---- S004 カーソル宣言 ----
+    // ---- S004 cursor declaration ----
 
     @Test
     void forReadOnlyのカーソルを検出する() {

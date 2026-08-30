@@ -5,7 +5,7 @@ import jp.cobolinsight.core.source.SourceRange;
 import java.util.Objects;
 import java.util.Optional;
 
-/** 段落・節へのPERFORM関係。THRU範囲の終端段落を任意で持つ。 */
+/** A PERFORM relationship to a paragraph or section. Optionally holds the end paragraph of a THRU range. */
 public record PerformRelation(String fromProcedure, String targetProcedure,
         Optional<String> thruProcedure, SourceRange range) {
 

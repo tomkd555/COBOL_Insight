@@ -3,7 +3,7 @@ package jp.cobolinsight.core.bms;
 import java.util.List;
 import java.util.Optional;
 
-/** DFHMDIが定義する画面。名称・大きさと、含むフィールドの集合を保持する。 */
+/** A map defined by DFHMDI. Holds the name, size, and the set of fields it contains. */
 public record BmsMap(String name, int sizeRows, int sizeCols, List<BmsField> fields) {
 
     public BmsMap {
@@ -19,7 +19,7 @@ public record BmsMap(String name, int sizeRows, int sizeCols, List<BmsField> fie
         fields = List.copyOf(fields);
     }
 
-    /** 名前が一致する最初のフィールドを返す。同名のフィールドが複数ある場合は先頭のものを返す。 */
+    /** Returns the first field whose name matches. If multiple fields share the same name, returns the first one. */
     public Optional<BmsField> field(String fieldName) {
         return fields.stream().filter(f -> f.name().equals(fieldName)).findFirst();
     }

@@ -5,7 +5,7 @@ import jp.cobolinsight.core.finding.FindingLevel;
 
 import java.util.Collection;
 
-/** CLI終了コード契約。成功=0・警告あり=1・エラー=2。 */
+/** CLI exit code contract. Success=0, has warnings=1, has errors=2. */
 public final class ExitCodes {
 
     public static final int SUCCESS = 0;
@@ -15,7 +15,7 @@ public final class ExitCodes {
     private ExitCodes() {
     }
 
-    /** findings に含まれる最も高いレベルから終了コードを決める。findings が空なら成功。 */
+    /** Determines the exit code from the highest level among the findings. Success if findings is empty. */
     public static int fromFindings(Collection<Finding> findings) {
         int code = SUCCESS;
         for (Finding finding : findings) {

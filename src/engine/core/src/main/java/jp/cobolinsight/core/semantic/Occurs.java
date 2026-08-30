@@ -3,7 +3,7 @@ package jp.cobolinsight.core.semantic;
 import java.util.Objects;
 import java.util.Optional;
 
-/** OCCURS句。固定回数は minTimes == maxTimes。可変長は DEPENDING ON の変数名を持つ。 */
+/** An OCCURS clause. A fixed count has minTimes == maxTimes. A variable length holds the DEPENDING ON variable name. */
 public record Occurs(int minTimes, int maxTimes, Optional<String> dependingOn) {
 
     public Occurs {

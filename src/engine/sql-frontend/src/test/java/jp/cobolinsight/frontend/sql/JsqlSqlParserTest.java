@@ -15,7 +15,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** engine-api の SqlParser SPI への変換の検証。 */
+/** Verifies the conversion to engine-api's SqlParser SPI. */
 class Db2zSqlParserTest {
 
     private final Db2zSqlParser parser = new Db2zSqlParser();

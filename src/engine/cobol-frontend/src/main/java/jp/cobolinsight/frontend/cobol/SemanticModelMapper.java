@@ -68,15 +68,17 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Che4z の AST(+CST 補完)を engine-api の正規化意味モデルへ変換する。
+ * Converts Che4z's AST (plus CST supplementation) into engine-api's normalized semantic model.
  *
- * <p>Che4z が個別のノードを作らない構文は原文テキストで補う。IF の条件と EVALUATE の判定対象は
- * 子ノードの範囲を合わせた原文で持ち、動詞は CST の索引で引く。Che4z が暗黙に差し込む定義
- * (SQLCA など)は実ファイルを持たない URI で現れるため、意味モデルからは除く。
+ * <p>Syntax for which Che4z does not build a dedicated node is filled in from the original text.
+ * The IF condition and the EVALUATE selector are held as the original text spanning their child
+ * nodes' combined range, and the verb is looked up via the CST index. Definitions Che4z implicitly
+ * inserts (such as SQLCA) appear under a URI with no real file, so they are excluded from the
+ * semantic model.
  */
 final class SemanticModelMapper {
 
-    /** EXEC CICS のオペランド {@code NAME(値)} を取り出す。入れ子の括弧は扱わない。 */
+    /** Extracts the EXEC CICS operand {@code NAME(value)}. Does not handle nested parentheses. */
     private static final Pattern OPERAND_PATTERN =
             Pattern.compile("([A-Za-z][A-Za-z0-9]*)\\s*\\(\\s*([^()]*?)\\s*\\)");
 
@@ -105,7 +107,7 @@ final class SemanticModelMapper {
                 cstCapture == null ? List.of() : cstCapture.copyInlineExpansions());
     }
 
-    // ---- データ部 ----
+    // ---- Data division ----
 
     private List<DataItem> mapDataDivision(ProgramNode program) {
         List<DataItem> items = new ArrayList<>();
@@ -168,14 +170,15 @@ final class SemanticModelMapper {
     }
 
     /**
-     * データ項目として持つレベル番号。01-49 の階層項目、66(RENAMES)、77(独立項目)を対象とする。
-     * 88 の条件名は記憶領域を持たず、データ項目ではなく親項目の conditionNames として保持する。
+     * Level numbers that count as data items: hierarchical items 01-49, 66 (RENAMES), and
+     * 77 (standalone items). An 88 condition name has no storage of its own and is kept as its
+     * parent item's conditionNames rather than as a data item.
      */
     private static boolean isMappableLevel(int level) {
         return (level >= 1 && level <= 49) || level == 66 || level == 77;
     }
 
-    /** VALUE 句を取得する。VALUE 無しは空文字列で返るため空/欠如として扱う。 */
+    /** Retrieves the VALUE clause. Absence of VALUE comes back as an empty string, so it is treated as empty/absent. */
     private static Optional<String> valueOf(VariableWithLevelNode variable) {
         String value = null;
         if (variable instanceof ElementaryItemNode elementary) {
@@ -227,7 +230,7 @@ final class SemanticModelMapper {
                 positionOf(condition.getLocality())));
     }
 
-    // ---- 手続き部 ----
+    // ---- Procedure division ----
 
     private List<Procedure> mapProcedureDivision(ProgramNode program) {
         List<Procedure> procedures = new ArrayList<>();
@@ -311,10 +314,11 @@ final class SemanticModelMapper {
     }
 
     /**
-     * PERFORM 関係のうち、平坦な文として写す文の条件句の中にあるもの
-     * (READ ... NOT INVALID KEY PERFORM ...、COMPUTE ... ON SIZE ERROR PERFORM ... など)を拾う。
-     * 文そのものは SimpleStatement のまま写し、関係だけを記録する。記録しないと、そこからしか
-     * 呼ばれない段落が「どこからも参照されない」ものに見える。
+     * Picks up PERFORM relations that sit inside the conditional clause of a statement that is
+     * otherwise mapped as a flat statement (e.g. READ ... NOT INVALID KEY PERFORM ...,
+     * COMPUTE ... ON SIZE ERROR PERFORM ...). The statement itself is still mapped as a
+     * SimpleStatement; only the relation is recorded. Without this, a paragraph called only from
+     * such a place would look like it is referenced from nowhere.
      */
     private void collectNestedPerforms(Node node, String procedureName) {
         for (Node child : node.getChildren()) {
@@ -381,7 +385,8 @@ final class SemanticModelMapper {
                 blocks.add(new StatementBlock("OTHER", otherStatements));
             } else if (isStatementNode(child)) {
                 if (currentLabel == null) {
-                    // WHEN より前に文は現れない前提。現れた場合は捨てずに匿名ブロックへ入れる
+                    // Assumes no statement appears before WHEN. If one does, keep it in an
+                    // anonymous block instead of discarding it
                     currentLabel = "";
                 }
                 currentStatements.add(mapStatement(child, procedureName));
@@ -427,12 +432,12 @@ final class SemanticModelMapper {
                 .map(SubroutineNameNode.class::cast)
                 .findFirst().orElse(null);
         if (nameNode != null && nameNode.getName() != null && !nameNode.getName().isBlank()) {
-            // リテラル指定は SubroutineNameNode になる(静的 CALL)
+            // A literal specification becomes a SubroutineNameNode (static CALL)
             calls.add(new CallRelation(programId, CallKind.STATIC, nameNode.getName(),
                     rangeOf(call.getLocality())));
             return;
         }
-        // 変数指定(動的 CALL)は先頭の変数参照が呼出し先を表す
+        // For a variable specification (dynamic CALL), the first variable reference names the target
         call.getChildren().stream()
                 .filter(QualifiedReferenceNode.class::isInstance)
                 .flatMap(n -> n.getChildren().stream())
@@ -506,7 +511,7 @@ final class SemanticModelMapper {
         return value;
     }
 
-    // ---- 補助 ----
+    // ---- Helpers ----
 
     private SimpleStatement simple(String verb, Node node) {
         String text = texts.textOf(node.getLocality());
@@ -514,9 +519,10 @@ final class SemanticModelMapper {
     }
 
     /**
-     * 文の動詞を決める。Che4z の AST は多くの文を種別を持たないノードで表すため、まず CST から
-     * 文開始位置のトークンを引き、CST が無い場合は原文の先頭語を動詞とみなす。いずれも得られな
-     * ければ UNKNOWN を返す。
+     * Determines a statement's verb. Since Che4z's AST represents many statements with a node
+     * that carries no kind of its own, the token at the statement-start position is first looked
+     * up from the CST; if the CST is unavailable, the original text's leading word is taken as
+     * the verb. If neither is available, returns UNKNOWN.
      */
     private String resolveVerb(Node node) {
         Locality locality = node.getLocality();
@@ -535,7 +541,7 @@ final class SemanticModelMapper {
         return "UNKNOWN";
     }
 
-    /** 文の入れ物(段落・IF 分岐など)の子のうち、文として変換する対象かを判定する。 */
+    /** Determines whether a child of a statement container (paragraph, IF branch, etc.) is a target to map as a statement. */
     private static boolean isStatementNode(Node node) {
         return !(node instanceof QualifiedReferenceNode
                 || node instanceof VariableUsageNode
@@ -550,9 +556,10 @@ final class SemanticModelMapper {
     }
 
     /**
-     * 与えたノード群を覆う原文を返す。開始・終了を最小・最大の位置へ広げることで、条件式のように
-     * 複数ノードへ分かれた構文を1つのテキストとして取り出す。先頭ノードと異なる URI のノード
-     * (コピー句側)は範囲に含めない。
+     * Returns the original text covering the given nodes. Widening the start/end to the
+     * minimum/maximum position lets syntax split across multiple nodes, such as a condition
+     * expression, be extracted as a single piece of text. Nodes with a URI different from the
+     * first node's (on the copybook side) are excluded from the range.
      */
     private String spanText(List<Node> nodes) {
         if (nodes.isEmpty()) {

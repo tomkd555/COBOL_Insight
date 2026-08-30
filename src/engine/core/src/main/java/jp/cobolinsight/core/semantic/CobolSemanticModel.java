@@ -6,8 +6,8 @@ import jp.cobolinsight.core.source.CopyInlineExpansion;
 import java.util.List;
 
 /**
- * 正規化意味モデル。COBOLフロントエンドが構築し、dataflow・linker・transpile・rules は
- * このモデルだけを入力とする。1プログラム(PROGRAM-ID)につき1インスタンス。
+ * The normalized semantic model. Built by the COBOL frontend; dataflow, linker, transpile, and
+ * rules take only this model as input. One instance per program (PROGRAM-ID).
  */
 public record CobolSemanticModel(String programId, String sourceFile, List<DataItem> dataItems,
         List<Procedure> procedures, List<CallRelation> calls, List<PerformRelation> performs,

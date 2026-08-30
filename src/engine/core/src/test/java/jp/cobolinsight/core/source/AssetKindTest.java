@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** 拡張子表の正典({@link AssetKind})の検証。 */
+/** Verifies the canonical extension table ({@link AssetKind}). */
 class AssetKindTest {
 
     @Test

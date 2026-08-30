@@ -23,8 +23,8 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * ParserStage までの自前パイプラインで得た CST からの補完情報。
- * 文の開始位置(原ソース座標)→動詞の索引と、COPY 展開の対応表を保持する。
+ * Supplementary information from the CST obtained through our own pipeline up to ParserStage.
+ * Holds a statement-start-position (original source coordinates) to verb index, and the COPY expansion mapping.
  */
 final class CstCapture {
 
@@ -49,7 +49,7 @@ final class CstCapture {
         return new CstCapture(verbs, expansions, collectInlineExpansions(context, mainUri));
     }
 
-    /** 原ソース座標(0起点)の文開始位置に対応する動詞。無ければ null。 */
+    /** The verb corresponding to a statement-start position in original-source coordinates (0-based). Null if none. */
     String verbAt(String uri, int line, int character) {
         return verbsByPosition.get(key(uri, line, character));
     }
@@ -82,9 +82,10 @@ final class CstCapture {
     }
 
     /**
-     * 展開後のトークンを順に見て、同一のコピー句に由来するトークンが続く区間を1件の展開として
-     * まとめる。展開後の行範囲はその区間の先頭行から末尾行まで、コピー句側の開始行は区間の先頭
-     * トークンが元にあった行とする。行番号はいずれも1始まりでそろえる。
+     * Scans the post-expansion tokens in order and groups a run of consecutive tokens that
+     * originate from the same copybook into a single expansion entry. The expanded line range
+     * runs from the first to the last line of that run, and the copybook-side start line is the
+     * original line of the run's first token. All line numbers are aligned to be 1-based.
      */
     private static List<CopyExpansionEntry> collectExpansions(List<Token> tokens,
             AnalysisContext context, String mainUri) {
@@ -129,13 +130,15 @@ final class CstCapture {
     }
 
     /**
-     * COPY 文ごとのインライン展開を組む。展開後ドキュメントの各行がどのコピー句の何行目に由来
-     * するかを順に見て、同じコピー句が続く区間を1件の展開へまとめ、原本の COPY 文の行番号を
-     * Che4z が記録した COPY 文の位置から与える。同じコピー句を複数回取り込む場合は、展開の
-     * 出現順と COPY 文の行番号の昇順を突き合わせる。
+     * Builds the inline expansion for each COPY statement. Scans, in order, which copybook and
+     * which line in it each line of the post-expansion document originates from, groups a run of
+     * consecutive lines from the same copybook into a single expansion, and supplies the original
+     * COPY statement's line number from the COPY statement position recorded by Che4z. When the
+     * same copybook is pulled in multiple times, the expansions' order of appearance is matched
+     * against the COPY statements' line numbers in ascending order.
      *
-     * <p>原本に COPY 文が見つからない区間(コピー句の中の COPY による入れ子展開)と、Che4z が
-     * 暗黙に差し込むコード(SQLCA など)は対象外とする。
+     * <p>Excludes runs for which no COPY statement is found in the original (nested expansion via
+     * a COPY inside a copybook) and code Che4z implicitly inserts (such as SQLCA).
      */
     private static List<CopyInlineExpansion> collectInlineExpansions(AnalysisContext context,
             String mainUri) {
@@ -167,7 +170,7 @@ final class CstCapture {
         return List.copyOf(expansions);
     }
 
-    /** コピー句名→原本に現れる COPY 文の行番号(1始まり・昇順)。 */
+    /** Copybook name to the line numbers of COPY statements appearing in the original (1-based, ascending). */
     private static Map<String, Deque<Integer>> copyStatementLines(CopybooksRepository copybooks,
             String mainUri) {
         Map<String, Deque<Integer>> byName = new HashMap<>();
@@ -200,8 +203,10 @@ final class CstCapture {
     }
 
     /**
-     * 展開後の1行の由来位置。本文の先頭桁で引く。空白だけの行では行末を越えた桁になるが、
-     * 行の最後の文字の対応から外挿されるため、注記行のように空白化された行も由来を引ける。
+     * The origin position of one post-expansion line, looked up at the leading column of its
+     * content. For a line consisting only of spaces the column falls past the end of the line,
+     * but it is extrapolated from the mapping of the line's last character, so a blanked-out
+     * line, such as a note line, can still have its origin resolved.
      */
     private static Location originOf(ExtendedDocument document, int line, String text) {
         int column = 0;

@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** engine-api の CharsetProvider SPI への変換の検証。 */
+/** Verifies conversion to engine-api's CharsetProvider SPI. */
 class EncodingCharsetProviderTest {
 
     private static final Path SAMPLES = Path.of("..", "..", "..", "samples", "encoding");

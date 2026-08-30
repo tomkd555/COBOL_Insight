@@ -7,16 +7,17 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 埋め込みSQL解析の入口。固定形式COBOLソースから EXEC SQL 〜 END-EXEC ブロックを抽出し
- * 種別を分類する。コメント行(7桁目が * または /)は読み飛ばし、各行の8〜72桁を対象とする(桁は文字単位)。
+ * The entry point for embedded SQL analysis. Extracts EXEC SQL ... END-EXEC blocks from a
+ * fixed-format COBOL source and classifies their kind. Comment lines (column 7 is * or /) are
+ * skipped, and only columns 8-72 of each line are considered (columns are counted in characters).
  */
 public final class SqlBlockExtractor {
 
     private static final Pattern EXEC_SQL = Pattern.compile("\\bEXEC\\s+SQL\\b", Pattern.CASE_INSENSITIVE);
     private static final Pattern END_EXEC = Pattern.compile("\\bEND-EXEC\\b", Pattern.CASE_INSENSITIVE);
-    /** 標識領域である7桁目の直後、すなわち8桁目を指す0始まりのオフセット。 */
+    /** The 0-based offset just after column 7 (the indicator area), i.e. pointing at column 8. */
     private static final int CODE_AREA_START = 7;
-    /** 72桁目までを取るための、0始まりで終端を除く上限。 */
+    /** The 0-based, exclusive upper bound for taking text up through column 72. */
     private static final int CODE_AREA_END = 72;
 
     public List<SqlBlock> extract(String cobolSource) {
@@ -40,7 +41,7 @@ public final class SqlBlockExtractor {
                         break;
                     }
                     inBlock = true;
-                    // 桁は1始まりで持つため、コード領域内の0始まり位置へ +1 して元ソースの桁に直す。
+                    // Columns are kept 1-based, so add +1 to the 0-based position within the code area to get the original source column.
                     start = new SourcePosition(lineNo, CODE_AREA_START + m.start() + 1);
                     text = new StringBuilder();
                     pos = m.end();
@@ -48,7 +49,7 @@ public final class SqlBlockExtractor {
                     Matcher m = END_EXEC.matcher(code);
                     if (m.find(pos)) {
                         append(text, code.substring(pos, m.start()));
-                        // m.end() は一致部分の直後を指すので、+1 なしで END-EXEC の末尾文字の桁になる。
+                        // m.end() points just past the match, so without +1 it is already the column of the last character of END-EXEC.
                         SourcePosition end = new SourcePosition(lineNo, CODE_AREA_START + m.end());
                         String sql = text.toString();
                         blocks.add(new SqlBlock(sql, classify(sql), start, end));

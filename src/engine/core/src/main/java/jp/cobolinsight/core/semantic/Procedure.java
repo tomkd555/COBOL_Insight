@@ -7,8 +7,9 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * 段落・節の定義と、含まれる文の列。sectionName は段落が属する節の名前で、節自身と
- * どの節にも属さない段落では empty とする。
+ * A paragraph or section definition and its contained statement sequence. sectionName is the
+ * name of the section a paragraph belongs to; it is empty for a section itself and for a
+ * paragraph that belongs to no section.
  */
 public record Procedure(String name, ProcedureKind kind, Optional<String> sectionName,
         List<Statement> statements, SourceRange range) {

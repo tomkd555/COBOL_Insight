@@ -13,8 +13,9 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * engine-api の {@link SqlParser} 実装。{@link SqlStatementAnalyzer} の解析結果
- * (マングリング・文種別・参照テーブル・ホスト変数)を engine-api のSQL文モデルへ変換する。
+ * The {@link SqlParser} implementation for engine-api. Converts the analysis results of
+ * {@link SqlStatementAnalyzer} (mangling, statement kind, referenced tables, host variables)
+ * into engine-api's SQL statement model.
  */
 public final class Db2zSqlParser implements SqlParser {
 
@@ -43,7 +44,7 @@ public final class Db2zSqlParser implements SqlParser {
                 result.structureSignals()));
     }
 
-    /** 抽出テキストが EXEC SQL 〜 END-EXEC の外形を含む場合、外形を除いてSQL本文だけにする。 */
+    /** If the extracted text includes the EXEC SQL ... END-EXEC wrapper, strip it to leave only the SQL body. */
     private static String stripExecWrapper(String text) {
         return text.replaceFirst("(?is)^\\s*EXEC\\s+SQL\\b", "")
                 .replaceFirst("(?is)\\bEND-EXEC\\s*\\.?\\s*$", "")
@@ -55,7 +56,7 @@ public final class Db2zSqlParser implements SqlParser {
         return new SourcePosition(position.line(), position.column());
     }
 
-    /** engine-api は SELECT INTO を独立した種別に持たないため、SELECT へまとめる。 */
+    /** engine-api has no separate kind for SELECT INTO, so fold it into SELECT. */
     private static jp.cobolinsight.core.sql.SqlStatementKind toEngineApiKind(
             SqlStatementKind kind) {
         return switch (kind) {

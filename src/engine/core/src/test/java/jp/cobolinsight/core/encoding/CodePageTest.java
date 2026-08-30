@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-/** コードページ名の別名解決({@link CodePage#fromName})の検証。 */
+/** Verifies code page name alias resolution ({@link CodePage#fromName}). */
 class CodePageTest {
 
     @Test

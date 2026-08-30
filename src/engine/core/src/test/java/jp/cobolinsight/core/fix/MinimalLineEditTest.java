@@ -14,8 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 画面で編集した全文の書き戻しが、食い違う行だけをスプライスして原本のコードページ・改行様式・
- * 触れていない行のバイト列を保つことの検証。
+ * Verifies that writing back the full text edited in the screen splices only the differing lines,
+ * preserving the original's code page, line-ending style, and the byte content of untouched lines.
  */
 class MinimalLineEditTest {
 
@@ -50,7 +50,7 @@ class MinimalLineEditTest {
         assertTrue(result.changed());
         assertEquals(2, result.changedLineFrom());
         assertEquals(2, result.changedLineTo());
-        // 2行目だけを置き換え、前後の行のバイト列は原本と1バイトも変わらないこと。
+        // Only line 2 is replaced; the byte content of the lines before and after must not differ from the original by even one byte.
         int head = original.offsetTable().lineStartByteOffset(2);
         assertArrayEquals(Arrays.copyOf(original.originalBytes(), head),
                 Arrays.copyOf(result.bytes(), head));
@@ -69,7 +69,7 @@ class MinimalLineEditTest {
 
         MinimalLineEdit.Result result = MinimalLineEdit.apply(FILE, original, edited);
 
-        // SO/SI は置換した行の中で閉じるため、全文を符号化した結果と一致すること。
+        // SO/SI are closed within the replaced line, so the result must match encoding the full text.
         assertArrayEquals(edited.getBytes(CodePage.IBM930.charset()), result.bytes());
         int head = original.offsetTable().lineStartByteOffset(2);
         assertArrayEquals(Arrays.copyOf(original.originalBytes(), head),
@@ -99,7 +99,7 @@ class MinimalLineEditTest {
 
     @Test
     void ebcdicSourceStartingWithShiftCodeRefusesFirstLineEdit() {
-        // 1行目が DBCS で始まると SO が行頭文字より前に置かれ、置換範囲へ入れられない。
+        // When line 1 starts with DBCS, SO is placed before the line's first character, so it cannot be brought into the replacement range.
         DecodedSource original = decode("日本語\nBBB\n", CodePage.IBM930);
 
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
@@ -154,7 +154,7 @@ class MinimalLineEditTest {
         MinimalLineEdit.Result result = MinimalLineEdit.apply(FILE, original, "AAA\nBBB\nCCC\n");
 
         assertArrayEquals("AAA\nBBB\nCCC\n".getBytes(CodePage.UTF_8.charset()), result.bytes());
-        // 行の挿入だけの場合、末尾行は先頭行の1つ前(挿入点の直前の行)になる。
+        // When only a line insertion occurs, the end line is one before the start line (the line right before the insertion point).
         assertEquals(3, result.changedLineFrom());
         assertEquals(2, result.changedLineTo());
     }

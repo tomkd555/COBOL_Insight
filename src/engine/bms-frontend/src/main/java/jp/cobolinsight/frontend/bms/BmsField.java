@@ -2,7 +2,7 @@ package jp.cobolinsight.frontend.bms;
 
 import java.util.List;
 
-/** DFHMDF が定義するフィールド。name はラベル無し定義のとき null。数値は未指定のとき null。 */
+/** A field defined by DFHMDF. name is null for an unlabeled definition. Numeric values are null when unspecified. */
 public record BmsField(
         String name,
         int sourceLine,

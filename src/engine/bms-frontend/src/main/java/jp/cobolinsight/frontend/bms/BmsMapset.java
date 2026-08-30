@@ -2,7 +2,7 @@ package jp.cobolinsight.frontend.bms;
 
 import java.util.List;
 
-/** DFHMSD が定義するマップセット。 */
+/** A mapset defined by DFHMSD. */
 public record BmsMapset(String name, int sourceLine, List<BmsMap> maps) {
 
     public BmsMapset {

@@ -9,20 +9,21 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 
 /**
- * 文字コードの自動判別。UTF-8/Shift_JISはICU4Jの内容判別で確定し、
- * EBCDIC(CP930/939)はバイト分布とSO/SI検出による推定に留める。
+ * Automatic character-code detection. UTF-8/Shift_JIS are determined by ICU4J's content-based
+ * detection; EBCDIC (CP930/939) is only estimated from byte distribution and SO/SI detection.
  */
 public final class CodePageDetector {
 
-    /** バイト分布による推定は内容判別より根拠が弱いため、確信度を低く固定する。 */
+    /** Estimation from byte distribution is weaker evidence than content-based detection, so confidence is fixed low. */
     private static final int EBCDIC_ESTIMATE_CONFIDENCE = 30;
-    /** 候補が得られずUTF-8として復号できるかだけで決めた場合の確信度。 */
+    /** Confidence when no candidate was found and the decision rested solely on whether UTF-8 decoding succeeded. */
     private static final int FALLBACK_CONFIDENCE = 10;
 
     public DetectionResult detect(byte[] bytes) {
         boolean soSi = containsSoSi(bytes);
-        // EBCDIC自動判別はIBM930を既定候補として返すに留める。IBM939はバイト分布から
-        // IBM930と区別できないため自動判別せず、コードページの手動指定に委ねる。
+        // Automatic EBCDIC detection only ever returns IBM930 as the default candidate. IBM939
+        // cannot be distinguished from IBM930 by byte distribution, so it is not auto-detected
+        // and is instead left to a manual code-page specification.
         if (looksEbcdic(bytes, soSi)) {
             return new DetectionResult(CodePage.IBM930, EBCDIC_ESTIMATE_CONFIDENCE, soSi, true);
         }
@@ -42,7 +43,7 @@ public final class CodePageDetector {
         return fallback(bytes, soSi);
     }
 
-    /** ICU4Jが候補を返さないときの既定。対象は日本語のソースであるため、UTF-8で復号できなければShift_JISとみなす。 */
+    /** Default used when ICU4J returns no candidate. Since the target sources are Japanese, if UTF-8 decoding fails it is treated as Shift_JIS. */
     private static DetectionResult fallback(byte[] bytes, boolean soSi) {
         try {
             StandardCharsets.UTF_8.newDecoder()
@@ -55,7 +56,7 @@ public final class CodePageDetector {
         }
     }
 
-    /** SO(0x0E)/SI(0x0F)を含むか。EBCDICの混在コードページは全角文字の区間をこの2バイトで挟む。 */
+    /** Whether the bytes contain SO(0x0E)/SI(0x0F). Mixed EBCDIC code pages bracket full-width character runs with these two bytes. */
     static boolean containsSoSi(byte[] bytes) {
         for (byte b : bytes) {
             if (b == 0x0E || b == 0x0F) {
@@ -66,8 +67,9 @@ public final class CodePageDetector {
     }
 
     /**
-     * EBCDICらしさの判定。ASCII可読率はDBCS第2バイトが0x20〜0x7Eへ大量に落ちるため
-     * 識別力がなく、0x40(EBCDIC空白)率とSO/SI・0x0A(ASCII LF)の有無で判定する。
+     * Determines how EBCDIC-like the bytes look. The ASCII-printable ratio has no discriminating
+     * power, since DBCS second bytes fall heavily into 0x20-0x7E; the decision instead uses the
+     * ratio of 0x40 (EBCDIC space) together with the presence of SO/SI and 0x0A (ASCII LF).
      */
     private static boolean looksEbcdic(byte[] bytes, boolean soSi) {
         if (bytes.length == 0) {
@@ -84,11 +86,13 @@ public final class CodePageDetector {
             }
         }
         double spaceRatio = ebcdicSpace / (double) bytes.length;
-        // SO/SIを含む場合はEBCDICの根拠が強いため、0x40の出現率に求める下限を緩める。
+        // When SO/SI is present, the evidence for EBCDIC is strong, so the required minimum
+        // 0x40 occurrence ratio is relaxed.
         if (soSi && spaceRatio >= 0.05) {
             return true;
         }
-        // SO/SIが無い場合は、EBCDICの改行が0x25であり0x0Aが現れないことを条件に加える。
+        // When SO/SI is absent, additionally require that 0x0A does not appear, since the
+        // EBCDIC newline is 0x25.
         return asciiLf == 0 && spaceRatio >= 0.10;
     }
 }

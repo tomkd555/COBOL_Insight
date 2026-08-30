@@ -7,8 +7,8 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * JCL解析の契約。カタログ化PROC展開とシンボリックパラメータ解決を済ませた
- * ジョブ構造モデルを返す。
+ * The contract for JCL analysis. Returns a job structure model with cataloged PROC expansion and
+ * symbolic parameter resolution already applied.
  */
 public interface JclParser {
 

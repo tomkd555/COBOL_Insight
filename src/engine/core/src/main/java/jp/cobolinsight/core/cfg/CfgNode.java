@@ -6,9 +6,11 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * CFGの1ノード。STATEMENTノードは意味モデルの文への参照と所属手続き名を持つ。
- * id は同一グラフ内で一意で、生成順(意味モデルの定義順)に振る。GO TO正規化で複製された
- * ノードは originalNodeId に複製元のidを持ち、複製元のソース位置へたどれる。
+ * A single node of the CFG. A STATEMENT node holds a reference to a statement in the semantic
+ * model and the name of the procedure it belongs to. id is unique within the same graph and is
+ * assigned in generation order (the definition order in the semantic model). A node duplicated by
+ * GO TO normalization holds the id of its original in originalNodeId, so the original's source
+ * location can be traced.
  */
 public final class CfgNode {
 
@@ -42,17 +44,17 @@ public final class CfgNode {
         return kind;
     }
 
-    /** STATEMENTノードの文。ENTRY・EXITでは empty。 */
+    /** The statement of a STATEMENT node. empty for ENTRY/EXIT. */
     public Optional<Statement> statement() {
         return Optional.ofNullable(statement);
     }
 
-    /** 所属する段落・節の名前。ENTRY・EXITでは空文字列。 */
+    /** The name of the paragraph/section this node belongs to. An empty string for ENTRY/EXIT. */
     public String procedureName() {
         return procedureName;
     }
 
-    /** GO TO正規化で複製されたノードの複製元id。複製でなければ empty。 */
+    /** The id of the original node for a node duplicated by GO TO normalization. empty if not a duplicate. */
     public Optional<Integer> originalNodeId() {
         return Optional.ofNullable(originalNodeId);
     }

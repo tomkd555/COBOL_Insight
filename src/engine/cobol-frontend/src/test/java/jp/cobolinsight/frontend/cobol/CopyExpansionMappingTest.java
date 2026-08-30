@@ -12,8 +12,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * コピー句展開の検証。COPY REPLACING の接頭辞置換が項目名へ反映されること、展開の対応表が
- * コピー句のファイルと開始行を指すこと、暗黙コードが対象外になることを確認する。
+ * Verifies copybook expansion: that COPY REPLACING's prefix substitution is reflected in item
+ * names, that the expansion mapping points to the copybook's file and start line, and that
+ * implicit code is excluded.
  */
 class CopyExpansionMappingTest {
 

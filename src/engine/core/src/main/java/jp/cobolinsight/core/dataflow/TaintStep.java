@@ -6,8 +6,9 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * 汚染伝播経路の1歩。node で variable が汚染を得たことを表す。from はその汚染の直接の伝播元に
- * なった変数で、汚染源(外部入力の受信)では empty。
+ * One step in a taint-propagation path. Represents that variable acquired taint at node. from is
+ * the variable that directly propagated that taint; empty at a taint source (an external-input
+ * receive).
  */
 public record TaintStep(CfgNode node, String variable, Optional<String> from) {
 

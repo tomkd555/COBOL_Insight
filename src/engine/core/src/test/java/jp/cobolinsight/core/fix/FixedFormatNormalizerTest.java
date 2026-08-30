@@ -25,18 +25,18 @@ class FixedFormatNormalizerTest {
 
         assertEquals(1, lines.size());
         String line = lines.get(0);
-        // 一連番号欄(1-6桁)・7桁目指示欄・A領域(8-11桁)は空白。
+        // The sequence number area (columns 1-6), the column-7 indicator area, and Area A (columns 8-11) are blank.
         assertEquals("           ", line.substring(0, 11));
         assertEquals(' ', line.charAt(6));
-        // 本文はB領域起点(12桁目=index 11)から始まる。
+        // The content starts at the Area B origin (column 12 = index 11).
         assertEquals("IF SQLCODE NOT = 0 DISPLAY 'SQL ERROR: ' SQLCODE END-IF", line.substring(11));
-        // 識別欄(73-80桁)へ食い込まない。
+        // Does not encroach into the identification area (columns 73-80).
         assertTrue(byteLen(line, StandardCharsets.UTF_8) <= 72);
     }
 
     @Test
     void contentFillingBAreaExactlyStaysOnOneLine() {
-        // B領域は12-72桁の61桁。ちょうど61バイトの ASCII は折り返さない。
+        // Area B is columns 12-72, 61 columns wide. Exactly 61 bytes of ASCII does not wrap.
         String content = "A".repeat(61);
         List<String> lines = normalizer.layoutStatement(content, StandardCharsets.UTF_8);
 
@@ -46,8 +46,8 @@ class FixedFormatNormalizerTest {
 
     @Test
     void reservedTrailingBytesShrinkTheBudgetOfTheFinalLineOnly() {
-        // 整形後に呼び出し側が末尾へ1バイト(終止ピリオド)を書き足す前提。最終物理行の予算だけが
-        // 60バイトへ縮み、それより前の行は61バイトのまま使い切る。
+        // Assumes the caller appends 1 byte (the terminating period) after formatting. Only the
+        // final physical line's budget shrinks to 60 bytes; lines before it still use the full 61 bytes.
         String statement = "A".repeat(55) + " " + "B".repeat(5);
         assertEquals(61, byteLen(statement, StandardCharsets.UTF_8));
 
@@ -60,7 +60,7 @@ class FixedFormatNormalizerTest {
         assertEquals(2, reserved.size());
         assertEquals("           " + "A".repeat(55), reserved.get(0));
         assertEquals("           " + "B".repeat(5), reserved.get(1));
-        // 末尾へピリオドを書き足しても72桁を超えない。
+        // Does not exceed column 72 even after appending a period at the end.
         assertTrue(byteLen(reserved.get(1) + ".", StandardCharsets.UTF_8) <= 72);
     }
 
@@ -71,14 +71,14 @@ class FixedFormatNormalizerTest {
         List<String> lines = normalizer.layoutStatement(statement, StandardCharsets.UTF_8, 1);
 
         assertEquals(2, lines.size());
-        // 最終行でない1行目はB領域を61バイト使い切る。
+        // Line 1, which is not the final line, uses the full 61 bytes of Area B.
         assertEquals(72, byteLen(lines.get(0), StandardCharsets.UTF_8));
         assertEquals("           " + "B".repeat(5), lines.get(1));
     }
 
     @Test
     void asciiOverflowWrapsToContinuationLine() {
-        // 62バイトは61桁のB領域に収まらず、継続行(7桁目に '-')へ折り返す。
+        // 62 bytes does not fit in Area B's 61 columns, so it wraps to a continuation line (a '-' at column 7).
         String content = "A".repeat(62);
         List<String> lines = normalizer.layoutStatement(content, StandardCharsets.UTF_8);
 
@@ -93,18 +93,18 @@ class FixedFormatNormalizerTest {
 
     @Test
     void fullWidthOverflowWrapsAtCharBoundaryWithoutSplittingBytes() {
-        // Shift_JIS の全角は2バイト。B領域61バイトには30文字(60バイト)まで収まり、31文字目で折り返す。
+        // A Shift_JIS full-width character is 2 bytes. Area B's 61 bytes fit up to 30 characters (60 bytes); the 31st character wraps.
         Charset sjis = CodePage.SHIFT_JIS.charset();
         String content = "あ".repeat(31);
         List<String> lines = normalizer.layoutStatement(content, sjis);
 
         assertEquals(2, lines.size());
-        // 1行目のB領域は30文字ちょうど(全角を分断しない)。
+        // Line 1's Area B holds exactly 30 characters (does not split a full-width character).
         assertEquals("あ".repeat(30), lines.get(0).substring(11));
         assertEquals("あ", lines.get(1).substring(11));
         for (String line : lines) {
             assertTrue(byteLen(line, sjis) <= 72, "各行は72バイト以下: " + line);
-            // 復号し直しても文字化けしない=文字境界で折り返している。
+            // Re-decoding produces no garbled characters, meaning the wrap is at a character boundary.
             assertEquals(line, new String(line.getBytes(sjis), sjis));
         }
     }
@@ -126,8 +126,8 @@ class FixedFormatNormalizerTest {
 
     @Test
     void multiWordStatementFoldsAtWordBoundaryWithoutHyphen() {
-        // R017(ファイル状態未検査)の修正案が挿入する検査文。81バイトで B領域予算(61バイト)を
-        // 超え、語境界で折り返す。
+        // A check statement that R017's (unchecked file status) fix suggestion inserts. At 81 bytes
+        // it exceeds Area B's budget (61 bytes) and wraps at a word boundary.
         String handler =
                 "IF WS-ORDIN-STATUS NOT = '00' DISPLAY 'FILE ERROR: ORDIN ' WS-ORDIN-STATUS END-IF";
         assertEquals(81, byteLen(handler, StandardCharsets.UTF_8));
@@ -136,26 +136,26 @@ class FixedFormatNormalizerTest {
 
         assertEquals(2, lines.size());
         for (String line : lines) {
-            // 語境界での折り返しは継続指示 '-' を置かず、7桁目は空白のまま。
+            // A word-boundary wrap does not place a continuation indicator '-'; column 7 stays blank.
             assertEquals(' ', line.charAt(6), "語境界の折り返しに '-' を置かない: " + line);
-            // 一連番号欄(1-6桁)・7桁目指示欄・A領域(8-11桁)は空白、本文は12桁目から。
+            // The sequence number area (columns 1-6) and the column-7 indicator area are blank; A area (columns 8-11) is blank; content starts at column 12.
             assertEquals("           ", line.substring(0, 11));
             assertTrue(byteLen(line, StandardCharsets.UTF_8) <= 72, "各行は72バイト以下: " + line);
         }
-        // 改行を空白区切りとして復元すると原文へ戻る(トークンが結合していない)。
+        // Rejoining with newlines restored as spaces reproduces the original text (tokens are not merged).
         String rejoined = lines.stream()
                 .map(line -> line.substring(11))
                 .reduce((a, b) -> a + " " + b)
                 .orElseThrow();
         assertEquals(handler, rejoined);
-        // 内部に空白を含むリテラルは分断されず1行に温存される。
+        // A literal containing internal spaces is kept intact on one line rather than being split.
         assertTrue(lines.get(0).contains("'FILE ERROR: ORDIN '"),
                 "空白を含むリテラルは分断しない: " + lines.get(0));
     }
 
     @Test
     void plainWordsFoldAtSpaceKeepTokensSeparate() {
-        // 語が連なり B領域予算を超える文。語境界で折り、隣接語が結合しないことを確認する。
+        // A statement of consecutive words that exceeds Area B's budget. Verifies it wraps at word boundaries and adjacent words do not merge.
         String statement =
                 "MOVE AAAAAAAAAA TO BBBBBBBBBB MOVE CCCCCCCCCC TO DDDDDDDDDD MOVE EEEE TO FFFF";
         assertTrue(byteLen(statement, StandardCharsets.UTF_8) > 61);
@@ -176,29 +176,29 @@ class FixedFormatNormalizerTest {
 
     @Test
     void oversizedLiteralSplitsWithReinsertedOpeningQuote() {
-        // 1トークンのリテラルが B領域予算を超える場合のみ、継続行で途中分割する。
+        // A single-token literal is split mid-way across continuation lines only when it exceeds Area B's budget.
         String literal = "'" + "X".repeat(130) + "'";
         List<String> lines = normalizer.layoutStatement(literal, StandardCharsets.UTF_8);
 
         assertEquals(3, lines.size());
-        // 先頭行は語境界起点なので '-' 無し、以降の継続行は '-' を置く。
+        // The first line starts at a word boundary, so it has no '-'; the continuation lines that follow do.
         assertEquals(' ', lines.get(0).charAt(6));
         assertEquals('-', lines.get(1).charAt(6));
         assertEquals('-', lines.get(2).charAt(6));
-        // 分割途中の行は72桁ちょうどまで埋める(短いと行末の空白がリテラルへ混入するため)。
+        // A mid-split line is padded out to exactly column 72 (a shorter line would let trailing whitespace leak into the literal).
         assertEquals(72, byteLen(lines.get(0), StandardCharsets.UTF_8));
         assertEquals(72, byteLen(lines.get(1), StandardCharsets.UTF_8));
         assertTrue(byteLen(lines.get(2), StandardCharsets.UTF_8) <= 72);
-        // 継続行の本文は再挿入した開き引用符から始まる。
+        // A continuation line's content begins with the reinserted opening quote.
         assertEquals('\'', lines.get(1).charAt(11));
         assertEquals('\'', lines.get(2).charAt(11));
 
-        // COBOL 継続規則で復元すると原リテラルへ戻る(引用符の再挿入で破損しない)。
+        // Restoring by COBOL continuation rules reproduces the original literal (reinserting the quote does not corrupt it).
         StringBuilder body = new StringBuilder();
         for (int k = 0; k < lines.size(); k++) {
-            String content = lines.get(k).substring(11).substring(1); // 先頭の引用符を除く
+            String content = lines.get(k).substring(11).substring(1); // strip the leading quote
             if (k == lines.size() - 1) {
-                content = content.substring(0, content.length() - 1); // 末尾の閉じ引用符を除く
+                content = content.substring(0, content.length() - 1); // strip the trailing closing quote
             }
             body.append(content);
         }

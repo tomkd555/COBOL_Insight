@@ -9,14 +9,14 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * プログラム横断のCFGコンテナ。programId で索引化し、rules・cli が
- * {@code AnalysisContext.artifact()} 経由で受け取るキー型として使う。
+ * A cross-program CFG container. Indexed by programId, and used as the key type that rules/cli
+ * receive via {@code AnalysisContext.artifact()}.
  */
 public final class ControlFlowGraphs {
 
     private final Map<String, ControlFlowGraph> byProgramId;
 
-    /** 同じ programId のグラフが複数含まれる場合は、投入順で最初のものだけを採る。 */
+    /** When multiple graphs share the same programId, only the first one in input order is kept. */
     public ControlFlowGraphs(Collection<ControlFlowGraph> graphs) {
         Map<String, ControlFlowGraph> map = new LinkedHashMap<>();
         for (ControlFlowGraph graph : graphs) {
@@ -33,7 +33,7 @@ public final class ControlFlowGraphs {
         return of(model.programId());
     }
 
-    /** 全CFG(投入順)。 */
+    /** All CFGs (input order). */
     public Collection<ControlFlowGraph> all() {
         return byProgramId.values();
     }

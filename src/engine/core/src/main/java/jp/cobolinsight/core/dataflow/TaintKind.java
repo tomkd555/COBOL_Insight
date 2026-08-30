@@ -1,9 +1,9 @@
 package jp.cobolinsight.core.dataflow;
 
-/** 汚染追跡の種別。 */
+/** Kind of taint tracking. */
 public enum TaintKind {
-    /** 画面・帳票などの外部入力由来(ACCEPT・CICS RECEIVE)。R020 が消費する。 */
+    /** Originates from external input such as screens or reports (ACCEPT, CICS RECEIVE). Consumed by R020. */
     EXTERNAL_INPUT,
-    /** 機密データ(名称末尾が -SSN・-ACCT-NO・-CARD-NO)由来。R027 が消費する。 */
+    /** Originates from sensitive data (names ending in -SSN, -ACCT-NO, -CARD-NO). Consumed by R027. */
     SENSITIVE
 }

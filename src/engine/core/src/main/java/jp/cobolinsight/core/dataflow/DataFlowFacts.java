@@ -9,15 +9,15 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * プログラム横断の不動点解析結果コンテナ。programId で索引化し、rules・cli が
- * {@code AnalysisContext.artifact()} 経由で受け取るキー型として使う。
- * {@link jp.cobolinsight.core.cfg.ControlFlowGraphs} と同じ配置・利用形態を採る。
+ * Container for cross-program fixed-point analysis results. Indexed by programId; used as the
+ * key type that rules/cli receive via {@code AnalysisContext.artifact()}.
+ * Follows the same placement and usage pattern as {@link jp.cobolinsight.core.cfg.ControlFlowGraphs}.
  */
 public final class DataFlowFacts {
 
     private final Map<String, ProgramDataFlow> byProgramId;
 
-    /** 同じ programId の解析結果が複数含まれる場合は、投入順で最初のものだけを採る。 */
+    /** When multiple analysis results share the same programId, only the first in insertion order is kept. */
     public DataFlowFacts(Collection<ProgramDataFlow> flows) {
         Map<String, ProgramDataFlow> map = new LinkedHashMap<>();
         for (ProgramDataFlow flow : flows) {
@@ -34,7 +34,7 @@ public final class DataFlowFacts {
         return of(model.programId());
     }
 
-    /** 全プログラムの解析結果(投入順)。 */
+    /** Analysis results for all programs (in insertion order). */
     public Collection<ProgramDataFlow> all() {
         return byProgramId.values();
     }

@@ -12,8 +12,9 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * 呼出関係グラフの単一モデル。呼出関係の解析結果はこの型へ集約する。ノード・エッジはID順に
- * 正規化して保持し、JSON・DOTへの直列化は挿入順に依存しない決定論的な出力を返す。
+ * A single model of the call graph. Call-relationship analysis results are aggregated into this type.
+ * Nodes and edges are normalized and held in ID order, and serialization to JSON/DOT returns
+ * deterministic output that does not depend on insertion order.
  */
 public final class CallGraph {
 
@@ -49,19 +50,20 @@ public final class CallGraph {
         this.edges = List.copyOf(sortedEdges);
     }
 
-    /** ノード一覧(ID昇順)。 */
+    /** List of nodes (ascending by ID). */
     public List<CallGraphNode> nodes() {
         return nodes;
     }
 
-    /** エッジ一覧(fromId・toId・kind・resolution の昇順)。 */
+    /** List of edges (ascending by fromId, toId, kind, resolution). */
     public List<CallGraphEdge> edges() {
         return edges;
     }
 
     /**
-     * JSON表現。attributes が空のノードでは attributes キー自体を出さない。辺の seq・line も
-     * 分かっている辺にだけ出す(順序不明は seq を、行不明は line を欠いた形になる)。
+     * JSON representation. For a node with empty attributes, the attributes key itself is omitted.
+     * An edge's seq and line are likewise emitted only when known (an edge with unknown order omits
+     * seq, and one with an unknown line omits line).
      */
     public String toJson() {
         JsonWriter w = new JsonWriter();

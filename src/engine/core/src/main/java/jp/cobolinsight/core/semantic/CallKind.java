@@ -1,9 +1,9 @@
 package jp.cobolinsight.core.semantic;
 
-/** CALL の静的・動的の別。 */
+/** Whether a CALL is static or dynamic. */
 public enum CallKind {
-    /** CALL 'literal'。target はプログラム名リテラル。 */
+    /** CALL 'literal'. The target is a program name literal. */
     STATIC,
-    /** CALL identifier。target は指定変数名。 */
+    /** CALL identifier. The target is the given variable name. */
     DYNAMIC
 }

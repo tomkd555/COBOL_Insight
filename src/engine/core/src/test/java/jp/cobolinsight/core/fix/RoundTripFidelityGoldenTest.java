@@ -17,9 +17,10 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * 往復忠実性ゴールデン。原本を復号し無編集リライト(空編集のスプライス適用)した出力バイト列が、
- * 原本バイト列とバイト単位で一致することを検証する。Shift_JIS 経路は再エンコードで最も壊れやすく、
- * 独立した検証を置く。
+ * Round-trip fidelity golden test. Verifies that the output byte array produced by decoding the
+ * original and rewriting it with no edits (applying an empty-edit splice) matches the original
+ * byte array byte for byte. The Shift_JIS path is the most fragile under re-encoding, so it gets
+ * its own independent check.
  */
 class RoundTripFidelityGoldenTest {
 

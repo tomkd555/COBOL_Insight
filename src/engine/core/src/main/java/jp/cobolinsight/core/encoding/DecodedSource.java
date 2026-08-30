@@ -1,13 +1,13 @@
 package jp.cobolinsight.core.encoding;
 
 /**
- * ソース取込の出力。復号済みテキスト(UTF-16正規化)・原バイト列・
- * オフセット表・確定エンコーディング情報を束ねる。
+ * Output of source ingestion. Bundles the decoded text (normalized to UTF-16), the original byte
+ * array, the offset table, and the determined encoding information.
  *
- * @param text          復号済みテキスト(内部UTF-16正規化)
- * @param originalBytes 原バイト列
- * @param offsetTable   復号後文字位置と原バイトオフセットの対応表
- * @param encodingInfo  確定コードページ・確信度・SO/SI有無・手動指定の有無
+ * @param text          decoded text (internally normalized to UTF-16)
+ * @param originalBytes original byte array
+ * @param offsetTable   table mapping post-decode character positions to original byte offsets
+ * @param encodingInfo  determined code page, confidence, SO/SI presence, and whether it was manually specified
  */
 public record DecodedSource(String text, byte[] originalBytes, ByteOffsetTable offsetTable, EncodingInfo encodingInfo) {
 }

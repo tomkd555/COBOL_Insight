@@ -3,14 +3,14 @@ package jp.cobolinsight.core.encoding;
 import java.nio.charset.Charset;
 import java.util.Locale;
 
-/** 本ツールが扱うコードページ。 */
+/** Code pages handled by this tool. */
 public enum CodePage {
     UTF_8("UTF-8", false),
-    /** Shift_JIS。NEC・IBMの拡張文字を含むソースも復号できるよう windows-31j(CP932)で扱う。 */
+    /** Shift_JIS. Treated as windows-31j (CP932) so sources containing NEC/IBM extended characters can also be decoded. */
     SHIFT_JIS("windows-31j", false),
-    /** 日本語EBCDIC。SBCS面はカタカナを収め、英小文字を持たない。 */
+    /** Japanese EBCDIC. The SBCS plane holds half-width kana and has no lowercase Latin letters. */
     IBM930("x-IBM930", true),
-    /** 日本語EBCDIC。SBCS面は英小文字を収め、カタカナを持たない。 */
+    /** Japanese EBCDIC. The SBCS plane holds lowercase Latin letters and has no half-width kana. */
     IBM939("x-IBM939", true);
 
     private final String charsetName;
@@ -22,8 +22,9 @@ public enum CodePage {
     }
 
     /**
-     * コードページ名(別名を含む)を解決する。英数字以外を除いた大小無視の照合で、UTF-8・Shift_JIS・
-     * IBM930・IBM939 の別名を受け付ける。未対応の名前は {@link IllegalArgumentException}。
+     * Resolves a code page name (including aliases). Matching strips non-alphanumeric characters
+     * and ignores case, accepting aliases for UTF-8, Shift_JIS, IBM930 and IBM939. An unsupported
+     * name throws {@link IllegalArgumentException}.
      */
     public static CodePage fromName(String charsetName) {
         String key = charsetName.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);

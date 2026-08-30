@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** samples 配下の資産を DecodedSource として読み込み、パース結果をテスト間で共有する。 */
+/** Loads assets under samples as DecodedSource and shares parse results across tests. */
 final class TestSources {
 
     static final Path REPO_ROOT = findRepoRoot();
@@ -67,7 +67,7 @@ final class TestSources {
                 new EncodingInfo("UTF-8", 1.0, false, false));
     }
 
-    /** samples/cobol の1本をパースし、結果をキャッシュする。 */
+    /** Parses one file from samples/cobol and caches the result. */
     static ParseOutcome<CobolSemanticModel> parseSample(String fileName) {
         return CACHE.computeIfAbsent(fileName, name -> new Che4zCobolParser()
                 .parse(load(COBOL_DIR.resolve(name)), COPYBOOK_PATHS));

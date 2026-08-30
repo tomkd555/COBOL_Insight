@@ -1,14 +1,14 @@
 package jp.cobolinsight.frontend.sql;
 
-/** SQLテキスト走査の共通処理。 */
+/** Shared logic for scanning SQL text. */
 final class SqlTextScanner {
 
     private SqlTextScanner() {
     }
 
     /**
-     * open の位置の引用符で始まる文字列リテラルの終端引用符の位置を返す。
-     * '' のエスケープを考慮する。閉じていなければ -1 を返す。
+     * Returns the position of the closing quote of a string literal that starts with the quote
+     * at position open. Accounts for '' escaping. Returns -1 if unclosed.
      */
     static int findStringEnd(String text, int open) {
         int i = open + 1;
@@ -26,10 +26,11 @@ final class SqlTextScanner {
     }
 
     /**
-     * コメント({@code --} 行コメントと {@code /*} ブロックコメント)の中身を空白で潰した
-     * 同じ長さのテキストを返す(オフセット保存)。改行は残す。コメント内のアポストロフィを
-     * 文字列リテラルの開始と誤認すること、および空白の正規化で改行を失った行コメントが
-     * 以降の本文を飲み込むことを、いずれもこの前処理で防ぐ。
+     * Returns text of the same length (offsets preserved) with the contents of comments
+     * ({@code --} line comments and {@code /*} block comments) blanked out with spaces. Newlines
+     * are kept. This preprocessing prevents both an apostrophe inside a comment being mistaken
+     * for the start of a string literal, and a line comment whose newline was lost to whitespace
+     * normalization from swallowing the text that follows it.
      */
     static String maskComments(String text) {
         StringBuilder out = new StringBuilder(text);
@@ -60,7 +61,7 @@ final class SqlTextScanner {
         return out.toString();
     }
 
-    /** 文字列リテラルの中身を空白で潰した同じ長さのテキストを返す(オフセット保存)。 */
+    /** Returns text of the same length (offsets preserved) with the contents of string literals blanked out with spaces. */
     static String maskStringLiterals(String text) {
         StringBuilder out = new StringBuilder(text);
         int i = 0;

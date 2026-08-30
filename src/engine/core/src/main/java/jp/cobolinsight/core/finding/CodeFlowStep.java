@@ -4,7 +4,7 @@ import jp.cobolinsight.core.source.SourcePosition;
 
 import java.util.Objects;
 
-/** codeFlows の1ステップ。message は補足説明で、空文字列を許す。 */
+/** One step of codeFlows. message is a supplementary explanation and an empty string is allowed. */
 public record CodeFlowStep(SourcePosition position, String message) {
 
     public CodeFlowStep {

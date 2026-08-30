@@ -12,7 +12,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-/** コピー句の解決が AssetKind.COPYBOOK の名乗る拡張子をすべて試すことを固める。 */
+/** Pins down that copybook resolution tries every extension AssetKind.COPYBOOK declares. */
 class SearchPathClientTest {
 
     @Test

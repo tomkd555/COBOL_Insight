@@ -3,12 +3,14 @@ package jp.cobolinsight.core.callgraph;
 import java.util.Objects;
 
 /**
- * 呼出関係グラフのエッジ。ノードIDで両端を参照し、解決根拠を保持する。seq は呼出元ノードの
- * 出辺のうち何番目かを原本の順序(JCLのステップ順・文の出現順)で表す1起点の番号で、順序が
- * 分からない辺では0とする。line は呼出元ソースの呼出箇所の行で、分からない場合は null とする。
+ * An edge of the call graph. References both endpoints by node ID and holds the resolution basis.
+ * seq is a 1-based number expressing which of the source node's outgoing edges this is, in the
+ * original order (JCL step order, statement appearance order); an edge whose order is unknown uses 0.
+ * line is the line of the call site in the source, or null when unknown.
  *
- * <p>辺の同一性は両端・種別・解決根拠だけで決める。同じ呼出先を複数箇所から呼んでも1本の辺へ
- * 畳むためであり、seq・line は最初の出現のものを記録として持つ。
+ * <p>Edge identity is determined solely by the two endpoints, kind, and resolution basis. This is so
+ * that calling the same target from multiple places collapses into a single edge, with seq and line
+ * recorded from the first occurrence.
  */
 public record CallGraphEdge(String fromId, String toId, EdgeKind kind, Resolution resolution,
         int seq, Integer line) {
@@ -24,7 +26,7 @@ public record CallGraphEdge(String fromId, String toId, EdgeKind kind, Resolutio
         Objects.requireNonNull(resolution, "resolution");
     }
 
-    /** 順序も行も分からない辺。 */
+    /** An edge whose order and line are both unknown. */
     public CallGraphEdge(String fromId, String toId, EdgeKind kind, Resolution resolution) {
         this(fromId, toId, kind, resolution, 0, null);
     }

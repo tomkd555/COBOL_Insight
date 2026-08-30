@@ -1,5 +1,5 @@
 package jp.cobolinsight.frontend.sql;
 
-/** 1始まりの行・桁で表す元ソース上の位置。 */
+/** A position in the original source, expressed as a 1-based line and column. */
 public record SourcePosition(int line, int column) {
 }

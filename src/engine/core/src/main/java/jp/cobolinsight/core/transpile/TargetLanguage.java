@@ -1,6 +1,6 @@
 package jp.cobolinsight.core.transpile;
 
-/** 逐語対訳の対象言語。fileExtension は生成ファイルの拡張子(ドットなし)。 */
+/** The target language for line-by-line translation. fileExtension is the generated file's extension (no dot). */
 public enum TargetLanguage {
     PYTHON("py"),
     JAVA("java");
