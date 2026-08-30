@@ -10,7 +10,8 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** R026 ハードコードされたパスワード・認証情報の合成fixture検証(テキスト走査のみで判定する)。 */
+/** Synthetic fixture verification for R026 hardcoded passwords/credentials
+ * (determined by text scanning alone). */
 class HardcodedCredentialRuleTest {
 
     private static final String SOURCE = String.join("\n",
@@ -30,7 +31,8 @@ class HardcodedCredentialRuleTest {
             /* 14 */ "           MOVE 'K1' TO",
             /* 15 */ "      -        TOKEN",
             /* 16 */ "           MOVE SPACES TO WS-X *> TOKEN 'NOTE'",
-            // 空白43個で 'ZZZ' を73桁目まで押し出し、識別領域(73〜80桁)に置く。
+            // Pad with 43 spaces to push 'ZZZ' out to column 73, placing it in the
+            // identification area (columns 73-80).
             /* 17 */ "           MOVE ID-1 TO TOKEN" + " ".repeat(43) + "'ZZZ'",
             /* 18 */ "           GOBACK.",
             "");
@@ -40,7 +42,8 @@ class HardcodedCredentialRuleTest {
         List<Finding> findings = new HardcodedCredentialRule()
                 .evaluate(Fixtures.context(List.of(), Map.of("FIX026.cbl", SOURCE)));
 
-        // 13行は1行に文字列リテラルを2つ持つため、期待する行番号にも2度現れる。
+        // Line 13 has two string literals on one line, so it appears twice in the expected
+        // line numbers.
         assertEquals(List.of(5, 7, 10, 13, 13, 14),
                 findings.stream().map(f -> f.location().line()).sorted().toList(),
                 () -> "検出: " + findings);

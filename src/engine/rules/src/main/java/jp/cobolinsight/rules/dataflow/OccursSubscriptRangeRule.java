@@ -31,10 +31,12 @@ import jp.cobolinsight.rules.dataflow.DataFlowSupport.Section;
 import jp.cobolinsight.rules.dataflow.DataFlowSupport.TableRef;
 
 /**
- * R005 OCCURS 範囲外の添字・指標。OCCURS 表への添字参照ノードで、添字の取り得る値域(区間値域解析)が
- * 表の上限を超え得る、または 0 以下になり得る箇所を検出する。範囲外の添字は表に隣接する記憶域を
- * 読み書きする。上限は表項目または OCCURS を持つ直近の上位項目から解決する。LINKAGE 節の表は
- * 呼出元が保証する領域のため対象外とする。
+ * R005 Subscript/index out of the OCCURS range. Detects, at a subscript reference node into an
+ * OCCURS table, places where the possible value range of the subscript (interval value analysis)
+ * may exceed the table's upper bound or may be zero or less. An out-of-range subscript reads or
+ * writes storage adjacent to the table. The upper bound is resolved from the table item, or from
+ * the nearest ancestor item that has OCCURS. A table in the LINKAGE section is excluded because
+ * the caller guarantees its storage.
  */
 public final class OccursSubscriptRangeRule implements Rule {
 
@@ -108,8 +110,9 @@ public final class OccursSubscriptRangeRule implements Rule {
                 }
                 List<String> subscripts = ref.subscripts();
                 for (int i = 0; i < subscripts.size(); i++) {
-                    // 添字は外側の次元から並ぶため、同じ順の OCCURS 上限と突き合わせる。次元数を
-                    // 超える添字は最も内側の上限で見る。
+                    // Subscripts are ordered from the outermost dimension, so match them against
+                    // the OCCURS upper bounds in the same order. A subscript beyond the dimension
+                    // count is checked against the innermost upper bound.
                     int max = dims.get(Math.min(i, dims.size() - 1));
                     ValueInterval iv = subscriptInterval(df, node, subscripts.get(i));
                     if (iv == null || !(iv.mayExceed(max) || iv.mayBeNonPositive())) {

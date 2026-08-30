@@ -15,7 +15,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** R031 BMS 定義に無いマップへの SEND MAP の合成fixture検証。 */
+/** R031 synthetic fixture verification for a SEND MAP referencing a map not defined in the BMS. */
 class UndefinedBmsMapReferenceRuleTest {
 
     @TempDir

@@ -12,7 +12,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** R013 EVALUATE文のWHEN OTHER欠如の合成fixture検証。 */
+/** Synthetic fixture verification for R013 EVALUATE statements missing WHEN OTHER. */
 class EvaluateWhenOtherRuleTest {
 
     @TempDir

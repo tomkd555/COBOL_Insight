@@ -20,9 +20,11 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * R007 PERFORM THRU の範囲へ割り込む GO TO。PERFORM ... THRU で一連の実行範囲となる段落群の
- * うち、範囲の入口段落を経由せず範囲内部の段落へ、範囲外の段落から GO TO で直接分岐する箇所を
- * 検出する。範囲入口の初期化を飛ばして途中へ入り込むため、実行時の不整合を生む。
+ * R007 A GO TO that interrupts a PERFORM THRU range. Among the group of paragraphs forming a
+ * contiguous execution range under PERFORM ... THRU, detects a GO TO that branches directly,
+ * from a paragraph outside the range, into a paragraph inside the range without going through
+ * the range's entry paragraph. This skips the initialization the entry paragraph is responsible
+ * for and jumps in partway through, producing a runtime inconsistency.
  */
 public final class PerformThruInterruptGoToRule implements Rule {
 
@@ -94,7 +96,7 @@ public final class PerformThruInterruptGoToRule implements Rule {
                     range.add(CfgSupport.upper(procedures.get(i).name()));
                 }
                 if (range.contains(holderName)) {
-                    continue; // GO TO を含む段落が範囲内 → 割り込みではない
+                    continue; // The paragraph containing the GO TO is inside the range -> not an interruption
                 }
                 String entry = CfgSupport.upper(perform.targetProcedure());
                 String hit = null;
@@ -114,7 +116,7 @@ public final class PerformThruInterruptGoToRule implements Rule {
                             new SourcePosition(model.sourceFile(),
                                     goTo.range().start().line(), 1,
                                     SourcePosition.UNKNOWN_BYTE_OFFSET)));
-                    break; // 1つの GO TO につき1件
+                    break; // One finding per GO TO
                 }
             }
         }

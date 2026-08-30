@@ -42,26 +42,27 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 呼出関係グラフの統合。JCL(EXEC PGM=)とCOBOL(PROGRAM-ID)の対応、静的CALL解決、
- * 動的CALLの定数伝播(MOVE 定数→CALL 変数)による解決、未解決ノード・外部ユーティリティ
- * ノードの型付け、EXEC CICS のトランザクション遷移辺・マップ参照辺、トランザクション定義表に
- * よるトランザクションID→プログラム解決を行い、単一の {@link CallGraph} を構築する。
- * ノードIDは種別接頭辞付きの文字列で決定論的に定める。
+ * Integrates the call graph. Builds a single {@link CallGraph} by matching JCL (EXEC PGM=) to
+ * COBOL (PROGRAM-ID), resolving static CALLs, resolving dynamic CALLs by constant propagation
+ * (MOVE constant -> CALL variable), typing unresolved nodes and external-utility nodes,
+ * creating EXEC CICS transaction-transition edges and map-reference edges, and resolving
+ * transaction ID -> program via the transaction definition table. Node IDs are determined
+ * deterministically as strings with a kind-specific prefix.
  */
 public final class CallGraphLinker {
 
-    /** 動的CALLを定数伝播で解決したとき、解決根拠(定数由来)を記録するルールID。 */
+    /** Rule ID that records the resolution basis (constant-derived) when a dynamic CALL is resolved by constant propagation. */
     public static final String DYNAMIC_CALL_RESOLVED_RULE_ID = "callgraph-dynamic-call";
-    /** 動的CALLを解決できなかったことを記録するルールID。 */
+    /** Rule ID that records that a dynamic CALL could not be resolved. */
     public static final String DYNAMIC_CALL_UNRESOLVED_RULE_ID = "callgraph-dynamic-call-unresolved";
-    /** トランザクションIDをプログラムへ解決できなかったことを記録するルールID。 */
+    /** Rule ID that records that a transaction ID could not be resolved to a program. */
     public static final String TRANSACTION_UNRESOLVED_RULE_ID = "callgraph-transaction-unresolved";
 
     private static final Set<String> EXTERNAL_UTILITIES = Set.of("DFSORT", "IDCAMS", "IEBGENER");
-    /** ロードライブラリ指定のDD名。データセット参照辺の対象にしない。 */
+    /** DD names that designate a load library. Excluded from being the target of a dataset-reference edge. */
     private static final Set<String> LIBRARY_DD_NAMES = Set.of("STEPLIB", "JOBLIB");
 
-    // ノードIDの種別接頭辞
+    // Kind-specific prefixes for node IDs
     private static final String PROGRAM_ID_PREFIX = "program:";
     private static final String JOB_ID_PREFIX = "job:";
     private static final String STEP_ID_PREFIX = "step:";
@@ -82,7 +83,7 @@ public final class CallGraphLinker {
     private final List<Finding> findings = new ArrayList<>();
     private final Map<CallGraphEdge, Set<String>> dynamicCallVariables = new HashMap<>();
     private final Set<String> knownPrograms = new TreeSet<>();
-    /** 出現したトランザクションIDと、finding位置に使う代表範囲(最初の出現)。 */
+    /** Transaction IDs encountered, with the representative range (first occurrence) used for finding locations. */
     private final Map<String, SourceRange> transactionRanges = new TreeMap<>();
 
     private CallGraphLinker(LinkerInput input) {
@@ -95,7 +96,7 @@ public final class CallGraphLinker {
 
     private LinkResult build() {
         for (CobolSemanticModel model : input.cobolModels()) {
-            // 呼出先側(EXEC PGM=・CALL・XCTL等)と同じID生成規則(大文字化)で実体ノードを作る
+            // Create the entity node using the same ID-generation rule (uppercasing) as the callee side (EXEC PGM=, CALL, XCTL, etc.)
             String programName = model.programId().toUpperCase(Locale.ROOT);
             knownPrograms.add(programName);
             putNode(new CallGraphNode(programId(programName), NodeKind.PROGRAM, programName));
@@ -121,7 +122,7 @@ public final class CallGraphLinker {
                 dynamicCallVariables);
     }
 
-    // ---- JCL: ジョブ・ステップ・EXEC PGM=・データセット参照 ----
+    // ---- JCL: job, step, EXEC PGM=, dataset reference ----
 
     private void linkJobs() {
         for (JclJobModel job : input.jobs()) {
@@ -129,7 +130,7 @@ public final class CallGraphLinker {
             putNode(new CallGraphNode(jobNodeId, NodeKind.JOB, job.jobName()));
             for (JclStep step : job.steps()) {
                 if (step.execKind() != JclExecKind.PGM) {
-                    // PROC呼出ステップ自体はノードにしない(展開後のPGMステップが実体を担う)
+                    // A PROC-invoking step itself is not made a node (the expanded PGM step carries the substance)
                     continue;
                 }
                 String stepNodeId = STEP_ID_PREFIX + job.jobName() + "." + step.name();
@@ -152,7 +153,7 @@ public final class CallGraphLinker {
         }
     }
 
-    /** EXEC PGM= の対象名からノードを確保し、そのIDを返す(プログラム・外部ユーティリティ)。 */
+    /** Ensures a node for the EXEC PGM= target name and returns its ID (a program or an external utility). */
     private String executionTargetNode(String target) {
         String name = target.toUpperCase(Locale.ROOT);
         if (EXTERNAL_UTILITIES.contains(name)) {
@@ -164,7 +165,7 @@ public final class CallGraphLinker {
         return ensureProgramNode(name);
     }
 
-    /** プログラムノードを確保してIDを返す。意味モデルの無いものは外部プログラムとして型付けする。 */
+    /** Ensures a program node and returns its ID. One without a semantic model is typed as an external program. */
     private String ensureProgramNode(String programName) {
         String id = programId(programName);
         if (!nodes.containsKey(id)) {
@@ -178,7 +179,7 @@ public final class CallGraphLinker {
         return PROGRAM_ID_PREFIX + programName;
     }
 
-    // ---- CALL: 静的・動的(定数伝播) ----
+    // ---- CALL: static and dynamic (constant propagation) ----
 
     private void linkCalls() {
         for (CobolSemanticModel model : input.cobolModels()) {
@@ -221,9 +222,10 @@ public final class CallGraphLinker {
     }
 
     /**
-     * EXEC CICS のオペランド値を、辺を張る対象の名前の集合へ解決する。値が当該プログラムの
-     * データ項目名であれば変数指定であり、MOVE 定数伝播で解決する。定数を特定できない変数は
-     * 空集合を返し、データ名でなければ定数指定としてそのまま返す。
+     * Resolves an EXEC CICS operand value into the set of names to draw an edge to. If the
+     * value is a data item name in the program, it is a variable reference and is resolved by
+     * MOVE constant propagation. A variable whose constant cannot be identified returns an
+     * empty set; a value that is not a data name is a literal and is returned as-is.
      */
     private static Set<String> resolveCicsOperand(String operand, Set<String> dataNames,
             Map<String, Set<String>> constantsByVariable) {
@@ -242,7 +244,7 @@ public final class CallGraphLinker {
         return names;
     }
 
-    /** プログラム内の全MOVE文から「変数名(大文字化)→設定される定数リテラルの集合」を集める。 */
+    /** Collects, from every MOVE statement in the program, "variable name (uppercased) -> the set of constant literals it is set to". */
     private static Map<String, Set<String>> collectMoveConstants(CobolSemanticModel model) {
         Map<String, Set<String>> constants = new TreeMap<>();
         for (Procedure procedure : model.procedures()) {
@@ -272,7 +274,7 @@ public final class CallGraphLinker {
             String[] tokens = matcher.group(3).trim().split("[,\\s]+");
             for (int i = 0; i < tokens.length; i++) {
                 String name = stripTrailingPeriod(tokens[i]);
-                // 修飾名(A OF B・A IN B)は先頭データ名で登録し、修飾部は読み飛ばす
+                // A qualified name (A OF B, A IN B) is registered under its leading data name, and the qualifier part is skipped over
                 while (i + 2 < tokens.length && isQualifierKeyword(tokens[i + 1])) {
                     i += 2;
                 }
@@ -293,7 +295,7 @@ public final class CallGraphLinker {
         return token.endsWith(".") ? token.substring(0, token.length() - 1) : token;
     }
 
-    // ---- EXEC CICS: 遷移辺・マップ参照辺・トランザクション解決 ----
+    // ---- EXEC CICS: transition edges, map-reference edges, transaction resolution ----
 
     private void linkCics() {
         for (CobolSemanticModel model : input.cobolModels()) {
@@ -339,14 +341,14 @@ public final class CallGraphLinker {
                         }
                     }
                     case SQL -> {
-                        // SQLブロックはDb2表参照(linkDb2Tables)で扱う
+                        // An SQL block is handled by the Db2 table reference logic (linkDb2Tables)
                     }
                 }
             }
         }
     }
 
-    /** 出現した各トランザクションIDを定義表でプログラムへ解決し、解決辺を張る。 */
+    /** Resolves each transaction ID encountered to a program via the definition table, and draws a resolution edge. */
     private void resolveTransactions() {
         for (Map.Entry<String, SourceRange> entry : transactionRanges.entrySet()) {
             String transId = entry.getKey();
@@ -363,7 +365,7 @@ public final class CallGraphLinker {
         }
     }
 
-    // ---- Db2表参照 ----
+    // ---- Db2 table reference ----
 
     private void linkDb2Tables() {
         for (Map.Entry<String, List<SqlStatementModel>> entry
@@ -380,7 +382,7 @@ public final class CallGraphLinker {
         }
     }
 
-    // ---- 共通処理 ----
+    // ---- Common processing ----
 
     private void putNode(CallGraphNode node) {
         nodes.putIfAbsent(node.id(), node);
@@ -392,8 +394,9 @@ public final class CallGraphLinker {
     }
 
     /**
-     * 辺を1本足し、その辺を返す。seq は {@link #numberBySourceOrder} が最後にまとめて振るため、
-     * ここでは 0 のままとする。既出の辺は1本へ畳み、行は最初の出現のものを残す。
+     * Adds one edge and returns it. seq is left at 0 here, since {@link #numberBySourceOrder}
+     * assigns it in bulk at the end. A previously seen edge is folded into one, keeping the
+     * line from its first occurrence.
      */
     private CallGraphEdge addEdge(String fromId, String toId, EdgeKind kind, Resolution resolution,
             Integer line) {
@@ -403,11 +406,14 @@ public final class CallGraphLinker {
     }
 
     /**
-     * 呼出元ノードごとに、原本の順序(呼出箇所の行の昇順、行の分からない辺はその後ろ)で seq を
-     * 1から振り直す。辺を足す処理は JCL・CALL・EXEC CICS・Db2表と分かれており、足した順のままでは
-     * 同じ呼出元の辺が原本の順に並ばない(CICS の XCTL が、後の行の CALL より後ろに来る)。
+     * For each caller node, renumbers seq from 1 in source order (ascending by the call site's
+     * line, with an edge whose line is unknown placed after those). The logic that adds edges
+     * is split across JCL, CALL, EXEC CICS, and Db2 tables, so left in add order the edges from
+     * the same caller would not appear in source order (CICS's XCTL would come after a CALL on
+     * a later line).
      *
-     * <p>行の並び(集合の反復順)は足した順のまま変えない。永続化はその順で行IDを振る。
+     * <p>The ordering of rows (the set's iteration order) is left unchanged, in add order.
+     * Persistence assigns row IDs in that order.
      */
     private static Set<CallGraphEdge> numberBySourceOrder(Set<CallGraphEdge> edges) {
         Map<String, List<CallGraphEdge>> byFrom = new LinkedHashMap<>();

@@ -14,7 +14,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** R002 未使用データ項目の合成fixture検証。 */
+/** Synthetic fixture verification for R002 unused data items. */
 class UnusedDataItemRuleTest {
 
     @TempDir

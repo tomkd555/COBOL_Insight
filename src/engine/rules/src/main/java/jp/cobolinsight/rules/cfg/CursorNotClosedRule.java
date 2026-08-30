@@ -24,8 +24,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * R019 カーソルクローズ漏れ。EXEC SQL の DECLARE CURSOR・OPEN・CLOSE を突合し、DECLARE かつ
- * OPEN されているが CLOSE されないカーソルを検出する。CLOSE 漏れは接続資源を保持し続ける。
+ * R019 Missing cursor close. Cross-references EXEC SQL's DECLARE CURSOR, OPEN, and CLOSE to
+ * detect cursors that are both DECLAREd and OPENed but never CLOSEd. A missing CLOSE keeps
+ * holding onto connection resources.
  */
 public final class CursorNotClosedRule implements Rule {
 
@@ -102,7 +103,7 @@ public final class CursorNotClosedRule implements Rule {
         return findings;
     }
 
-    /** EXEC SQL を取り除き、単一空白へ整形した本体。行頭一致の OPEN/CLOSE 判定に使う。 */
+    /** The body with EXEC SQL stripped off and whitespace collapsed to single spaces. Used for line-start OPEN/CLOSE matching. */
     private static String sqlBody(String blockText) {
         String normalized = blockText.replaceAll("\\s+", " ").trim();
         int index = normalized.toUpperCase(Locale.ROOT).indexOf("EXEC SQL");

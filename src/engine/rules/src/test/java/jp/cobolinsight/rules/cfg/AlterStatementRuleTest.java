@@ -12,7 +12,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** R010 ALTER文の合成fixture検証。 */
+/** R010 synthetic fixture verification for the ALTER statement. */
 class AlterStatementRuleTest {
 
     @TempDir

@@ -13,7 +13,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** R023 パラグラフ・セクション名の重複の合成fixture検証。 */
+/** Synthetic fixture verification for R023 duplicate paragraph/section names. */
 class DuplicateProcedureNameRuleTest {
 
     @TempDir

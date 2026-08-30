@@ -30,10 +30,11 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
- * CFG段ルールのテスト補助。samples および合成ソースを実パーサーで解析し、構築済みCFG・
- * SourceTextIndex・BmsMapset を artifact として載せた AnalysisContext を組み立てる。
- * CFG は {@link CfgBuilder#build} を各 model に適用し {@link ControlFlowGraphs} で束ねる
- * (正規化前の構築済みCFG。GotoNormalizer は使わない)。
+ * Test helper for the CFG-stage rules. Parses samples and synthetic sources with the real
+ * parsers and assembles an AnalysisContext carrying the built CFGs, SourceTextIndex and
+ * BmsMapset as artifacts. The CFG is built by applying {@link CfgBuilder#build} to each model
+ * and bundling the results with {@link ControlFlowGraphs}
+ * (a pre-normalization CFG; GotoNormalizer is not applied).
  */
 final class CfgFixtures {
 
@@ -44,7 +45,7 @@ final class CfgFixtures {
     private CfgFixtures() {
     }
 
-    /** 合成fixtureテキストをファイルへ書き出し、実パーサーで解析する。 */
+    /** Writes a synthetic fixture text to a file and parses it with the real parser. */
     static CobolSemanticModel parse(Path dir, String fileName, String text, Path... copybookDirs) {
         Path file = dir.resolve(fileName);
         try {
@@ -58,7 +59,7 @@ final class CfgFixtures {
                 fileName + " のパースが失敗した: " + outcome.failureFinding().orElse(null)));
     }
 
-    /** model と texts から、CFGを構築して載せた CONTROL_FLOW 段の AnalysisContext を組む。 */
+    /** Builds a CONTROL_FLOW-stage AnalysisContext from models and texts, with the CFG built and attached. */
     static AnalysisContext context(List<CobolSemanticModel> models, Map<String, String> texts) {
         return context(models, texts, List.of(), List.of());
     }
@@ -76,7 +77,7 @@ final class CfgFixtures {
                 artifacts);
     }
 
-    /** samples 全体(cobol 9本+copybook+BMS)を解析した CONTROL_FLOW 段の AnalysisContext。 */
+    /** CONTROL_FLOW-stage AnalysisContext parsed from the whole samples set (9 cobol files + copybook + BMS). */
     static synchronized AnalysisContext samples() {
         if (samplesContext != null) {
             return samplesContext;
@@ -104,7 +105,7 @@ final class CfgFixtures {
         return samplesContext;
     }
 
-    /** samples の cobol/<name>.cbl と一致する sourceFile を持つ model を返す。 */
+    /** Returns the model whose sourceFile matches samples/cobol/<name>.cbl. */
     static String samplesFile(String cobolBaseName) {
         return SAMPLES.resolve("cobol").resolve(cobolBaseName).toString();
     }
@@ -130,8 +131,8 @@ final class CfgFixtures {
     }
 
     /**
-     * テキストを DecodedSource へ包む。offsets は文字位置からUTF-8バイト位置への対応表であり、
-     * サロゲートペアの2文字目にもコードポイント先頭のバイト位置を入れる。
+     * Wraps text in a DecodedSource. offsets is a mapping from character position to UTF-8 byte
+     * position; the second char of a surrogate pair also gets the byte position of the code point's start.
      */
     static DecodedSource decoded(String path, String text) {
         int[] offsets = new int[text.length()];

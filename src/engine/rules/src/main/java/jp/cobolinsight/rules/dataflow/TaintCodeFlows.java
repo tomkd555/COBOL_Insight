@@ -17,9 +17,9 @@ import java.util.Locale;
 import java.util.Optional;
 
 /**
- * 汚染追跡由来の finding へ載せる経路(SARIF の codeFlows)を組む共有ユーティリティ。経路の
- * 途中のステップはパーサーが与えた文の原位置を指し、sink のステップは finding の物理位置と
- * 同じ位置を指す。
+ * Shared utility that builds the path (SARIF's codeFlows) attached to a taint-tracking-derived
+ * finding. An intermediate step of the path points to the statement's original position as given
+ * by the parser, and the sink step points to the same position as the finding's physical location.
  */
 final class TaintCodeFlows {
 
@@ -27,9 +27,10 @@ final class TaintCodeFlows {
     }
 
     /**
-     * 汚染下の変数ごとに、汚染源から sink までの経路を1本ずつ組む。sinkAction は sink の
-     * ステップの説明で「(変数) を」に続けて用いる語句。機密(SENSITIVE)の汚染源は文を持たない
-     * 宣言のため、経路の先頭へデータ部の宣言位置を1ステップ足す。
+     * For each tainted variable, builds one path from the taint source to the sink. sinkAction is
+     * the phrase used in the sink step's description, following "(変数) を" ("the variable"). Because
+     * a SENSITIVE taint source is a declaration with no statement, a step for the data-division
+     * declaration position is prepended to the path.
      */
     static List<CodeFlow> of(CobolSemanticModel model, ProgramDataFlow df, CfgNode sinkNode,
             TaintKind kind, Collection<String> variables, SourcePosition sinkPosition,

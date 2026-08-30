@@ -23,24 +23,30 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 前進データフローで各変数の整数区間 {@link ValueInterval} を追跡する区間値域解析。束は変数ごとの
- * 区間の直積、合流は区間包(hull)。転送関数は MOVE/SET/ADD/SUBTRACT/MULTIPLY/COMPUTE と
- * PERFORM VARYING の制御変数の歩進を区間演算で求め、追跡できない代入・外部入力・PIC 不明の項目は
- * 非有界とする。
+ * Interval value-range analysis that tracks each variable's integer interval
+ * {@link ValueInterval} with a forward data flow. The lattice is the product of each variable's
+ * interval; the join is the interval hull. The transfer function computes the interval
+ * arithmetic for MOVE/SET/ADD/SUBTRACT/MULTIPLY/COMPUTE and the step of a PERFORM VARYING
+ * control variable; assignments that cannot be tracked, external input, and items with unknown
+ * PIC are treated as unbounded.
  *
- * <p>区間束は無限昇鎖のため、ループ後行辺の合流点(後退辺の終端ノード)で widening を適用して有限回で
- * 収束させる。widening 後に PERFORM UNTIL の継続条件から narrowing で上下端を絞り精度を回復する。
- * 絞った状態を流すのは反復本体へ向かう辺に限り、ループ脱出辺へは継続条件の否定で絞った状態を流す。
- * 分岐(IF/EVALUATE)は true/false 辺の区別が CFG に無いため、区間の絞り込みを行わず過大近似のまま
- * 残す。
+ * <p>Since the interval lattice has infinite ascending chains, widening is applied at the join
+ * point of a loop's back edge (the node a back edge terminates at) to force convergence in a
+ * finite number of steps. After widening, narrowing tightens the bounds from a PERFORM UNTIL's
+ * continuation condition to recover precision. The tightened state is propagated only along the
+ * edge into the loop body; the loop-exit edge instead receives the state tightened by the
+ * negation of the continuation condition. A branch (IF/EVALUATE) is left over-approximated
+ * without any interval tightening, since the CFG has no true/false edge distinction.
  *
- * <p>段落 PERFORM VARYING は文テキストに FROM/BY/UNTIL が残るため制御変数を初期値から歩進で追跡する。
- * インライン PERFORM は VARYING/FROM/BY 句が conditionText へ残らず UNTIL 条件のみが得られるため、
- * 制御変数の範囲は UNTIL 境界からのみ絞る(昇順ループの下端は 1 と仮定する近似)。
+ * <p>A paragraph PERFORM VARYING keeps FROM/BY/UNTIL in the statement text, so the control
+ * variable is tracked by stepping from its initial value. An inline PERFORM's VARYING/FROM/BY
+ * clauses are not kept in conditionText — only the UNTIL condition is available — so the control
+ * variable's range is tightened only from the UNTIL bound (an approximation that assumes the
+ * lower end of an ascending loop is 1).
  */
 final class IntervalAnalysis {
 
-    /** ループ制御句(VARYING 歩進と UNTIL 継続条件)。header ノードごとに事前解析して保持する。 */
+    /** A loop's control clauses (the VARYING step and the UNTIL continuation condition). Pre-parsed and held per header node. */
     private record LoopClause(String varyingVar, String fromToken, String byToken, Comparison until) {
     }
 
@@ -60,13 +66,13 @@ final class IntervalAnalysis {
         }
     }
 
-    /** 各ノード入口の区間状態(変数名→区間)を返す。CfgNode 同一性で索引化する。 */
+    /** Returns each node's entry interval state (variable name -> interval), indexed by CfgNode identity. */
     static Map<CfgNode, Map<String, ValueInterval>> run(ControlFlowGraph cfg,
             CobolSemanticModel model) {
         return new IntervalAnalysis(model).solve(cfg);
     }
 
-    // ---- データ項目メタから PIC 境界と VALUE 初期値を収集 ----
+    // ---- Collect PIC bounds and VALUE initial values from data item metadata ----
 
     private void collect(DataItem item) {
         String name = item.name().toUpperCase(Locale.ROOT);
@@ -87,7 +93,7 @@ final class IntervalAnalysis {
                 return java.util.Optional.empty();
             }
             int digits = pt.integerDigits();
-            // 19桁以上の整数部は long で表せる範囲を超えるため、境界を持たない(非有界)扱いにする。
+            // An integer part of 19 or more digits exceeds the range representable by long, so treat it as having no bound (unbounded).
             if (digits <= 0 || digits > 18) {
                 return java.util.Optional.empty();
             }
@@ -123,7 +129,7 @@ final class IntervalAnalysis {
         return r;
     }
 
-    // ---- worklist 本体(widening + narrowing) ----
+    // ---- Worklist body (widening + narrowing) ----
 
     private Map<CfgNode, Map<String, ValueInterval>> solve(ControlFlowGraph cfg) {
         Map<CfgNode, LoopClause> loopClauses = loopClauses(cfg);
@@ -132,7 +138,7 @@ final class IntervalAnalysis {
 
         Map<CfgNode, Map<String, ValueInterval>> flowIn = new IdentityHashMap<>();
         Map<CfgNode, Map<String, ValueInterval>> flowOut = new IdentityHashMap<>();
-        // ループ脱出辺へ流す状態。継続条件で絞った flowOut と別に持つ。
+        // The state propagated to a loop-exit edge, held separately from flowOut which is tightened by the continuation condition.
         Map<CfgNode, Map<String, ValueInterval>> exitOut = new IdentityHashMap<>();
         for (CfgNode node : cfg.nodes()) {
             flowIn.put(node, new LinkedHashMap<>());
@@ -143,8 +149,9 @@ final class IntervalAnalysis {
         Deque<CfgNode> work = new ArrayDeque<>(cfg.nodes());
         Set<CfgNode> queued = new LinkedHashSet<>(cfg.nodes());
         long pops = 0;
-        // 取り出し回数の上限は暴走を防ぐ保険である。widening が効いていれば各ノードの状態は有限回で
-        // 安定するため、上限に達するのは widening 点の同定に不備がある場合だけである。
+        // The pop-count cap is a safeguard against runaway loops. If widening is working, each
+        // node's state stabilizes in a finite number of steps, so hitting the cap means the
+        // widening points were identified incorrectly.
         long cap = Math.max(200_000L, (long) cfg.nodes().size() * cfg.nodes().size());
         while (!work.isEmpty()) {
             if (++pops > cap) {
@@ -205,7 +212,7 @@ final class IntervalAnalysis {
         return out;
     }
 
-    /** ループ header の継続条件から制御/被検査変数を絞る。widening 後に適用して精度を回復する。 */
+    /** Tightens the control/tested variable from a loop header's continuation condition. Applied after widening to recover precision. */
     private void narrow(Map<String, ValueInterval> state, LoopClause clause) {
         if (clause == null || clause.until() == null) {
             return;
@@ -216,7 +223,7 @@ final class IntervalAnalysis {
         }
         ValueInterval bound = resolve(cond.boundToken(), state);
         ValueInterval v = state.get(cond.var());
-        // UNTIL が真で反復を止めるため、ループ本体では継続条件(UNTIL の否定)が成り立つ。
+        // The iteration stops when UNTIL becomes true, so the loop body holds under the continuation condition (the negation of UNTIL).
         switch (cond.rel()) {
             case GT -> {
                 if (!bound.hiUnbounded()) {
@@ -244,9 +251,11 @@ final class IntervalAnalysis {
     }
 
     /**
-     * ループ脱出辺へ流す状態を、継続条件の否定(= UNTIL 条件の成立)で絞る。反復は UNTIL が真に
-     * なって初めて止まるため、脱出後の制御変数は境界の外側にある。継続用に絞った区間をそのまま
-     * 流すと、脱出後の参照で区間が実際より狭くなり、範囲超過を見逃す。
+     * Tightens the state propagated to a loop-exit edge by the negation of the continuation
+     * condition (i.e. the UNTIL condition holding). Since the iteration stops only once UNTIL
+     * becomes true, the control variable after exit lies outside the bound. Propagating the
+     * interval tightened for continuation as-is would make the interval narrower than it
+     * actually is at a reference after exit, missing an out-of-range access.
      */
     private void narrowExit(Map<String, ValueInterval> state, Map<String, ValueInterval> in,
             LoopClause clause) {
@@ -283,8 +292,9 @@ final class IntervalAnalysis {
     }
 
     /**
-     * ループ header ごとの脱出先。UNTIL を持つノードから出る辺のうち、自ノードへ戻ってこない
-     * 先を脱出辺とみなす。戻ってくる先は反復の本体である。
+     * The exit targets for each loop header. Of the edges leaving a node that has UNTIL, one
+     * that does not lead back to the node itself is treated as an exit edge; one that does lead
+     * back is the loop body.
      */
     private static Map<CfgNode, Set<CfgNode>> loopExitTargets(ControlFlowGraph cfg,
             Map<CfgNode, LoopClause> loopClauses) {
@@ -304,7 +314,7 @@ final class IntervalAnalysis {
         return exits;
     }
 
-    // ---- 転送関数 ----
+    // ---- Transfer function ----
 
     private Map<String, ValueInterval> transfer(CfgNode node, Map<String, ValueInterval> in,
             LoopClause clause) {
@@ -353,13 +363,16 @@ final class IntervalAnalysis {
     }
 
     /**
-     * インライン PERFORM の制御変数を UNTIL 継続条件から絞る。パーサーは inline PERFORM の
-     * VARYING/FROM/BY 句を conditionText へ残さず UNTIL 条件のみを渡すため、初期値・歩進が不明で
-     * ある。昇順ループ(&gt;/&gt;=)は VARYING の常用形に合わせ下端を 1 と仮定し、上端を条件境界で絞る。
+     * Tightens an inline PERFORM's control variable from its UNTIL continuation condition. The
+     * parser does not keep an inline PERFORM's VARYING/FROM/BY clauses in conditionText and
+     * passes only the UNTIL condition, so the initial value and step are unknown. For an
+     * ascending loop (&gt;/&gt;=), the lower end is assumed to be 1, matching the common VARYING
+     * idiom, and the upper end is tightened by the condition's bound.
      *
-     * <p>ループ突入前の区間とは合流させない。反復の本体は継続条件が成り立つときにしか実行されず、
-     * 突入前の値(VALUE ZERO の 0 など)はそこに現れない。合流させると仮定した下端 1 が失われ、
-     * 表の添字が 0 以下になり得るという結論だけが残る。
+     * <p>This is not joined with the interval from before the loop is entered. The loop body
+     * runs only while the continuation condition holds, so the pre-entry value (e.g. the 0 from
+     * VALUE ZERO) never appears there. Joining it in would lose the assumed lower bound of 1,
+     * leaving only the conclusion that the table subscript could be 0 or less.
      */
     private void inlineLoopControl(LoopClause clause, Map<String, ValueInterval> in,
             Map<String, ValueInterval> out) {
@@ -510,7 +523,7 @@ final class IntervalAnalysis {
         }
     }
 
-    /** INITIALIZE は数字項目を 0 で埋める。PIC 境界を持たない項目は数字か判別できず非有界とする。 */
+    /** INITIALIZE fills a numeric item with 0. An item without a PIC bound cannot be determined to be numeric, so it is treated as unbounded. */
     private void initialize(String u, Map<String, ValueInterval> out) {
         int replacing = kw(u, "REPLACING");
         String items = replacing >= 0 ? u.substring(0, replacing) : u;
@@ -525,7 +538,7 @@ final class IntervalAnalysis {
         }
     }
 
-    // ---- オペランド解決 ----
+    // ---- Operand resolution ----
 
     private ValueInterval sumOperands(String region, Map<String, ValueInterval> state) {
         ValueInterval sum = ValueInterval.point(0);
@@ -581,7 +594,7 @@ final class IntervalAnalysis {
         }
     }
 
-    // ---- ループ句の事前解析と後退辺(widening 点)検出 ----
+    // ---- Pre-parsing loop clauses and detecting back edges (widening points) ----
 
     private Map<CfgNode, LoopClause> loopClauses(ControlFlowGraph cfg) {
         Map<CfgNode, LoopClause> map = new IdentityHashMap<>();
@@ -644,7 +657,7 @@ final class IntervalAnalysis {
         return new Comparison(var, rel, bound);
     }
 
-    /** 継続条件の関係演算子の位置 [開始,終了) を返す。無ければ null。 */
+    /** Returns the position [start,end) of the continuation condition's relational operator. null if absent. */
     private static int[] findRelation(String region) {
         String[] worded = {" NOT = ", " NOT EQUAL ", " GREATER THAN OR EQUAL ",
                 " LESS THAN OR EQUAL ", " GREATER THAN ", " LESS THAN ", " EQUAL "};
@@ -677,7 +690,7 @@ final class IntervalAnalysis {
         };
     }
 
-    /** 後退辺の終端ノード(ループ header)を widening 点とする。全サイクルが1点以上を含む。 */
+    /** Treats the node a back edge terminates at (the loop header) as a widening point. Every cycle contains at least one such point. */
     private static Set<CfgNode> wideningNodes(ControlFlowGraph cfg) {
         Map<CfgNode, Set<CfgNode>> reach = new IdentityHashMap<>();
         for (CfgNode node : cfg.nodes()) {
@@ -710,24 +723,24 @@ final class IntervalAnalysis {
         return visited;
     }
 
-    // ---- テキスト操作(DefUseAnalyzer の text 方式に準拠) ----
+    // ---- Text manipulation (following DefUseAnalyzer's text approach) ----
 
     private static final Set<String> RESERVED = Set.of(
-            // 動詞
+            // verbs
             "MOVE", "SET", "COMPUTE", "ADD", "SUBTRACT", "MULTIPLY", "DIVIDE", "INITIALIZE",
             "DISPLAY", "ACCEPT", "CALL", "READ", "WRITE", "REWRITE", "STRING", "UNSTRING",
             "PERFORM", "GOBACK", "STOP", "RUN", "EXIT", "PROGRAM", "CONTINUE",
-            // 句・接続詞
+            // clauses / conjunctions
             "ROUNDED", "CORRESPONDING", "CORR", "DEPENDING", "ON", "OFF", "SIZE", "ERROR",
             "TO", "FROM", "BY", "INTO", "GIVING", "REMAINDER", "UP", "DOWN", "THRU", "THROUGH",
             "UNTIL", "VARYING", "AFTER", "BEFORE", "TEST", "TIMES", "TALLYING", "USING",
             "RETURNING", "REPLACING", "COUNT", "OVERFLOW", "POINTER", "DELIMITED", "DELIMITER",
             "AND", "OR", "NOT", "IS", "THAN", "WITH", "OF", "IN",
-            // 定数図形
+            // figurative constants
             "ZERO", "ZEROS", "ZEROES", "SPACE", "SPACES", "HIGH-VALUE", "HIGH-VALUES",
             "LOW-VALUE", "LOW-VALUES", "QUOTE", "QUOTES", "GREATER", "LESS", "EQUAL");
 
-    /** 括弧の外側にある最初のデータ名/数値リテラルのトークン。無ければ null。 */
+    /** The first data-name/numeric-literal token outside parentheses. null if absent. */
     private static String firstOperandToken(String region) {
         int depth = 0;
         int i = 0;
@@ -765,7 +778,7 @@ final class IntervalAnalysis {
         return null;
     }
 
-    /** 括弧の外側にある最初のデータ名(数値・予約語は除外)。無ければ null。 */
+    /** The first data name outside parentheses (numbers and reserved words are excluded). null if absent. */
     private static String firstNameToken(String region) {
         int depth = 0;
         int i = 0;
@@ -797,7 +810,7 @@ final class IntervalAnalysis {
         return null;
     }
 
-    /** 括弧の外側にあるデータ名(添字・部分参照は除外、予約語・数値は除外)を出現順に返す。 */
+    /** Returns, in order of appearance, the data names outside parentheses (subscripts and reference modifications, reserved words, and numbers are excluded). */
     private static Set<String> topLevelNames(String region) {
         Set<String> out = new LinkedHashSet<>();
         int depth = 0;
@@ -822,7 +835,7 @@ final class IntervalAnalysis {
         return out;
     }
 
-    /** 括弧の外側にあるオペランド(データ名・数値リテラル)を出現順に返す。 */
+    /** Returns, in order of appearance, the operands (data names, numeric literals) outside parentheses. */
     private static List<String> operandTokens(String region) {
         List<String> out = new java.util.ArrayList<>();
         int depth = 0;
@@ -888,7 +901,7 @@ final class IntervalAnalysis {
         return Character.isLetterOrDigit(c) || c == '-';
     }
 
-    /** 文字列リテラルを空白化し、大文字化し、空白を単一空白へ畳み、前後を空白で囲む。 */
+    /** Blanks out string literals, uppercases, collapses whitespace to single spaces, and pads front and back with a space. */
     private static String clean(String text) {
         String stripped = stripLiterals(text).toUpperCase(Locale.ROOT)
                 .replaceAll("\\s+", " ").trim();

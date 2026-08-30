@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** 生存解析(後進): IN=(OUT-def)∪use の基本ケースを liveOut で検証する。 */
+/** Liveness analysis (backward): verifies the basic case IN=(OUT-def) union use via liveOut. */
 class LivenessTest {
 
     private static final String SRC = InlinePrograms.source(

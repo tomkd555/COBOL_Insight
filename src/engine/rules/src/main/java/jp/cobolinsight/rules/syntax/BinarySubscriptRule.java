@@ -24,17 +24,21 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * R006 添字への二進項目未使用。表(OCCURS句を持つ項目、またはその内側の項目)への添字付き参照の
- * うち、添字に使うデータ項目のUSAGE句がBINARY(COMP)以外である箇所を検出する。DISPLAY形式の
- * 添字は参照のたびに二進数への変換を伴い、表参照の性能を落とす。文テキスト上の
- * 「名前(添字)」形式を走査し、INDEXED BY の指標名やリテラル添字は対象外とする。
+ * R006 Non-binary item used as a subscript. Among subscripted references to a table (an
+ * item with an OCCURS clause, or an item nested inside one), detects places where the
+ * data item used as the subscript has a USAGE clause other than BINARY (COMP). A DISPLAY-
+ * format subscript is converted to binary on every reference, which slows down table
+ * access. Scans the "name(subscript)" form in the statement text; an INDEXED BY index name
+ * or a literal subscript is excluded.
  */
 public final class BinarySubscriptRule implements Rule {
 
-    // 添字自体が添字付き参照(入れ子)の場合も外側の表参照を捕捉するため、括弧1段の入れ子を許す。
+    // Allow one level of nested parentheses so that the outer table reference is still
+    // captured when the subscript itself is a subscripted (nested) reference.
     private static final Pattern SUBSCRIPTED = Pattern.compile(
             "([\\p{L}\\p{N}][\\p{L}\\p{N}-]*)\\s*\\(((?:[^()]|\\([^()]*\\))*)\\)");
-    // マッパーはUSAGE句の綴りをそのまま保持するため、COMPUTATIONALの完全綴りも含める。
+    // The mapper preserves the USAGE clause spelling as-is, so include the full spelling of
+    // COMPUTATIONAL as well.
     private static final Set<String> BINARY_USAGES = Set.of("COMP", "COMP-4", "COMP-5",
             "COMPUTATIONAL", "COMPUTATIONAL-4", "COMPUTATIONAL-5", "BINARY", "INDEX");
 
@@ -92,7 +96,7 @@ public final class BinarySubscriptRule implements Rule {
         return findings;
     }
 
-    /** 項目名→定義の索引と、添字付き参照の対象になりうる名前(自身または祖先がOCCURSを持つ)を集める。 */
+    /** Collects an item-name-to-definition index, plus the names that can be subscripted (the item itself or an ancestor has OCCURS). */
     private static void collect(List<DataItem> items, boolean ancestorOccurs,
             Map<String, DataItem> itemsByName, Set<String> tableNames) {
         for (DataItem item : items) {

@@ -13,7 +13,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** R015 REDEFINES の項目長・境界不一致の合成fixture検証。 */
+/** R015 synthetic fixture verification for REDEFINES length/boundary mismatches. */
 class RedefinesMismatchRuleTest {
 
     @TempDir

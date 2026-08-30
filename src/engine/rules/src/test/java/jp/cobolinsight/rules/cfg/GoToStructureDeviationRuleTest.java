@@ -12,7 +12,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** R009 節をまたぐGO TOの合成fixture検証。 */
+/** R009 synthetic fixture verification for a GO TO that crosses sections. */
 class GoToStructureDeviationRuleTest {
 
     @TempDir

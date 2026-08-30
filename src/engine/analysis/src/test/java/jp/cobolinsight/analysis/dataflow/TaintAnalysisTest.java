@@ -12,7 +12,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** 汚染追跡: 外部入力(ACCEPT)と機密名義の項目について、汚染源から代入先への伝播を検証する。 */
+/** Taint tracking: verifies propagation from source to assignment target for external input (ACCEPT) and sensitively named items. */
 class TaintAnalysisTest {
 
     private static final String SRC = InlinePrograms.source(

@@ -18,9 +18,11 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * {@link ProgramDataFlow} の実装。不動点解析で確定した各ノードの事実集合を保持し、CfgNode の
- * 同一性で引く。区間値域(intervalAt)はノード入口の変数区間を保持し、追跡外は empty を返す。
- * 汚染は伝播元を持つ {@link TaintFact} で保持し、taintedAt は変数名だけを取り出して返す。
+ * Implementation of {@link ProgramDataFlow}. Holds each node's fact set as settled by the
+ * fixed-point analyses, looked up by CfgNode identity. The interval value range (intervalAt)
+ * holds each node's entry variable interval and returns empty when untracked. Taint is held as
+ * {@link TaintFact}, which carries its propagation source; taintedAt extracts and returns just
+ * the variable names.
  */
 final class ProgramDataFlowFacts implements ProgramDataFlow {
 
@@ -104,8 +106,9 @@ final class ProgramDataFlowFacts implements ProgramDataFlow {
             return List.of();
         }
         String var = normalize(varName);
-        // 汚染源へ向かって幅優先で遡り、最初に到達した汚染源までを経路とする。同一の事実を二度
-        // 展開しないため、ループを含む汚染でも有限で終わる。
+        // Traces back toward the taint source breadth-first, taking the path up to the first
+        // source reached. Because the same fact is never expanded twice, this terminates in
+        // finite time even for taint that involves a loop.
         Deque<TaintFact> queue = new ArrayDeque<>();
         Map<TaintFact, TaintFact> childOf = new LinkedHashMap<>();
         for (TaintFact fact : facts) {
@@ -162,7 +165,7 @@ final class ProgramDataFlowFacts implements ProgramDataFlow {
         return parents == null ? List.of() : parents;
     }
 
-    /** 汚染源から起点の事実までを並べる。CFG ノードを持たない宣言由来の事実は経路に含めない。 */
+    /** Lists the path from the taint source to the originating fact. A declaration-derived fact that has no CFG node is not included in the path. */
     private List<TaintStep> pathFrom(TaintFact source, Map<TaintFact, TaintFact> childOf) {
         List<TaintStep> steps = new ArrayList<>();
         for (TaintFact fact = source; fact != null; fact = childOf.get(fact)) {
@@ -176,8 +179,9 @@ final class ProgramDataFlowFacts implements ProgramDataFlow {
     }
 
     /**
-     * (ノードid, 変数)から、その組を持つ事実へ引く索引。流入集合はノードの同一性で索引化されて
-     * おり反復順が実行間で一定でないため、ノード定義順に走査して決定論的に組み立てる。
+     * An index from (node id, variable) to the facts that carry that pair. Since the incoming
+     * fact sets are indexed by node identity, their iteration order is not stable across runs,
+     * so this is built deterministically by scanning in node definition order.
      */
     private static Map<Integer, Map<String, List<TaintFact>>> indexFacts(List<CfgNode> nodes,
             Map<CfgNode, Set<TaintFact>> factsIn) {

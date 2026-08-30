@@ -13,27 +13,29 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 文テキスト({@link SimpleStatement#text()} / {@link CompoundStatement#conditionText()})の
- * 正規表現解析で、文が定義(代入)する変数と参照する変数を判定する共有ユーティリティ。意味モデルは
- * 文の構成要素を保持せず文テキストだけを持つため、動詞ごとの句(TO・GIVING・INTO など)の位置から
- * 定義側と参照側を切り分ける。
+ * Shared utility that determines the variables a statement defines (assigns to) and the
+ * variables it references, by regex analysis of the statement text
+ * ({@link SimpleStatement#text()} / {@link CompoundStatement#conditionText()}). The semantic
+ * model keeps only the statement text, not its constituent parts, so definition and reference
+ * sides are split from the position of each verb's clauses (TO, GIVING, INTO, and so on).
  *
- * <p>変数名はデータ名トークン(英数字・ハイフン・非ASCII文字の連なりで、少なくとも1文字の
- * 文字を含む)として抽出し、COBOL 予約語・定数図形・数値リテラル・文字列リテラルは除外する。
- * 抽出名は大文字化して正規化する。この判定は近似であり、samples と合成したテストデータを通す
- * 精度を狙う。
+ * <p>Variable names are extracted as data-name tokens (runs of alphanumerics, hyphens, and
+ * non-ASCII characters containing at least one letter character), excluding COBOL reserved
+ * words, figurative constants, numeric literals, and string literals. Extracted names are
+ * normalized by uppercasing. This judgment is approximate and aims for accuracy sufficient to
+ * pass the samples and the synthesized test data.
  */
 final class DefUseAnalyzer {
 
     private DefUseAnalyzer() {
     }
 
-    /** データ名トークン。英数字で始まり英数字で終わり、内部にハイフンを許す。 */
+    /** Data-name token. Starts and ends with an alphanumeric character; hyphens are allowed inside. */
     private static final Pattern TOKEN =
             Pattern.compile("[\\p{L}\\p{N}](?:[\\p{L}\\p{N}-]*[\\p{L}\\p{N}])?");
 
     private static final Set<String> RESERVED = Set.of(
-            // 動詞・句
+            // verbs / clauses
             "MOVE", "TO", "FROM", "GIVING", "BY", "INTO", "COMPUTE", "ADD", "SUBTRACT",
             "MULTIPLY", "DIVIDE", "REMAINDER", "INITIALIZE", "REPLACING", "SET", "UP", "DOWN",
             "READ", "WRITE", "REWRITE", "DELETE", "START", "OPEN", "CLOSE", "ACCEPT", "DISPLAY",
@@ -42,25 +44,25 @@ final class DefUseAnalyzer {
             "BEFORE", "TEST", "CALL", "USING", "RETURNING", "GOBACK", "STOP", "RUN", "EXIT",
             "PROGRAM", "CONTINUE", "NEXT", "SENTENCE", "GO", "DEPENDING", "IF", "THEN", "ELSE",
             "EVALUATE", "WHEN", "ALSO", "INSPECT", "SEARCH", "MERGE", "SORT", "RELEASE", "RETURN",
-            // 終端スコープ
+            // scope terminators
             "END-IF", "END-EVALUATE", "END-PERFORM", "END-COMPUTE", "END-READ", "END-WRITE",
             "END-REWRITE", "END-DELETE", "END-START", "END-STRING", "END-UNSTRING", "END-CALL",
             "END-ADD", "END-SUBTRACT", "END-MULTIPLY", "END-DIVIDE", "END-SEARCH", "END-EXEC",
             "END-RECEIVE",
-            // 関係・論理・修飾
+            // relational / logical / qualifier
             "AND", "OR", "NOT", "IS", "EQUAL", "EQUALS", "GREATER", "LESS", "THAN", "EXCEEDS",
             "OF", "IN", "ROUNDED", "CORRESPONDING", "CORR", "ON", "OFF", "SIZE", "ERROR",
             "INVALID", "KEY", "AT", "END", "NUMERIC", "ALPHABETIC", "ALPHABETIC-LOWER",
             "ALPHABETIC-UPPER", "POSITIVE", "NEGATIVE", "ADVANCING", "LINE", "LINES", "PAGE",
             "UPON", "WITH", "MODE",
-            // CICS / 端末
+            // CICS / terminal
             "EXEC", "SQL", "CICS", "RECEIVE", "SEND", "MAP", "MAPSET", "LENGTH", "RESP", "RESP2",
             "NOHANDLE", "ERASE",
-            // 定数図形
+            // figurative constants
             "ZERO", "ZEROS", "ZEROES", "SPACE", "SPACES", "HIGH-VALUE", "HIGH-VALUES",
             "LOW-VALUE", "LOW-VALUES", "QUOTE", "QUOTES", "NULL", "NULLS", "TRUE", "FALSE", "ALL");
 
-    /** 文が定義・参照する変数を判定する。 */
+    /** Determines the variables a statement defines and references. */
     static DefUse extract(Statement statement) {
         if (statement instanceof SimpleStatement simple) {
             return extractSimple(simple.verb(), simple.text());
@@ -80,8 +82,9 @@ final class DefUseAnalyzer {
     }
 
     /**
-     * ACCEPT・CICS RECEIVE の受信先。EXTERNAL_INPUT 汚染源として汚染追跡が使う。受信先は
-     * 1変数に限り、複数受信先を持つ構文は先頭のデータ名だけを汚染源とする。
+     * The receiving target of ACCEPT / CICS RECEIVE. Used by taint tracking as an
+     * EXTERNAL_INPUT taint source. Limited to one variable; a syntax with multiple receiving
+     * targets treats only the first data name as the taint source.
      */
     static Set<String> externalInputTargets(Statement statement) {
         if (!(statement instanceof SimpleStatement simple)) {
@@ -121,7 +124,8 @@ final class DefUseAnalyzer {
             case "UNSTRING" -> unstring(u);
             case "CALL" -> call(u);
             case "PERFORM" -> performVars(text, true, true);
-            // WRITE/REWRITE/GOBACK/STOP/EXIT/CONTINUE 等: 名を全て参照扱い(保守的・定義なし)
+            // WRITE/REWRITE/GOBACK/STOP/EXIT/CONTINUE etc.: treat all names as references
+            // (conservative, no definitions)
             default -> new DefUse(Set.of(), names(u));
         };
     }
@@ -340,11 +344,12 @@ final class DefUseAnalyzer {
     }
 
     /**
-     * PERFORM の制御句(段落 PERFORM の text、またはインライン PERFORM の conditionText)から
-     * ループ制御変数(VARYING/AFTER の対象=定義)と、FROM/BY/UNTIL/TIMES の被参照変数を判定する。
+     * From a PERFORM's control clauses (the text of a paragraph PERFORM, or the conditionText
+     * of an inline PERFORM), determines the loop control variables (the VARYING/AFTER targets =
+     * definitions) and the referenced variables of FROM/BY/UNTIL/TIMES.
      *
-     * @param hasParagraph      先頭に段落名を含むか(段落 PERFORM は true、インラインは false)
-     * @param emptyIfNoControl  制御句が無いとき空を返すか(段落 PERFORM の純粋呼出は true)
+     * @param hasParagraph      whether the head contains a paragraph name (true for a paragraph PERFORM, false for inline)
+     * @param emptyIfNoControl  whether to return empty when there is no control clause (true for a plain paragraph-PERFORM call)
      */
     private static DefUse performVars(String text, boolean hasParagraph, boolean emptyIfNoControl) {
         String u = clean(text);
@@ -388,9 +393,9 @@ final class DefUseAnalyzer {
         return new DefUse(defs, uses);
     }
 
-    // ---- トークン抽出とテキスト操作 ----
+    // ---- Token extraction and text manipulation ----
 
-    /** 括弧の外側・内側に分けた変数名。受信側の外側=定義、内側(添字・部分参照)=参照。 */
+    /** Variable names split into outside- and inside-parentheses. On the receiving side, outside = definition, inside (subscript / reference modification) = reference. */
     private record Segment(Set<String> outside, Set<String> inside) {
     }
 
@@ -465,13 +470,13 @@ final class DefUseAnalyzer {
         return hasLetter && !RESERVED.contains(tok);
     }
 
-    /** 文字列リテラルを空白化し、大文字化し、空白を単一空白へ畳み、前後を空白で囲む。 */
+    /** Blanks out string literals, uppercases, collapses whitespace to single spaces, and pads front and back with a space. */
     private static String clean(String text) {
         String stripped = stripLiterals(text).toUpperCase(Locale.ROOT).replaceAll("\\s+", " ").trim();
         return " " + stripped + " ";
     }
 
-    /** リテラルを同じ文字数の空白へ置き換える。長さが変わらないため桁位置の計算に影響しない。 */
+    /** Replaces literals with the same number of blank characters. Since the length does not change, this does not affect column-position calculations. */
     private static String stripLiterals(String text) {
         StringBuilder sb = new StringBuilder(text.length());
         char quote = 0;
@@ -492,12 +497,12 @@ final class DefUseAnalyzer {
         return sb.toString();
     }
 
-    /** 空白で囲まれたキーワードの先頭位置(先頭空白の位置)。無ければ -1。 */
+    /** Position of a space-delimited keyword's start (the position of the leading space). -1 if absent. */
     private static int kw(String u, String keyword) {
         return u.indexOf(" " + keyword + " ");
     }
 
-    /** keywordStart は先頭空白の位置。キーワード直後(次の空白の後)から末尾までを返す。 */
+    /** keywordStart is the position of the leading space. Returns everything from right after the keyword (after the next space) to the end. */
     private static String tail(String u, int keywordStart, String keyword) {
         return u.substring(keywordStart + keyword.length() + 2);
     }

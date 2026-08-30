@@ -10,7 +10,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** 文種別ごとの def/use 抽出と、予約語・リテラル・数値の除外を検証する。 */
+/** Verifies def/use extraction per statement kind, and the exclusion of reserved words, literals, and numbers. */
 class DefUseAnalyzerTest {
 
     private static SimpleStatement simple(String verb, String text) {

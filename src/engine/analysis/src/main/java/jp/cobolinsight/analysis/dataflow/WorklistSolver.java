@@ -12,13 +12,16 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 有限束上の may 解析(合流=∪)を、方向と転送関数を差し替えて回す汎用 worklist ソルバ。
- * 前進(合流=先行ノードの流出)と後進(合流=後続ノードの流出)を切り替えられる。合流が単調な
- * 転送関数に対し、流出集合は反復ごとに非減少で有限束のため必ず不動点へ収束する。
+ * A generic worklist solver for a may analysis (join = union) over a finite lattice, run with a
+ * swappable direction and transfer function. Switches between forward (join = predecessor
+ * outflow) and backward (join = successor outflow). For a transfer function monotone with
+ * respect to the join, the outflow set is non-decreasing on each iteration and, being a finite
+ * lattice, always converges to a fixed point.
  *
- * <p>結果は各ノードの「流入」集合(流れの向きで転送関数に入る値)を返す。前進解析ではノード
- * 入口の値、後進解析ではノード出口の値に相当する。ノードは同一性({@code IdentityHashMap})で
- * 索引化し、{@link ControlFlowGraph#nodes()} 順に初期投入して決定論的に収束する。
+ * <p>The result is each node's "inflow" set (the value entering the transfer function in the
+ * direction of flow). This is the value at a node's entry for a forward analysis, and at a
+ * node's exit for a backward analysis. Nodes are indexed by identity ({@code IdentityHashMap})
+ * and seeded in {@link ControlFlowGraph#nodes()} order, so convergence is deterministic.
  */
 final class WorklistSolver {
 
@@ -26,7 +29,7 @@ final class WorklistSolver {
         FORWARD, BACKWARD
     }
 
-    /** ノードの流入集合から流出集合を計算する転送関数。合流に対して単調であること。 */
+    /** A transfer function that computes a node's outflow set from its inflow set. Must be monotone with respect to the join. */
     interface Transfer<T> {
         Set<T> apply(CfgNode node, Set<T> input);
     }
@@ -35,9 +38,9 @@ final class WorklistSolver {
     }
 
     /**
-     * 不動点を計算し、各ノードの流入集合を返す。
+     * Computes the fixed point and returns each node's inflow set.
      *
-     * @param boundary 境界ノード(前進=entry、後進=exit)の流入に注入する初期集合
+     * @param boundary the initial set injected into the boundary node's inflow (entry for forward, exit for backward)
      */
     static <T> Map<CfgNode, Set<T>> solve(ControlFlowGraph cfg, Direction direction,
             Set<T> boundary, Transfer<T> transfer) {

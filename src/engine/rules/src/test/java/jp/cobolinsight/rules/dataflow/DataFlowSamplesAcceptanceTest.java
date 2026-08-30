@@ -12,10 +12,11 @@ import java.util.stream.Collectors;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * samples に対するデータフロー段ルールの受入。samples/expected-results.md が正解として挙げる欠陥18件の
- * うち、データフロー段が担うのは R001(欠陥番号 1・9)・R003(同 2・5)・R005(同 3・13)・
- * R004(同 14)である。これらを「該当ファイルの該当行のみ」で検出し、それ以外の検出(偽陽性)が
- * samples に出ないことを確認する。
+ * Acceptance of data-flow-stage rules against samples. Of the 18 defects that
+ * samples/expected-results.md lists as ground truth, the data-flow stage is responsible for
+ * R001 (defect numbers 1 and 9), R003 (2 and 5), R005 (3 and 13), and R004 (14). Confirms these
+ * are detected "only at the matching file and line" and that no other detection (false positive)
+ * occurs on samples.
  */
 class DataFlowSamplesAcceptanceTest {
 
@@ -66,8 +67,9 @@ class DataFlowSamplesAcceptanceTest {
 
     @Test
     void syntheticRulesAreSilentOnSamples() {
-        // この7ルールに当たる欠陥は samples へ混入していない。検出の有無は合成fixtureのテストで
-        // 表明し、ここでは samples に偽陽性が出ないことだけを確認する。
+        // No defect matching these 7 rules is planted in samples. Whether each rule fires is
+        // asserted by the synthetic-fixture tests; here we only confirm no false positive
+        // appears on samples.
         AnalysisContext context = DataFlowFixtures.samples();
         for (Rule rule : List.of(new PerformUntilNotUpdatedRule(), new DynamicSqlTaintRule(),
                 new SensitiveDataOutputRule(), new UnsignedNegativeResultRule(),

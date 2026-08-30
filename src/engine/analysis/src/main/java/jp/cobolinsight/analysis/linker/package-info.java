@@ -1,6 +1,7 @@
 /**
- * 呼出関係グラフの統合を行う。EXEC PGM=とPROGRAM-IDの対応、静的CALL解決、
- * 動的CALLの定数伝播解決、未解決ノード・外部ユーティリティノードの型付け、
- * EXEC CICSのトランザクション遷移辺とマップ参照辺の追加、トランザクションIDからプログラムへの解決を行う。
+ * Builds the integrated call graph: matching EXEC PGM= to PROGRAM-ID, resolving static CALLs,
+ * resolving dynamic CALLs via constant propagation, typing unresolved nodes and external utility
+ * nodes, adding EXEC CICS transaction-transfer edges and map-reference edges, and resolving
+ * transaction IDs to programs.
  */
 package jp.cobolinsight.analysis.linker;

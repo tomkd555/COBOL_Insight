@@ -1,5 +1,6 @@
 /**
- * 制御フローグラフ(CFG)の構築、GO TO 正規化(Hendren のアルゴリズム)、および単調な転送関数を
- * 共有する不動点解析(到達定義・区間値域・汚染追跡・生存)を行う。
+ * Builds the control flow graph (CFG), normalizes GO TO (Hendren's algorithm), and runs the
+ * fixed-point analyses (reaching definitions, interval value ranges, taint tracking, liveness)
+ * that share a monotone transfer function.
  */
 package jp.cobolinsight.analysis.dataflow;

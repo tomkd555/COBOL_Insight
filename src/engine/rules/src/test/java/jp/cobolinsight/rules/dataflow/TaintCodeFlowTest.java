@@ -15,8 +15,8 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * 汚染追跡を行うルール(R020・R027)の検出が、汚染源から sink までの経路を codeFlows として
- * 保持することの検証。
+ * Verifies that findings from taint-tracking rules (R020, R027) retain the path
+ * from the taint source to the sink as codeFlows.
  */
 class TaintCodeFlowTest {
 

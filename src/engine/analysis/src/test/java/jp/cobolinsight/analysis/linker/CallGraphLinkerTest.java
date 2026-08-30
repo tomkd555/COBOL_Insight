@@ -96,7 +96,7 @@ class CallGraphLinkerTest {
                         + " in " + result.graph().toJson()));
     }
 
-    // ---- JCL: EXEC PGM=、データセット参照、外部ユーティリティ ----
+    // ---- JCL: EXEC PGM=, dataset references, external utilities ----
 
     @Test
     void linksJobStepProgramAndDatasets() {
@@ -118,7 +118,7 @@ class CallGraphLinkerTest {
                 Resolution.CONSTANT));
         assertTrue(hasEdge(result, "step:JOB1.STEP010", "dataset:SYKT.INPUT.DATA",
                 EdgeKind.REFERENCE, Resolution.CONSTANT));
-        // STEPLIB(ロードライブラリ)とDSN無しDDはデータセット辺にしない
+        // STEPLIB (load library) and a DD with no DSN do not become dataset edges
         assertTrue(result.graph().nodes().stream()
                 .noneMatch(n -> n.id().equals("dataset:SYK.PROD.LOADLIB")));
     }
@@ -180,19 +180,20 @@ class CallGraphLinkerTest {
         LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(first, second),
                 List.of(job("JOB1", List.of(step010, step020))), List.of(), Map.of(), Map.of()));
 
-        // ジョブの出辺は原本のステップ順に1から番号が付き、行はEXEC文の行を指す
+        // A job's outgoing edges are numbered from 1 in the original step order, and the line points to the EXEC statement's line
         assertEquals(1, edge(result, "job:JOB1", "step:JOB1.STEP010").seq());
         assertEquals(4, edge(result, "job:JOB1", "step:JOB1.STEP010").line());
         assertEquals(2, edge(result, "job:JOB1", "step:JOB1.STEP020").seq());
         assertEquals(9, edge(result, "job:JOB1", "step:JOB1.STEP020").line());
-        // ステップからプログラムへの辺は、そのステップの1本目の出辺である
+        // The edge from a step to its program is that step's first outgoing edge
         assertEquals(1, edge(result, "step:JOB1.STEP020", "program:PGMB").seq());
     }
 
     /**
-     * 1つの呼出元の出辺は、辺を張る処理が分かれていても原本の行の順に番号が付くこと。CALL・
-     * EXEC CICS・Db2表参照はそれぞれ別の走査で辺を足すため、足した順のままでは前の行の
-     * EXEC CICS が後の行の CALL より後ろの番号になる。
+     * A single caller's outgoing edges must be numbered in the original line order even though the
+     * edge-building process is split up. CALL, EXEC CICS, and Db2 table references each add edges
+     * in a separate pass, so if edges were left numbered in add order, an earlier-line EXEC CICS
+     * would get a number after a later-line CALL.
      */
     @Test
     void edgeSeqFollowsSourceLineAcrossTheSeparatePasses() {
@@ -215,7 +216,7 @@ class CallGraphLinkerTest {
                 "300行目の CALL が3本目");
     }
 
-    // ---- CALL: 静的・動的(定数伝播)・未解決 ----
+    // ---- CALL: static, dynamic (constant propagation), unresolved ----
 
     @Test
     void linksStaticCallAsConstant() {
@@ -306,7 +307,8 @@ class CallGraphLinkerTest {
 
     @Test
     void resolvesBranchLocalMovesWithoutFlowSensitivity() {
-        // 過大近似の仕様固定: 分岐のTHEN/ELSE双方のMOVEを実行順序・分岐条件と無関係に候補とする
+        // Pinning down the over-approximation spec: MOVEs in both the THEN and ELSE branches are
+        // taken as candidates regardless of execution order or the branch condition
         Statement thenMove = stmt("MOVE", "MOVE 'PGMB' TO WS-PROG-NAME", "PGMA.cbl", 71);
         Statement elseMove = stmt("MOVE", "MOVE 'PGMC' TO WS-PROG-NAME", "PGMA.cbl", 73);
         Statement branch = new CompoundStatement(ControlKind.BRANCH, "WS-FLAG = '1'",
@@ -406,7 +408,7 @@ class CallGraphLinkerTest {
                 "未解決の動的CALLをNOTEのfindingとして記録する");
     }
 
-    // ---- EXEC CICS: 遷移辺・マップ参照辺・トランザクション解決 ----
+    // ---- EXEC CICS: transition edges, map-reference edges, transaction resolution ----
 
     private static EmbeddedBlock cics(EmbeddedBlockKind kind, Map<String, String> operands,
             String file, int line) {
@@ -481,7 +483,7 @@ class CallGraphLinkerTest {
                 EdgeKind.TRANSACTION_TRANSITION, Resolution.CONSTANT), "LINK遷移辺");
         assertTrue(hasEdge(result, "program:PGM1", "transaction:SYK9",
                 EdgeKind.TRANSACTION_TRANSITION, Resolution.CONSTANT), "START TRANSID遷移辺");
-        // 定義表に無いトランザクションはプログラムへの解決辺を持たない葉として残る
+        // A transaction absent from the definition table remains a leaf with no resolving edge to a program
         assertTrue(result.graph().edges().stream()
                 .noneMatch(e -> e.fromId().equals("transaction:SYK9")));
         assertTrue(result.findings().stream().anyMatch(f ->
@@ -489,7 +491,7 @@ class CallGraphLinkerTest {
                         && f.level() == FindingLevel.NOTE));
     }
 
-    // ---- Db2表参照 ----
+    // ---- Db2 table references ----
 
     @Test
     void linksDb2TableReferences() {
@@ -505,7 +507,7 @@ class CallGraphLinkerTest {
                 Resolution.CONSTANT));
     }
 
-    // ---- 決定論 ----
+    // ---- determinism ----
 
     @Test
     void producesIdenticalJsonAndDotForSameInput() {

@@ -24,9 +24,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * R016 STRING/UNSTRING の受信領域あふれ。STRING 文で連結する送信項目・リテラルの合計長が受信項目長を
- * 超える構成、UNSTRING 文で送信項目長が分割後の全受信項目長の合計を超え保持しきれない構成を、共有
- * リゾルバのバイト長で検出する。長さを解決できない項目を含む文は対象外とする。
+ * R016 Overflow of the receiving area in STRING/UNSTRING. Using the shared resolver's byte lengths,
+ * detects a configuration where, in a STRING statement, the total length of the concatenated
+ * sending items and literals exceeds the receiving item's length, or, in an UNSTRING statement, the
+ * sending item's length exceeds the total of all receiving items after splitting and cannot be held.
+ * A statement containing an item whose length cannot be resolved is excluded.
  */
 public final class StringOverflowRule implements Rule {
 
@@ -109,14 +111,15 @@ public final class StringOverflowRule implements Rule {
     }
 
     /**
-     * ON OVERFLOW 句を持つ文か。あふれ得ることは同じでも、あふれたときの処理が書かれていれば
-     * 切り捨てが黙って通ることはない。このルールの是正手段そのものであるため、対象から外す。
+     * Whether the statement has an ON OVERFLOW clause. Even though overflow can still occur, if
+     * handling for the overflow case is written, truncation does not pass silently. Since this is
+     * exactly the remedy for this rule, such statements are excluded.
      */
     private static boolean hasOverflowHandler(String text) {
         return wordIndex(text, "OVERFLOW") >= 0;
     }
 
-    /** STRING の送信合計長 > 受信長 のとき警告文言、そうでなければ null。 */
+    /** The warning message when the STRING sending total length exceeds the receiving length; null otherwise. */
     private static String checkString(String text, DataFlowSupport support) {
         int into = wordIndex(text, "INTO");
         if (into < 0) {
@@ -133,7 +136,7 @@ public final class StringOverflowRule implements Rule {
                 + " を超える。受信領域あふれが起こる。";
     }
 
-    /** UNSTRING の送信長 > 分割後の全受信長合計 のとき警告文言、そうでなければ null。 */
+    /** The warning message when the UNSTRING sending length exceeds the total receiving length after splitting; null otherwise. */
     private static String checkUnstring(String text, DataFlowSupport support) {
         int into = wordIndex(text, "INTO");
         if (into < 0) {
@@ -157,9 +160,9 @@ public final class StringOverflowRule implements Rule {
     }
 
     /**
-     * region 内のオペランド長を合計する。文字列リテラルはその文字数、データ名は解決できたバイト長を
-     * 加える。動詞語・句キーワードなど長さを解決できない名前は読み飛ばす。オペランドが1つも無ければ
-     * null(判定不能)。
+     * Sums the operand lengths within region. A string literal adds its character count; a data
+     * name adds its resolved byte length. A name whose length cannot be resolved, such as a verb
+     * word or a clause keyword, is skipped. null (undecidable) if there are no operands at all.
      */
     private static Integer sumOperandLengths(String region, DataFlowSupport support) {
         int total = 0;
@@ -188,7 +191,7 @@ public final class StringOverflowRule implements Rule {
                     total += len;
                     any = true;
                 }
-                // 添字・参照修飾は読み飛ばす
+                // skip a subscript or reference modification
                 while (i < region.length() && region.charAt(i) == '(') {
                     int depth = 0;
                     while (i < region.length()) {

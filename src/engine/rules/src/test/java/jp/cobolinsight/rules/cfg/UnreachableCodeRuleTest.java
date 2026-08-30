@@ -13,13 +13,13 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** R007 の兄弟である R011 の合成fixture検証。到達不能な文と、呼ばれない段落の2判定を別々に見る。 */
+/** Synthetic fixture verification for R011, a sibling of R007. Examines two judgments separately: an unreachable statement and a paragraph that is never called. */
 class UnreachableCodeRuleTest {
 
     @TempDir
     Path tempDir;
 
-    /** GOBACK の後に置いた文は、制御が届かない。 */
+    /** A statement placed after GOBACK is never reached by control flow. */
     private static final String AFTER_GOBACK = String.join("\n",
             /*  1 */ "       IDENTIFICATION DIVISION.",
             /*  2 */ "       PROGRAM-ID. FIX011.",
@@ -35,7 +35,7 @@ class UnreachableCodeRuleTest {
             /* 12 */ "           MOVE 1 TO WS-D.",
             "");
 
-    /** どの PERFORM・GO TO からも参照されず、本流の流下経路上にもない段落。 */
+    /** A paragraph referenced by no PERFORM or GO TO, and not on the main fall-through path either. */
     private static final String UNUSED_PARAGRAPH = String.join("\n",
             /*  1 */ "       IDENTIFICATION DIVISION.",
             /*  2 */ "       PROGRAM-ID. FIX011B.",
@@ -51,8 +51,9 @@ class UnreachableCodeRuleTest {
             "");
 
     /**
-     * 同じ段落を、READ の NOT INVALID KEY 句の中から PERFORM する。条件句の中の PERFORM も
-     * 参照として数えないと、そこからしか呼ばれない段落が使われていないものに見える。
+     * PERFORMs the same paragraph from inside a READ's NOT INVALID KEY clause. Unless a PERFORM
+     * inside a conditional clause is also counted as a reference, a paragraph called only from
+     * there would look unused.
      */
     private static final String PERFORMED_FROM_AN_IO_CLAUSE = String.join("\n",
             "       IDENTIFICATION DIVISION.",
@@ -109,8 +110,9 @@ class UnreachableCodeRuleTest {
     }
 
     /**
-     * 条件句の中の PERFORM は CFG の呼出辺にならないため、段落の中身は到達不能のまま出る。
-     * ここで見るのは「段落が参照されない」判定のほうであり、そちらは出ないこと。
+     * A PERFORM inside a conditional clause does not become a call edge in the CFG, so the
+     * paragraph's body still reports as unreachable. What this test checks is the separate
+     * "paragraph is never referenced" judgment, which must not fire here.
      */
     @Test
     void countsAPerformInsideAnIoClauseAsAReference() {

@@ -13,10 +13,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * R017 の FixProducer 検証。FILE STATUS を検査しない I/O 文の直後へ、FD の STATUS 変数を
- * 判定する IF 文を挿入する TextEdit を返すことを確認する。STATUS 変数・FD 名はルールと同じ
- * SELECT/FD 解決で再取得する。終止ピリオドは I/O 文が文を閉じている場合にのみ付き、囲む文の
- * 途中では END-IF だけで閉じる。
+ * R017 FixProducer verification. Confirms it returns a TextEdit inserting an IF statement,
+ * right after an I/O statement that does not check FILE STATUS, that tests the FD's STATUS
+ * variable. The STATUS variable and FD name are re-obtained with the same SELECT/FD
+ * resolution the rule uses. A terminating period is added only when the I/O statement closes
+ * the sentence; in the middle of an enclosing statement it closes with END-IF alone.
  */
 class FileStatusUncheckedFixTest {
 
@@ -37,7 +38,7 @@ class FileStatusUncheckedFixTest {
                 .produce(finding, context).orElseThrow(() -> new AssertionError("R017 の修正案が返ること"));
         assertEquals(1, suggestion.edits().size());
         TextEdit edit = suggestion.edits().get(0);
-        // END-READ は88行。その直後(89行先頭)へ空範囲挿入する。
+        // END-READ is line 88. Insert an empty-range edit right after it (start of line 89).
         assertEquals(89, edit.range().start().line());
         assertEquals(1, edit.range().start().column());
         assertEquals(89, edit.range().end().line());
@@ -52,8 +53,9 @@ class FileStatusUncheckedFixTest {
 
     @Test
     void insertsPeriodlessCheckForBlockWriteInSyk001() {
-        // IF の THEN 節末尾にある WRITE(終止ピリオド無し)の直後へは、ピリオドを付けない
-        // IF … END-IF を挿入する。END-IF で閉じるため外側の ELSE・END-IF の結合は変わらない。
+        // Right after a WRITE at the end of an IF's THEN clause (no terminating period),
+        // insert a periodless IF ... END-IF. Since it closes with END-IF, the binding of
+        // the outer ELSE/END-IF is unaffected.
         AnalysisContext context = CfgFixtures.samples();
         String file = CfgFixtures.samplesFile("SYK001.cbl");
         Finding finding = finding(context, file, 126);
@@ -73,7 +75,8 @@ class FileStatusUncheckedFixTest {
 
     @Test
     void insertsPeriodlessCheckForBlockWriteBeforeEndIfInSyk001() {
-        // ELSE 節末尾(次行が END-IF.)にある WRITE でも同様にピリオドを付けない。
+        // The same applies for a WRITE at the end of an ELSE clause (next line is END-IF.):
+        // no period is added.
         AnalysisContext context = CfgFixtures.samples();
         String file = CfgFixtures.samplesFile("SYK001.cbl");
         Finding finding = finding(context, file, 130);
@@ -93,7 +96,8 @@ class FileStatusUncheckedFixTest {
 
     @Test
     void insertsPeriodlessCheckAfterEndWriteInSyk002() {
-        // END-WRITE で閉じるが終止ピリオドを持たない WRITE の直後でも、ピリオドを付けない。
+        // Also no period is added right after a WRITE that closes with END-WRITE but has no
+        // terminating period.
         AnalysisContext context = CfgFixtures.samples();
         String file = CfgFixtures.samplesFile("SYK002.cbl");
         Finding finding = finding(context, file, 107);

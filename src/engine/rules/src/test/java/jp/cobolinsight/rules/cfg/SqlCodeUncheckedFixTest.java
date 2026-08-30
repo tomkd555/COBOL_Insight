@@ -17,9 +17,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * R018 の FixProducer 検証。SQLCODE を検査しないデータ変更 DML の EXEC SQL 直後(END-EXEC 行の
- * 次行)へ、SQLCODE を判定する IF 文を挿入する TextEdit を返すことを確認する。終止ピリオドは
- * END-EXEC が文を閉じている場合にのみ付き、囲む文の途中では END-IF だけで閉じる。
+ * R018 FixProducer verification. Confirms it returns a TextEdit inserting an IF statement
+ * that tests SQLCODE, right after the EXEC SQL of a data-changing DML that does not check
+ * SQLCODE (the line after the END-EXEC line). A terminating period is added only when
+ * END-EXEC closes the sentence; in the middle of an enclosing statement it closes with
+ * END-IF alone.
  */
 class SqlCodeUncheckedFixTest {
 
@@ -46,7 +48,7 @@ class SqlCodeUncheckedFixTest {
                 .produce(finding, context).orElseThrow(() -> new AssertionError("R018 の修正案が返ること"));
         assertEquals(1, suggestion.edits().size());
         TextEdit edit = suggestion.edits().get(0);
-        // END-EXEC は119行。その直後(120行先頭)へ空範囲挿入する。
+        // END-EXEC is line 119. Insert an empty-range edit right after it (start of line 120).
         assertEquals(120, edit.range().start().line());
         assertEquals(1, edit.range().start().column());
         assertEquals(120, edit.range().end().line());
@@ -78,8 +80,9 @@ class SqlCodeUncheckedFixTest {
 
     @Test
     void insertsPeriodlessCheckForBlockDml() {
-        // IF ブロックの途中にある INSERT(END-EXEC に終止ピリオド無し)の直後へは、ピリオドを
-        // 付けない IF … END-IF を挿入する。外側の IF は END-IF まで途切れない。
+        // Right after an INSERT in the middle of an IF block (its END-EXEC has no
+        // terminating period), insert a periodless IF ... END-IF. The outer IF remains
+        // unbroken up to its own END-IF.
         String text = String.join("\n",
                 "       IDENTIFICATION DIVISION.",
                 "       PROGRAM-ID. FIX018M.",

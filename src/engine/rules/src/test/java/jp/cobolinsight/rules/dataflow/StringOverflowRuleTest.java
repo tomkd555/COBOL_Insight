@@ -13,7 +13,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** R016 STRING/UNSTRING の受信領域あふれの合成fixture検証。 */
+/** R016 synthetic fixture verification for STRING/UNSTRING receiving-field overflow. */
 class StringOverflowRuleTest {
 
     @TempDir
@@ -86,7 +86,7 @@ class StringOverflowRuleTest {
         assertTrue(findings.get(0).message().contains("WS-SRC"), findings.get(0).message());
     }
 
-    /** ON OVERFLOW を書いてあれば、あふれても黙って切り捨てられることはない。 */
+    /** When ON OVERFLOW is written, an overflow is never silently truncated. */
     @Test
     void ignoresOverflowThatIsHandled() {
         String text = program("F016E",

@@ -21,10 +21,12 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * R008 PERFORM単独段落名の直接指定。PERFORM文が単一の段落名のみを指定し、THRU句で終端を
- * 明示していない箇所を検出する。遷移先がセクションであるPERFORM文とインラインPERFORMは
- * 対象外とする。段落とセクションの両方に存在する名前は遷移先種別が参照位置に依存して
- * あいまいになるため、判定を保留する(誤検出よりも未検出を選ぶ)。
+ * R008 PERFORM naming a single paragraph directly. Detects places where a PERFORM
+ * statement names only a single paragraph and does not make its end explicit with a THRU
+ * clause. A PERFORM statement targeting a section, and an inline PERFORM, are excluded.
+ * A name that exists as both a paragraph and a section is ambiguous, since the target
+ * kind depends on the reference site, so judgment is withheld for it (preferring a
+ * missed detection over a false positive).
  */
 public final class PerformSingleParagraphRule implements Rule {
 
@@ -42,9 +44,10 @@ public final class PerformSingleParagraphRule implements Rule {
                     PERFORM CALC-TAX THRU CALC-TAX-EXIT.
                     """)
             .severity(Severity.MEDIUM)
-            // 既定では動かさない。samples で 43 件、誤検出計測用の corpus で 51 件を出しながら、
-            // そのどれも欠陥ではなかった。THRU を付けるかどうかは現場の書き方の取り決めであって
-            // 不具合ではないため、その取り決めを持つ現場が rules.json で入れる形にする。
+            // Off by default. It produced 43 hits in samples and 51 in the corpus used to
+            // measure false positives, and none of them was actually a defect. Whether to
+            // add THRU is a site's own coding convention, not a bug, so a site that follows
+            // that convention is expected to turn this on via rules.json.
             .defaultEnabled(false)
             .commands(Command.LINT, Command.REPORT)
             .targets(AssetKind.COBOL)

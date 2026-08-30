@@ -20,21 +20,23 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 意味モデルと制御フローグラフから不動点解析を実行し、{@link ProgramDataFlow} を構築する。
- * 到達定義(前進)・汚染追跡(前進・種別別)・生存(後進)の3解析を {@link WorklistSolver} 上で
- * 回し、区間値域は束が有限でないため {@link IntervalAnalysis} の専用ソルバで求める。
+ * Runs fixed-point analyses over the semantic model and control flow graph to build a
+ * {@link ProgramDataFlow}. The three analyses reaching definitions (forward), taint tracking
+ * (forward, per kind), and liveness (backward) run on {@link WorklistSolver}; interval value
+ * ranges are computed with the dedicated solver in {@link IntervalAnalysis} because that lattice
+ * is not finite.
  */
 public final class DataFlowEngine {
 
-    /** 機密情報を持つと見なすデータ名の末尾。個人番号・口座番号・カード番号の命名慣行に合わせる。 */
+    /** Suffixes of data names treated as holding sensitive information, matching the naming convention for personal ID numbers, account numbers, and card numbers. */
     private static final List<String> SENSITIVE_SUFFIXES = List.of("-SSN", "-ACCT-NO", "-CARD-NO");
 
     private DataFlowEngine() {
     }
 
-    /** 1プログラムを解析する。cfg は当該 model から構築した同一インスタンスであること。 */
+    /** Analyzes a single program. cfg must be the same instance built from this model. */
     public static ProgramDataFlow analyze(CobolSemanticModel model, ControlFlowGraph cfg) {
-        // 1. ノード別の def/use を先に確定する。
+        // 1. First settle the def/use for each node.
         Map<CfgNode, DefUse> defUseByNode = new IdentityHashMap<>();
         Map<CfgNode, Set<String>> externalSourceByNode = new IdentityHashMap<>();
         for (CfgNode node : cfg.nodes()) {
@@ -53,8 +55,10 @@ public final class DataFlowEngine {
 
         Map<CfgNode, Set<Definition>> reachingIn =
                 reachingDefinitions(cfg, defUseByNode, uninitVars, subordinatesByGroup(model));
-        // 汚染は種別ごとに独立した解析として回す。外部入力は受信文を汚染源とし、機密は宣言そのものを
-        // 汚染源とするため、同じ転送関数を汚染源の与え方だけ変えて2度適用する。
+        // Taint runs as an independent analysis per kind. External input treats the receiving
+        // statement as the taint source, while sensitive data treats the declaration itself as
+        // the source, so the same transfer function is applied twice, varying only how the
+        // taint source is supplied.
         Map<CfgNode, Set<TaintFact>> externalTaintIn =
                 taint(cfg, defUseByNode, externalSourceByNode, Set.of());
         Map<CfgNode, Set<TaintFact>> sensitiveTaintIn =
@@ -66,7 +70,7 @@ public final class DataFlowEngine {
                 externalTaintIn, sensitiveTaintIn, liveOut, intervalIn);
     }
 
-    /** 複数プログラムをまとめて解析し、programId で索引化した結果コンテナを返す。 */
+    /** Analyzes multiple programs together and returns a result container indexed by programId. */
     public static DataFlowFacts analyzeAll(Collection<CobolSemanticModel> models,
             ControlFlowGraphs graphs) {
         List<ProgramDataFlow> flows = new ArrayList<>();
@@ -76,7 +80,7 @@ public final class DataFlowEngine {
         return new DataFlowFacts(flows);
     }
 
-    // ---- 到達定義(前進・may) ----
+    // ---- Reaching definitions (forward, may) ----
 
     private static Map<CfgNode, Set<Definition>> reachingDefinitions(ControlFlowGraph cfg,
             Map<CfgNode, DefUse> defUseByNode, Set<String> uninitVars,
@@ -102,9 +106,10 @@ public final class DataFlowEngine {
     }
 
     /**
-     * 集団項目名 → 従属する全項目名。集団項目への代入は記憶領域全体を書き換えるため、従属項目の
-     * 定義も同時に置き換える。この対応を持たないと、集団項目で初期化した従属項目へ入口の
-     * 未初期化定義が届き続ける。
+     * Group item name -> the names of all its subordinate items. An assignment to a group item
+     * rewrites the whole storage area, so it also replaces the definitions of the subordinate
+     * items. Without this correspondence, a subordinate item initialized through its group item
+     * would keep receiving the entry's uninitialized definition.
      */
     private static Map<String, Set<String>> subordinatesByGroup(CobolSemanticModel model) {
         Map<String, Set<String>> result = new java.util.LinkedHashMap<>();
@@ -136,7 +141,7 @@ public final class DataFlowEngine {
         return expanded;
     }
 
-    // ---- 汚染追跡(前進・may) ----
+    // ---- Taint tracking (forward, may) ----
 
     private static Map<CfgNode, Set<TaintFact>> taint(ControlFlowGraph cfg,
             Map<CfgNode, DefUse> defUseByNode, Map<CfgNode, Set<String>> externalSourceByNode,
@@ -149,15 +154,17 @@ public final class DataFlowEngine {
             DefUse defUse = defUseByNode.get(node);
             Set<String> defVars = defUse.defs();
             Set<TaintFact> out = new LinkedHashSet<>();
-            // kill: 代入で上書きされる変数の旧汚染を落とす(識別子由来の恒常汚染は残す)。
+            // kill: drop the prior taint of a variable overwritten by this assignment (a
+            // constant taint that comes from the identifier itself is kept).
             for (TaintFact fact : in) {
                 if (!defVars.contains(fact.variable())
                         || alwaysTainted.contains(fact.variable())) {
                     out.add(fact);
                 }
             }
-            // 伝播: 参照変数のいずれかが汚染なら、この文の定義先も汚染する。伝播元ごとに事実を
-            // 立てることで、事実の生成が流入集合に対して単調になり不動点へ収束する。
+            // propagate: if any referenced variable is tainted, taint this statement's
+            // definition targets too. Creating a fact per propagation source keeps fact
+            // generation monotonic over the incoming set, so it converges to a fixed point.
             for (TaintFact fact : in) {
                 if (defUse.uses().contains(fact.variable())) {
                     for (String def : defVars) {
@@ -165,11 +172,11 @@ public final class DataFlowEngine {
                     }
                 }
             }
-            // source: 外部入力の受信先を汚染源として生成する。
+            // source: generate the receiving target of an external input as a taint source.
             for (String var : externalSourceByNode.get(node)) {
                 out.add(TaintFact.source(var, node.id()));
             }
-            // 恒常汚染(機密名義)は全ノードで維持する。
+            // Constant taint (sensitive names) is kept alive at every node.
             for (String var : alwaysTainted) {
                 out.add(TaintFact.declared(var));
             }
@@ -177,7 +184,7 @@ public final class DataFlowEngine {
         });
     }
 
-    // ---- 生存(後進・may) ----
+    // ---- Liveness (backward, may) ----
 
     private static Map<CfgNode, Set<String>> liveness(ControlFlowGraph cfg,
             Map<CfgNode, DefUse> defUseByNode) {
@@ -190,9 +197,9 @@ public final class DataFlowEngine {
         });
     }
 
-    // ---- 変数集合の抽出 ----
+    // ---- Extracting the variable set ----
 
-    /** VALUE 句を持たない項目を未初期化の候補とする。入口で合成定義を立てる対象になる。 */
+    /** Items without a VALUE clause are candidates for uninitialized status. They become the targets for which a synthetic definition is created at entry. */
     private static Set<String> uninitializedVariables(CobolSemanticModel model) {
         Set<String> result = new LinkedHashSet<>();
         for (DataItem item : model.dataItems()) {

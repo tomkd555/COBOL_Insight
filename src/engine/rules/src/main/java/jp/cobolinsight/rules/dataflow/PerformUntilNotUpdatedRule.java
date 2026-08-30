@@ -34,10 +34,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * R012 終了条件が更新されない PERFORM UNTIL。段落 PERFORM の UNTIL 条件、およびインライン PERFORM の
- * 継続条件に用いる変数が、ループ本体(CFG 上でループ頭へ戻り得るノード群)のどの文からも更新されず、
- * 本体テキストにも現れない構成を無限ループの可能性として検出する。88レベル条件名は親項目へ解決し、
- * SQLCODE 等の特殊レジスタ(実行系が更新)と VARYING 制御変数は更新済みとみなす。
+ * R012 A PERFORM UNTIL whose termination condition is never updated. Detects, as a possible
+ * infinite loop, a configuration where the variable used in the UNTIL condition of a paragraph
+ * PERFORM, or in the continuation condition of an inline PERFORM, is not updated by any statement
+ * in the loop body (the set of nodes that can flow back to the loop header on the CFG) and does not
+ * appear in the body text either. An 88-level condition name is resolved to its parent item, and a
+ * special register such as SQLCODE (updated by the runtime) and a VARYING control variable are
+ * treated as already updated.
  */
 public final class PerformUntilNotUpdatedRule implements Rule {
 
@@ -142,7 +145,7 @@ public final class PerformUntilNotUpdatedRule implements Rule {
         return support.conditionParent(var).map(updated::contains).orElse(false);
     }
 
-    /** ループ頭ノードの継続条件に現れる変数。ループでなければ空。 */
+    /** The variables appearing in the loop header node's continuation condition. Empty if it is not a loop. */
     private List<String> conditionVariables(Statement statement) {
         if (statement instanceof CompoundStatement compound && compound.kind() == ControlKind.LOOP) {
             return names(compound.conditionText());
@@ -158,7 +161,7 @@ public final class PerformUntilNotUpdatedRule implements Rule {
         return List.of();
     }
 
-    /** ループ頭へ戻り得る本体ノード(前進到達 ∩ 後進到達、頭自身を除く)。 */
+    /** The body nodes that can flow back to the loop header (forward reach ∩ backward reach, excluding the header itself). */
     private static Set<CfgNode> loopBody(ControlFlowGraph cfg, CfgNode header) {
         Set<CfgNode> forward = reach(cfg, header, true);
         if (!forward.contains(header) && cfg.successors(header).stream().noneMatch(forward::contains)) {
@@ -193,7 +196,7 @@ public final class PerformUntilNotUpdatedRule implements Rule {
         return visited;
     }
 
-    /** 本体で更新される名前(各文の defsAt と、文テキストに現れる全データ名)。 */
+    /** The names updated within the body (each statement's defsAt, plus every data name appearing in the statement text). */
     private static Set<String> updatedInBody(ProgramDataFlow df, Set<CfgNode> body,
             DataFlowSupport support) {
         Set<String> updated = new LinkedHashSet<>();
@@ -204,7 +207,7 @@ public final class PerformUntilNotUpdatedRule implements Rule {
         return updated;
     }
 
-    /** インライン/段落 PERFORM VARYING の制御変数(原ソースから)。継続条件変数と一致すれば更新済み。 */
+    /** The control variables of an inline/paragraph PERFORM VARYING (from the original source). Treated as updated if they match the continuation-condition variable. */
     private static Set<String> varyingControlVars(Statement statement, String source) {
         int start = statement.range().start().line();
         int end = statement.range().end().line();

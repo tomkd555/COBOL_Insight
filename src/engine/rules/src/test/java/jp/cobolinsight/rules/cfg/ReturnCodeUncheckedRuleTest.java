@@ -12,13 +12,13 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** R029 CALL後のRETURN-CODE未検査の合成fixture検証。 */
+/** R029 synthetic fixture verification for an unchecked RETURN-CODE after CALL. */
 class ReturnCodeUncheckedRuleTest {
 
     @TempDir
     Path tempDir;
 
-    // RETURN-CODE を参照する設計。CALL 'SUBA' は検査するが CALL 'SUBB' は検査しない。
+    // Design that references RETURN-CODE. CALL 'SUBA' is checked but CALL 'SUBB' is not.
     private static final String MIXED = String.join("\n",
             "       IDENTIFICATION DIVISION.",
             "       PROGRAM-ID. FIX029.",
@@ -36,7 +36,7 @@ class ReturnCodeUncheckedRuleTest {
             "           GOBACK.",
             "");
 
-    // RETURN-CODE を一切参照しないプログラム。この場合は未検査のCALLがあっても対象外とする。
+    // A program that never references RETURN-CODE at all. In this case an unchecked CALL, if any, is out of scope.
     private static final String NO_RC_REFERENCE = String.join("\n",
             "       IDENTIFICATION DIVISION.",
             "       PROGRAM-ID. FIX029B.",

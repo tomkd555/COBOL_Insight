@@ -28,15 +28,19 @@ import java.util.Set;
 import jp.cobolinsight.rules.dataflow.DataFlowSupport.Section;
 
 /**
- * R001 未初期化変数の参照。VALUE 句を持たない WORKING-STORAGE / LOCAL-STORAGE / LINKAGE の基本項目が、
- * ある実行経路で値を設定される前に参照される箇所を、到達定義解析(入口に合成した未初期化定義が
- * 使用ノードへ届くか)で検出する。照会は使用ノードで読み取る変数に限り、FILE 節の項目・集団項目・
- * PROCEDURE DIVISION USING 引数(呼出元が初期化する)・特殊レジスタは対象外とする。
+ * R001 Reference to an uninitialized variable. Detects, via reaching-definitions analysis (whether
+ * a synthetic uninitialized definition at the entry reaches the use node), places where an
+ * elementary item in WORKING-STORAGE / LOCAL-STORAGE / LINKAGE that has no VALUE clause is
+ * referenced on some execution path before its value is set. The query is restricted to variables
+ * read at a use node; a FILE-section item, a group item, a PROCEDURE DIVISION USING parameter
+ * (initialized by the caller), and a special register are excluded.
  *
- * <p>照会は、プログラム内のいずれかの文が明示的に代入する項目に限る。ファイルステータス・CICS 応答
- * コード・SQL/CICS のホスト変数・PERFORM VARYING 制御変数のように、明示代入を持たず入出力・実行系や
- * ループ機構が暗黙に設定する項目は、到達定義解析では未初期化に見えるため対象から外す(欠陥は「明示的に
- * 初期化される経路とされない経路がある」構成に限られる)。
+ * <p>The query is further restricted to items explicitly assigned by some statement in the program.
+ * An item with no explicit assignment that is implicitly set by I/O, the runtime, or the loop
+ * mechanism — such as a file status, a CICS response code, an SQL/CICS host variable, or a PERFORM
+ * VARYING control variable — appears uninitialized under reaching-definitions analysis and is
+ * therefore excluded (the defect is limited to a configuration with "a path where it is explicitly
+ * initialized and a path where it is not").
  */
 public final class UninitializedVariableRule implements Rule {
 
@@ -123,9 +127,11 @@ public final class UninitializedVariableRule implements Rule {
             Set.of("COMPUTE", "ADD", "SUBTRACT", "MULTIPLY", "DIVIDE");
 
     /**
-     * 未初期化を問う使用文脈に現れる変数。条件式(IF/EVALUATE/UNTIL)・算術式の入力オペランド・
-     * DISPLAY の出力対象に限る。CALL 実引数・SQL/CICS ホスト変数・MOVE 送信元などは、入力と出力
-     * (INTO・BY REFERENCE 受け)を def/use 近似で区別できず誤検出になるため対象にしない。
+     * Variables appearing in a use context that is checked for being uninitialized. Restricted to a
+     * condition expression (IF/EVALUATE/UNTIL), an arithmetic expression's input operand, and a
+     * DISPLAY output target. A CALL actual argument, an SQL/CICS host variable, a MOVE source, and
+     * the like are not targeted, because input and output (an INTO or BY REFERENCE receiver) cannot
+     * be distinguished by the def/use approximation and would cause false positives.
      */
     private static Set<String> checkedUses(CfgNode node, Statement statement, ProgramDataFlow df) {
         if (statement instanceof CompoundStatement) {

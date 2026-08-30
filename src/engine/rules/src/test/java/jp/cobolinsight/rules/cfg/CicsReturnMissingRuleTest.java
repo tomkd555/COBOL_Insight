@@ -12,13 +12,13 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** R022 CICS RETURN欠如。終端がIF内に入れ子でも検出することと、RETURNを持てば非検出を確認する。 */
+/** R022 missing CICS RETURN. Confirms detection even when the terminal is nested inside an IF, and non-detection when a RETURN is present. */
 class CicsReturnMissingRuleTest {
 
     @TempDir
     Path tempDir;
 
-    /** EXEC CICS を持つ(CICS参加)が RETURN を持たず、終端 GOBACK が IF 内に入れ子。 */
+    /** Has EXEC CICS (participates in CICS) but no RETURN; the terminal GOBACK is nested inside an IF. */
     private static final String NESTED_TERMINAL = String.join("\n",
             /*  1 */ "       IDENTIFICATION DIVISION.",
             /*  2 */ "       PROGRAM-ID. FIX022.",
@@ -41,7 +41,7 @@ class CicsReturnMissingRuleTest {
             /* 19 */ "           DISPLAY 'CONTINUE'.",
             "");
 
-    /** EXEC CICS RETURN TRANSID を持つ(疑似会話を正しく継続)。 */
+    /** Has EXEC CICS RETURN TRANSID (correctly continues the pseudo-conversation). */
     private static final String WITH_RETURN = String.join("\n",
             "       IDENTIFICATION DIVISION.",
             "       PROGRAM-ID. FIX022B.",

@@ -14,8 +14,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * S001 SELECT * の回避。SELECT 句に * が出現する問い合わせを指摘する。テーブル構造の変更に弱く、
- * 不要な列の転送で I/O を増やす。sql-frontend が算出した selectStar シグナルから判定する。
+ * S001 Avoid SELECT *. Flags queries where a * appears in the SELECT clause. This is fragile
+ * against changes to the table structure and increases I/O by transferring unneeded columns.
+ * Judged from the selectStar signal computed by sql-frontend.
  */
 public final class SelectStarRule implements Rule {
 

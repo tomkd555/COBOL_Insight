@@ -13,13 +13,13 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** R007 PERFORM THRU の範囲へ割り込む GO TO の合成fixture検証。 */
+/** R007 synthetic fixture verification for a GO TO that interrupts into a PERFORM THRU range. */
 class PerformThruInterruptGoToRuleTest {
 
     @TempDir
     Path tempDir;
 
-    /** 範囲外の 0000-MAIN から、入口 CALC-START を経ずに範囲内の CALC-STEP2 へ飛ぶ。 */
+    /** Jumps from 0000-MAIN, outside the range, to CALC-STEP2 inside the range without going through the entry CALC-START. */
     private static final String INTERRUPTS = String.join("\n",
             /*  1 */ "       IDENTIFICATION DIVISION.",
             /*  2 */ "       PROGRAM-ID. FIX007.",
@@ -38,7 +38,7 @@ class PerformThruInterruptGoToRuleTest {
             /* 15 */ "           EXIT.",
             "");
 
-    /** 同じ形だが、飛び先が範囲の入口段落そのもの。割り込みではない。 */
+    /** Same shape, but the jump target is the range's entry paragraph itself. Not an interruption. */
     private static final String ENTERS_AT_THE_ENTRY = INTERRUPTS
             .replace("PROGRAM-ID. FIX007.", "PROGRAM-ID. FIX007B.")
             .replace("GO TO CALC-STEP2.", "GO TO CALC-START.");

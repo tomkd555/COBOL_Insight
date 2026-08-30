@@ -35,10 +35,11 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * R018 SQLCODE未検査。データ変更DML(INSERT/UPDATE/DELETE)の EXEC SQL 実行後、次の EXEC SQL に
- * 達するまでの前方経路で SQLCODE・SQLSTATE を条件参照しない箇所を検出する。検査を欠くと、更新の
- * 失敗を検知せずに後続処理が続く。SQLCODE は次の SQL で上書きされるため、境界は次の EXEC SQL 文
- * とする。SELECT INTO・FETCH は対象外。
+ * R018 Unchecked SQLCODE. After a data-changing DML (INSERT/UPDATE/DELETE) EXEC SQL executes,
+ * detects points on the forward path up to the next EXEC SQL where SQLCODE/SQLSTATE is never
+ * referenced in a condition. Without a check, subsequent processing continues without detecting
+ * an update failure. Because SQLCODE gets overwritten by the next SQL statement, the boundary is
+ * set at the next EXEC SQL statement. SELECT INTO and FETCH are out of scope.
  */
 public final class SqlCodeUncheckedRule implements Rule {
 
@@ -88,7 +89,7 @@ public final class SqlCodeUncheckedRule implements Rule {
     }
 
     private void evaluate(CobolSemanticModel model, ControlFlowGraph cfg, List<Finding> findings) {
-        // EXEC SQL 文ノード(全SQL。境界に使う)と、range→ノードの索引を作る。
+        // Build the set of EXEC SQL statement nodes (all SQL; used as boundaries) and a range->node index.
         Set<CfgNode> execSqlNodes = Collections.newSetFromMap(new IdentityHashMap<>());
         Map<SourceRange, CfgNode> byRange = new HashMap<>();
         for (CfgNode node : cfg.nodes()) {
@@ -136,10 +137,11 @@ public final class SqlCodeUncheckedRule implements Rule {
     }
 
     /**
-     * 未検査のデータ変更 DML の EXEC SQL 直後(END-EXEC 行の次行)へ SQLCODE 判定文を挿入する。
-     * Finding.location の行(=END-EXEC 行)を anchor に、同一終端行の DML ブロックを再同定する。
-     * 挿入する IF は常に明示的な END-IF で閉じ、終止ピリオドは END-EXEC が文を閉じている場合に
-     * のみ付ける。
+     * Inserts an SQLCODE check statement right after an unchecked data-changing DML's EXEC SQL
+     * (on the line after the END-EXEC line). Re-identifies the DML block with the same terminal
+     * line using Finding.location's line (= the END-EXEC line) as the anchor. The inserted IF is
+     * always closed with an explicit END-IF, and a terminating period is added only when
+     * END-EXEC itself closes a sentence.
      */
     private static final class SqlCodeFixProducer implements FixProducer {
 
@@ -163,9 +165,10 @@ public final class SqlCodeUncheckedRule implements Rule {
             if (block == null) {
                 return Optional.empty();
             }
-            // END-EXEC が終止ピリオドで文を閉じているときだけ、挿入する IF も終止ピリオドで閉じる。
-            // 囲む文(IF/PERFORM など)の途中にある EXEC SQL の直後へピリオドを置くと外側の文を
-            // 途中で終止させるため、その場合は明示的な END-IF だけで閉じる。
+            // Only close the inserted IF with a terminating period when END-EXEC itself closes a
+            // sentence with one. Placing a period right after an EXEC SQL that sits in the middle
+            // of an enclosing statement (IF/PERFORM, etc.) would prematurely terminate the outer
+            // statement, so in that case close with only an explicit END-IF.
             String source = context.artifact(SourceTextIndex.class)
                     .flatMap(index -> index.textOf(model.sourceFile())).orElse(null);
             String terminator = source == null
@@ -188,7 +191,7 @@ public final class SqlCodeUncheckedRule implements Rule {
         return upper.contains("SQLCODE") || upper.contains("SQLSTATE");
     }
 
-    /** EXEC SQL を除いた先頭のSQLキーワード(大文字)。 */
+    /** The leading SQL keyword (uppercase), with EXEC SQL stripped off. */
     private static String leadingSqlKeyword(String blockText) {
         String normalized = blockText.replaceAll("\\s+", " ").toUpperCase(Locale.ROOT).trim();
         int index = normalized.indexOf("EXEC SQL");

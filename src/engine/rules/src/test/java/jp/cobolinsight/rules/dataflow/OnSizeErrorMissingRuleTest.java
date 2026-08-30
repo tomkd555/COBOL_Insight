@@ -12,7 +12,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** R004 ON SIZE ERROR 句の欠如の合成fixture検証。 */
+/** R004 synthetic fixture verification for a missing ON SIZE ERROR clause. */
 class OnSizeErrorMissingRuleTest {
 
     @TempDir

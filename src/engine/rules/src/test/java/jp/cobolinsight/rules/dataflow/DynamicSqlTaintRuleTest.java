@@ -13,7 +13,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** R020 動的SQLへの外部入力の未検証組込の合成fixture検証。 */
+/** Synthetic-fixture verification for R020, unvalidated embedding of external input into dynamic SQL. */
 class DynamicSqlTaintRuleTest {
 
     @TempDir

@@ -8,22 +8,22 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** 構文ルールが共有する字句ヘルパー。COBOL固定形式のコメント判定・リテラル除去・名前抽出を行う。 */
+/** Lexical helper shared by the syntax rules. Handles COBOL fixed-format comment detection, literal stripping, and name extraction. */
 final class CobolTexts {
 
-    /** COBOLのデータ名・段落名(日本語名を含む)。 */
+    /** A COBOL data name or paragraph name (including Japanese names). */
     static final Pattern NAME = Pattern.compile("[\\p{L}\\p{N}][\\p{L}\\p{N}-]*");
 
     private static final Pattern STRING_LITERAL = Pattern.compile("'[^']*'|\"[^\"]*\"");
 
-    /** 走査対象の1論理行。継続行(7桁目'-')は結合済みで、lineNumberは開始行を指す。 */
+    /** One logical line to scan. A continuation line (column 7 is '-') has already been joined; lineNumber points to the starting line. */
     record LogicalLine(int lineNumber, String text) {
     }
 
     private CobolTexts() {
     }
 
-    /** 固定形式の7桁目が '*' または '/' の行をコメント行とみなす。 */
+    /** Treats a fixed-format line whose column 7 is '*' or '/' as a comment line. */
     static boolean isCommentLine(String line) {
         if (line.length() < 7) {
             return false;
@@ -33,10 +33,13 @@ final class CobolTexts {
     }
 
     /**
-     * 固定形式ソーステキストから、ルールが原ソース走査に使う本体行を取り出す。コメント行を除き、
-     * 1〜7桁目を空白化・73桁目以降(識別領域)を除去し、リテラル外の行内コメント(*>)以降を
-     * 空白化する。7桁目が'-'の継続行は直前行の8〜72桁を末尾へ結合する(行番号は開始行を保つ)。
-     * 空白化・切り詰めにより、各行の先頭物理行内の桁位置は原ソースの桁と一致する。
+     * Extracts, from fixed-format source text, the body lines the rules use to scan the
+     * original source. Excludes comment lines, blanks out columns 1-7, strips column 73
+     * onward (the identification area), and blanks out an inline comment (*>) outside a
+     * literal and everything after it. A continuation line (column 7 is '-') appends
+     * columns 8-72 to the end of the previous line (the line number keeps the starting
+     * line). Blanking out and truncating this way keeps each line's column positions
+     * matching the original source's columns.
      */
     static List<LogicalLine> logicalLines(String text) {
         List<LogicalLine> out = new ArrayList<>();
@@ -59,7 +62,7 @@ final class CobolTexts {
         return out;
     }
 
-    /** 1〜7桁目(一連番号・標識領域)を空白化し、73桁目以降(識別領域)を除去する。 */
+    /** Blanks out columns 1-7 (the sequence-number and indicator area) and strips column 73 onward (the identification area). */
     private static String bodyOf(String raw) {
         String line = raw.length() > 72 ? raw.substring(0, 72) : raw;
         if (line.length() <= 7) {
@@ -68,7 +71,7 @@ final class CobolTexts {
         return "       " + line.substring(7);
     }
 
-    /** リテラル外に現れる行内コメント(*>)以降を同じ長さの空白へ置き換える。 */
+    /** Replaces an inline comment (*>) that appears outside a literal, and everything after it, with blanks of the same length. */
     private static String blankInlineComment(String line) {
         int index = stripLiterals(line).indexOf("*>");
         if (index < 0) {
@@ -78,8 +81,9 @@ final class CobolTexts {
     }
 
     /**
-     * 文字列リテラルを同じ長さの空白へ置き換える。リテラル内の文字が名前として誤検出されるのを
-     * 防ぎつつ、文字位置(桁)を保つ。
+     * Replaces a string literal with blanks of the same length. This prevents characters
+     * inside the literal from being mistaken for a name, while keeping the character
+     * position (column) intact.
      */
     static String stripLiterals(String text) {
         Matcher matcher = STRING_LITERAL.matcher(text);
@@ -97,7 +101,7 @@ final class CobolTexts {
         return out.toString();
     }
 
-    /** リテラル除去済みテキストから名前トークン(大文字化)を抽出する。 */
+    /** Extracts name tokens (uppercased) from text with literals already stripped. */
     static Set<String> tokens(String text) {
         Set<String> out = new LinkedHashSet<>();
         Matcher matcher = NAME.matcher(stripLiterals(text));

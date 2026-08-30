@@ -14,7 +14,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** R030 JCLの先行ステップ結果未検査の合成fixture検証(JclJobModelを直接構築)。 */
+/** R030 synthetic fixture verification for an unchecked preceding-step result in JCL (builds a JclJobModel directly). */
 class JclCondUncheckedRuleTest {
 
     private static JclStep step(String name, int line, Optional<String> cond) {

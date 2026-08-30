@@ -16,13 +16,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-/** テスト用に、固定形式のCOBOLソース文字列を実パーサーで解析しCFGへ変換する補助。 */
+/** Test helper that parses a fixed-format COBOL source string with the real parser and converts it to a CFG. */
 final class InlinePrograms {
 
     private InlinePrograms() {
     }
 
-    /** 固定形式の各行を改行で連結する(列位置は各行の先頭空白で指定する)。 */
+    /** Joins each fixed-format line with a newline (column position is given by the leading spaces of each line). */
     static String source(String... lines) {
         return String.join("\n", lines) + "\n";
     }
@@ -38,7 +38,7 @@ final class InlinePrograms {
         return CfgBuilder.build(parse(source));
     }
 
-    /** 文テキストに substring を含むSTATEMENTノードを定義順に返す。 */
+    /** Returns the STATEMENT nodes whose statement text contains substring, in definition order. */
     static List<CfgNode> nodesContaining(ControlFlowGraph cfg, String substring) {
         List<CfgNode> result = new ArrayList<>();
         for (CfgNode node : cfg.nodes()) {
@@ -52,7 +52,7 @@ final class InlinePrograms {
         return result;
     }
 
-    /** 文テキストに substring を含む唯一のSTATEMENTノード。 */
+    /** The single STATEMENT node whose statement text contains substring. */
     static CfgNode nodeContaining(ControlFlowGraph cfg, String substring) {
         List<CfgNode> matches = nodesContaining(cfg, substring);
         if (matches.size() != 1) {
@@ -71,7 +71,7 @@ final class InlinePrograms {
         return "";
     }
 
-    /** 文字位置ごとのバイトオフセット表を作って DecodedSource を組む。UTF-8 固定である。 */
+    /** Builds a DecodedSource with a byte-offset table for each character position. Always UTF-8. */
     private static DecodedSource decode(String text) {
         byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
         int[] offsets = new int[text.length()];

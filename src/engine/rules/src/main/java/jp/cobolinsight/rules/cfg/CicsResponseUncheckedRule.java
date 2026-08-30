@@ -28,9 +28,9 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * R021 CICS応答コード未検査。EXEC CICS コマンドが RESP・RESP2 いずれのオペランドも持たない場合、
- * コマンドの応答コードを検査できないため検出する。RESP/RESP2 を受ける設計であれば、後続の条件で
- * 判定できる。
+ * R021 Unchecked CICS response code. When an EXEC CICS command has neither a RESP nor a RESP2
+ * operand, the command's response code cannot be checked, so this is flagged. A design that
+ * receives RESP/RESP2 can branch on it in a subsequent condition.
  */
 public final class CicsResponseUncheckedRule implements Rule {
 
@@ -90,14 +90,16 @@ public final class CicsResponseUncheckedRule implements Rule {
     }
 
     /**
-     * RESP を持たない EXEC CICS コマンドへ、応答コードの受け取りと判定を2か所の挿入で足す。
-     * END-EXEC の直前へ {@code RESP(<変数>)} のオペランド行を、END-EXEC の直後へ応答コードの
-     * 判定文を置く。判定文は常に明示的な END-IF で閉じ、終止ピリオドは END-EXEC が文を閉じて
-     * いる場合にのみ付ける。
+     * Adds response-code receipt and checking to an EXEC CICS command that lacks RESP, via two
+     * insertions. Places an {@code RESP(<variable>)} operand line right before END-EXEC, and a
+     * response-code check statement right after END-EXEC. The check statement is always closed
+     * with an explicit END-IF, and a terminating period is added only when END-EXEC itself closes
+     * a sentence.
      *
-     * <p>受け変数は WORKING-STORAGE に宣言済みで、名前に RESP を含み(RESP2 を除く)、
-     * PIC S9(08) COMP 相当の基本項目に限って選ぶ。該当する変数が無い場合は修正案を出さない。
-     * WORKING-STORAGE への宣言追加は行わない。
+     * <p>The receiving variable is chosen only from elementary items already declared in
+     * WORKING-STORAGE whose name contains RESP (excluding RESP2) and whose type is equivalent to
+     * PIC S9(08) COMP. If no such variable exists, no fix is produced. No declaration is added to
+     * WORKING-STORAGE.
      */
     private static final class CicsResponseFixProducer implements FixProducer {
 
@@ -134,7 +136,7 @@ public final class CicsResponseUncheckedRule implements Rule {
                 return Optional.empty();
             }
             int endExecLine = block.range().end().line();
-            // オペランド行を差し込めるのは END-EXEC が独立した物理行にある場合に限る。
+            // The operand line can be inserted only when END-EXEC is on its own physical line.
             String[] lines = source.split("\n", -1);
             if (endExecLine < 1 || endExecLine > lines.length
                     || !END_EXEC.matcher(lines[endExecLine - 1]).find()) {
@@ -155,7 +157,7 @@ public final class CicsResponseUncheckedRule implements Rule {
                     List.of(operand, judgement)));
         }
 
-        /** 指定行の先頭へ、固定形式へ整形した文を物理行として差し込む空範囲の編集。 */
+        /** A zero-width edit that inserts, as a physical line, a statement formatted for fixed format at the start of the given line. */
         private static TextEdit insertLinesAt(String file, int line, String statement) {
             SourcePosition at =
                     new SourcePosition(file, line, 1, SourcePosition.UNKNOWN_BYTE_OFFSET);
@@ -163,18 +165,19 @@ public final class CicsResponseUncheckedRule implements Rule {
                     String.join("\n", FixEdits.layout(statement)) + "\n");
         }
 
-        /** 判定文の DISPLAY へ載せるコマンド名。 */
+        /** The command name to put in the check statement's DISPLAY. */
         private static String verbLabel(EmbeddedBlock block) {
             return block.kind().name().replace("CICS_", "").replace('_', ' ');
         }
 
-        /** WORKING-STORAGE 節の行範囲(1始まり)に宣言された、最初の応答コード受け変数。 */
+        /** The first response-code receiving variable declared in the (1-based) line range of the WORKING-STORAGE section. */
         private static Optional<String> respVariable(CobolSemanticModel model, String source) {
             String[] lines = source.split("\n", -1);
             int first = 0;
             int lastLine = lines.length;
-            // first は節見出しの次の物理行(1始まり)。0 は見出し未検出を表す。lastLine は次の節
-            // 見出しの直前行(1始まり)であり、0始まりの添字 i がそのまま該当する。
+            // first is the physical line (1-based) right after the section header; 0 means the
+            // header was not found. lastLine is the line (1-based) right before the next section
+            // header, and the 0-based index i corresponds to it directly.
             for (int i = 0; i < lines.length; i++) {
                 if (first == 0) {
                     if (WORKING_STORAGE.matcher(lines[i]).find()) {
@@ -209,9 +212,10 @@ public final class CicsResponseUncheckedRule implements Rule {
         }
 
         /**
-         * 名前に RESP を含み(RESP2 を除く)、PIC S9(08) COMP 相当の基本項目か。RESP オプションの
-         * 受け取り先は符号付き4バイト二進項目でなければならず、CICS が定める記述が
-         * PIC S9(8) COMP であるため、この桁・符号・USAGE の組で絞る。
+         * Whether this is an elementary item whose name contains RESP (excluding RESP2) and whose
+         * type is equivalent to PIC S9(08) COMP. The RESP option's receiver must be a signed
+         * 4-byte binary item, and since CICS specifies this as PIC S9(8) COMP, we filter on this
+         * combination of digits, sign, and USAGE.
          */
         private static boolean isRespReceiver(DataItem item) {
             String name = item.name().toUpperCase(Locale.ROOT);

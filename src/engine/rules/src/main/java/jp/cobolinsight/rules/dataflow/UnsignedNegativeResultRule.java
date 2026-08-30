@@ -26,10 +26,13 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * R028 符号なし項目への負値算出。PICTURE に符号(S)を持たない数字受信項目に対し、SUBTRACT または
- * COMPUTE の演算結果が負になり得る箇所を区間値域解析で検出する。符号なし項目は符号を保持しないため、
- * 負の結果は絶対値として格納され、以後の比較・集計が誤る。判定は算術文の流出(後続ノード入口)の
- * 受信項目区間が負を含み得るかで行う。受信項目の符号有無は共有リゾルバで解決する。
+ * R028 Computing a negative value into an unsigned item. Detects, via interval value analysis,
+ * places where a SUBTRACT or COMPUTE result may become negative for a numeric receiving item whose
+ * PICTURE has no sign (S). Since an unsigned item holds no sign, a negative result is stored as its
+ * absolute value, which corrupts subsequent comparisons and aggregations. The check is whether the
+ * receiving item's interval, at the arithmetic statement's outflow (the entry of the following
+ * node), may include a negative value. Whether the receiving item is signed is resolved by the
+ * shared resolver.
  */
 public final class UnsignedNegativeResultRule implements Rule {
 
@@ -103,7 +106,7 @@ public final class UnsignedNegativeResultRule implements Rule {
         }
     }
 
-    /** 算術文の流出(後続ノード入口)で受信項目区間が負を含み得るか。 */
+    /** Whether the receiving item's interval, at the arithmetic statement's outflow (the entry of the following node), may include a negative value. */
     private static boolean resultMayBeNegative(ControlFlowGraph cfg, ProgramDataFlow df, CfgNode node,
             String receiver) {
         String name = receiver.toUpperCase(Locale.ROOT);

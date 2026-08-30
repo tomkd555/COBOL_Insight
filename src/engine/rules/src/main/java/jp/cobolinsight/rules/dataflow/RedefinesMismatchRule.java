@@ -17,9 +17,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * R015 REDEFINES の項目長・境界不一致。REDEFINES で再定義した項目群の総バイト長が元項目のバイト長を
- * 超える構成を検出する。再定義項目が元項目より大きいと隣接領域を上書きする。バイト長は共有リゾルバで
- * PICTURE・USAGE・OCCURS・配下集団項目から積算し、いずれかを解決できない対は判定しない。
+ * R015 Item length/boundary mismatch from REDEFINES. Detects a configuration where the total byte
+ * length of the items redefined by REDEFINES exceeds the byte length of the original item. If the
+ * redefining item is larger than the original, it overwrites the adjacent storage. Byte length is
+ * accumulated by the shared resolver from PICTURE, USAGE, OCCURS, and descendant group items; a
+ * pair for which either length cannot be resolved is not judged.
  */
 public final class RedefinesMismatchRule implements Rule {
 

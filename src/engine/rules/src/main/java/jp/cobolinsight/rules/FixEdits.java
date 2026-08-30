@@ -19,17 +19,19 @@ import java.util.Optional;
 import java.util.function.Predicate;
 
 /**
- * FixProducer 実装が共有する編集組み立て補助。Finding.location は列を1固定・byteOffset を
- * 不明に潰すため、意味モデルから対象文の完全な {@link SourceRange} を再解決し、挿入編集を組む。
+ * Edit-building helpers shared by {@code FixProducer} implementations. Because Finding.location
+ * pins the column to 1 and collapses byteOffset to unknown, this class re-resolves the target
+ * statement's full {@link SourceRange} from the semantic model and builds the insertion edit.
  *
- * <p>挿入文の桁折り返しは UTF-8 相対のバイト長で行う({@link #LAYOUT_CHARSET})。折り返しは
- * バイト長が広いエンコーディングほど早く発生するため、UTF-8 で決めた物理行は Shift_JIS など
- * より短い符号で書き戻しても72桁を超えない。修正案の対象となる samples 配下のソースは
- * すべて UTF-8 であり、桁は厳密に一致する。
+ * <p>Column wrapping of the inserted statement is done using UTF-8-relative byte lengths
+ * ({@link #LAYOUT_CHARSET}). Wrapping occurs sooner for encodings with wider byte lengths, so a
+ * physical line laid out under UTF-8 still does not exceed column 72 when written back in a
+ * shorter encoding such as Shift_JIS. The sources under samples that fix suggestions target are
+ * all UTF-8, so the columns match exactly.
  */
 public final class FixEdits {
 
-    /** 挿入行の桁折り返し計算に用いる符号。適用時の再符号化は fix モジュールが原本の符号で行う。 */
+    /** The encoding used to compute column wrapping for inserted lines. Re-encoding at apply time is done by the fix module using the original encoding. */
     public static final Charset LAYOUT_CHARSET = StandardCharsets.UTF_8;
 
     private static final FixedFormatNormalizer NORMALIZER = new FixedFormatNormalizer();
@@ -37,7 +39,7 @@ public final class FixEdits {
     private FixEdits() {
     }
 
-    /** sourceFile と一致する意味モデルを引く。 */
+    /** Looks up the semantic model matching sourceFile. */
     public static Optional<CobolSemanticModel> modelOf(AnalysisContext context, String sourceFile) {
         return context.cobolPrograms().stream()
                 .filter(model -> model.sourceFile().equals(sourceFile))
@@ -45,8 +47,10 @@ public final class FixEdits {
     }
 
     /**
-     * 開始行が {@code line} で述語に合致する最初の単文を、手続き部を入れ子まで辿って返す。
-     * Finding.location の列が失われるため、開始行と述語で対象文を同定する。
+     * Returns the first simple statement whose start line is {@code line} and that matches the
+     * predicate, searching the procedure division down through its nesting. Because
+     * Finding.location's column is lost, the target statement is identified by start line and
+     * predicate instead.
      */
     public static Optional<SimpleStatement> findSimpleStatement(CobolSemanticModel model, int line,
             Predicate<SimpleStatement> predicate) {
@@ -78,16 +82,19 @@ public final class FixEdits {
         return Optional.empty();
     }
 
-    /** 対象文を固定形式のB領域へ整形した1行以上の物理行。 */
+    /** One or more physical lines laying out the target statement into fixed-format Area B. */
     public static List<String> layout(String statement) {
         return NORMALIZER.layoutStatement(statement, LAYOUT_CHARSET);
     }
 
     /**
-     * 対象文の終端物理行(1始まり)が固定形式の終止ピリオドで文を閉じているかを判定する。閉じて
-     * いれば、その直後へピリオド終端の新しい文を挿入しても囲む構造(IF/PERFORM/段落など)を壊さ
-     * ない。閉じていない(ブロックの途中にある)文の直後へピリオド終端の文を挿入すると、囲む文を
-     * 途中で終止させて構文を壊すため、挿入型の修正案生成はこの判定で安全な場合に限る。
+     * Determines whether the target statement's ending physical line (1-based) closes the
+     * statement with a fixed-format terminating period. If it does, inserting a new
+     * period-terminated statement right after it does not break the enclosing structure (IF,
+     * PERFORM, a paragraph, etc.). Inserting a period-terminated statement right after a statement
+     * that is not closed (one in the middle of a block) would prematurely terminate the enclosing
+     * statement and break the syntax, so insertion-style fix generation is limited to cases this
+     * check judges safe.
      */
     public static boolean endsSentence(String sourceText, int line) {
         String[] lines = sourceText.split("\n", -1);
@@ -98,9 +105,11 @@ public final class FixEdits {
     }
 
     /**
-     * 対象範囲の直後(終端行の次行先頭)へ新しい文を挿入する編集。同一物理行の識別欄(73-80桁)を
-     * 割らないよう、終端桁ではなく次行先頭の空範囲へ置く。置換は整形済み物理行を改行で連結し、
-     * 末尾に改行を付す。
+     * An edit that inserts a new statement right after the target range (at the start of the line
+     * following the ending line). To avoid splitting the identification field (columns 73-80) of
+     * that same physical line, the insertion is placed at the empty range at the start of the next
+     * line rather than at the ending column. The replacement joins the laid-out physical lines
+     * with newlines and appends a trailing newline.
      */
     public static TextEdit insertStatementAfter(SourceRange target, String statement) {
         String file = target.end().file();

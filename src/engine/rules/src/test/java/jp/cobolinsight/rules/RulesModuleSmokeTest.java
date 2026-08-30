@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** rules モジュールのテストソースが規約どおりのパッケージに置かれていることの確認。 */
+/** Confirms that the rules module's test sources are placed in the package the convention requires. */
 class RulesModuleSmokeTest {
 
     private static final String MODULE_NAME = "rules";
