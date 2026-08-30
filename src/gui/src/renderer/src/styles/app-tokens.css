@@ -1,0 +1,67 @@
+/* app-tokens.css — the project's own tokens, derived from theme.css. No colour literal lives here.
+ *
+ * theme.css (generated from tokens.json) holds the palette. This file holds what the shell needs on
+ * top of it: derived surfaces mixed from the palette, the code font, and the fixed chrome sizes.
+ *
+ * The --ci-* names below are the shim that keeps every not-yet-rewritten rule in shell.css working;
+ * an alias is deleted when its last consumer is rewritten against the --color-* names directly.
+ */
+
+:root {
+  /* Derived surfaces: mixed at use site, so both themes get them from the one palette. */
+  --ci-bg-hover: color-mix(in oklch, var(--color-foreground) 8%, transparent);
+  --ci-bg-selected: color-mix(in oklch, var(--color-primary) 28%, var(--color-background));
+  --ci-bg-overlay: color-mix(in oklch, var(--color-foreground) 45%, transparent);
+  --ci-border-strong: color-mix(in oklch, var(--color-border) 55%, var(--color-foreground));
+  --ci-danger-bg: color-mix(in oklch, var(--color-destructive) 20%, var(--color-background));
+
+  /* Type. The UI face comes from theme.css; code is the fixed-pitch member of the same family. */
+  --ci-font-ui: "BIZ UDPGothic", "Yu Gothic UI", "Meiryo", sans-serif;
+  --ci-font-code: "BIZ UDGothic", "MS Gothic", monospace;
+  --ci-size-sm: 12px;
+  --ci-size-md: 14px;
+  --ci-size-lg: 16px;
+  --ci-size-xl: 22px;
+  --ci-line: 1.5;
+
+  /* Space, on the 4px base of tokens.json. */
+  --ci-space-1: 4px;
+  --ci-space-2: 8px;
+  --ci-space-3: 12px;
+  --ci-space-4: 16px;
+  --ci-space-5: 24px;
+
+  /* Chrome sizes. */
+  --ci-titlebar-height: 36px;
+  --ci-statusbar-height: 24px;
+  --ci-activitybar-width: 48px;
+  --ci-tab-height: 34px;
+  --ci-split-size: 6px;
+  --ci-radius: var(--radius-md);
+
+  /* ---- Shim: aliases still consumed by shell.css. Delete each with its last consumer. ---- */
+  --ci-bg-app: var(--color-background);
+  --ci-bg-editor: var(--color-background);
+  --ci-bg-activitybar: var(--color-muted);
+  --ci-bg-sidebar: var(--color-muted);
+  --ci-bg-panel: var(--color-muted);
+  --ci-bg-titlebar: var(--color-muted);
+  --ci-bg-statusbar: var(--color-muted);
+  --ci-bg-raised: var(--color-surface);
+  --ci-bg-active: var(--ci-bg-selected);
+  --ci-fg: var(--color-foreground);
+  --ci-fg-strong: var(--color-foreground);
+  --ci-fg-dim: var(--color-muted-foreground);
+  --ci-border: var(--color-border);
+  --ci-focus: var(--color-primary);
+  --ci-severity-high: var(--color-destructive);
+  --ci-severity-medium: var(--color-accent);
+  --ci-severity-low: var(--color-primary);
+  --ci-severity-warning: var(--color-muted-foreground);
+  --ci-kind-cobol: var(--color-muted-foreground);
+  --ci-kind-copybook: var(--color-muted-foreground);
+  --ci-kind-jcl: var(--color-muted-foreground);
+  --ci-kind-bms: var(--color-muted-foreground);
+  --ci-kind-other: var(--color-muted-foreground);
+  --ci-danger: var(--color-destructive);
+}

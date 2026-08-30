@@ -1,0 +1,103 @@
+/* theme.css — generated from tokens.json. Edit tokens.json, not this file.
+ *
+ * Two tiers, because @theme inline emits no global variable and so cannot be
+ * overridden later. Tier 1 holds the raw palette and swaps under .dark; tier 2
+ * binds semantic names to it and generates the utility classes.
+ *
+ * Placeholders below read {{ token.path }} (no spaces) and are filled from tokens.json by
+ * scripts/generate_theme.py. Lines naming --brand-surface are dropped when
+ * tokens.json declares no color.surface; {{color_dark}} expands to one line per
+ * key color_dark carries, or to nothing.
+ */
+
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---- Tier 1: raw values, overridable ---- */
+
+:root {
+  --brand-background: oklch(97.5% 0.005 250);
+  --brand-foreground: oklch(22% 0.012 250);
+  --brand-surface: oklch(99.5% 0.002 250);
+  --brand-primary: oklch(52% 0.17 255);
+  --brand-primary-foreground: oklch(99% 0.003 255);
+  --brand-muted: oklch(94% 0.008 250);
+  --brand-muted-foreground: oklch(46% 0.016 250);
+  --brand-border: oklch(88% 0.01 250);
+  --brand-destructive: oklch(55% 0.2 27);
+  --brand-accent: oklch(72% 0.15 75);
+}
+
+.dark {
+  --brand-background: oklch(19% 0.01 250);
+  --brand-foreground: oklch(92% 0.006 250);
+  --brand-surface: oklch(23% 0.012 250);
+  --brand-primary: oklch(70% 0.15 255);
+  --brand-primary-foreground: oklch(16% 0.02 255);
+  --brand-muted: oklch(15.5% 0.01 250);
+  --brand-muted-foreground: oklch(68% 0.014 250);
+  --brand-border: oklch(30% 0.012 250);
+  --brand-destructive: oklch(68% 0.19 27);
+  --brand-accent: oklch(78% 0.14 80);
+}
+
+/* ---- Tier 2: semantic names and the utilities they generate ---- */
+
+@theme inline {
+  --color-background: var(--brand-background);
+  --color-foreground: var(--brand-foreground);
+  --color-surface: var(--brand-surface);
+  --color-primary: var(--brand-primary);
+  --color-primary-foreground: var(--brand-primary-foreground);
+  --color-muted: var(--brand-muted);
+  --color-muted-foreground: var(--brand-muted-foreground);
+  --color-border: var(--brand-border);
+  --color-destructive: var(--brand-destructive);
+  --color-accent: var(--brand-accent);
+
+  --font-display: "BIZ UDPGothic", ui-serif, serif;
+  --font-body: "BIZ UDPGothic", ui-sans-serif, sans-serif;
+
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 1px 2px 0 oklch(0% 0 0 / 0.06);
+  --shadow-md: 0 4px 12px -2px oklch(0% 0 0 / 0.12);
+  --shadow-lg: 0 12px 32px -8px oklch(0% 0 0 / 0.22);
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-spring: linear(0, 0.4, 0.9, 1.02, 1);
+}
+
+/* ---- Motion durations and the reduced-motion escape ---- */
+
+:root {
+  --duration-fast: 100ms;
+  --duration-base: 160ms;
+  --duration-slow: 260ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 1ms;
+    --duration-base: 1ms;
+    --duration-slow: 1ms;
+  }
+}
+
+/* ---- Base layer ---- */
+
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-body);
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-display);
+  }
+}

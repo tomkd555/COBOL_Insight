@@ -2,7 +2,8 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import { registerCodicons } from "./vendor/codicons";
-import "./styles/tokens.css";
+import "../../../theme.css";
+import "./styles/app-tokens.css";
 import "./styles/base.css";
 import "./styles/shell.css";
 
