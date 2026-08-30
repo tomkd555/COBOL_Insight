@@ -211,7 +211,15 @@ function rulesDeps(): RulesDeps {
  * chose on screen, and each of those goes through the pathGuard boundary check.
  */
 export function registerIpc(): void {
-  ipcMain.handle(CHANNELS.engineRun, (_event, invocation: EngineInvocation) => invoke(invocation));
+  ipcMain.handle(CHANNELS.engineRun, async (_event, invocation: EngineInvocation) => {
+    const result = await invoke(invocation);
+    if (invocation.subcommand === "scan") {
+      // A scan records each file's codepage afresh. The cache key cannot tell that apart — the bytes
+      // and the stamp are unchanged and the renderer sends no codepage — so the entries are dropped.
+      cachedDecode.clear();
+    }
+    return result;
+  });
 
   ipcMain.handle(CHANNELS.engineCancel, () => {
     stopRunningEngine();

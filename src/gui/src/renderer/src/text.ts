@@ -178,6 +178,8 @@ export const text = {
     failed: (path: string, reason: string): string =>
       `${path} を保存できませんでした。${reason} 文字コードの指定とコピー句の探索パスを確かめて、もう一度保存してください。`,
     nothingToSave: "保存する編集がありません。",
+    dirtyBeforeFolderChange:
+      "編集中のファイルがあります。保存するか編集を破棄してから、資産フォルダを切り替えてください。",
     conflictTitle: "原本が書き換わっています",
     conflictBody: (path: string): string =>
       `${path} は、開いたあとにこのツールの外で書き換わりました。上書きすると、その変更は失われます。`,

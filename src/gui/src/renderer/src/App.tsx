@@ -19,8 +19,10 @@ import { EditorStatusProvider } from "./state/editorStatusStore";
 import { useShellStartup } from "./state/useShellStartup";
 import { buildCommands, type Command } from "./state/commands";
 import {
+  SEQUENCE_TIMEOUT_MS,
   commandAfterPrefix,
   commandForChord,
+  isModifierKey,
   isPaletteChord,
   isSequencePrefix,
 } from "./state/keybindings";
@@ -108,11 +110,34 @@ function Shell(): ReactElement {
         if (folder === null) {
           return;
         }
+        if (folder !== project.inputDir) {
+          // A tab id holds the path relative to the asset folder and nothing else, so the same
+          // relative path in the new folder would inherit this folder's draft and be written over
+          // with it. Every tab therefore goes, together with its model and its decode — and an
+          // unsaved edit is never thrown away on the way: the switch waits for it to be settled.
+          if (sourceSave.hasDirty) {
+            notify(text.save.dirtyBeforeFolderChange, true);
+            return;
+          }
+          for (const tab of workbench.tabs) {
+            disposeModel(tab.id);
+            forgetDocument(tab.id);
+          }
+          workbenchDispatch({ type: "CLOSE_ALL_TABS" });
+        }
         settingsDispatch({ type: "SET_LAST_INPUT_DIR", dir: folder });
         void analysis.run(folder);
       })
       .catch((error: unknown) => notify(errorMessage(error), true));
-  }, [analysis, settingsDispatch, notify]);
+  }, [
+    analysis,
+    settingsDispatch,
+    workbenchDispatch,
+    project.inputDir,
+    workbench.tabs,
+    sourceSave.hasDirty,
+    notify,
+  ]);
 
   const cancelAnalysis = useCallback((): void => {
     analysis.cancel().catch((error: unknown) => notify(errorMessage(error), true));
@@ -173,7 +198,20 @@ function Shell(): ReactElement {
   // The keyboard chords. They are ignored while typing into a field, except inside the code editor.
   // Ctrl+K arms a two-key sequence; the next key completes it or cancels it.
   const armed = useRef(false);
+  const armTimer = useRef<number | null>(null);
   useEffect(() => {
+    const disarm = (): void => {
+      armed.current = false;
+      if (armTimer.current !== null) {
+        window.clearTimeout(armTimer.current);
+        armTimer.current = null;
+      }
+    };
+    const arm = (): void => {
+      disarm();
+      armed.current = true;
+      armTimer.current = window.setTimeout(disarm, SEQUENCE_TIMEOUT_MS);
+    };
     const runCommand = (id: string): boolean => {
       const command = commands.find((candidate) => candidate.id === id);
       if (command === undefined || !command.when()) {
@@ -184,7 +222,11 @@ function Shell(): ReactElement {
     };
     const onKeyDown = (event: globalThis.KeyboardEvent): void => {
       if (armed.current) {
-        armed.current = false;
+        if (isModifierKey(event)) {
+          // Ctrl released and pressed again on the way to the second key. Stay armed.
+          return;
+        }
+        disarm();
         const sequenced = commandAfterPrefix(event);
         if (sequenced !== null) {
           event.preventDefault();
@@ -194,7 +236,7 @@ function Shell(): ReactElement {
       }
       if (isSequencePrefix(event)) {
         event.preventDefault();
-        armed.current = true;
+        arm();
         return;
       }
       if (isPaletteChord(event)) {
@@ -212,7 +254,12 @@ function Shell(): ReactElement {
       runCommand(id);
     };
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    // Leaving the window ends the gesture: the second key would land somewhere else entirely.
+    window.addEventListener("blur", disarm);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("blur", disarm);
+    };
   }, [commands]);
 
   const commitSize = useCallback((): void => {
@@ -297,7 +344,13 @@ function Shell(): ReactElement {
                 onClick={() => {
                   const id = pendingClose;
                   setPendingClose(null);
-                  void sourceSave.save(id).then(() => closeTab(id));
+                  // Only a written file closes its tab. A conflict or a failed write leaves the
+                  // edit where it is, and closing then would be the one way to lose it.
+                  void sourceSave.save(id).then((saved) => {
+                    if (saved) {
+                      closeTab(id);
+                    }
+                  });
                 }}
                 data-testid="confirm-discard-save"
               >

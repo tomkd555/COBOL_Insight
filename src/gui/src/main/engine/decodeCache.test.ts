@@ -105,6 +105,40 @@ describe("createCachedDecode", () => {
     expect(dependencies.decode).toHaveBeenCalledTimes(4);
   });
 
+  it("runs the engine once for two requests that arrive together", async () => {
+    let started = 0;
+    const dependencies = deps({
+      decode: vi.fn(async () => {
+        started += 1;
+        await Promise.resolve();
+        return decoded("text");
+      }),
+    });
+    const cached = createCachedDecode(dependencies);
+    const [first, second] = await Promise.all([cached(request), cached(request)]);
+    expect(started).toBe(1);
+    expect(second).toBe(first);
+  });
+
+  it("forgets a decode that rejected, so the next request tries again", async () => {
+    const decode = vi.fn(async () => {
+      throw new Error("engine gone");
+    });
+    const cached = createCachedDecode(deps({ decode }));
+    await expect(cached(request)).rejects.toThrow("engine gone");
+    await expect(cached(request)).rejects.toThrow("engine gone");
+    expect(decode).toHaveBeenCalledTimes(2);
+  });
+
+  it("decodes again after the cache is cleared", async () => {
+    const dependencies = deps();
+    const cached = createCachedDecode(dependencies);
+    await cached(request);
+    cached.clear();
+    await cached(request);
+    expect(dependencies.decode).toHaveBeenCalledTimes(2);
+  });
+
   it("falls back to the engine when locating the file throws", async () => {
     const dependencies = deps({
       locate: async () => {

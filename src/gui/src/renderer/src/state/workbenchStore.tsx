@@ -153,6 +153,7 @@ export function transpileTab(path: string): WorkbenchTab {
 export type WorkbenchAction =
   | { type: "OPEN_TAB"; tab: WorkbenchTab }
   | { type: "CLOSE_TAB"; id: string }
+  | { type: "CLOSE_ALL_TABS" }
   | { type: "ACTIVATE_TAB"; id: string }
   | { type: "STEP_TAB"; step: 1 | -1 }
   | { type: "SET_DRAFT"; id: string; draft: string | null }
@@ -225,6 +226,11 @@ export function workbenchReducer(state: WorkbenchState, action: WorkbenchAction)
         drafts: withoutDraft(state.drafts, action.id),
       };
     }
+
+    case "CLOSE_ALL_TABS":
+      // A tab id names an asset by its path relative to the asset folder, so tabs opened from one
+      // folder mean nothing once another is chosen. The caller releases their models and decodes.
+      return { ...state, tabs: [], activeTabId: null, drafts: {} };
 
     case "ACTIVATE_TAB":
       return state.tabs.some((tab) => tab.id === action.id)

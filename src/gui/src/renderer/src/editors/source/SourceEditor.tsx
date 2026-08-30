@@ -35,10 +35,16 @@ export interface SourceEditorProps {
   onShowFix: (path: string) => void;
 }
 
+/**
+ * How the decode of one tab stands. The tab it belongs to is part of it: this element stays mounted
+ * across a tab switch, so between the switch and the decode effect the state still holds the result
+ * of the tab that was here a moment ago — and a result carrying no tab would be taken for the new
+ * one's, long enough to put one asset's text into another's model.
+ */
 type Load =
-  | { status: "loading" }
-  | { status: "ready"; result: DecodeResult }
-  | { status: "error"; message: string };
+  | { status: "loading"; tabId: string }
+  | { status: "ready"; tabId: string; result: DecodeResult }
+  | { status: "error"; tabId: string; message: string };
 
 /**
  * The source view for one asset.
@@ -64,7 +70,7 @@ export function SourceEditor({ path, line, onShowFix }: SourceEditorProps): Reac
   const workbenchDispatch = useWorkbenchDispatch();
   const setStatus = useSetEditorStatus();
 
-  const [load, setLoad] = useState<Load>({ status: "loading" });
+  const [load, setLoad] = useState<Load>({ status: "loading", tabId: sourceTabId(path) });
   const containerRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<monacoApi.editor.IStandaloneCodeEditor | null>(null);
   const areasRef = useRef<monacoApi.editor.IEditorDecorationsCollection | null>(null);
@@ -93,7 +99,7 @@ export function SourceEditor({ path, line, onShowFix }: SourceEditorProps): Reac
       return;
     }
     let cancelled = false;
-    setLoad({ status: "loading" });
+    setLoad({ status: "loading", tabId });
     api()
       .decode({
         baseDir,
@@ -105,14 +111,14 @@ export function SourceEditor({ path, line, onShowFix }: SourceEditorProps): Reac
       .then((result) => {
         if (cancelled) return;
         if (result.error !== "") {
-          setLoad({ status: "error", message: result.error });
+          setLoad({ status: "error", tabId, message: result.error });
           return;
         }
         rememberDocument(tabId, path, result);
-        setLoad({ status: "ready", result });
+        setLoad({ status: "ready", tabId, result });
       })
       .catch((error: unknown) => {
-        if (!cancelled) setLoad({ status: "error", message: errorMessage(error) });
+        if (!cancelled) setLoad({ status: "error", tabId, message: errorMessage(error) });
       });
     return () => {
       cancelled = true;
@@ -123,14 +129,12 @@ export function SourceEditor({ path, line, onShowFix }: SourceEditorProps): Reac
    * What the two Monaco listeners need but cannot read from the closure they were created in. They
    * are registered once, so what changes afterwards reaches them through this ref rather than by
    * tearing the editor down and rebuilding it.
+   *
+   * It is written by the effect that switches the model and by nothing else, so what the listeners
+   * read always describes the tab whose model is on screen. The decoded text is not kept here: it
+   * moves on with every save and reload, and openDocuments is where it is up to date.
    */
-  const current = useRef({ codepage: "", detected: false, editor: codepage, decoded: "" });
-  current.current = {
-    codepage: load.status === "ready" ? load.result.codepage : "",
-    detected: load.status === "ready" && load.result.detected,
-    editor: codepage,
-    decoded: openDocument(tabId)?.text ?? (load.status === "ready" ? load.result.text : ""),
-  };
+  const current = useRef({ codepage: "", detected: false, editor: codepage });
 
   /* ---------------------------------------------------------------- the editor */
 
@@ -186,12 +190,12 @@ export function SourceEditor({ path, line, onShowFix }: SourceEditorProps): Reac
       const model = editor.getModel();
       const lines = model === null ? value.split("\n") : model.getLinesContent();
       setBoundaries(lines.map((each) => boundariesOf(each, current.current.editor)));
-      // The draft map is both the unsaved text and the dirty flag; text equal to the decoded
-      // original is not an edit.
+      // The draft map is both the unsaved text and the dirty flag; text equal to the file as it now
+      // stands — as decoded, or as last written — is not an edit.
       workbenchDispatch({
         type: "SET_DRAFT",
         id,
-        draft: value === current.current.decoded ? null : value,
+        draft: value === openDocument(id)?.text ? null : value,
       });
     });
 
@@ -213,9 +217,26 @@ export function SourceEditor({ path, line, onShowFix }: SourceEditorProps): Reac
 
   useEffect(() => {
     const editor = editorRef.current;
-    if (editor === null || load.status !== "ready") {
+    if (editor === null) {
       return;
     }
+    if (load.status !== "ready" || load.tabId !== tabId) {
+      // Nothing to show for this tab: it is still being decoded, or its decode failed, or the
+      // result on hand belongs to the tab that was here a moment ago. Another tab's model must not
+      // stay under this tab's heading, where it would take this tab's markers and this tab's edits.
+      if (activeTabRef.current !== tabId) {
+        activeTabRef.current = "";
+        editor.setModel(null);
+      }
+      return;
+    }
+    // The listeners read this; it is set before the model moves, so no keystroke sees the pair
+    // half-swapped.
+    current.current = {
+      codepage: load.result.codepage,
+      detected: load.result.detected,
+      editor: codepage,
+    };
     const fresh = existingModel(tabId) === null;
     const model = modelFor(tabId, load.result.text, languageId);
     if (!fresh && model.getValue() !== load.result.text && draftOf(workbench, tabId) === null) {

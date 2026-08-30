@@ -11,7 +11,7 @@
  * byte-width rule it implies.
  */
 
-import { normalizeCodepage } from "../../../shared/codepage";
+import { isEbcdic, normalizeCodepage } from "../../../shared/codepage";
 
 /** The codepages whose byte widths this module can reproduce. */
 export type EditorCodepage = "UTF-8" | "Shift_JIS" | "IBM930" | "IBM939";
@@ -38,11 +38,6 @@ const HALFWIDTH_KATAKANA_LAST = 0xff9f;
 export function editorCodepageOf(codepage: string | null | undefined): EditorCodepage {
   const normalized = normalizeCodepage(codepage);
   return normalized === null ? "UTF-8" : (normalized as EditorCodepage);
-}
-
-/** Whether the codepage carries shift-out/shift-in bytes around its double-byte runs. */
-function usesShifts(codepage: EditorCodepage): boolean {
-  return codepage === "IBM930" || codepage === "IBM939";
 }
 
 /**
@@ -86,7 +81,7 @@ function walk(
   codepage: EditorCodepage,
   visit: (byteColumn: number, offset: number, width: number) => void,
 ): number {
-  const shifts = usesShifts(codepage);
+  const shifts = isEbcdic(codepage);
   let byteColumn = 1;
   let offset = 0;
   let inDbcs = false;

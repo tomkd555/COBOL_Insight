@@ -235,7 +235,13 @@ export function artifactCount<T>(result: ArtifactState<T>): number | null {
   return result.status === "ready" ? result.items.length : null;
 }
 
+/**
+ * What stands for "no items". One array is shared by every caller: a fresh one each time would be a
+ * new value on every render, and the memos and effects keyed on the result would never settle.
+ */
+const NO_ITEMS: readonly never[] = [];
+
 /** The items an artefact holds; empty when it is unfetched or failed. */
 export function artifactItems<T>(result: ArtifactState<T>): readonly T[] {
-  return result.status === "ready" ? result.items : [];
+  return result.status === "ready" ? result.items : NO_ITEMS;
 }

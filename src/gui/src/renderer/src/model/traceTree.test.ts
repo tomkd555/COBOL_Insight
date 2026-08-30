@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { buildTrace, flattenTrace, initialExpanded } from "./traceTree";
+import type { GraphData } from "../../../shared/ipc";
+import {
+  TRACE_NODE_BUDGET,
+  buildTrace,
+  flattenTrace,
+  initialExpanded,
+  type TraceNode,
+} from "./traceTree";
 import { GRAPH, INVENTORY, SYK001_ID } from "./graphFixture";
 
 const ROOTS = buildTrace(GRAPH, INVENTORY);
@@ -85,6 +92,47 @@ describe("buildTrace", () => {
     );
     const branch = roots.find((root) => root.label === "SYK001")?.children[0].children[0];
     expect([branch?.kind, branch?.label]).toEqual(["unresolved", "WS-TARGET"]);
+  });
+});
+
+describe("a program whose PERFORMs fan out", () => {
+  /**
+   * Every paragraph performs the next one twice, so each level doubles the one above it. Twenty-five
+   * paragraphs are 2^24 rows if the descent is left to run; the budget is what makes this finish.
+   */
+  function fanOut(depth: number): GraphData {
+    const paragraphs = Array.from({ length: depth }, (_unused, index) => ({
+      id: 100 + index,
+      programSourceId: SYK001_ID,
+      name: `P${index}`,
+      startLine: 10 + index,
+      endLine: 10 + index,
+    }));
+    const paragraphEdges = paragraphs.slice(0, -1).flatMap((paragraph, index) =>
+      [1, 2].map((seq) => ({
+        programSourceId: SYK001_ID,
+        from: paragraph.id,
+        to: paragraphs[index + 1].id,
+        toName: paragraphs[index + 1].name,
+        kind: "PERFORM",
+        line: paragraph.startLine,
+        seq,
+      })),
+    );
+    return { ...GRAPH, edges: [], paragraphs, paragraphEdges };
+  }
+
+  function countNodes(nodes: readonly TraceNode[]): number {
+    return nodes.reduce((total, node) => total + 1 + countNodes(node.children), 0);
+  }
+
+  it("builds a tree bounded by the budget instead of doubling at every level", () => {
+    const roots = buildTrace(fanOut(25), INVENTORY);
+    const program = roots.find((root) => root.label === "SYK001");
+    expect(program?.children[0].label).toBe("P0");
+    // The level that spends the last of the budget still finishes its own row, so the count lands
+    // just above it rather than exactly on it.
+    expect(countNodes(roots)).toBeLessThanOrEqual(TRACE_NODE_BUDGET + 100);
   });
 });
 
