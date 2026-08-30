@@ -17,6 +17,7 @@
 
 .ci-source__meta {
   display: flex;
+  align-items: center;
   gap: var(--ci-space-3);
   padding: var(--ci-space-1) var(--ci-space-3);
   background: var(--color-muted);
@@ -99,27 +100,29 @@
   color: inherit;
 }
 
+/* Monaco's own token colour overrides a decoration's `color`, so these are background bands. */
 .ci-code__indicator {
-  color: var(--color-muted-foreground);
+  background: color-mix(in oklch, var(--color-muted-foreground) 14%, transparent);
   font-weight: 700;
 }
 
 .ci-code__indicator--comment {
-  color: var(--color-muted-foreground);
+  background: color-mix(in oklch, var(--color-muted-foreground) 14%, transparent);
   font-weight: 400;
 }
 
 .ci-code__indicator--debug {
-  color: var(--color-muted-foreground);
+  background: color-mix(in oklch, var(--color-muted-foreground) 14%, transparent);
 }
 
 .ci-code__indicator--continuation {
-  color: var(--color-muted-foreground);
+  background: color-mix(in oklch, var(--color-muted-foreground) 14%, transparent);
 }
 
 /* A background only: the text colour stays Monaco's token colour. */
 .ci-code__identification {
   background: color-mix(in oklch, var(--color-muted-foreground) 10%, transparent);
+  opacity: 0.6;
 }
 
 /* Past column 80 the fixed format gives the bytes no meaning at all. */
@@ -177,7 +180,7 @@
   border-top: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
   border-left: 2px solid var(--color-primary);
-  background: var(--color-surface);
+  background: color-mix(in oklch, var(--color-foreground) 5%, var(--color-surface));
   font-family: var(--ci-font-code);
   font-size: var(--ci-size-sm);
 }

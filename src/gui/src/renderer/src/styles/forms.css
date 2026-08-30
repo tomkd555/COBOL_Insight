@@ -62,7 +62,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--ci-space-1);
-  height: 28px;
+  min-height: 28px;
   padding: 0 var(--ci-space-2);
   font-size: var(--ci-size-sm);
 }
@@ -151,7 +151,9 @@
 .ci-form {
   display: flex;
   flex-direction: column;
-  gap: var(--ci-space-4);
+  align-items: flex-start;
+  gap: var(--ci-space-3);
+  max-width: 72ch;
   margin: 0;
   padding: 0;
   border: none;
@@ -219,12 +221,13 @@
   align-items: center;
   height: 24px;
   padding: 0 var(--ci-space-2);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: transparent;
+  border: 1px dashed var(--color-border);
   border-radius: var(--radius-full);
-  color: var(--color-foreground);
+  color: var(--color-muted-foreground);
   cursor: pointer;
   font-size: var(--ci-size-sm);
+  text-decoration: line-through;
   transition:
     background-color var(--duration-fast) var(--ease-standard),
     border-color var(--duration-fast) var(--ease-standard);
@@ -235,13 +238,20 @@
 }
 
 .ci-chip--on {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--color-primary-foreground);
+  background: var(--color-surface);
+  border: 1px solid var(--ci-border-strong);
+  color: var(--color-foreground);
+  text-decoration: none;
 }
 
 .ci-chip--on:hover {
-  background: var(--color-primary);
+  background: var(--ci-bg-hover);
+}
+
+/* Single-choice groups (settings theme, custom-rule pane switch): every option reads as a live
+   choice, not an exclusion, so the off state keeps no strikethrough. */
+[role="radiogroup"] .ci-chip {
+  text-decoration: none;
 }
 
 /* ---------------------------------------------------------------- custom rules */
@@ -303,7 +313,7 @@
 .ci-settings {
   display: flex;
   flex-direction: column;
-  gap: var(--ci-space-3);
+  gap: var(--ci-space-5);
   overflow: auto;
   height: 100%;
   padding: var(--ci-space-4);
@@ -335,11 +345,6 @@
 }
 
 /* ---------------------------------------------------------------- terminal import */
-
-.ci-modal__dialog--wide {
-  width: min(1040px, 94vw);
-  margin-top: 6vh;
-}
 
 .ci-import {
   display: flex;

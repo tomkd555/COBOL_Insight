@@ -76,14 +76,18 @@ function record(name, ok, detail) {
   console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail === undefined ? "" : ` — ${detail}`}`);
 }
 
+/** The theme of the suite in progress; `snap` files its captures under it. */
+let currentTheme = "dark";
+
 /** Writes the window as it stands to <shots>/<theme>/<name>.png. A no-op in the plain smoke. */
-async function snap(win, theme, name) {
+async function snap(win, name) {
   if (SHOTS_DIR === null) {
     return;
   }
-  const dir = join(SHOTS_DIR, theme);
+  const dir = join(SHOTS_DIR, currentTheme);
   mkdirSync(dir, { recursive: true });
-  // Let the last click's re-render and Monaco's next frame land before the capture.
+  // Let the icon font, the last click's re-render and Monaco's next frame land before the capture.
+  await evaluate(win, "document.fonts.ready.then(() => true)");
   await delay(250);
   const image = await win.webContents.capturePage();
   writeFileSync(join(dir, `${name}.png`), image.toPNG());
@@ -424,6 +428,7 @@ async function checkSaveConflict(win) {
     ok: false,
     reason: error.message,
   }));
+  await snap(win, "checkSaveConflict-dialog");
   record(
     "14. saving over a changed original raises the conflict dialog",
     raised.ok === true,
@@ -608,6 +613,7 @@ async function checkTranspile(win) {
     "the caret the Java pane followed to",
   );
 
+  await snap(win, "checkTranspile-panes");
   record(
     "17. the transpile view lines the generated code up through the line map",
     python === 3 && java === 4,
@@ -720,6 +726,7 @@ async function checkRules(win) {
     })()`,
     "the toggle round trip through the rule file",
   );
+  await snap(win, "checkRules-view");
   record(
     "8. a rules toggle round-trips through the rule file",
     toggles >= 3 && severities >= 3 && roundTripped === "round-tripped",
@@ -755,6 +762,7 @@ async function checkRuleAndSettingsEditors(win) {
     "the raw JSON of the custom rules",
   );
 
+  await snap(win, "checkRuleAndSettingsEditors-customRules");
   await waitUntil(win, clickTestId("activity-explorer"), "the explorer");
   await evaluate(
     win,
@@ -829,6 +837,7 @@ async function checkImportDialog(win) {
     "the preview of the cut text",
   );
 
+  await snap(win, "checkImportDialog-open");
   await waitUntil(win, clickTestId("import-save"), "the save button");
   const saved = await waitUntil(
     win,
@@ -881,6 +890,7 @@ async function checkCommandPalette(win) {
     "the filtered commands",
   );
 
+  await snap(win, "checkCommandPalette-open");
   await evaluate(
     win,
     `document.querySelector('[data-testid="command-palette-input"]')
@@ -964,6 +974,7 @@ async function main() {
 async function runSuite(theme) {
   // One suite's console faults must not be charged to the next.
   consoleErrors.length = 0;
+  currentTheme = theme;
   const win = new BrowserWindow({
     // The production default size (see src/main/window.ts).
     width: 1440,
@@ -1031,7 +1042,7 @@ async function runSuite(theme) {
           error instanceof Error ? error.message : String(error),
         );
       }
-      await snap(win, theme, check.name);
+      await snap(win, check.name);
     }
     checkConsole();
   } catch (error) {

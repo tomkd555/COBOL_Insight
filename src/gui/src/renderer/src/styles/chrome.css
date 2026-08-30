@@ -203,7 +203,8 @@
 .ci-sidebar__body {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* ---------------------------------------------------------------- split handles */
@@ -248,10 +249,12 @@
 
 .ci-tabs {
   display: flex;
-  flex: 0 0 var(--ci-tab-height);
+  flex: 0 0 auto;
+  min-height: var(--ci-tab-height);
   background: var(--color-muted);
   border-bottom: 1px solid var(--color-border);
   overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .ci-tab {
@@ -279,6 +282,9 @@
   border: none;
   cursor: pointer;
   white-space: nowrap;
+  max-width: 16em;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ci-tab__dirty {

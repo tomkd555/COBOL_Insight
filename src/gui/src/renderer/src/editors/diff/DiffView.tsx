@@ -42,6 +42,10 @@ export function DiffView({ original, modified, languageId, ariaLabel }: DiffView
       originalEditable: false,
       renderSideBySide: true,
       minimap: { enabled: false },
+      // Five digits so the body's left edge does not move between assets, and the same column rulers
+      // as SourceEditor so a diff pane reads against the fixed-format columns it is showing.
+      lineNumbersMinChars: 5,
+      rulers: [6, 7, 11, 72],
       wordWrap: "off",
       folding: false,
       contextmenu: false,

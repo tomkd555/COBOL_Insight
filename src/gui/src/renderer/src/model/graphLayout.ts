@@ -51,17 +51,17 @@ const NODE_KIND_SHAPES: readonly {
   line: Pair;
   borderStyle: "solid" | "dashed";
 }[] = [
-  { kind: "JOB", shape: "hexagon", fill: ["#243347", "#dbe7fb"], line: ["#6aa7ff", "#2a66d0"], borderStyle: "solid" },
-  { kind: "STEP", shape: "round-rectangle", fill: ["#22303f", "#e3ecfa"], line: ["#4f8fe6", "#4a7fd0"], borderStyle: "solid" },
-  { kind: "PROGRAM", shape: "rectangle", fill: ["#26332f", "#dcf1ea"], line: ["#4ec9b0", "#1f8f78"], borderStyle: "solid" },
-  { kind: "PARAGRAPH", shape: "ellipse", fill: ["#2b2f38", "#eceef2"], line: ["#a3a8b3", "#8a8f9a"], borderStyle: "solid" },
-  { kind: "DATASET", shape: "barrel", fill: ["#33301f", "#f4efd6"], line: ["#dcdcaa", "#8a7a1a"], borderStyle: "solid" },
-  { kind: "DB2_TABLE", shape: "cut-rectangle", fill: ["#1f3327", "#dff1e3"], line: ["#6fc28b", "#2e8b4f"], borderStyle: "solid" },
-  { kind: "TRANSACTION", shape: "octagon", fill: ["#312a3a", "#efe3f3"], line: ["#c586c0", "#8a3fa0"], borderStyle: "solid" },
-  { kind: "BMS_MAP", shape: "rhomboid", fill: ["#22303a", "#dfeef8"], line: ["#9cdcfe", "#1f6f9f"], borderStyle: "solid" },
-  { kind: "EXTERNAL_UTILITY", shape: "tag", fill: ["#2b2f38", "#eceef2"], line: ["#b0b5bf", "#6d727d"], borderStyle: "solid" },
-  { kind: "UNRESOLVED", shape: "diamond", fill: ["#3a2323", "#fbe0dd"], line: ["#ff6b5e", "#d03a2e"], borderStyle: "dashed" },
-  { kind: "UNANALYZABLE", shape: "star", fill: ["#332b1f", "#f7ead2"], line: ["#e8b04a", "#b0761a"], borderStyle: "solid" },
+  { kind: "JOB", shape: "hexagon", fill: ["#243347", "#dbe7fb"], line: ["#6aa7ff", "#1f4fa8"], borderStyle: "solid" },
+  { kind: "STEP", shape: "round-rectangle", fill: ["#22303f", "#e3ecfa"], line: ["#4f8fe6", "#3565b3"], borderStyle: "solid" },
+  { kind: "PROGRAM", shape: "rectangle", fill: ["#26332f", "#dcf1ea"], line: ["#4ec9b0", "#176f5d"], borderStyle: "solid" },
+  { kind: "PARAGRAPH", shape: "ellipse", fill: ["#2b2f38", "#eceef2"], line: ["#a3a8b3", "#666c78"], borderStyle: "solid" },
+  { kind: "DATASET", shape: "barrel", fill: ["#33301f", "#f4efd6"], line: ["#dcdcaa", "#6b5e12"], borderStyle: "solid" },
+  { kind: "DB2_TABLE", shape: "cut-rectangle", fill: ["#1f3327", "#dff1e3"], line: ["#6fc28b", "#236c3d"], borderStyle: "solid" },
+  { kind: "TRANSACTION", shape: "octagon", fill: ["#312a3a", "#efe3f3"], line: ["#c586c0", "#6d2f80"], borderStyle: "solid" },
+  { kind: "BMS_MAP", shape: "rhomboid", fill: ["#22303a", "#dfeef8"], line: ["#9cdcfe", "#17567c"], borderStyle: "solid" },
+  { kind: "EXTERNAL_UTILITY", shape: "tag", fill: ["#2b2f38", "#eceef2"], line: ["#b0b5bf", "#555a64"], borderStyle: "solid" },
+  { kind: "UNRESOLVED", shape: "diamond", fill: ["#3a2323", "#fbe0dd"], line: ["#ff6b5e", "#a82e24"], borderStyle: "dashed" },
+  { kind: "UNANALYZABLE", shape: "star", fill: ["#332b1f", "#f7ead2"], line: ["#e8b04a", "#8a5c14"], borderStyle: "solid" },
 ];
 
 function pick(pair: Pair, theme: ThemeName): string {
@@ -101,15 +101,15 @@ export interface EdgeKindStyle {
 
 /** The edge kinds the engine records (EdgeKind), in legend order. */
 const EDGE_KIND_SHAPES: readonly { kind: string; color: Pair; arrowShape: cytoscape.Css.ArrowShape }[] = [
-  { kind: "EXECUTION", color: ["#a3a8b3", "#8a8f9a"], arrowShape: "triangle" },
-  { kind: "CALL", color: ["#6aa7ff", "#2a66d0"], arrowShape: "vee" },
-  { kind: "REFERENCE", color: ["#dcdcaa", "#8a7a1a"], arrowShape: "square" },
-  { kind: "TRANSACTION_TRANSITION", color: ["#c586c0", "#8a3fa0"], arrowShape: "diamond" },
-  { kind: "MAP_REFERENCE", color: ["#9cdcfe", "#1f6f9f"], arrowShape: "circle" },
+  { kind: "EXECUTION", color: ["#a3a8b3", "#666c78"], arrowShape: "triangle" },
+  { kind: "CALL", color: ["#6aa7ff", "#1f4fa8"], arrowShape: "vee" },
+  { kind: "REFERENCE", color: ["#dcdcaa", "#6b5e12"], arrowShape: "square" },
+  { kind: "TRANSACTION_TRANSITION", color: ["#c586c0", "#6d2f80"], arrowShape: "diamond" },
+  { kind: "MAP_REFERENCE", color: ["#9cdcfe", "#17567c"], arrowShape: "circle" },
 ];
 
 /** The colour of a line that carries no kind: the theme's muted foreground. */
-const PLAIN_EDGE: Pair = ["#a3a8b3", "#8a8f9a"];
+const PLAIN_EDGE: Pair = ["#a3a8b3", "#666c78"];
 
 /** The edge kinds in legend order, coloured for the theme. */
 export function edgeKindStyles(theme: ThemeName): EdgeKindStyle[] {
@@ -273,7 +273,7 @@ export function graphStylesheet(theme: ThemeName): cytoscape.StylesheetJsonBlock
       selector: `node.${SELECTED_NODE_CLASS}`,
       style: {
         "border-width": 3.5,
-        "border-color": dark ? "#6aa7ff" : "#2a66d0",
+        "border-color": dark ? "#ffffff" : "#111111",
         "border-style": "solid",
       },
     },
@@ -284,7 +284,7 @@ export function graphStylesheet(theme: ThemeName): cytoscape.StylesheetJsonBlock
  * The ceiling on the zoom `fit` may reach. maxZoom belongs to the core, not to the layout: a graph
  * of two nodes would otherwise be blown up until one node filled the viewport.
  */
-export const GRAPH_MAX_ZOOM = 1;
+export const GRAPH_MAX_ZOOM = 1.6;
 
 export interface GraphCoreOptions {
   readonly container: HTMLElement;

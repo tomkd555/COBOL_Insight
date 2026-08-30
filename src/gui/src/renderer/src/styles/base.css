@@ -64,6 +64,7 @@ textarea {
   border-radius: var(--ci-radius);
   color: var(--color-foreground);
   cursor: pointer;
+  white-space: nowrap;
   transition:
     background-color var(--duration-fast) var(--ease-standard),
     border-color var(--duration-fast) var(--ease-standard),
@@ -75,8 +76,10 @@ textarea {
 }
 
 .ci-button:disabled {
+  background: var(--color-muted);
+  border-color: var(--color-border);
+  color: var(--color-muted-foreground);
   cursor: default;
-  opacity: 0.5;
 }
 
 .ci-button--primary {
@@ -85,10 +88,22 @@ textarea {
   color: var(--color-primary-foreground);
 }
 
+.ci-button--primary:disabled {
+  background: var(--color-muted);
+  border-color: var(--color-border);
+  color: var(--color-muted-foreground);
+}
+
 .ci-button--danger {
   background: var(--color-destructive);
   border-color: var(--color-destructive);
   color: var(--color-primary-foreground);
+}
+
+.ci-button--danger:disabled {
+  background: var(--color-muted);
+  border-color: var(--color-border);
+  color: var(--color-muted-foreground);
 }
 
 .ci-button--quiet {

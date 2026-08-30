@@ -334,7 +334,7 @@ export function cobolInsightTheme(theme: ThemeName): MonacoThemeData {
     base: dark ? "vs-dark" : "vs",
     inherit: true,
     rules: [
-      { token: "sequence", foreground: c("6b7280", "9aa0ab") },
+      { token: "sequence", foreground: c("868d99", "6b7280") },
       { token: "indicator", foreground: c("d7ba7d", "b07a15"), fontStyle: "bold" },
       { token: "continuation", foreground: c("d7ba7d", "b07a15") },
       { token: "debug", foreground: c("c586c0", "8a3fa0") },
@@ -356,7 +356,7 @@ export function cobolInsightTheme(theme: ThemeName): MonacoThemeData {
       "editor.foreground": c("#e3e5ea", "#2b2f38"),
       "editorLineNumber.foreground": c("#6b7280", "#9aa0ab"),
       "editorLineNumber.activeForeground": c("#6aa7ff", "#2a66d0"),
-      "editorRuler.foreground": c("#3b3f48", "#d6dae2"),
+      "editorRuler.foreground": c("#555b66", "#9aa2b0"),
       "editorGutter.background": c("#1f2126", "#f6f7f9"),
     },
   };

@@ -153,9 +153,7 @@ export function Rules({ notify }: RulesProps): ReactElement {
                 </button>
                 {severityBadge(entry)}
                 {entry.hasFix ? (
-                  <span className="ci-badge" title={text.rules.hasFix}>
-                    {text.rules.hasFix}
-                  </span>
+                  <span className="ci-badge">{text.rules.hasFix}</span>
                 ) : null}
                 <span className={`ci-badge ci-badge--${entry.source === "user" ? "copybook" : "other"}`}>
                   {entry.source === "user" ? text.rules.user : text.rules.builtin}

@@ -78,7 +78,11 @@ export function Problems({ onOpenAsset, compact = false }: ProblemsProps): React
     );
   }
   if (project.findings.status === "none" && project.sqlFindings.status === "none") {
-    return <p className="ci-problems__state">{text.problems.empty}</p>;
+    return (
+      <p className="ci-problems__state">
+        {project.inputDir === null ? text.problems.emptyNoFolder : text.problems.empty}
+      </p>
+    );
   }
 
   return (

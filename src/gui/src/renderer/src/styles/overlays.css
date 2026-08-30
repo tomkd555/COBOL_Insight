@@ -24,6 +24,7 @@
   position: fixed;
   inset: 0;
   z-index: 10;
+  overflow: auto;
 }
 
 .ci-palette__backdrop,
@@ -82,6 +83,11 @@
   color: var(--color-muted-foreground);
 }
 
+.ci-palette__item--active .ci-palette__category {
+  color: var(--color-foreground);
+  opacity: 0.8;
+}
+
 .ci-palette__empty {
   margin: 0;
   padding: var(--ci-space-3);
@@ -92,16 +98,18 @@
   position: relative;
   margin: 20vh auto 0;
   width: min(440px, 90vw);
+  max-height: 88vh;
   padding: var(--ci-space-4);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
+  overflow: auto;
   animation: ci-overlay-in var(--duration-base) var(--ease-standard);
 }
 
 .ci-modal__dialog--wide {
-  width: min(1000px, 92vw);
+  width: min(1040px, 94vw);
 }
 
 .ci-modal__diff {
@@ -117,7 +125,7 @@
 }
 
 .ci-modal__body {
-  color: var(--color-muted-foreground);
+  color: var(--color-foreground);
 }
 
 .ci-modal__actions {
@@ -129,8 +137,9 @@
 
 .ci-toasts {
   position: fixed;
+  top: calc(var(--ci-titlebar-height) + var(--ci-tab-height) + var(--ci-space-3));
   right: var(--ci-space-3);
-  bottom: calc(var(--ci-statusbar-height) + var(--ci-space-3));
+  bottom: auto;
   display: flex;
   flex-direction: column;
   gap: var(--ci-space-2);

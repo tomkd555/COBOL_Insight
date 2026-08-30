@@ -24,9 +24,9 @@
   --brand-primary-foreground: oklch(99% 0.003 255);
   --brand-muted: oklch(94% 0.008 250);
   --brand-muted-foreground: oklch(46% 0.016 250);
-  --brand-border: oklch(88% 0.01 250);
-  --brand-destructive: oklch(55% 0.2 27);
-  --brand-accent: oklch(72% 0.15 75);
+  --brand-border: oklch(78% 0.012 250);
+  --brand-destructive: oklch(50% 0.2 27);
+  --brand-accent: oklch(52% 0.15 75);
 }
 
 .dark {
@@ -37,7 +37,7 @@
   --brand-primary-foreground: oklch(16% 0.02 255);
   --brand-muted: oklch(15.5% 0.01 250);
   --brand-muted-foreground: oklch(68% 0.014 250);
-  --brand-border: oklch(30% 0.012 250);
+  --brand-border: oklch(42% 0.014 250);
   --brand-destructive: oklch(68% 0.19 27);
   --brand-accent: oklch(78% 0.14 80);
 }

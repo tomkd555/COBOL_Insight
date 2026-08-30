@@ -32,7 +32,7 @@ export function StatusBar(): ReactElement {
         data-testid="status-findings"
       >
         <span className="codicon codicon-warning" aria-hidden="true" />
-        {text.status.findings} {countText(artifactCount(project.findings))}
+        {text.status.codeFindings} {countText(artifactCount(project.findings))}
       </button>
       <button
         type="button"

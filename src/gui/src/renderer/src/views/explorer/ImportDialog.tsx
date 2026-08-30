@@ -171,7 +171,6 @@ export function ImportDialog({ inputDir, onClose }: ImportDialogProps): ReactEle
               onChange={(event) => setDestDir(event.target.value)}
               data-testid="import-destdir"
             />
-            <span className="ci-form__note">{text.import.destDirNote}</span>
           </label>
 
           <label className="ci-form__field">
@@ -225,7 +224,6 @@ export function ImportDialog({ inputDir, onClose }: ImportDialogProps): ReactEle
             <textarea
               className="ci-import__paste"
               spellCheck={false}
-              placeholder={text.import.pastePlaceholder}
               value={pasted}
               onChange={(event) => setPasted(event.target.value)}
               data-testid="import-paste"

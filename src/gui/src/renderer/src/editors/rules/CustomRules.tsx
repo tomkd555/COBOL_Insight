@@ -121,9 +121,7 @@ export function CustomRules({ notify }: CustomRulesProps): ReactElement {
         />
       ) : (
         <div className="ci-custom__forms">
-          {rules.draft.length === 0 ? (
-            <p className="ci-custom__state">{text.customRules.empty}</p>
-          ) : (
+          {rules.draft.length === 0 ? null : (
             rules.draft.map((rule, index) => (
               <CustomRuleForm
                 key={index}

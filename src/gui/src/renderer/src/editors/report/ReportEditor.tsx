@@ -128,9 +128,6 @@ export function ReportEditor({ notify }: ReportEditorProps): ReactElement {
           {text.report.failed(view.message)}
         </p>
       ) : null}
-      {view.kind === "not-generated" ? (
-        <p className="ci-report__state">{text.report.notGenerated}</p>
-      ) : null}
 
       {view.kind === "ready" && state.status === "ready" ? (
         <>

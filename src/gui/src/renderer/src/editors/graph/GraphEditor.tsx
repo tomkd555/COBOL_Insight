@@ -138,7 +138,11 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
   };
 
   if (state.status === "idle") {
-    return <p className="ci-graph__state">{text.graph.empty}</p>;
+    return (
+      <p className="ci-graph__state">
+        {project.inputDir === null ? text.graph.emptyNoFolder : text.graph.empty}
+      </p>
+    );
   }
   if (state.status === "loading") {
     return <p className="ci-graph__state">{text.graph.loading}</p>;
@@ -179,7 +183,9 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
             onChange={(event) => setFilter(withDepth(filter, Number(event.target.value)))}
             data-testid="graph-depth"
           />
-          <span>{filter.depth}</span>
+          <span>
+            {filter.depth} / {DEPTH_LIMITS.max}
+          </span>
         </label>
         <button
           type="button"
@@ -191,7 +197,7 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
           }}
           data-testid="graph-recenter"
         >
-          {text.graph.recenter}
+          {text.graph.clearFocus}
         </button>
         <button
           type="button"
@@ -200,7 +206,7 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
           onClick={() => canvasRef.current?.zoomBy(1 / 1.2)}
           data-testid="graph-zoom-out"
         >
-          −
+          <span className="codicon codicon-zoom-out" aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -209,7 +215,7 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
           onClick={() => canvasRef.current?.zoomBy(1.2)}
           data-testid="graph-zoom-in"
         >
-          ＋
+          <span className="codicon codicon-zoom-in" aria-hidden="true" />
         </button>
         <button
           type="button"

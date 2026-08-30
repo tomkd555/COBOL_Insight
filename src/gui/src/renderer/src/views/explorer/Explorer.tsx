@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, type KeyboardEvent, type ReactElement } from "react";
 import { text } from "../../i18n/text";
 import { artifactItems, useProject } from "../../state/projectStore";
+import { activeTabOf, useWorkbench } from "../../state/workbenchStore";
 import {
   ASSET_TYPE_FILTERS,
   buildTreeRows,
@@ -48,6 +49,8 @@ function badgeIcon(type: AssetTypeCode): string {
  */
 export function Explorer({ onSelectFolder, onOpenAsset }: ExplorerProps): ReactElement {
   const project = useProject();
+  const workbench = useWorkbench();
+  const activeTabPath = activeTabOf(workbench)?.path ?? null;
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<AssetTypeFilter>("all");
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
@@ -135,7 +138,7 @@ export function Explorer({ onSelectFolder, onOpenAsset }: ExplorerProps): ReactE
     }
   };
 
-  const body = ((): ReactElement => {
+  const body = ((): ReactElement | null => {
     if (project.mode === "running" && project.inventory.status === "none") {
       return <p className="ci-explorer__state">{text.explorer.loading}</p>;
     }
@@ -148,7 +151,7 @@ export function Explorer({ onSelectFolder, onOpenAsset }: ExplorerProps): ReactE
       );
     }
     if (project.inventory.status === "none") {
-      return <p className="ci-explorer__state">{text.explorer.empty}</p>;
+      return null;
     }
     if (rows.length === 0) {
       return (
@@ -173,7 +176,7 @@ export function Explorer({ onSelectFolder, onOpenAsset }: ExplorerProps): ReactE
             role="treeitem"
             aria-level={row.depth + 1}
             aria-expanded={row.kind === "folder" ? row.expanded : undefined}
-            aria-selected={row.path === focusedPath}
+            aria-selected={row.path === focusedPath || row.path === activeTabPath}
             tabIndex={row.path === tabStop ? 0 : -1}
             className={`ci-tree__row ci-tree__row--${row.kind}`}
             style={{ paddingInlineStart: `${row.depth * 12 + 8}px` }}

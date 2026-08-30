@@ -21,6 +21,10 @@
   padding: var(--ci-space-2) var(--ci-space-3);
 }
 
+.ci-explorer__toolbar {
+  flex-wrap: wrap;
+}
+
 .ci-explorer__toolbar > *,
 .ci-explorer__filters > * {
   flex: 1 1 auto;
@@ -76,11 +80,17 @@
 }
 
 .ci-tree__name {
+  flex: 1 1 auto;
+  min-width: 6em;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .ci-tree__codepage {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: var(--color-muted-foreground);
   font-size: var(--ci-size-sm);
 }
@@ -168,6 +178,14 @@
   color: var(--color-muted-foreground);
   font-size: var(--ci-size-sm);
   font-weight: 400;
+}
+
+.ci-problems__table th:first-child {
+  text-align: center;
+}
+
+.ci-problems__table th:last-child {
+  text-align: right;
 }
 
 .ci-problems__row td {
@@ -277,8 +295,10 @@
 
 .ci-welcome {
   display: flex;
+  height: 100%;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: var(--ci-space-3);
   padding: var(--ci-space-5);
   max-width: 36rem;
