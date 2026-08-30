@@ -2,7 +2,7 @@ import { useEffect, useRef, type ReactElement } from "react";
 import type * as monacoApi from "monaco-editor/editor/editor.api";
 import { monacoEditor } from "../../vendor/monacoEditor";
 import { registerLanguages } from "../../vendor/monacoLanguages";
-import { COBOL_INSIGHT_THEME } from "../../vendor/monarch";
+import { CODE_FONT } from "../../vendor/monarch";
 
 export interface DiffViewProps {
   /** The text on the left. */
@@ -36,15 +36,12 @@ export function DiffView({ original, modified, languageId, ariaLabel }: DiffView
     const monaco = monacoEditor();
     registerLanguages(monaco);
     const editor = monaco.editor.createDiffEditor(container, {
-      theme: COBOL_INSIGHT_THEME,
+      ...CODE_FONT,
       automaticLayout: true,
       readOnly: true,
       originalEditable: false,
       renderSideBySide: true,
       minimap: { enabled: false },
-      fontFamily: "'BIZ UDGothic','MS Gothic',monospace",
-      fontSize: 12,
-      lineHeight: 19,
       wordWrap: "off",
       folding: false,
       contextmenu: false,

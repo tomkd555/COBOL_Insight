@@ -59,8 +59,8 @@ describe("kind lookups", () => {
   });
 
   it("falls back to grey for an edge kind this build does not know", () => {
-    expect(edgeKindStyle("CALL").arrowShape).toBe("vee");
-    expect(edgeKindStyle("SOMETHING_NEW").color).toBe("#8b8b8b");
+    expect(edgeKindStyle("CALL", "dark").arrowShape).toBe("vee");
+    expect(edgeKindStyle("SOMETHING_NEW", "light").arrowShape).toBe("tee");
   });
 
   it("dashes dataflow-derived and unresolved edges only", () => {
@@ -73,7 +73,7 @@ describe("kind lookups", () => {
 
 describe("stylesheet and layout", () => {
   it("gives every node kind its own block", () => {
-    const selectors = graphStylesheet().map((block) => block.selector);
+    const selectors = graphStylesheet("dark").map((block) => block.selector);
     for (const kind of NODE_KINDS) {
       expect(selectors).toContain(`node[kind="${kind}"]`);
     }

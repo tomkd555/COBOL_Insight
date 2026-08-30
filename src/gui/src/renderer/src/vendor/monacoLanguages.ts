@@ -57,6 +57,7 @@ export function registerLanguages(monaco: LanguageRegistrationTarget): void {
     monaco.languages.register({ id });
     monaco.languages.setMonarchTokensProvider(id, definition);
   }
-  monaco.editor.defineTheme(COBOL_INSIGHT_THEME, cobolInsightTheme());
+  monaco.editor.defineTheme(COBOL_INSIGHT_THEME.dark, cobolInsightTheme("dark"));
+  monaco.editor.defineTheme(COBOL_INSIGHT_THEME.light, cobolInsightTheme("light"));
   registered = true;
 }

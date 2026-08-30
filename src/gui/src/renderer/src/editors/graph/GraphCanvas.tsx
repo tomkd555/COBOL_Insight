@@ -6,8 +6,10 @@ import {
   SELECTED_NODE_CLASS,
   graphCoreOptions,
   graphLayoutOptions,
+  graphStylesheet,
   type GraphElement,
 } from "../../model/graphLayout";
+import type { ThemeName } from "../../vendor/monarch";
 
 /** What the toolbar can ask of the drawing. */
 export interface GraphCanvasHandle {
@@ -22,6 +24,8 @@ export interface GraphCanvasProps {
   elements: readonly GraphElement[];
   /** The selected node id. Highlighting swaps a class and does not relayout. */
   selectedId: string | null;
+  /** The palette to draw with. Changing it restyles in place and does not relayout. */
+  theme: ThemeName;
   onSelectNode: (id: string) => void;
   /** Reports whether a layout pass is in flight, so the editor can say so. */
   onLayoutRunning: (running: boolean) => void;
@@ -39,6 +43,7 @@ export interface GraphCanvasProps {
 export function GraphCanvas({
   elements,
   selectedId,
+  theme,
   onSelectNode,
   onLayoutRunning,
   ref,
@@ -49,6 +54,8 @@ export function GraphCanvas({
   selectRef.current = onSelectNode;
   const layoutRef = useRef(onLayoutRunning);
   layoutRef.current = onLayoutRunning;
+  const themeRef = useRef(theme);
+  themeRef.current = theme;
 
   useImperativeHandle(ref, () => ({
     zoomBy: (factor: number): void => {
@@ -67,7 +74,7 @@ export function GraphCanvas({
     if (container === null) {
       return;
     }
-    const core = graphLibrary()(graphCoreOptions(container));
+    const core = graphLibrary()(graphCoreOptions(container, themeRef.current));
     core.on("tap", "node", (event: cytoscape.EventObjectNode) => {
       selectRef.current(event.target.id());
     });
@@ -91,6 +98,10 @@ export function GraphCanvas({
     });
     core.layout(graphLayoutOptions() as unknown as cytoscape.LayoutOptions).run();
   }, [elements]);
+
+  useEffect(() => {
+    coreRef.current?.style(graphStylesheet(theme));
+  }, [theme]);
 
   useEffect(() => {
     const core = coreRef.current;

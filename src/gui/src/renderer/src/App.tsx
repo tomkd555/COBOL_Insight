@@ -17,6 +17,7 @@ import { RulesProvider } from "./state/rulesStore";
 import { useRules } from "./state/useRules";
 import { EditorStatusProvider } from "./state/editorStatusStore";
 import { useShellStartup } from "./state/useShellStartup";
+import { useTheme } from "./state/useTheme";
 import { buildCommands, type Command } from "./state/commands";
 import {
   SEQUENCE_TIMEOUT_MS,
@@ -68,6 +69,7 @@ function Shell(): ReactElement {
   }, []);
 
   useShellStartup(notify);
+  useTheme();
   const rulesActions = useRules(notify);
   const sourceSave = useSourceSave(notify);
 

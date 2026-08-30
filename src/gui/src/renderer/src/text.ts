@@ -457,6 +457,10 @@ export const text = {
 
   settings: {
     title: "設定",
+    theme: "配色",
+    themeSystem: "OSに合わせる",
+    themeDark: "ダーク",
+    themeLight: "ライト",
     encoding: "既定の文字コード",
     encodingAuto: "自動判別",
     encodingNote: "資産ごとの指定が無いときに engine へ渡します。",

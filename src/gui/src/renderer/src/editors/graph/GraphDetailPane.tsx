@@ -2,13 +2,16 @@ import type { ReactElement } from "react";
 import { text } from "../../text";
 import type { GraphEdgeDetail, GraphNodeDetail } from "../../model/graphDetail";
 import {
-  EDGE_KIND_STYLES,
-  NODE_KIND_STYLES,
+  edgeKindStyles,
+  nodeKindStyles,
   isGraphNodeKind,
   type GraphNodeKind,
 } from "../../model/graphLayout";
+import type { ThemeName } from "../../vendor/monarch";
 
 export interface GraphDetailPaneProps {
+  /** The palette the legend swatches are painted in. */
+  theme: ThemeName;
   /** The selected node, or null when nothing is selected. */
   detail: GraphNodeDetail | null;
   /** Opens the asset the node stands for. */
@@ -84,12 +87,12 @@ function EdgeTable({
 }
 
 /** The legend: every node kind's shape and colour, and every edge kind's colour. */
-function Legend(): ReactElement {
+function Legend({ theme }: { theme: ThemeName }): ReactElement {
   return (
     <section className="ci-graph__legend" data-testid="graph-legend">
       <h4 className="ci-graph__subtitle">{text.graph.legend}</h4>
       <ul className="ci-graph__legend-list">
-        {NODE_KIND_STYLES.map((style) => (
+        {nodeKindStyles(theme).map((style) => (
           <li key={style.kind}>
             <span
               className="ci-graph__swatch"
@@ -103,7 +106,7 @@ function Legend(): ReactElement {
             {text.graph.nodeKind[style.kind]}
           </li>
         ))}
-        {EDGE_KIND_STYLES.map((style) => (
+        {edgeKindStyles(theme).map((style) => (
           <li key={style.kind}>
             <span
               className="ci-graph__swatch ci-graph__swatch--edge"
@@ -119,7 +122,7 @@ function Legend(): ReactElement {
 }
 
 /** The right-hand pane: what is selected, the calls into and out of it, and the legend. */
-export function GraphDetailPane({ detail, onOpenAsset }: GraphDetailPaneProps): ReactElement {
+export function GraphDetailPane({ detail, theme, onOpenAsset }: GraphDetailPaneProps): ReactElement {
   return (
     <aside className="ci-graph__detail" aria-label={text.graph.detail} data-testid="graph-detail">
       {detail === null ? (
@@ -144,7 +147,7 @@ export function GraphDetailPane({ detail, onOpenAsset }: GraphDetailPaneProps): 
           <EdgeTable caption={text.graph.outgoing} edges={detail.outgoing} />
         </>
       )}
-      <Legend />
+      <Legend theme={theme} />
     </aside>
   );
 }

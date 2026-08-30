@@ -26,6 +26,8 @@ export interface AppSettings {
   readonly lastInputDir: string;
   /** Shell pane sizes in pixels, keyed by pane id. Unknown keys are dropped on restore. */
   readonly paneSizes: Readonly<Record<string, number>>;
+  /** The colour theme: "system", "dark" or "light". Empty and unknown values mean "system". */
+  readonly theme: string;
 }
 
 export interface AppSettingsFile {
@@ -42,6 +44,7 @@ export function emptyAppSettings(): AppSettings {
     fixOutDir: "",
     lastInputDir: "",
     paneSizes: {},
+    theme: "",
   };
 }
 
@@ -56,6 +59,7 @@ export function normalizeAppSettings(value: unknown): AppSettings {
     fixOutDir: asString(settings["fixOutDir"]),
     lastInputDir: asString(settings["lastInputDir"]),
     paneSizes: asNumberRecord(settings["paneSizes"]),
+    theme: asString(settings["theme"]),
   };
 }
 

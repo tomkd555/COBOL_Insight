@@ -21,7 +21,7 @@ import {
 import { ruleOf } from "../../model/ruleIndex";
 import { monacoEditor } from "../../vendor/monacoEditor";
 import { registerLanguages } from "../../vendor/monacoLanguages";
-import { COBOL_INSIGHT_THEME, languageIdFor } from "../../vendor/monarch";
+import { CODE_FONT, languageIdFor } from "../../vendor/monarch";
 import { existingModel, modelFor, resetModel } from "../../vendor/monacoModels";
 import { useCopyZones } from "./copyZones";
 import { registerQuickFix, setQuickFixTarget } from "./quickFix";
@@ -149,12 +149,9 @@ export function SourceEditor({ path, line, onShowFix }: SourceEditorProps): Reac
     const editor = monaco.editor.create(container, {
       value: "",
       language: languageIdFor(""),
-      theme: COBOL_INSIGHT_THEME,
+      ...CODE_FONT,
       automaticLayout: true,
       minimap: { enabled: false },
-      fontFamily: "'BIZ UDGothic','MS Gothic',monospace",
-      fontSize: 12,
-      lineHeight: 19,
       // Five digits (99,999 lines) so the body's left edge does not move between assets.
       lineNumbersMinChars: 5,
       // The end of the sequence area, of the indicator, of area A, and of the body.

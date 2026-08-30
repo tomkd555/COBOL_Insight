@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, screen } from "electron";
+import { app, BrowserWindow, Menu, nativeTheme, screen } from "electron";
 import { join } from "node:path";
 import { registerIpc, stopRunningEngine } from "./ipc";
 import { ensureWritable, resolvePortableUserData } from "./fs/portable";
@@ -29,6 +29,7 @@ function createWindow(): void {
     buildWindowOptions(
       join(__dirname, "../preload/index.js"),
       screen.getPrimaryDisplay().workAreaSize,
+      nativeTheme.shouldUseDarkColors,
     ),
   );
 

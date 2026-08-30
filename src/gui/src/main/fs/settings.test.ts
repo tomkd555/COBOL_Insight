@@ -64,6 +64,7 @@ describe("writeSettings", () => {
       fixOutDir: "C:/out",
       lastInputDir: "C:/assets",
       paneSizes: { side: 320, panel: 240 },
+      theme: "dark",
     };
     await writeSettings(fs, PATH, settings);
     await expect(readSettings(fs, PATH)).resolves.toEqual(settings);

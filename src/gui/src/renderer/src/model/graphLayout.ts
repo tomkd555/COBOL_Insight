@@ -9,6 +9,7 @@
 
 import type cytoscape from "cytoscape";
 import type { GraphData, GraphEdge } from "../../../shared/ipc";
+import { CODE_FONT, type ThemeName } from "../vendor/monarch";
 
 /**
  * The node kinds the graph draws: the engine's ten NodeKind values plus UNANALYZABLE, which the
@@ -39,34 +40,56 @@ export interface NodeKindStyle {
   readonly borderStyle: "solid" | "dashed";
 }
 
-/**
- * The node kinds in legend and filter order: batch from upstream to downstream, then online, then
- * the external, unresolved and unanalysable ends. The colours are the dark theme's kind palette.
- */
-export const NODE_KIND_STYLES: readonly NodeKindStyle[] = [
-  { kind: "JOB", shape: "hexagon", background: "#243347", border: "#4daafc", borderStyle: "solid" },
-  { kind: "STEP", shape: "round-rectangle", background: "#22303f", border: "#3794ff", borderStyle: "solid" },
-  { kind: "PROGRAM", shape: "rectangle", background: "#26332f", border: "#4ec9b0", borderStyle: "solid" },
-  { kind: "PARAGRAPH", shape: "ellipse", background: "#2b2b2b", border: "#8b8b8b", borderStyle: "solid" },
-  { kind: "DATASET", shape: "barrel", background: "#33301f", border: "#dcdcaa", borderStyle: "solid" },
-  { kind: "DB2_TABLE", shape: "cut-rectangle", background: "#1f3327", border: "#6fc28b", borderStyle: "solid" },
-  { kind: "TRANSACTION", shape: "octagon", background: "#312a3a", border: "#c586c0", borderStyle: "solid" },
-  { kind: "BMS_MAP", shape: "rhomboid", background: "#22303a", border: "#9cdcfe", borderStyle: "solid" },
-  { kind: "EXTERNAL_UTILITY", shape: "tag", background: "#2b2b2b", border: "#b0b0b0", borderStyle: "solid" },
-  { kind: "UNRESOLVED", shape: "diamond", background: "#3a2323", border: "#f14c4c", borderStyle: "dashed" },
-  { kind: "UNANALYZABLE", shape: "star", background: "#332b1f", border: "#cca700", borderStyle: "solid" },
+/** A colour pair: the dark theme's value first, then the light theme's. */
+type Pair = readonly [dark: string, light: string];
+
+/** The node kinds in legend and filter order: batch upstream to downstream, then online, then ends. */
+const NODE_KIND_SHAPES: readonly {
+  kind: GraphNodeKind;
+  shape: cytoscape.Css.NodeShape;
+  fill: Pair;
+  line: Pair;
+  borderStyle: "solid" | "dashed";
+}[] = [
+  { kind: "JOB", shape: "hexagon", fill: ["#243347", "#dbe7fb"], line: ["#6aa7ff", "#2a66d0"], borderStyle: "solid" },
+  { kind: "STEP", shape: "round-rectangle", fill: ["#22303f", "#e3ecfa"], line: ["#4f8fe6", "#4a7fd0"], borderStyle: "solid" },
+  { kind: "PROGRAM", shape: "rectangle", fill: ["#26332f", "#dcf1ea"], line: ["#4ec9b0", "#1f8f78"], borderStyle: "solid" },
+  { kind: "PARAGRAPH", shape: "ellipse", fill: ["#2b2f38", "#eceef2"], line: ["#a3a8b3", "#8a8f9a"], borderStyle: "solid" },
+  { kind: "DATASET", shape: "barrel", fill: ["#33301f", "#f4efd6"], line: ["#dcdcaa", "#8a7a1a"], borderStyle: "solid" },
+  { kind: "DB2_TABLE", shape: "cut-rectangle", fill: ["#1f3327", "#dff1e3"], line: ["#6fc28b", "#2e8b4f"], borderStyle: "solid" },
+  { kind: "TRANSACTION", shape: "octagon", fill: ["#312a3a", "#efe3f3"], line: ["#c586c0", "#8a3fa0"], borderStyle: "solid" },
+  { kind: "BMS_MAP", shape: "rhomboid", fill: ["#22303a", "#dfeef8"], line: ["#9cdcfe", "#1f6f9f"], borderStyle: "solid" },
+  { kind: "EXTERNAL_UTILITY", shape: "tag", fill: ["#2b2f38", "#eceef2"], line: ["#b0b5bf", "#6d727d"], borderStyle: "solid" },
+  { kind: "UNRESOLVED", shape: "diamond", fill: ["#3a2323", "#fbe0dd"], line: ["#ff6b5e", "#d03a2e"], borderStyle: "dashed" },
+  { kind: "UNANALYZABLE", shape: "star", fill: ["#332b1f", "#f7ead2"], line: ["#e8b04a", "#b0761a"], borderStyle: "solid" },
 ];
 
-/** The node kinds in legend and filter order. */
-export const NODE_KINDS: readonly GraphNodeKind[] = NODE_KIND_STYLES.map((style) => style.kind);
+function pick(pair: Pair, theme: ThemeName): string {
+  return theme === "dark" ? pair[0] : pair[1];
+}
 
-const NODE_KIND_STYLE_BY_KIND = new Map<string, NodeKindStyle>(
-  NODE_KIND_STYLES.map((style) => [style.kind, style]),
-);
+/**
+ * The node kinds in legend and filter order, coloured for the theme. Cytoscape draws to a canvas
+ * and cannot read CSS custom properties, so the two palettes of tokens.json are written out here.
+ */
+export function nodeKindStyles(theme: ThemeName): NodeKindStyle[] {
+  return NODE_KIND_SHAPES.map((entry) => ({
+    kind: entry.kind,
+    shape: entry.shape,
+    background: pick(entry.fill, theme),
+    border: pick(entry.line, theme),
+    borderStyle: entry.borderStyle,
+  }));
+}
+
+/** The node kinds in legend and filter order. */
+export const NODE_KINDS: readonly GraphNodeKind[] = NODE_KIND_SHAPES.map((entry) => entry.kind);
+
+const NODE_KIND_SET = new Set<string>(NODE_KINDS);
 
 /** Whether the NODE.type is one the graph draws. Asset rows (JCL, COPYBOOK, BMS) are not. */
 export function isGraphNodeKind(type: string): type is GraphNodeKind {
-  return NODE_KIND_STYLE_BY_KIND.has(type);
+  return NODE_KIND_SET.has(type);
 }
 
 /** How one edge kind is drawn: colour plus arrowhead, so the kind survives a colour-blind reading. */
@@ -77,21 +100,35 @@ export interface EdgeKindStyle {
 }
 
 /** The edge kinds the engine records (EdgeKind), in legend order. */
-export const EDGE_KIND_STYLES: readonly EdgeKindStyle[] = [
-  { kind: "EXECUTION", color: "#8b8b8b", arrowShape: "triangle" },
-  { kind: "CALL", color: "#4daafc", arrowShape: "vee" },
-  { kind: "REFERENCE", color: "#dcdcaa", arrowShape: "square" },
-  { kind: "TRANSACTION_TRANSITION", color: "#c586c0", arrowShape: "diamond" },
-  { kind: "MAP_REFERENCE", color: "#9cdcfe", arrowShape: "circle" },
+const EDGE_KIND_SHAPES: readonly { kind: string; color: Pair; arrowShape: cytoscape.Css.ArrowShape }[] = [
+  { kind: "EXECUTION", color: ["#a3a8b3", "#8a8f9a"], arrowShape: "triangle" },
+  { kind: "CALL", color: ["#6aa7ff", "#2a66d0"], arrowShape: "vee" },
+  { kind: "REFERENCE", color: ["#dcdcaa", "#8a7a1a"], arrowShape: "square" },
+  { kind: "TRANSACTION_TRANSITION", color: ["#c586c0", "#8a3fa0"], arrowShape: "diamond" },
+  { kind: "MAP_REFERENCE", color: ["#9cdcfe", "#1f6f9f"], arrowShape: "circle" },
 ];
 
-const EDGE_KIND_STYLE_BY_KIND = new Map<string, EdgeKindStyle>(
-  EDGE_KIND_STYLES.map((style) => [style.kind, style]),
-);
+/** The colour of a line that carries no kind: the theme's muted foreground. */
+const PLAIN_EDGE: Pair = ["#a3a8b3", "#8a8f9a"];
+
+/** The edge kinds in legend order, coloured for the theme. */
+export function edgeKindStyles(theme: ThemeName): EdgeKindStyle[] {
+  return EDGE_KIND_SHAPES.map((entry) => ({
+    kind: entry.kind,
+    color: pick(entry.color, theme),
+    arrowShape: entry.arrowShape,
+  }));
+}
 
 /** An unknown edge kind is drawn in grey rather than dropped: no result is hidden. */
-export function edgeKindStyle(kind: string): EdgeKindStyle {
-  return EDGE_KIND_STYLE_BY_KIND.get(kind) ?? { kind, color: "#8b8b8b", arrowShape: "tee" };
+export function edgeKindStyle(kind: string, theme: ThemeName): EdgeKindStyle {
+  return (
+    edgeKindStyles(theme).find((style) => style.kind === kind) ?? {
+      kind,
+      color: pick(PLAIN_EDGE, theme),
+      arrowShape: "tee",
+    }
+  );
 }
 
 /** Whether the edge is drawn dashed: a dataflow-derived or unresolved target is not a certainty. */
@@ -169,24 +206,26 @@ export function buildGraphElements(
 }
 
 /**
- * The cytoscape stylesheet. Cytoscape draws to a canvas and does not resolve CSS custom properties,
- * so the token values are written out here.
+ * The cytoscape stylesheet for the theme. Cytoscape draws to a canvas and does not resolve CSS
+ * custom properties, so the token values are written out here.
  */
-export function graphStylesheet(): cytoscape.StylesheetJsonBlock[] {
+export function graphStylesheet(theme: ThemeName): cytoscape.StylesheetJsonBlock[] {
+  const dark = theme === "dark";
+  const plain = pick(PLAIN_EDGE, theme);
   return [
     {
       selector: "node",
       style: {
         shape: "rectangle",
-        "background-color": "#2b2b2b",
+        "background-color": dark ? "#2b2f38" : "#eceef2",
         "border-width": 1.5,
-        "border-color": "#8b8b8b",
+        "border-color": plain,
         "border-style": "dashed",
         label: "data(label)",
-        "font-family": "'Cascadia Mono','Consolas','MS Gothic',monospace",
+        "font-family": CODE_FONT.fontFamily,
         "font-size": 11,
         "font-weight": "bold",
-        color: "#e6e6e6",
+        color: dark ? "#e3e5ea" : "#2b2f38",
         "text-valign": "center",
         "text-halign": "center",
         "text-wrap": "ellipsis",
@@ -196,7 +235,7 @@ export function graphStylesheet(): cytoscape.StylesheetJsonBlock[] {
         padding: "8px",
       },
     },
-    ...NODE_KIND_STYLES.map(
+    ...nodeKindStyles(theme).map(
       (style): cytoscape.StylesheetJsonBlock => ({
         selector: `node[kind="${style.kind}"]`,
         style: {
@@ -211,15 +250,15 @@ export function graphStylesheet(): cytoscape.StylesheetJsonBlock[] {
       selector: "edge",
       style: {
         width: 1.4,
-        "line-color": "#8b8b8b",
-        "target-arrow-color": "#8b8b8b",
+        "line-color": plain,
+        "target-arrow-color": plain,
         "target-arrow-shape": "triangle",
         "arrow-scale": 0.8,
         "curve-style": "bezier",
         opacity: 0.9,
       },
     },
-    ...EDGE_KIND_STYLES.map(
+    ...edgeKindStyles(theme).map(
       (style): cytoscape.StylesheetJsonBlock => ({
         selector: `edge[kind="${style.kind}"]`,
         style: {
@@ -232,7 +271,11 @@ export function graphStylesheet(): cytoscape.StylesheetJsonBlock[] {
     { selector: `edge.${DASHED_EDGE_CLASS}`, style: { "line-style": "dashed" } },
     {
       selector: `node.${SELECTED_NODE_CLASS}`,
-      style: { "border-width": 3.5, "border-color": "#0078d4", "border-style": "solid" },
+      style: {
+        "border-width": 3.5,
+        "border-color": dark ? "#6aa7ff" : "#2a66d0",
+        "border-style": "solid",
+      },
     },
   ];
 }
@@ -251,10 +294,10 @@ export interface GraphCoreOptions {
 }
 
 /** The core options. Dragging a node is not allowed, so the layers the layout chose keep their order. */
-export function graphCoreOptions(container: HTMLElement): GraphCoreOptions {
+export function graphCoreOptions(container: HTMLElement, theme: ThemeName): GraphCoreOptions {
   return {
     container,
-    style: graphStylesheet(),
+    style: graphStylesheet(theme),
     autoungrabify: true,
     maxZoom: GRAPH_MAX_ZOOM,
   };

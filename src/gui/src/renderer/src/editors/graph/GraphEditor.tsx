@@ -13,7 +13,8 @@ import {
   withDepth,
   type GraphFilter,
 } from "../../model/graphFilter";
-import { buildGraphElements, NODE_KIND_STYLES, isGraphNodeKind } from "../../model/graphLayout";
+import { buildGraphElements, NODE_KINDS, isGraphNodeKind } from "../../model/graphLayout";
+import { useTheme } from "../../state/useTheme";
 import { nodeDetail } from "../../model/graphDetail";
 import { buildTrace, flattenTrace, initialExpanded, type TraceNode } from "../../model/traceTree";
 import { GraphCanvas, type GraphCanvasHandle } from "./GraphCanvas";
@@ -43,6 +44,7 @@ const EMPTY_GRAPH: GraphData = { nodes: [], edges: [], paragraphs: [], paragraph
  * the tree and the canvas in both directions, so the keyboard reaches everything the mouse does.
  */
 export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
+  const theme = useTheme();
   const project = useProject();
   const dispatch = useWorkbenchDispatch();
   const canvasRef = useRef<GraphCanvasHandle>(null);
@@ -223,17 +225,17 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
       </div>
 
       <div className="ci-chips" role="group" aria-label={text.graph.kinds}>
-        {NODE_KIND_STYLES.map((style) => (
+        {NODE_KINDS.map((kind) => (
           <button
-            key={style.kind}
+            key={kind}
             type="button"
-            className={`ci-chip${filter.kinds[style.kind] ? " ci-chip--on" : ""}`}
-            aria-pressed={filter.kinds[style.kind]}
-            onClick={() => setFilter(toggleKind(filter, style.kind))}
-            data-testid={`graph-kind-${style.kind}`}
+            className={`ci-chip${filter.kinds[kind] ? " ci-chip--on" : ""}`}
+            aria-pressed={filter.kinds[kind]}
+            onClick={() => setFilter(toggleKind(filter, kind))}
+            data-testid={`graph-kind-${kind}`}
           >
-            {text.graph.nodeKind[style.kind]}
-            <span className="ci-chip__count">{counts[style.kind]}</span>
+            {text.graph.nodeKind[kind]}
+            <span className="ci-chip__count">{counts[kind]}</span>
           </button>
         ))}
       </div>
@@ -256,11 +258,12 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
             ref={canvasRef}
             elements={elements}
             selectedId={selectedNodeId}
+            theme={theme}
             onSelectNode={selectGraphNode}
             onLayoutRunning={setLayoutRunning}
           />
         </div>
-        <GraphDetailPane detail={detail} onOpenAsset={openAsset} />
+        <GraphDetailPane detail={detail} theme={theme} onOpenAsset={openAsset} />
       </div>
     </div>
   );
