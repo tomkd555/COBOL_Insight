@@ -5,8 +5,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * JCLジョブ構造モデル。PROC展開・シンボリック解決後の構造を保持し、linker の入力となる。
- * condition はジョブ単位のCOND句のテキスト表現。
+ * JCL job structure model. Holds the structure after PROC expansion and symbolic resolution,
+ * and serves as input to the linker. condition is the textual representation of the job-level COND clause.
  */
 public record JclJobModel(String jobName, String sourceFile, Optional<String> condition,
         List<JclStep> steps) {

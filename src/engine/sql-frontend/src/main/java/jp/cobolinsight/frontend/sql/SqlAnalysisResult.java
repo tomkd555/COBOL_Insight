@@ -5,17 +5,17 @@ import jp.cobolinsight.core.sql.SqlStructureSignals;
 import java.util.List;
 
 /**
- * EXEC SQL ブロック1件の解析結果。
+ * Analysis result for a single EXEC SQL block.
  *
- * @param status           解析の成否
- * @param statusReason     NOT_ANALYZABLE の理由。ANALYZED では null
- * @param statementKind    SQL文の種別
- * @param cursorName       カーソル関連文(DECLARE/OPEN/FETCH/CLOSE)のカーソル名。それ以外は null
- * @param tableNames       参照テーブル名(スキーマ修飾を含む)
- * @param hostVariables    ホスト変数の対応(原データ名を含む)
- * @param intoTargets      INTO 句のホスト変数の原データ名(SELECT INTO・FETCH)
- * @param mangledSql       マングリング済みSQLテキスト。マングリング不能時は null
- * @param structureSignals SQL指摘(S001〜S006)が読む構文レベルの構造シグナル
+ * @param status           the outcome of analysis
+ * @param statusReason     the reason for NOT_ANALYZABLE; null for ANALYZED
+ * @param statementKind    the kind of SQL statement
+ * @param cursorName       the cursor name for a cursor-related statement (DECLARE/OPEN/FETCH/CLOSE); null otherwise
+ * @param tableNames       referenced table names (including schema qualification)
+ * @param hostVariables    host variable correspondences (including original data names)
+ * @param intoTargets      original data names of host variables in the INTO clause (SELECT INTO, FETCH)
+ * @param mangledSql       the mangled SQL text; null when mangling was not possible
+ * @param structureSignals syntax-level structural signals read by SQL findings (S001-S006)
  */
 public record SqlAnalysisResult(
         AnalysisStatus status,

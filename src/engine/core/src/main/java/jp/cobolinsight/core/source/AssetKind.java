@@ -4,24 +4,26 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * 解析対象の資産の種別と、種別ごとの拡張子の正典。
+ * The kinds of assets to analyze, and the canonical set of extensions for each kind.
  *
- * <p>拡張子と種別の対応はこの1箇所だけに置く。片方だけを増やすと、走査の対象・利用者定義ルールの
- * 対象・コピー句の収集がそれぞれ別の表を見ることになる。
+ * <p>The mapping between extensions and kinds lives in this one place only. Growing one side
+ * without the other would leave the scan target, the user-defined-rule target, and the copybook
+ * collection each looking at a different table.
  *
- * <p>入力フォルダの走査で種別を決めるのはソースの内容であり、拡張子はその補助にとどまる
- * (内容で決まらなかったときの手掛かり)。これに対し、コピー句探索パス配下の収集は COPY 文の
- * 解決先を集める別の関心であり、そこでは拡張子が意味を持つ。COBOL の COPY 解決は「コピー句名＋
- * 拡張子」でファイル名を組み立てるため、拡張子の一致がそのまま解決の可否になるからである。
+ * <p>When scanning the input folder, the source content decides the kind; the extension is only
+ * a fallback (a clue used when the content does not decide it). Collection under a copybook
+ * search path, by contrast, is a separate concern of gathering COPY statement resolution
+ * targets, and there the extension does matter: COBOL COPY resolution builds the file name as
+ * "copybook name + extension", so an extension match is itself what makes resolution possible.
  */
 public enum AssetKind {
-    /** BMS マップ定義。 */
+    /** A BMS map definition. */
     BMS(".bms"),
-    /** COBOL 本体。 */
+    /** COBOL source. */
     COBOL(".cbl", ".cob", ".cobol"),
-    /** コピー句。 */
+    /** A copybook. */
     COPYBOOK(".cpy", ".copy"),
-    /** JCL。 */
+    /** JCL. */
     JCL(".jcl");
 
     private final List<String> extensions;
@@ -30,14 +32,14 @@ public enum AssetKind {
         this.extensions = List.of(extensions);
     }
 
-    /** この種別が名乗る拡張子(先頭のドットを含む小文字)。 */
+    /** The extensions this kind claims (lowercase, including the leading dot). */
     public List<String> extensions() {
         return extensions;
     }
 
     /**
-     * 拡張子から種別を引く。先頭のドットの有無と大小は問わない。
-     * どの種別にも属さない拡張子には null を返す。
+     * Looks up the kind from an extension. Leading-dot presence and case are ignored.
+     * Returns null for an extension that belongs to no kind.
      */
     public static AssetKind ofExtension(String extension) {
         if (extension == null || extension.isEmpty()) {
@@ -55,16 +57,17 @@ public enum AssetKind {
     }
 
     /**
-     * ファイル名の拡張子から種別を引く。拡張子を持たない名前と、どの種別にも属さない拡張子には
-     * null を返す。パスを渡しても末尾の名前だけを見る。
+     * Looks up the kind from a file name's extension. Returns null for a name with no extension
+     * and for an extension that belongs to no kind. Given a path, only the trailing name is used.
      */
     public static AssetKind ofFileName(String fileName) {
         return ofExtension(extensionOf(fileName));
     }
 
     /**
-     * ファイル名の拡張子(先頭のドットを含む小文字)。拡張子を持たない名前には空文字を返す。
-     * 先頭がドットの名前(.gitignore など)は拡張子を持たないものとして扱う。
+     * The extension of a file name (lowercase, including the leading dot). Returns an empty
+     * string for a name with no extension. A name that starts with a dot (such as .gitignore)
+     * is treated as having no extension.
      */
     public static String extensionOf(String fileName) {
         if (fileName == null) {

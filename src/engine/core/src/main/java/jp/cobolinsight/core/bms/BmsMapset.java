@@ -3,7 +3,7 @@ package jp.cobolinsight.core.bms;
 import java.util.List;
 import java.util.Optional;
 
-/** DFHMSDが定義するマップセット。 */
+/** A mapset defined by DFHMSD. */
 public record BmsMapset(String name, String sourceFile, List<BmsMap> maps) {
 
     public BmsMapset {

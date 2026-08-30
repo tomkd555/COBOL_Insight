@@ -15,9 +15,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * URI ごとの原ソーステキストへのアクセス。主ファイルは DecodedSource のテキストを、
- * コピーブックはファイルから読み込んでキャッシュする。コピーブックの文字コードは本体と同じ
- * 自動判別で決める。日本語資産は Shift_JIS・EBCDIC も現れるため、UTF-8 に固定しない。
+ * Access to the original source text per URI. The main file uses DecodedSource's text; copybooks
+ * are read from their files and cached. A copybook's character encoding is determined by the same
+ * auto-detection used for the main file. Since Japanese assets can also appear in Shift_JIS or
+ * EBCDIC, encoding is not fixed to UTF-8.
  */
 final class SourceTexts {
 
@@ -31,7 +32,7 @@ final class SourceTexts {
         linesByUri.put(mainUri, splitLines(mainText));
     }
 
-    /** Locality の範囲の原文を返す。取得できない場合は空文字列。 */
+    /** Returns the original text for a Locality's range. Empty string if it cannot be obtained. */
     String textOf(Locality locality) {
         if (locality == null || locality.getUri() == null || locality.getRange() == null) {
             return "";
@@ -79,16 +80,19 @@ final class SourceTexts {
     }
 
     /**
-     * 固定形式の領域境界を0起点の添字へ直した値。桁番号の正典は
-     * {@link jp.cobolinsight.core.source.FixedFormatColumns} にあり、ここは起点の変換
-     * だけを担う。同じ物理量を複数の起点で持たないための書き方である。
+     * The fixed-format area boundaries converted to 0-based indices. The canonical column numbers
+     * live in {@link jp.cobolinsight.core.source.FixedFormatColumns}; this only handles the
+     * conversion of the origin. Written this way so the same physical quantity is not kept under
+     * multiple origins.
      */
     private static final int AREA_A_START = FixedFormatColumns.INDICATOR_COLUMN - 1;
     private static final int IDENTIFICATION_START = FixedFormatColumns.IDENTIFICATION_START - 1;
 
     /**
-     * 一連番号領域と識別領域を空白へ置き換える。複数行にまたがる原文の取り出しでは2行目以降の
-     * 全桁が範囲に入るため、これらを残すと一連番号と注釈が本文へ混ざる。桁位置を保つため長さは変えない。
+     * Replaces the sequence-number area and the identification area with spaces. When extracting
+     * original text that spans multiple lines, every column of the second line onward falls
+     * within the range, so leaving these areas in would mix the sequence number and comment text
+     * into the body. The length is left unchanged so column positions are preserved.
      */
     private static String maskFixedFormatAreas(String line) {
         if (line.length() <= AREA_A_START) {

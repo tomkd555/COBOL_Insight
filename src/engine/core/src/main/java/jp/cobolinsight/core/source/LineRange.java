@@ -1,6 +1,6 @@
 package jp.cobolinsight.core.source;
 
-/** 1始まりの行範囲(両端を含む)。 */
+/** A 1-based line range (inclusive of both ends). */
 public record LineRange(int startLine, int endLine) {
 
     public LineRange {

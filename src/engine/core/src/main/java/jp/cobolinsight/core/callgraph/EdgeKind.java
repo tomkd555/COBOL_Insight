@@ -1,15 +1,15 @@
 package jp.cobolinsight.core.callgraph;
 
-/** 呼出関係グラフのエッジ種別。 */
+/** Edge kinds of the call graph. */
 public enum EdgeKind {
-    /** プログラム間のCALL、段落・節へのPERFORM。 */
+    /** A CALL between programs, or a PERFORM to a paragraph/section. */
     CALL,
-    /** ジョブ/ステップによるプログラム実行(EXEC PGM=)。 */
+    /** Program execution by a job/step (EXEC PGM=). */
     EXECUTION,
-    /** データセット・Db2表への参照。 */
+    /** A reference to a dataset or Db2 table. */
     REFERENCE,
-    /** EXEC CICSのXCTL・LINK・START・RETURN TRANSIDによるトランザクション遷移。 */
+    /** A transaction transition via EXEC CICS XCTL, LINK, START, or RETURN TRANSID. */
     TRANSACTION_TRANSITION,
-    /** SEND MAP・RECEIVE MAPによるBMSマップ参照。 */
+    /** A BMS map reference via SEND MAP or RECEIVE MAP. */
     MAP_REFERENCE
 }

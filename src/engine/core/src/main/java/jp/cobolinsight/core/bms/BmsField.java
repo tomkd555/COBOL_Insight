@@ -3,8 +3,8 @@ package jp.cobolinsight.core.bms;
 import java.util.Objects;
 
 /**
- * DFHMDFが定義するフィールド。位置は1始まりの行・桁。名称なしのリテラルフィールドは
- * name を空文字列とする。attributes は ATTRB句のテキスト表現。
+ * A field defined by DFHMDF. Position is a 1-based row and column. A literal field with no
+ * name uses an empty string for name. attributes is the text representation of the ATTRB clause.
  */
 public record BmsField(String name, int row, int column, int length, String attributes) {
 

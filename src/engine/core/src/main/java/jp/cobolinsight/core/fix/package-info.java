@@ -1,5 +1,6 @@
 /**
- * 修正案の固定形式ソースへの往復適用を行う。原バイト列へのバイトスプライスによる最小編集、
- * 固定形式ノーマライザ、再パース検証、差分算出を行う。
+ * Applies fix suggestions round-trip to fixed-format source. Provides minimal edits via
+ * byte-splicing of the original byte sequence, a fixed-format normalizer, reparse verification,
+ * and diff computation.
  */
 package jp.cobolinsight.core.fix;

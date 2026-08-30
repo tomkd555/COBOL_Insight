@@ -2,7 +2,7 @@ package jp.cobolinsight.core.finding;
 
 import java.util.List;
 
-/** SARIF の fix に対応する修正案。1件以上の最小編集で構成する。 */
+/** A fix suggestion corresponding to a SARIF fix. Composed of one or more minimal edits. */
 public record FixSuggestion(String description, List<TextEdit> edits) {
 
     public FixSuggestion {

@@ -5,7 +5,7 @@ import jp.cobolinsight.core.source.SourcePosition;
 import java.util.Objects;
 import java.util.Optional;
 
-/** DD文。データセット名を持たない形式(SYSOUT=など)を許す。 */
+/** A DD statement. Allows forms without a dataset name (e.g. SYSOUT=). */
 public record JclDdStatement(String ddName, Optional<String> datasetName, SourcePosition position) {
 
     public JclDdStatement {

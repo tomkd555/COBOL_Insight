@@ -5,19 +5,20 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * マングリング済みSQLと双方向マップ。
+ * The mangled SQL together with its bidirectional map.
  *
- * @param sql           ホスト変数を連番トークン(:HV1, :HV2, …)へ置き換えたSQLテキスト
- * @param hostVariables 出現順のホスト変数対応(同一原データ名は同一トークン)
+ * @param sql           SQL text with host variables replaced by sequential tokens (:HV1, :HV2, ...)
+ * @param hostVariables host variable correspondences in order of appearance (the same original data
+ *                      name gets the same token)
  */
 public record MangledSql(String sql, List<HostVariableReference> hostVariables) {
 
-    /** 自身のSQLテキストのトークンを原データ名へ復元して返す。 */
+    /** Restores this instance's own SQL text tokens back to their original data names and returns it. */
     public String restore() {
         return restore(sql);
     }
 
-    /** 任意のテキスト中のトークン(:HVn)を原データ名へ復元して返す。文字列リテラル内は置換しない。 */
+    /** Restores tokens (:HVn) in arbitrary text back to their original data names. Does not replace inside string literals. */
     public String restore(String text) {
         Map<String, HostVariableReference> byToken = new HashMap<>();
         for (HostVariableReference ref : hostVariables) {
@@ -56,7 +57,7 @@ public record MangledSql(String sql, List<HostVariableReference> hostVariables) 
         return out.toString();
     }
 
-    /** 復元対象のトークンは :HVn の形に限るため、ASCIIの英数字だけを名前の文字として扱う。 */
+    /** Tokens eligible for restoration are limited to the :HVn form, so only ASCII alphanumerics count as name characters. */
     private static boolean isTokenChar(char c) {
         return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
     }

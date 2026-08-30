@@ -30,7 +30,7 @@ class SemanticModelTest {
                 Optional.of("100"), Optional.empty(), Optional.empty(), List.of(), List.of(), pos(10));
         assertEquals(5, elementary.level());
         assertEquals(Optional.of("100"), elementary.value());
-        // レベル77は他の項目に従属しない独立項目を表し、1〜49と同じく項目として受け付ける
+        // Level 77 represents a standalone item that is not subordinate to any other item, and is accepted as an item just like 1-49
         DataItem level77 = new DataItem(77, "WS-FLAG", Optional.of("X"), Optional.empty(),
                 Optional.empty(), Optional.empty(), Optional.empty(), List.of(), List.of(), pos(11));
         assertEquals(77, level77.level());
@@ -40,7 +40,7 @@ class SemanticModelTest {
     void dataItemRejectsInvalidLevel() {
         assertThrows(IllegalArgumentException.class, () -> new DataItem(0, "X", Optional.empty(),
                 Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), List.of(), List.of(), pos(1)));
-        // レベル88の条件名は ConditionName が持つため、DataItem のレベルとしては受け付けない
+        // A level-88 condition name is held by ConditionName, so it is not accepted as a DataItem level
         assertThrows(IllegalArgumentException.class, () -> new DataItem(88, "X", Optional.empty(),
                 Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), List.of(), List.of(), pos(1)));
     }

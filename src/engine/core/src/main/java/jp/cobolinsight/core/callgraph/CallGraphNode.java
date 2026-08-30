@@ -6,8 +6,8 @@ import java.util.Objects;
 import java.util.TreeMap;
 
 /**
- * 呼出関係グラフのノード。attributes は種別固有の付帯情報(未解決ノードの変数名、
- * 外部ユーティリティの種別タグなど)をキー昇順で保持する。
+ * A node of the call graph. attributes holds kind-specific auxiliary information (such as the
+ * variable name of an unresolved node, or the kind tag of an external utility) in ascending key order.
  */
 public record CallGraphNode(String id, NodeKind kind, String label, Map<String, String> attributes) {
 

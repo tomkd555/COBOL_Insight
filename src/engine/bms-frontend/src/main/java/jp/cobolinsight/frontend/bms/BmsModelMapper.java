@@ -4,9 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 解析結果を engine-api のBMSマップモデルへ変換する公開アダプタ。engine-api 側は必須値のため、
- * 未指定の SIZE は端末画面の既定 24x80、未指定の POS は (1,1)、未指定の LENGTH は 0、
- * ラベル無しフィールド名は空文字列で補う。
+ * A public adapter that converts a parse result into engine-api's BMS map model. Since engine-api
+ * requires values, an unspecified SIZE is filled with the terminal screen default of 24x80, an
+ * unspecified POS with (1,1), an unspecified LENGTH with 0, and an unlabeled field name with an
+ * empty string.
  */
 public final class BmsModelMapper {
 
@@ -48,7 +49,7 @@ public final class BmsModelMapper {
         return mapped;
     }
 
-    /** engine-api はマップセット名・マップ名を必須とするため、ラベル無しには行番号を添えた名前を与える。 */
+    /** engine-api requires mapset and map names, so an unlabeled one is given a name with its line number appended. */
     private static String nameOrFallback(String name, int sourceLine) {
         return name == null || name.isBlank() ? "UNNAMED-" + sourceLine : name;
     }

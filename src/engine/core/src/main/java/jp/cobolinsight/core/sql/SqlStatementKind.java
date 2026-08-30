@@ -1,8 +1,8 @@
 package jp.cobolinsight.core.sql;
 
-/** 埋め込みSQL文の種別。 */
+/** The kind of an embedded SQL statement. */
 public enum SqlStatementKind {
-    /** SELECT。単独のSELECTと SELECT INTO の双方を含む。 */
+    /** SELECT. Includes both a standalone SELECT and SELECT INTO. */
     SELECT,
     INSERT,
     UPDATE,
@@ -11,6 +11,6 @@ public enum SqlStatementKind {
     OPEN,
     FETCH,
     CLOSE,
-    /** 上記以外の文と、構文解析できなかった文。 */
+    /** Any statement not listed above, and a statement that could not be parsed. */
     OTHER
 }

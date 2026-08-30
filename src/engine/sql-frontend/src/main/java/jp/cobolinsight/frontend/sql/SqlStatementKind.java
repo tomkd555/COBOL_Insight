@@ -1,6 +1,6 @@
 package jp.cobolinsight.frontend.sql;
 
-/** SQL文の種別。 */
+/** The kind of a SQL statement. */
 public enum SqlStatementKind {
     SELECT,
     SELECT_INTO,

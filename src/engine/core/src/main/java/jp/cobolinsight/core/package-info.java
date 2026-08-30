@@ -1,6 +1,6 @@
 /**
- * 共通契約(CobolParser・JclParser・SqlParser・Rule・FixProducer・CharsetProvider の各インターフェース)、
- * 共通データモデル(呼出関係グラフ・findings・行対応表・座標付きトークン・正規化意味モデル・BMSマップモデル)、
- * 解析パイプラインのファサードを置く。
+ * Holds the common contracts (the CobolParser, JclParser, SqlParser, Rule, FixProducer, and
+ * CharsetProvider interfaces), the common data models (call graph, findings, line mapping table,
+ * positioned tokens, normalized semantic model, BMS map model), and the analysis pipeline facade.
  */
 package jp.cobolinsight.core;

@@ -1,6 +1,6 @@
 package jp.cobolinsight.core.source;
 
-/** COPY/REPLACE 展開の対応。展開後の行範囲と、元のコピーブック位置を対応づける。 */
+/** A COPY/REPLACE expansion mapping. Maps a line range in the expanded output to the original copybook position. */
 public record CopyExpansionEntry(int expandedStartLine, int expandedEndLine, String copybookPath,
         int copybookStartLine) {
 

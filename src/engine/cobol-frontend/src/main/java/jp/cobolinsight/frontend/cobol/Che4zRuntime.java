@@ -35,15 +35,15 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * Che4z エンジンの Guice 起動と再利用。injector とエンジンを1度だけ構築し、
- * ファイルごとに run() と CST 取得パイプラインを実行する。
+ * Bootstraps and reuses the Che4z engine's Guice setup. Builds the injector and engine only once,
+ * then runs run() and the CST capture pipeline per file.
  *
- * <p>エンジンは文書を開いた状態を内部に持つため、解析は排他で行う。コピー句の探索パスも
- * 言語クライアントの共有状態であり、解析ごとに差し替える。
+ * <p>The engine keeps open-document state internally, so analysis is run exclusively. The copybook
+ * search path is also shared state on the language client, and is swapped in for each analysis.
  */
 final class Che4zRuntime {
 
-    /** エンジンの AST 解析結果と、同じソースから取得した CST。cstCapture は取得に失敗した場合 null。 */
+    /** The engine's AST analysis result plus the CST captured from the same source. cstCapture is null if capture failed. */
     record Analysis(AnalysisResult result, CstCapture cstCapture) {
     }
 
@@ -87,7 +87,8 @@ final class Che4zRuntime {
         try {
             capture = captureCst(uri, text, config);
         } catch (RuntimeException e) {
-            // CST が取れないと動詞の判定が原文の先頭語による近似に落ちるだけなので、解析は継続する
+            // If CST capture fails, verb detection just falls back to an approximation based on
+            // the source's leading word, so analysis continues
         }
         return new Analysis(result, capture);
     }

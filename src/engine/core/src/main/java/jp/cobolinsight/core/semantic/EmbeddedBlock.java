@@ -8,8 +8,8 @@ import java.util.Objects;
 import java.util.TreeMap;
 
 /**
- * EXEC SQL / EXEC CICS の埋め込みブロック。text は抽出テキスト。operands は CICS コマンドの
- * 主要オペランド(MAP・MAPSET・PROGRAM・TRANSID など。キー昇順)を保持する。
+ * An embedded EXEC SQL / EXEC CICS block. text is the extracted text. operands holds the main
+ * operands of a CICS command (MAP, MAPSET, PROGRAM, TRANSID, etc., keys in ascending order).
  */
 public record EmbeddedBlock(EmbeddedBlockKind kind, String text, Map<String, String> operands,
         SourceRange range) {

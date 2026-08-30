@@ -3,11 +3,13 @@ package jp.cobolinsight.core.source;
 import java.util.List;
 
 /**
- * COPY 文1件のインライン展開。原本の COPY 文の位置へ、コピー句のどの行が REPLACING 適用後の
- * どのテキストとして現れるかを、展開後の並び順で保持する。
+ * The inline expansion of a single COPY statement. At the position of the original COPY
+ * statement, holds which copybook line appears as which text after REPLACING is applied,
+ * in expansion order.
  *
- * <p>{@link CopyExpansionEntry} が展開後ソースの行範囲を持つのに対し、こちらは原本の COPY 文を
- * 起点に、展開される各行の中身まで持つ。原本へコピー句を差し込んだ姿を示す用途に用いる。
+ * <p>Whereas {@link CopyExpansionEntry} holds the line range in the expanded source, this type
+ * is anchored on the original COPY statement and holds the content of each expanded line. It is
+ * used to show what the original looks like with the copybook spliced in.
  */
 public record CopyInlineExpansion(int copyStatementLine, String copybookName, String copybookPath,
         List<ExpandedCopyLine> lines) {

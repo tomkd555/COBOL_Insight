@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/** 構文木からマップセット→マップ→フィールドの階層モデルを組み立てる。 */
+/** Builds the mapset -> map -> field hierarchical model from the syntax tree. */
 final class BmsModelBuilder {
 
     private final List<BmsParseError> errors;
@@ -28,11 +28,12 @@ final class BmsModelBuilder {
         for (BmsMapParser.StatementContext stmt : tree.statement()) {
             BmsMapParser.MacroContext macro = stmt.macro();
             if (macro == null) {
-                continue; // ソース終端のアセンブラ END 文はマクロを持たない。
+                continue; // The assembler END statement at the end of the source has no macro.
             }
             if (macro.kind.getStartIndex() < 0) {
-                // ANTLR がエラー回復で補った擬似トークンは、期待集合の先頭である DFHMSD の型を
-                // 持つ。実在するトークンと区別しないと、原本に無いマップセットができる。
+                // The pseudo-token ANTLR fills in during error recovery has the type of DFHMSD,
+                // the first entry in the expected set. It must be distinguished from a real token,
+                // or a mapset not present in the original would be created.
                 errors.add(new BmsParseError(macro.kind.getLine(),
                         macro.kind.getCharPositionInLine(), "マクロ名を読み取れない"));
                 continue;
@@ -54,7 +55,7 @@ final class BmsModelBuilder {
 
     private void onMapset(String label, int line, Map<String, BmsMapParser.ValueContext> params) {
         List<String> type = flatten(params.get("TYPE"));
-        // TYPE=FINAL の DFHMSD はマップセット定義の終端を示すマクロであり、新しいマップセットを開始しない。
+        // A DFHMSD with TYPE=FINAL is the macro marking the end of the mapset definition and does not start a new mapset.
         boolean isFinal = type.stream().anyMatch(t -> t.equalsIgnoreCase("FINAL"));
         closeMapset();
         if (!isFinal) {
@@ -116,8 +117,9 @@ final class BmsModelBuilder {
     }
 
     /**
-     * 値を平坦な文字列並びにする。括弧はネストごとに展開する。文字列は囲みの引用符を外し、
-     * 引用符1個を表す二重引用符 '' を1個の ' へ戻す。
+     * Flattens a value into a plain sequence of strings. Parentheses are expanded at each nesting
+     * level. For a string, the enclosing quotes are stripped and a doubled quote '' representing
+     * one quote character is converted back to a single '.
      */
     private static List<String> flatten(BmsMapParser.ValueContext value) {
         List<String> out = new ArrayList<>();
@@ -153,7 +155,7 @@ final class BmsModelBuilder {
         return parsed;
     }
 
-    /** 常に2要素を返す。未指定・不正のとき要素は null。 */
+    /** Always returns 2 elements. An element is null when unspecified or invalid. */
     private List<Integer> intPair(BmsMapParser.ValueContext value, int line, String key) {
         if (value == null) {
             return Arrays.asList(null, null);

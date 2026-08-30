@@ -1,12 +1,12 @@
 package jp.cobolinsight.core.picture;
 
-/** PICTURE 句が表すデータのカテゴリ。 */
+/** The category of data that a PICTURE clause represents. */
 public enum PictureCategory {
     NUMERIC,
     NUMERIC_EDITED,
     ALPHANUMERIC,
     ALPHANUMERIC_EDITED,
     ALPHABETIC,
-    /** 種別を判別できる記号が PICTURE 句に現れなかった場合。 */
+    /** When no symbol that determines the kind appears in the PICTURE clause. */
     UNKNOWN
 }

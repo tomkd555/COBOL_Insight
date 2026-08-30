@@ -2,7 +2,7 @@ package jp.cobolinsight.frontend.bms;
 
 import java.util.List;
 
-/** BMS ソース1本の解析結果。 */
+/** The parse result for a single BMS source. */
 public record BmsParseResult(List<BmsMapset> mapsets, List<BmsParseError> errors) {
 
     public BmsParseResult {

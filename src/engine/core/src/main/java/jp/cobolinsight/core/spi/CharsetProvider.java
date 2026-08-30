@@ -3,13 +3,14 @@ package jp.cobolinsight.core.spi;
 import jp.cobolinsight.core.source.DecodedSource;
 
 /**
- * 文字コード判別・復号の契約。encoding モジュールが実装し、app の EngineWiring が組み立てる。
+ * The contract for character encoding detection and decoding. Implemented by the encoding
+ * module and assembled by app's EngineWiring.
  */
 public interface CharsetProvider {
 
-    /** 文字コードを自動判別して復号する。判別結果と確信度は戻り値の EncodingInfo が保持する。 */
+    /** Auto-detects the character encoding and decodes. The detection result and confidence are held in the returned EncodingInfo. */
     DecodedSource decode(String path, byte[] bytes);
 
-    /** 利用者が手動指定した文字コードで復号する。戻り値の EncodingInfo は manualOverride=true。 */
+    /** Decodes using a character encoding the user manually specified. The returned EncodingInfo has manualOverride=true. */
     DecodedSource decode(String path, byte[] bytes, String charsetName);
 }

@@ -1,11 +1,11 @@
 package jp.cobolinsight.core.linemap;
 
-/** 行対応の種別。COBOL側の行数と生成側の行数の対応を表す。 */
+/** The kind of line mapping. Represents the correspondence between COBOL-side and generated-side line counts. */
 public enum MappingKind {
-    /** COBOL 1行と生成1行が対応する。 */
+    /** One COBOL line corresponds to one generated line. */
     ONE_TO_ONE,
-    /** COBOL 1行に生成側の複数行が対応する。 */
+    /** One COBOL line corresponds to multiple generated lines. */
     ONE_TO_MANY,
-    /** COBOLの複数行が生成側の1行へ畳まれる。 */
+    /** Multiple COBOL lines are folded into one generated line. */
     MANY_TO_ONE
 }

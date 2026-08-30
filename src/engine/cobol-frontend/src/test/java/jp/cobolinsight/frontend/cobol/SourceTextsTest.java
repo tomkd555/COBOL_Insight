@@ -13,7 +13,7 @@ import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
-/** 原文取り出しの検証。固定形式の領域の除去と、コピー句の文字コード判別を扱う。 */
+/** Verifies original-text extraction: removal of fixed-format areas and copybook charset detection. */
 class SourceTextsTest {
 
     private static final String MAIN_URI = "file:///main.cbl";
@@ -62,7 +62,7 @@ class SourceTextsTest {
         assertEquals("WS-A", extracted);
     }
 
-    /** 固定形式の1行を組み立てる。1〜6桁が一連番号、7桁が標識、8〜72桁が本文、73桁以降が識別領域。 */
+    /** Builds one fixed-format line: columns 1-6 are the sequence number, column 7 is the indicator, columns 8-72 are the body, and column 73 onward is the identification area. */
     private static String fixedLine(int sequence, String code, String identification) {
         String body = code.length() >= 65 ? code.substring(0, 65)
                 : code + " ".repeat(65 - code.length());

@@ -4,7 +4,7 @@ import jp.cobolinsight.core.source.SourceRange;
 
 import java.util.Objects;
 
-/** プログラム間のCALL関係。 */
+/** A CALL relationship between programs. */
 public record CallRelation(String callerProgramId, CallKind kind, String target, SourceRange range) {
 
     public CallRelation {

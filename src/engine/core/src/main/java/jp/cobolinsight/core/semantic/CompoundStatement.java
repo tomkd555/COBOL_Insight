@@ -5,7 +5,7 @@ import jp.cobolinsight.core.source.SourceRange;
 import java.util.List;
 import java.util.Objects;
 
-/** 分岐・反復の複合文。conditionText は条件式のテキスト表現。 */
+/** A compound statement for a branch or loop. conditionText is the textual form of the condition expression. */
 public record CompoundStatement(ControlKind kind, String conditionText, List<StatementBlock> blocks,
         SourceRange range) implements Statement {
 

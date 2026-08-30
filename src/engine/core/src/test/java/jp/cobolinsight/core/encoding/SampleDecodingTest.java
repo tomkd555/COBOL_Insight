@@ -11,12 +11,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 同梱サンプルの判別と復号の検証。993文字はサンプルの文字数、1,124バイトはShift_JIS版のファイル長で、
- * いずれもサンプルを測った値である。
+ * Verifies detection and decoding of the bundled samples. 993 characters is the sample's
+ * character count, and 1,124 bytes is the Shift_JIS version's file length; both are values
+ * measured from the sample.
  */
 class SampleDecodingTest {
 
-    /** テストの作業ディレクトリはモジュール直下であるため、2階層上のリポジトリ直下を起点にする。 */
+    /** The test's working directory is directly under the module, so this is anchored two levels up, at the repository root. */
     private static final Path SAMPLES = Path.of("..", "..", "..", "samples", "encoding");
 
     private final SourceDecoder decoder = new SourceDecoder();

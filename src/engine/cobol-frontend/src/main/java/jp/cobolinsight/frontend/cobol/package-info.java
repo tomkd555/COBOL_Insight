@@ -1,6 +1,7 @@
 /**
- * Che4z(Eclipse Che4z COBOL Language Support)の parser・engine モジュールを組み込み、
- * COBOL構文・意味解析、COPY/REPLACE展開、EXEC SQL抽出、EXEC CICSコマンド解析を行う。
- * Che4zの出力を engine-api の正規化意味モデルへ変換し、CobolParser インターフェースを実装する。
+ * Embeds Che4z's (Eclipse Che4z COBOL Language Support) parser/engine modules to perform COBOL
+ * syntax/semantic analysis, COPY/REPLACE expansion, EXEC SQL extraction, and EXEC CICS command
+ * parsing. Converts Che4z's output into engine-api's normalized semantic model and implements
+ * the CobolParser interface.
  */
 package jp.cobolinsight.frontend.cobol;

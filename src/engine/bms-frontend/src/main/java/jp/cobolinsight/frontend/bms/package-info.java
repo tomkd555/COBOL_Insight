@@ -1,5 +1,5 @@
 /**
- * 自製のANTLR4文法によるBMS解析を行う。BMSマクロ(DFHMSD・DFHMDI・DFHMDF)を解析し、
- * マップセット・マップ・フィールドのモデルを構築して engine-api のBMSマップモデルへ変換する。
+ * Analyzes BMS using an in-house ANTLR4 grammar. Parses the BMS macros (DFHMSD, DFHMDI, DFHMDF),
+ * builds a mapset/map/field model, and converts it into engine-api's BMS map model.
  */
 package jp.cobolinsight.frontend.bms;

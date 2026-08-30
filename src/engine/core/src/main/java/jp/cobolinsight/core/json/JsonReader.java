@@ -6,16 +6,18 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 最小限のJSONパーサ。{@link JsonWriter} の対として、外部から与えられる小さなJSON
- * (利用者定義ルールの定義ファイル)を読む。値は Map・List・String・Long・Double・Boolean・null
- * へ写す。整数と小数を Long と Double で区別するのは、版数や桁数を整数のまま扱うためである。
+ * A minimal JSON parser. As the counterpart to {@link JsonWriter}, it reads small JSON
+ * given from outside (user-defined rule configuration files). Values are mapped to
+ * Map, List, String, Long, Double, Boolean, and null. Integers and decimals are distinguished
+ * as Long and Double so that version numbers and digit counts stay as integers.
  *
- * <p>利用者が手で書いたファイルを読むため、末尾のごみ・閉じ忘れ・末尾カンマ・単引用符を
- * いずれも受け付けず、位置を添えた {@link JsonParseException} で拒む。
+ * <p>Because it reads files handwritten by users, it rejects trailing garbage, unclosed
+ * structures, trailing commas, and single quotes, reporting each with a
+ * {@link JsonParseException} that carries the position.
  */
 public final class JsonReader {
 
-    /** 構文の誤りと、期待しない型。いずれも利用者へ位置または内容を示して伝える。 */
+    /** A syntax error or an unexpected type. Both are reported to the user with a position or the offending content. */
     public static final class JsonParseException extends IllegalArgumentException {
 
         private static final long serialVersionUID = 1L;
@@ -32,7 +34,7 @@ public final class JsonReader {
         this.text = text;
     }
 
-    /** JSONテキスト全体を1つの値として読む。末尾に余分な文字があれば拒む。 */
+    /** Reads the entire JSON text as a single value. Rejects any extra characters at the end. */
     public static Object parse(String text) {
         if (text == null) {
             throw new JsonParseException("JSONテキストが null である");
@@ -47,7 +49,7 @@ public final class JsonReader {
         return value;
     }
 
-    /** オブジェクトとして取り出す。キーの順は記述順を保つ。 */
+    /** Extracts the value as an object. Preserves key order as written. */
     @SuppressWarnings("unchecked")
     public static Map<String, Object> asObject(Object value) {
         if (!(value instanceof Map<?, ?> map)) {
@@ -56,7 +58,7 @@ public final class JsonReader {
         return (Map<String, Object>) map;
     }
 
-    /** 配列として取り出す。 */
+    /** Extracts the value as an array. */
     @SuppressWarnings("unchecked")
     public static List<Object> asArray(Object value) {
         if (!(value instanceof List<?> list)) {
@@ -262,7 +264,7 @@ public final class JsonReader {
         }
     }
 
-    /** 位置は0起点の文字位置で示す。行番号を持たないのは、対象が小さな定義ファイルのためである。 */
+    /** The position is given as a 0-based character offset. There is no line number because the target is a small configuration file. */
     private JsonParseException error(String message) {
         return new JsonParseException(message + " (位置 " + pos + ")");
     }

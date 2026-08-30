@@ -1,8 +1,9 @@
 package jp.cobolinsight.core.finding;
 
 /**
- * ルールカタログの severity 語彙。高=HIGH、中=MEDIUM、低=LOW、推奨=ADVISORY(R009・R025 専用)。
- * SARIF level へは HIGH→error、MEDIUM・ADVISORY→warning、LOW→note と対応づける。
+ * Severity vocabulary for the rule catalog. High=HIGH, Medium=MEDIUM, Low=LOW,
+ * Recommended=ADVISORY (R009/R025 only). Maps to SARIF level as HIGH to error,
+ * MEDIUM/ADVISORY to warning, LOW to note.
  */
 public enum Severity {
     HIGH,
@@ -10,7 +11,7 @@ public enum Severity {
     LOW,
     ADVISORY;
 
-    /** 画面と CLI が示す日本語の呼び名。 */
+    /** The Japanese label name shown by the GUI and CLI. */
     public String label() {
         return switch (this) {
             case HIGH -> "高";

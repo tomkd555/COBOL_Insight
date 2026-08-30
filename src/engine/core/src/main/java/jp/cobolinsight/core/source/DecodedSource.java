@@ -4,8 +4,9 @@ import java.util.Arrays;
 import java.util.Objects;
 
 /**
- * 復号済みソース。原バイト列をそのまま保持し、text の各文字位置から原バイト列上のオフセットへの
- * 対応表(charByteOffsets)を持つ。配列は取込・返却の双方で防御的にコピーする。
+ * A decoded source. Keeps the original byte array as-is, plus a table (charByteOffsets) that
+ * maps each character position in text to its offset in the original byte array. The arrays are
+ * defensively copied both on intake and on return.
  */
 public record DecodedSource(String path, String text, byte[] originalBytes, int[] charByteOffsets,
         EncodingInfo encoding) {
@@ -36,12 +37,12 @@ public record DecodedSource(String path, String text, byte[] originalBytes, int[
         return charByteOffsets.clone();
     }
 
-    /** text の指定位置の文字が始まる原バイト列上のオフセット。charIndex は 0 以上 text の長さ未満。 */
+    /** The offset in the original byte array where the character at the given position in text begins. charIndex must be 0 or greater and less than text's length. */
     public int byteOffsetAt(int charIndex) {
         return charByteOffsets[charIndex];
     }
 
-    // record の既定実装は配列フィールドを参照で比較するため、equals と hashCode を内容による比較にする。
+    // A record's default implementation compares array fields by reference, so equals and hashCode are overridden to compare by content.
     @Override
     public boolean equals(Object obj) {
         return obj instanceof DecodedSource other
@@ -58,7 +59,7 @@ public record DecodedSource(String path, String text, byte[] originalBytes, int[
                 Arrays.hashCode(charByteOffsets), encoding);
     }
 
-    // ログへ原バイト列とソース全文が出ることを避け、要約だけを示す。
+    // Avoids dumping the original byte array and the full source text to logs; shows only a summary.
     @Override
     public String toString() {
         return "DecodedSource[path=" + path + ", byteSize=" + originalBytes.length

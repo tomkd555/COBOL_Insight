@@ -6,8 +6,9 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * 1プログラムを1対象言語へ逐語対訳した結果。生成ファイル群と、COBOL行と生成行の対応表を持つ。
- * 複数プログラム・複数言語を束ねる場合は本型のリストで表す。
+ * The result of translating one program into one target language line by line. Holds the
+ * generated files and a mapping between COBOL lines and generated lines. When bundling multiple
+ * programs or languages, represent them as a list of this type.
  */
 public record TranspileResult(String programId, TargetLanguage language,
         List<GeneratedFile> files, List<LineMappingEntry> lineMap) {

@@ -1,6 +1,6 @@
 package jp.cobolinsight.frontend.sql;
 
-/** EXEC SQL ブロックの種別。 */
+/** The kind of an EXEC SQL block. */
 public enum SqlBlockKind {
     INCLUDE,
     BEGIN_DECLARE_SECTION,

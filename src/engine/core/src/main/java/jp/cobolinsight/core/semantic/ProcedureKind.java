@@ -1,6 +1,6 @@
 package jp.cobolinsight.core.semantic;
 
-/** 手続き部の単位種別。 */
+/** The kind of unit in the procedure division. */
 public enum ProcedureKind {
     SECTION,
     PARAGRAPH

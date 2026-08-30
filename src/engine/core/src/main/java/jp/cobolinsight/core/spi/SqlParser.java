@@ -5,8 +5,9 @@ import jp.cobolinsight.core.semantic.EmbeddedBlockKind;
 import jp.cobolinsight.core.sql.SqlStatementModel;
 
 /**
- * 埋め込みSQL解析の契約。入力は正規化意味モデルから抽出した {@link EmbeddedBlockKind#SQL} の
- * ブロックで、ホスト変数の可逆マングリングを含む前処理は実装側が行う。
+ * The contract for embedded SQL analysis. The input is a {@link EmbeddedBlockKind#SQL} block
+ * extracted from the normalized semantic model; the implementation performs the preprocessing,
+ * including reversible host variable mangling.
  */
 public interface SqlParser {
 

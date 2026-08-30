@@ -1,19 +1,20 @@
 package jp.cobolinsight.core.encoding;
 
 /**
- * 復号後の文字位置と原バイトオフセットの対応表。
- * 行番号は1始まり、行内の文字位置(column)は0始まりのUTF-16文字単位。
+ * Table mapping post-decode character positions to original byte offsets.
+ * Line numbers are 1-based; the in-line character position (column) is 0-based, in UTF-16 code units.
  */
 public final class ByteOffsetTable {
 
-    /** 長さ charCount+1。末尾要素は原バイト列全体の長さ。 */
+    /** Length charCount+1. The last element is the total length of the original byte array. */
     private final int[] charStartByteOffsets;
-    /** 各行の先頭文字位置。行は '\n' の直後で始まる。 */
+    /** Starting character position of each line. A line begins right after a '\n'. */
     private final int[] lineStartCharIndexes;
 
     ByteOffsetTable(String text, int[] charStartByteOffsets) {
         this.charStartByteOffsets = charStartByteOffsets;
-        // 末尾の改行は次の行を開かない。改行の後に文字が続く場合だけ行数を増やす。
+        // A trailing newline does not open a new line. The line count only increases when
+        // a character follows the newline.
         int lineCount = 1;
         for (int i = 0; i < text.length(); i++) {
             if (text.charAt(i) == '\n' && i + 1 < text.length()) {
@@ -37,7 +38,7 @@ public final class ByteOffsetTable {
         return charStartByteOffsets[charStartByteOffsets.length - 1];
     }
 
-    /** 文字位置(0〜charCount)に対応する原バイトオフセット。charCountを渡すと全バイト長を返す。 */
+    /** Original byte offset for a character position (0 to charCount). Passing charCount returns the total byte length. */
     public int byteOffsetOfChar(int charIndex) {
         return charStartByteOffsets[charIndex];
     }
@@ -47,8 +48,9 @@ public final class ByteOffsetTable {
     }
 
     /**
-     * 指定行(1始まり)の先頭文字位置。{@code lineCount()+1} は最終行の直後、すなわち本文の末尾を
-     * 指す。末尾への挿入点を(行,桁)で表せるようにするためである。
+     * Starting character position of the given line (1-based). {@code lineCount()+1} refers to
+     * just past the last line, i.e. the end of the text — this lets an insertion point at the
+     * end be expressed as a (line, column) pair.
      */
     public int lineStartCharIndex(int line) {
         if (line == lineStartCharIndexes.length + 1) {
@@ -57,12 +59,12 @@ public final class ByteOffsetTable {
         return lineStartCharIndexes[line - 1];
     }
 
-    /** 指定行(1始まり)の先頭の原バイトオフセット。 */
+    /** Original byte offset at the start of the given line (1-based). */
     public int lineStartByteOffset(int line) {
         return byteOffsetOfChar(lineStartCharIndex(line));
     }
 
-    /** 指定行(1始まり)・行内文字位置(0始まり)の原バイトオフセット。 */
+    /** Original byte offset for the given line (1-based) and in-line character position (0-based). */
     public int byteOffsetAt(int line, int column) {
         return byteOffsetOfChar(lineStartCharIndex(line) + column);
     }

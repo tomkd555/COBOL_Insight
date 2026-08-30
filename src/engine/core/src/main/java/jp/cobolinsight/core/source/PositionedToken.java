@@ -2,7 +2,7 @@ package jp.cobolinsight.core.source;
 
 import java.util.Objects;
 
-/** 原ソース座標付きトークン。 */
+/** A token annotated with its position in the original source. */
 public record PositionedToken(String text, SourceRange range) {
 
     public PositionedToken {

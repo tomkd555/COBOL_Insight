@@ -6,11 +6,12 @@ import jp.cobolinsight.core.finding.FixSuggestion;
 import java.util.Optional;
 
 /**
- * 修正案生成の契約。finding に対するソース範囲→置換の最小編集を返す。適用(TokenStreamRewriter・
- * 固定形式ノーマライザ・再パース検証)は fix モジュールの責務である。
+ * The contract for generating fix suggestions. Returns the minimal source-range-to-replacement
+ * edit for a finding. Applying it (TokenStreamRewriter, the fixed-format normalizer, reparse
+ * verification) is the fix module's responsibility.
  */
 public interface FixProducer {
 
-    /** 修正案を生成できない finding に対しては empty を返す。 */
+    /** Returns empty for a finding that no fix suggestion can be generated for. */
     Optional<FixSuggestion> produce(Finding finding, AnalysisContext context);
 }

@@ -1,12 +1,12 @@
 package jp.cobolinsight.frontend.sql;
 
 /**
- * COBOLソースから抽出した EXEC SQL 〜 END-EXEC ブロック1件。
+ * A single EXEC SQL ... END-EXEC block extracted from a COBOL source.
  *
- * @param sqlText EXEC SQL と END-EXEC の間のテキスト(行ごとにトリムし改行で連結)
- * @param kind    ブロック種別
- * @param start   EXEC の先頭文字の位置
- * @param end     END-EXEC の末尾文字の位置
+ * @param sqlText the text between EXEC SQL and END-EXEC (each line trimmed and joined with newlines)
+ * @param kind    the block kind
+ * @param start   the position of the first character of EXEC
+ * @param end     the position of the last character of END-EXEC
  */
 public record SqlBlock(String sqlText, SqlBlockKind kind, SourcePosition start, SourcePosition end) {
 }

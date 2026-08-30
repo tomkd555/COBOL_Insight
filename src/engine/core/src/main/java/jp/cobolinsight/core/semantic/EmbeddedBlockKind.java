@@ -1,6 +1,6 @@
 package jp.cobolinsight.core.semantic;
 
-/** 埋め込みブロックの種別。EXEC SQL と、対象とする EXEC CICS コマンド6種。 */
+/** The kind of embedded block: EXEC SQL, and the six targeted EXEC CICS commands. */
 public enum EmbeddedBlockKind {
     SQL,
     CICS_SEND_MAP,

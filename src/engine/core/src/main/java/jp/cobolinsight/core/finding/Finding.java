@@ -6,13 +6,14 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * SARIF 2.1.0 準拠の検出結果。物理位置は {@link SourcePosition}(URI 相当のファイル・開始行・
- * 開始桁・原バイトオフセット)で保持する。
+ * A SARIF 2.1.0 compliant detection result. The physical location is held as
+ * {@link SourcePosition} (a URI-equivalent file, start line, start column, and original byte
+ * offset).
  */
 public record Finding(String ruleId, FindingLevel level, String message, SourcePosition location,
         List<CodeFlow> codeFlows, List<FixSuggestion> fixes) {
 
-    /** パース失敗を error レベルの finding として記録するときのルールID。 */
+    /** Rule ID used when recording a parse failure as an error-level finding. */
     public static final String PARSE_FAILURE_RULE_ID = "parse-failure";
 
     public Finding {

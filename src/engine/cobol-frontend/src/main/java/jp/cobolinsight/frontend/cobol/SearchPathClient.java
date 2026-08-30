@@ -19,15 +19,17 @@ import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * ライブラリ組込み用の言語クライアント。コピー句を探索パス順の先勝ちで解決する。診断通知・
- * メッセージ表示・設定取得は編集機能のための呼出しであり、解析には要らないため空応答を返す。
+ * Language client for library embedding. Resolves a copybook on a first-match basis in search-path
+ * order. Diagnostic notification, message display, and configuration retrieval are calls meant for
+ * editing features and are not needed for analysis, so they return empty responses.
  */
 final class SearchPathClient implements CobolLanguageClient {
 
     /**
-     * 探索する拡張子。COPY 文はメンバ名だけを書くため、拡張子なしを先に試し、続けて
-     * {@link AssetKind#COPYBOOK} が名乗る拡張子を小文字・大文字の順に試す。拡張子の正典を
-     * ここへ写し取ると、片方だけが増えたときに COPY 文の解決だけが取り残される。
+     * Extensions to search. Since a COPY statement writes only the member name, no-extension is
+     * tried first, followed by the extensions {@link AssetKind#COPYBOOK} declares, in lowercase
+     * then uppercase order. Copying the canonical extension list here separately means that if
+     * only one of the two is extended, copybook resolution via COPY statements would be left behind.
      */
     private static final List<String> COPYBOOK_EXTENSIONS = copybookExtensions();
 

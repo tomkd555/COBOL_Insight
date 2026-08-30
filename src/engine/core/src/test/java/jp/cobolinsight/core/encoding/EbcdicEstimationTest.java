@@ -14,9 +14,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * EBCDICの推定と復号の検証。実機のEBCDICファイルを持たないため、UTF-8のサンプルを各EBCDIC
- * コードページへ再変換したバイト列を入力にする。自動判別はIBM930とIBM939を区別しないため、
- * 推定側はコードページの一致ではなくEBCDICであることだけを表明する。
+ * Verifies EBCDIC estimation and decoding. Since no real-machine EBCDIC file is available, the
+ * input is a byte array obtained by re-converting a UTF-8 sample into each EBCDIC code page.
+ * Because auto-detection does not distinguish IBM930 from IBM939, the estimation side only
+ * asserts that the encoding is EBCDIC, not that the code page matches exactly.
  */
 class EbcdicEstimationTest {
 

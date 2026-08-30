@@ -1,9 +1,9 @@
 package jp.cobolinsight.core.jcl;
 
-/** EXEC文の対象種別。 */
+/** The target kind of an EXEC statement. */
 public enum JclExecKind {
-    /** EXEC PGM=。 */
+    /** EXEC PGM=. */
     PGM,
-    /** EXEC PROC名(カタログ化PROC呼出)。 */
+    /** EXEC PROC name (invocation of a cataloged PROC). */
     PROC
 }

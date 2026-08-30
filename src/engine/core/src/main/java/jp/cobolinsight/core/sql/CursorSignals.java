@@ -4,13 +4,13 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * DECLARE CURSOR のカーソル情報。SQL指摘 S004 が読む。
+ * Cursor information for DECLARE CURSOR. Read by SQL finding S004.
  *
- * @param cursorName       カーソル名
- * @param forReadOnly      FOR READ ONLY 句の有無
- * @param forFetchOnly     FOR FETCH ONLY 句の有無
- * @param forUpdate        FOR UPDATE(OF 有無を問わず)句の有無
- * @param forUpdateColumns FOR UPDATE OF の対象列名。OF が無ければ空
+ * @param cursorName       the cursor name
+ * @param forReadOnly      whether a FOR READ ONLY clause is present
+ * @param forFetchOnly     whether a FOR FETCH ONLY clause is present
+ * @param forUpdate        whether a FOR UPDATE clause is present (regardless of OF)
+ * @param forUpdateColumns the target column names of FOR UPDATE OF; empty if there is no OF
  */
 public record CursorSignals(String cursorName, boolean forReadOnly, boolean forFetchOnly,
         boolean forUpdate, List<String> forUpdateColumns) {

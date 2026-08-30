@@ -1,13 +1,13 @@
 package jp.cobolinsight.frontend.sql;
 
-/** ホスト変数マングリングの結果。成功か「解析対象外」かの2値。 */
+/** Result of host variable mangling. One of two outcomes: success or "not analyzable". */
 public sealed interface MangleResult {
 
-    /** マングリング成功。 */
+    /** Mangling succeeded. */
     record Mangled(MangledSql sql) implements MangleResult {
     }
 
-    /** マングリング不能。対象SQLは解析対象外として報告する。 */
+    /** Mangling was not possible. The target SQL is reported as not analyzable. */
     record NotAnalyzable(String reason) implements MangleResult {
     }
 }

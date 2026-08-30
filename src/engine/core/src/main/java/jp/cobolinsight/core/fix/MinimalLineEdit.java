@@ -15,16 +15,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 編集後の全文と原本の復号済みテキストを突き合わせ、食い違う中央部だけを1つの {@link TextEdit} へ
- * まとめて {@link ByteSpliceApplier} でバイトスプライスする。
+ * Compares the full edited text against the original's decoded text, collapses just the
+ * differing middle section into a single {@link TextEdit}, and byte-splices it with
+ * {@link ByteSpliceApplier}.
  *
- * <p>行単位で先頭と末尾の一致部分を削り取り、残った中央の行範囲をまるごと置き換える。差分アルゴリズム
- * (LCS)は用いない。編集の外側は原バイト列をそのまま持ち越すため、触れていない行のバイト列・コード
- * ページ・改行様式・バイト順マークは原本と一致する。
+ * <p>Line by line, matching sections are trimmed from the start and end, and the remaining
+ * middle line range is replaced wholesale. No diff algorithm (LCS) is used. Since the original
+ * byte sequence is carried through unchanged outside the edit, the byte sequence, code page,
+ * line-break style, and byte order mark of untouched lines match the original.
  *
- * <p>突き合わせの前に CRLF を LF へそろえる。編集後の全文は画面から UTF-8 テキストとして渡され、
- * 改行様式が原本と異なりうるためである。置換テキストの改行を原本の様式へ戻すのは
- * {@link ByteSpliceApplier} が担う。
+ * <p>CRLF is normalized to LF before comparison, because the full edited text is passed from the
+ * GUI as UTF-8 text and its line-break style may differ from the original's. Restoring the
+ * replacement text's line breaks to the original's style is handled by {@link ByteSpliceApplier}.
  */
 public final class MinimalLineEdit {
 
@@ -32,24 +34,26 @@ public final class MinimalLineEdit {
     }
 
     /**
-     * スプライス結果。
+     * The splice result.
      *
-     * @param bytes            修正後のバイト列(原本と同一のコードページ)
-     * @param changed          食い違いがあったか。無ければ {@code bytes} は原バイト列そのもの
-     * @param changedLineFrom  食い違いの先頭行(1始まり)。{@code changed} が偽なら0
-     * @param changedLineTo    食い違いの末尾行(1始まり・その行を含む)。行の挿入だけの場合は
-     *                         {@code changedLineFrom - 1} となり、挿入点の直前の行を指す
+     * @param bytes            the fixed byte sequence (in the same code page as the original)
+     * @param changed          whether there was a difference. If not, {@code bytes} is the original byte sequence itself
+     * @param changedLineFrom  the first differing line (1-based). 0 if {@code changed} is false
+     * @param changedLineTo    the last differing line (1-based, inclusive). For a pure line
+     *                         insertion this is {@code changedLineFrom - 1}, pointing to the
+     *                         line immediately before the insertion point
      */
     public record Result(byte[] bytes, boolean changed, int changedLineFrom, int changedLineTo) {
     }
 
     /**
-     * 原本の復号済みソースへ編集後の全文を反映したバイト列を返す。原本のコードページで符号化できない
-     * 文字が編集後の本文にある場合は {@link IllegalArgumentException} を投げ、バイト列を返さない。
+     * Returns the byte sequence obtained by applying the full edited text to the original's
+     * decoded source. Throws {@link IllegalArgumentException} without returning a byte sequence
+     * if the edited text contains a character that cannot be encoded in the original's code page.
      *
-     * @param path        編集位置に添えるソースのパス(内容には影響しない)
-     * @param original    原本の復号済みソース
-     * @param editedText  編集後の全文
+     * @param path        the source path attached to edit positions (does not affect the content)
+     * @param original    the original's decoded source
+     * @param editedText  the full edited text
      */
     public static Result apply(String path, DecodedSource original, String editedText) {
         List<String> originalLines = lines(original.text());
@@ -68,9 +72,12 @@ public final class MinimalLineEdit {
             requireNoLeadingShiftCode(original);
             start = lineStartPosition(path, 1);
         } else {
-            // 直前の行の改行文字から置き換える。EBCDIC では行頭の DBCS を開くシフトコード(SO)が
-            // 行頭文字のバイト位置より前に置かれ、行頭を起点にすると原本の SO が残ったまま置換
-            // テキストの SO が加わって二重になる。改行文字を含めれば置換範囲がシフトコードを覆う。
+            // Replace starting from the line break of the preceding line. In EBCDIC, the shift
+            // code (SO) that opens DBCS at the start of a line is placed before the byte
+            // position of the first character, so starting from the line's first character
+            // would leave the original's SO in place while adding the replacement text's own SO,
+            // doubling it. Including the line break brings the shift code within the replaced
+            // range.
             start = lineBreakPosition(path, original, prefix);
             replacement = "\n" + replacement;
         }
@@ -82,8 +89,10 @@ public final class MinimalLineEdit {
     }
 
     /**
-     * 行末の改行を各行へ含めたまま分割する。改行を行の一部として扱うため、末尾改行の有無の違いも
-     * 最終行の食い違いとして現れ、行番号と要素位置が一対一で対応する。
+     * Splits the text while keeping the trailing line break in each line. Because the line break
+     * is treated as part of the line, a difference in whether there is a trailing newline shows
+     * up as a difference in the last line, and line numbers correspond one-to-one with element
+     * positions.
      */
     private static List<String> lines(String text) {
         String normalized = text.replace("\r\n", "\n");
@@ -110,7 +119,7 @@ public final class MinimalLineEdit {
         return prefix;
     }
 
-    /** 末尾からの一致行数。先頭で削り取った行を二重に数えないよう、残りの行数を上限とする。 */
+    /** The number of matching lines from the end. Capped at the remaining line count so lines already trimmed from the start are not double-counted. */
     private static int commonSuffix(List<String> a, List<String> b, int prefix) {
         int max = Math.min(a.size(), b.size()) - prefix;
         int suffix = 0;
@@ -121,14 +130,16 @@ public final class MinimalLineEdit {
         return suffix;
     }
 
-    /** 指定行(1始まり)の先頭を指す位置。{@code lineCount+1} は本文の末尾を指す。 */
+    /** The position pointing to the start of the given line (1-based). {@code lineCount+1} points to the end of the text. */
     private static SourcePosition lineStartPosition(String path, int line) {
         return new SourcePosition(path, line, 1, SourcePosition.UNKNOWN_BYTE_OFFSET);
     }
 
     /**
-     * 指定行(1始まり)の行末の改行を指す位置。CRLF の行では CR を指す。置換テキストの先頭の改行が
-     * 原本の改行様式へ戻るため、CR ごと置き換えても改行様式は保たれる。
+     * The position pointing to the line-end break of the given line (1-based). For a CRLF line
+     * this points to the CR. Because the replacement text's leading line break is restored to the
+     * original's line-break style, the line-break style is preserved even when the CR is replaced
+     * along with it.
      */
     private static SourcePosition lineBreakPosition(String path, DecodedSource original, int line) {
         ByteOffsetTable table = original.offsetTable();
@@ -142,13 +153,16 @@ public final class MinimalLineEdit {
     }
 
     /**
-     * 1行目から置き換える場合に、本文の先頭に文字を産まないバイトが無いことを確かめる。EBCDIC で
-     * 本文がシフトコードから始まると、そのバイトは置換範囲へ入れられず原本に残る一方で置換テキスト
-     * も自前のシフトコードを持つため、書き戻しが壊れる。固定形式では1行目が一連番号領域から始まる
-     * ため実在しないが、壊れた結果を書き出すよりは断る。
+     * When replacing starting from line 1, confirms there is no byte at the start of the text
+     * that produces no character. If the text in EBCDIC starts with a shift code, that byte
+     * cannot be included in the replaced range and stays in the original, while the replacement
+     * text also carries its own shift code, breaking the write-back. This does not actually occur
+     * in fixed format, since line 1 starts with the sequence-number area, but it is rejected
+     * rather than writing out a broken result.
      *
-     * <p>UTF-8 のバイト順マークも本文の先頭に置かれるが、置換テキストはこれを産まないため、原本の
-     * ものがそのまま残るのが正しい。したがって EBCDIC だけを見る。
+     * <p>A UTF-8 byte order mark is also placed at the start of the text, but since the
+     * replacement text never produces one, leaving the original's BOM in place is correct.
+     * Hence only EBCDIC is checked here.
      */
     private static void requireNoLeadingShiftCode(DecodedSource original) {
         if (original.encodingInfo().codePage().isEbcdic()
@@ -159,11 +173,13 @@ public final class MinimalLineEdit {
     }
 
     /**
-     * 置換テキストが原本のコードページで符号化できることを確かめる。
+     * Confirms that the replacement text can be encoded in the original's code page.
      *
-     * <p>{@code String.getBytes(Charset)} は符号化できない文字を黙って '?' などへ置き換えるため、
-     * 全角文字を持たない EBCDIC の SBCS 面などでは原本を書き換えたうえで内容が壊れる。ここで
-     * {@link CodingErrorAction#REPORT} の符号化器に通し、置き換えが起きる編集は例外で拒む。
+     * <p>{@code String.getBytes(Charset)} silently replaces unencodable characters with '?' and
+     * the like, so on an EBCDIC SBCS plane without full-width characters, say, the original would
+     * be rewritten with corrupted content. Here the text is run through an encoder set to
+     * {@link CodingErrorAction#REPORT}, and any edit that would trigger a replacement is rejected
+     * with an exception.
      */
     private static void requireEncodable(String replacement, CodePage codePage) {
         CharsetEncoder encoder = codePage.charset().newEncoder()
@@ -173,7 +189,7 @@ public final class MinimalLineEdit {
             encoder.encode(CharBuffer.wrap(replacement));
             return;
         } catch (CharacterCodingException e) {
-            // 例外は符号化できない文字の位置を持たないため、下で1文字ずつ当たって特定する。
+            // The exception carries no position for the unencodable character, so it is located below by checking one character at a time.
         }
         for (int i = 0; i < replacement.length(); i++) {
             char c = replacement.charAt(i);

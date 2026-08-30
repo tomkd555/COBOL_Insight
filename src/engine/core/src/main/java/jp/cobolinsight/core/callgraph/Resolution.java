@@ -1,11 +1,11 @@
 package jp.cobolinsight.core.callgraph;
 
-/** エッジの解決根拠。 */
+/** The resolution basis of an edge. */
 public enum Resolution {
-    /** リテラル・定数由来で確定した。 */
+    /** Determined definitively from a literal or constant. */
     CONSTANT,
-    /** 定数伝播・def-use・値集合のデータフロー解析で解決した。 */
+    /** Resolved by dataflow analysis: constant propagation, def-use, or value-set. */
     DATAFLOW,
-    /** 解決できなかった(接続先は未解決ノード)。 */
+    /** Could not be resolved (the target is an unresolved node). */
     UNRESOLVED
 }

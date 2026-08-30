@@ -6,9 +6,10 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * 埋め込みSQL文の解析結果。原文(originalText)とマングリング後テキスト(mangledText)の両方を
- * 保持し、ルールは原データ名で報告できる。range は元のCOBOLソース上の位置。
- * structureSignals は SQL指摘(S001・S002・S004)が読む構文レベルの構造シグナル。
+ * The parse result of an embedded SQL statement. Holds both the original text (originalText) and
+ * the mangled text (mangledText), so rules can report using the original data names. range is
+ * the position in the original COBOL source. structureSignals holds the syntax-level structural
+ * signals that SQL findings (S001, S002, S004) read.
  */
 public record SqlStatementModel(SqlStatementKind kind, String originalText, String mangledText,
         List<HostVariableBinding> hostVariables, List<String> referencedTables, SourceRange range,

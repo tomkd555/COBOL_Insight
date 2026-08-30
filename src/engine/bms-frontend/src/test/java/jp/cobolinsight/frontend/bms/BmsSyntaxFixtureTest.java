@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BmsSyntaxFixtureTest {
 
-    /** 72桁目に継続指示子Xを置いた行を作る。 */
+    /** Builds a line with the continuation indicator X placed at column 72. */
     private static String cont(String code) {
         return code + " ".repeat(71 - code.length()) + "X";
     }

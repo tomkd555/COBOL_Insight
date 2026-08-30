@@ -9,9 +9,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
- * 不正な BMS 入力と境界の入力に対しても、解析は例外を投げず {@link BmsParseResult#errors()} へ
- * エラーを集約する（BmsSourceParser の契約）。認識できないマクロを含む構文木でも、
- * engine-api のモデルへの変換が例外で終わらないことを確かめる。
+ * Confirms that, even for malformed and boundary BMS input, parsing never throws an exception and
+ * instead collects errors into {@link BmsParseResult#errors()} (the contract of BmsSourceParser).
+ * Also confirms that conversion into the engine-api model never ends in an exception, even for a
+ * syntax tree containing an unrecognized macro.
  */
 class BmsMalformedSourceTest {
 
@@ -48,7 +49,7 @@ class BmsMalformedSourceTest {
 
     @Test
     void errorRecoveryDoesNotFabricateMapsets() {
-        // DFHMSD が実在する入力は対象外。ここで問うのは、原本に無いマクロ名から生じる擬似トークンである。
+        // Input where DFHMSD is actually present is out of scope. What is under test here is the pseudo-token arising from a macro name absent from the original.
         for (String source : List.of(
                 "!@#$%^&*() garbage tokens 123",
                 "PART1    DFHPSD TYPE=INITIAL",

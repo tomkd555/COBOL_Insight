@@ -15,7 +15,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-/** BMS マップ定義ソースの解析の入口。構文エラーは例外にせず {@link BmsParseResult#errors()} へ集める。 */
+/** The entry point for parsing BMS map definition source. Syntax errors are collected into {@link BmsParseResult#errors()} rather than thrown as exceptions. */
 public final class BmsSourceParser {
 
     public BmsParseResult parse(String sourceText) {

@@ -1,9 +1,9 @@
 package jp.cobolinsight.core.semantic;
 
-/** 複合文の制御種別。 */
+/** The control kind of a compound statement. */
 public enum ControlKind {
-    /** IF・EVALUATE などの分岐。 */
+    /** A branch such as IF or EVALUATE. */
     BRANCH,
-    /** PERFORM UNTIL などの反復。 */
+    /** A loop such as PERFORM UNTIL. */
     LOOP
 }

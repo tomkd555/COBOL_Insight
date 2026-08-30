@@ -6,8 +6,9 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * 再パース検証の結果。成功なら {@code success=true} で finding を持たない。失敗なら
- * {@code success=false} で、原因を {@code ParseOutcome.Failure} の error レベル finding として保持する。
+ * The result of reparse verification. On success, {@code success=true} and no finding is held.
+ * On failure, {@code success=false}, and the cause is held as the {@code ParseOutcome.Failure}
+ * error-level finding.
  */
 public record ReparseResult(boolean success, Optional<Finding> errorFinding) {
 

@@ -28,8 +28,8 @@ class ByteOffsetTableTest {
 
         assertEquals(0, table.byteOffsetOfChar(0)); // A
         assertEquals(1, table.byteOffsetOfChar(1)); // B
-        assertEquals(2, table.byteOffsetOfChar(2)); // 日 (3バイト)
-        assertEquals(5, table.byteOffsetOfChar(3)); // 本 (3バイト)
+        assertEquals(2, table.byteOffsetOfChar(2)); // 日 (3 bytes)
+        assertEquals(5, table.byteOffsetOfChar(3)); // 本 (3 bytes)
         assertEquals(8, table.byteOffsetOfChar(4)); // C
         assertEquals(9, table.byteOffsetOfChar(5));
     }
@@ -39,15 +39,15 @@ class ByteOffsetTableTest {
         byte[] bytes = "AB日本C".getBytes(CodePage.SHIFT_JIS.charset());
         ByteOffsetTable table = decoder.decode(bytes, CodePage.SHIFT_JIS).offsetTable();
 
-        assertEquals(2, table.byteOffsetOfChar(2)); // 日 (2バイト)
-        assertEquals(4, table.byteOffsetOfChar(3)); // 本 (2バイト)
+        assertEquals(2, table.byteOffsetOfChar(2)); // 日 (2 bytes)
+        assertEquals(4, table.byteOffsetOfChar(3)); // 本 (2 bytes)
         assertEquals(6, table.byteOffsetOfChar(4)); // C
         assertEquals(7, table.byteOffsetOfChar(5));
     }
 
     @Test
     void ebcdicSoSiMixedOffsetsSkipShiftBytes() {
-        // x-IBM939: A B SO 日(2) 本(2) SI C の9バイト
+        // x-IBM939: A B SO 日(2) 本(2) SI C is 9 bytes total
         byte[] bytes = "AB日本C".getBytes(CodePage.IBM939.charset());
         assertEquals(9, bytes.length);
 
@@ -55,9 +55,9 @@ class ByteOffsetTableTest {
 
         assertEquals(0, table.byteOffsetOfChar(0)); // A
         assertEquals(1, table.byteOffsetOfChar(1)); // B
-        assertEquals(3, table.byteOffsetOfChar(2)); // 日 (SO の次)
+        assertEquals(3, table.byteOffsetOfChar(2)); // 日 (right after SO)
         assertEquals(5, table.byteOffsetOfChar(3)); // 本
-        assertEquals(8, table.byteOffsetOfChar(4)); // C (SI の次)
+        assertEquals(8, table.byteOffsetOfChar(4)); // C (right after SI)
         assertEquals(9, table.byteOffsetOfChar(5));
     }
 
@@ -70,7 +70,7 @@ class ByteOffsetTableTest {
         assertEquals(0, table.lineStartByteOffset(1));
         assertEquals(5, table.lineStartByteOffset(2));
         assertEquals(13, table.lineStartByteOffset(3));
-        assertEquals(8, table.byteOffsetAt(2, 1));  // 2行目の「本」
-        assertEquals(14, table.byteOffsetAt(3, 1)); // 3行目の2文字目のB
+        assertEquals(8, table.byteOffsetAt(2, 1));  // the "本" on line 2
+        assertEquals(14, table.byteOffsetAt(3, 1)); // the B at the 2nd character of line 3
     }
 }

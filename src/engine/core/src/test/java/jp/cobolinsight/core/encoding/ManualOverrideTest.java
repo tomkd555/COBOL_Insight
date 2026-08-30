@@ -29,7 +29,7 @@ class ManualOverrideTest {
         assertTrue(auto.encodingInfo().codePage().isEbcdic());
         assertEquals(CodePage.IBM939, manual.encodingInfo().codePage());
         assertTrue(manual.encodingInfo().manualOverride());
-        // CP930とCP939はSBCS面が異なるため、復号結果の相違が上書きの証跡になる
+        // CP930 and CP939 differ in their SBCS plane, so a difference in the decoded result is evidence the override took effect
         assertNotEquals(decoder.decode(ebcdic930, CodePage.IBM930).text(), manual.text());
     }
 

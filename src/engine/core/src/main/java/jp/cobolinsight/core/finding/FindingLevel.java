@@ -2,7 +2,7 @@ package jp.cobolinsight.core.finding;
 
 import java.util.Locale;
 
-/** SARIF 2.1.0 の result.level に対応する検出レベル。 */
+/** Detection level corresponding to SARIF 2.1.0's result.level. */
 public enum FindingLevel {
     ERROR,
     WARNING,

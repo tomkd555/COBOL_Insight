@@ -3,8 +3,9 @@ package jp.cobolinsight.core.encoding;
 import jp.cobolinsight.core.spi.CharsetProvider;
 
 /**
- * engine-api の {@link CharsetProvider} 実装。モジュール内の {@link SourceDecoder} の結果を
- * engine-api の DecodedSource / EncodingInfo へ変換する。確信度は 0〜100 を 0.0〜1.0 へ正規化する。
+ * Implementation of engine-api's {@link CharsetProvider}. Converts results from this module's
+ * {@link SourceDecoder} into engine-api's DecodedSource / EncodingInfo. Confidence is normalized
+ * from 0-100 to 0.0-1.0.
  */
 public final class EncodingCharsetProvider implements CharsetProvider {
 
@@ -23,8 +24,8 @@ public final class EncodingCharsetProvider implements CharsetProvider {
 
     private static jp.cobolinsight.core.source.DecodedSource toEngineApi(String path,
             DecodedSource source) {
-        // engine-api の DecodedSource は charByteOffsets の長さと text の長さの一致を求めるため、
-        // ByteOffsetTable が末尾に持つ全バイト長の要素は含めない。
+        // engine-api's DecodedSource requires charByteOffsets' length to match text's length, so
+        // the trailing total-byte-length element that ByteOffsetTable carries is excluded.
         int[] charByteOffsets = new int[source.text().length()];
         for (int i = 0; i < charByteOffsets.length; i++) {
             charByteOffsets[i] = source.offsetTable().byteOffsetOfChar(i);
