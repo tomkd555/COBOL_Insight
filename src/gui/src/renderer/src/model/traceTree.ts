@@ -52,6 +52,21 @@ function bySeq<T extends { readonly seq: number }>(edges: readonly T[]): T[] {
   });
 }
 
+/**
+ * How many PERFORM rows one build may create.
+ *
+ * The tree is an execution order, not a graph: a paragraph performed from three places is drawn
+ * three times, and only a paragraph already on the current path stops the descent. Paragraphs that
+ * perform two others which in turn perform a common one — an ordinary shape in a long program —
+ * therefore double the work at every level, and the build is eager and runs on the render thread.
+ * The budget is what keeps a program of that shape from taking the window with it; a tree anyone
+ * reads is orders of magnitude smaller.
+ *
+ * ponytail: a flat ceiling, and the rows beyond it are simply not built. Lazy expansion — building
+ * a level only when its row is opened — is the upgrade if a real program is ever cut short.
+ */
+export const TRACE_NODE_BUDGET = 20000;
+
 interface TraceIndex {
   readonly nodeById: ReadonlyMap<string, GraphNode>;
   readonly edgesFrom: ReadonlyMap<string, readonly GraphEdge[]>;
@@ -59,6 +74,8 @@ interface TraceIndex {
   readonly paragraphById: ReadonlyMap<number, GraphParagraph>;
   readonly paragraphEdgesFrom: ReadonlyMap<number, readonly GraphParagraphEdge[]>;
   readonly inventory: readonly AssetInventoryItem[];
+  /** What is left of {@link TRACE_NODE_BUDGET}. Counted down as the PERFORM rows are built. */
+  readonly budget: { left: number };
 }
 
 function pushInto<K, V>(map: Map<K, V[]>, key: K, value: V): void {
@@ -115,6 +132,7 @@ export function buildTrace(
     paragraphById: new Map(graph.paragraphs.map((paragraph) => [paragraph.id, paragraph])),
     paragraphEdgesFrom,
     inventory,
+    budget: { left: TRACE_NODE_BUDGET },
   };
 
   const roots: TraceNode[] = [];
@@ -283,10 +301,14 @@ function branchNodes(
   reached: Set<number>,
 ): TraceNode[] {
   const nodes: TraceNode[] = [];
+  if (index.budget.left <= 0) {
+    return nodes;
+  }
   for (const edge of bySeq(index.paragraphEdgesFrom.get(paragraphId) ?? [])) {
     if (edge.kind === "FALLTHROUGH") {
       continue;
     }
+    index.budget.left -= 1;
     const id = `${parentId}/${nodes.length}`;
     const target = edge.to === null ? undefined : index.paragraphById.get(edge.to);
     if (target === undefined) {

@@ -12,6 +12,7 @@ import type { ProjectState } from "./projectStore";
 import {
   CUSTOM_RULES_TAB_ID,
   graphTab,
+  isTabDirty,
   reportTab,
   settingsTab,
   transpileTab,
@@ -86,6 +87,16 @@ function activeRuleId(workbench: WorkbenchState): string | null {
 function activeSourcePath(workbench: WorkbenchState): string | null {
   const active = workbench.tabs.find((tab) => tab.id === workbench.activeTabId);
   return active?.kind === "source" ? active.path : null;
+}
+
+/**
+ * Whether the active tab is a source tab holding unsaved edits. Only such a tab can be written, so
+ * "unsaved work exists somewhere" is not enough: on any other tab the save would find nothing to
+ * write and say nothing about it.
+ */
+function activeTabDirty(workbench: WorkbenchState): boolean {
+  const active = workbench.tabs.find((tab) => tab.id === workbench.activeTabId);
+  return active !== undefined && active.kind === "source" && isTabDirty(workbench, active.id);
 }
 
 /** Builds the command list for the current context. */
@@ -243,7 +254,7 @@ export function buildCommands(context: CommandContext): Command[] {
       title: text.command.save,
       category: text.command.categoryFile,
       // A tab with nothing unsaved has nothing to write, so the command does not apply.
-      when: () => workbench.activeTabId !== null && context.hasDirty,
+      when: () => activeTabDirty(workbench),
       run: context.saveActiveTab,
     },
     {

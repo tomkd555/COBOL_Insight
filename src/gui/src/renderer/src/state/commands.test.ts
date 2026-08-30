@@ -103,6 +103,21 @@ describe("when", () => {
     );
   });
 
+  it("offers the save only on a source tab that holds unsaved edits", () => {
+    const offered = (workbench: WorkbenchState): boolean =>
+      availableCommands(buildCommands(context({ workbench, hasDirty: true }))).some(
+        (command) => command.id === "editor.save",
+      );
+    const dirty = { ...withTab, drafts: { [sourceTab("a.cbl").id]: "EDITED" } };
+    expect(offered(dirty)).toBe(true);
+    // Clean source tab, and another kind of tab while a source tab elsewhere is unsaved.
+    expect(offered(withTab)).toBe(false);
+    const settings = settingsTab("設定");
+    expect(
+      offered({ ...dirty, tabs: [...dirty.tabs, settings], activeTabId: settings.id }),
+    ).toBe(false);
+  });
+
   it("offers the tab commands only when a tab is open", () => {
     const withoutTabs = availableCommands(buildCommands(context())).map((command) => command.id);
     expect(withoutTabs).not.toContain("editor.closeTab");

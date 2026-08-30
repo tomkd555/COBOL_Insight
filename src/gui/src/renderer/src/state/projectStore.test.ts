@@ -5,6 +5,7 @@ import {
   artifactItems,
   initialProjectState,
   projectReducer,
+  type ArtifactState,
   type ProjectAction,
   type ProjectState,
 } from "./projectStore";
@@ -58,6 +59,11 @@ describe("artefacts", () => {
       result: { status: "ready", items: [] },
     });
     expect(artifactCount(clean.findings)).toBe(0);
+  });
+
+  it("hands out the same empty list every time, so a memo keyed on it settles", () => {
+    const failed: ArtifactState<SarifFinding> = { status: "error", message: "unreadable" };
+    expect(artifactItems(failed)).toBe(artifactItems({ status: "none" }));
   });
 
   it("replaces the previous verification result when the same asset is saved again", () => {

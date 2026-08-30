@@ -51,6 +51,24 @@ export const PALETTE_CHORD = { key: "p", shift: true, label: "Ctrl+Shift+P" } as
  */
 export const SEQUENCE_PREFIX = { key: "k", label: "Ctrl+K" } as const;
 
+/**
+ * How long an armed sequence waits for its second key. VS Code waits indefinitely; here an arm made
+ * outside the code editor would otherwise be completed by a plain `s` typed into it much later, so
+ * the arm is dropped once the two keys can no longer be read as one gesture.
+ */
+export const SEQUENCE_TIMEOUT_MS = 3000;
+
+/** The keys that only qualify another key. Pressing one is not the second key of a sequence. */
+const MODIFIER_KEYS = ["Control", "Shift", "Alt", "Meta"];
+
+/**
+ * Whether the press is a modifier on its own. Releasing Ctrl and pressing it again between the two
+ * keys of a sequence is ordinary typing, so it must neither complete the sequence nor cancel it.
+ */
+export function isModifierKey(event: ChordEvent): boolean {
+  return MODIFIER_KEYS.includes(event.key);
+}
+
 const SEQUENCES: readonly { key: string; chord: string; command: CommandId }[] = [
   { key: "s", chord: "Ctrl+K S", command: "editor.saveAll" },
 ];

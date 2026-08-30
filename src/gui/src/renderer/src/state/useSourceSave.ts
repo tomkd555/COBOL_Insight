@@ -36,8 +36,12 @@ export interface SaveConflict {
 }
 
 export interface SourceSave {
-  /** Saves one tab, asking first when the original has changed underneath. */
-  save(tabId: string): Promise<void>;
+  /**
+   * Saves one tab, asking first when the original has changed underneath. Resolves true only when
+   * the file was written: a conflict and a failed write both leave the draft where it was, and a
+   * caller that closes the tab afterwards would otherwise throw the edit away.
+   */
+  save(tabId: string): Promise<boolean>;
   /** Saves every tab that holds unsaved edits, one after another. */
   saveAll(): Promise<void>;
   /** Throws the tab's edits away and takes the file as it stands on disk. */
@@ -81,13 +85,13 @@ export function useSourceSave(notify: (message: string, failed?: boolean) => voi
     [project.codepageOverrides, settings.defaultEncoding],
   );
 
-  /** Writes one tab's draft, with no staleness check. */
+  /** Writes one tab's draft, with no staleness check. True when the original was rewritten. */
   const write = useCallback(
-    async (tabId: string): Promise<void> => {
+    async (tabId: string): Promise<boolean> => {
       const document = openDocument(tabId);
       const draft = draftOf(workbench, tabId);
       if (inputDir === null || document === null || draft === null) {
-        return;
+        return false;
       }
       let result: SaveResult;
       try {
@@ -100,14 +104,14 @@ export function useSourceSave(notify: (message: string, failed?: boolean) => voi
         });
       } catch (error: unknown) {
         notify(text.save.failed(document.path, errorMessage(error)), true);
-        return;
+        return false;
       }
       const assetType = inventory.find((item) => item.path === document.path)?.type ?? "";
       const outcome = saveOutcomeOf(document.path, assetType, result);
       if (outcome.kind === "failed") {
         // Exit code 2 means the original is untouched, so the draft stays exactly where it was.
         notify(outcome.message, true);
-        return;
+        return false;
       }
       const stamp = await api().stat({ baseDir: inputDir, path: document.path });
       rememberStamp(tabId, stamp ?? document.stamp, draft);
@@ -118,6 +122,7 @@ export function useSourceSave(notify: (message: string, failed?: boolean) => voi
         findings: outcome.diagnostics,
       });
       notify(outcome.message);
+      return true;
     },
     [
       inputDir,
@@ -132,22 +137,22 @@ export function useSourceSave(notify: (message: string, failed?: boolean) => voi
   );
 
   const save = useCallback(
-    async (tabId: string): Promise<void> => {
+    async (tabId: string): Promise<boolean> => {
       const document = openDocument(tabId);
       const draft = draftOf(workbench, tabId);
       if (inputDir === null || document === null) {
-        return;
+        return false;
       }
       if (draft === null) {
         notify(text.save.nothingToSave);
-        return;
+        return false;
       }
       const current = await api().stat({ baseDir: inputDir, path: document.path });
       if (isStale(document.stamp, current)) {
         setConflict({ tabId, path: document.path, draft, diskText: null });
-        return;
+        return false;
       }
-      await write(tabId);
+      return write(tabId);
     },
     [inputDir, workbench, write, notify],
   );
@@ -156,10 +161,16 @@ export function useSourceSave(notify: (message: string, failed?: boolean) => voi
    * Saves every dirty tab one after another. They are not run together: the engine serialises saves
    * anyway, and a failure part-way through should leave the remaining drafts untouched rather than
    * half-written.
+   *
+   * The first tab that is not written stops the run. A conflict is answered in a dialog holding one
+   * tab's draft, so carrying on would replace the question with the next tab's and leave the first
+   * unanswered and unreported.
    */
   const saveAll = useCallback(async (): Promise<void> => {
     for (const tabId of dirtySourceTabs(workbench)) {
-      await save(tabId);
+      if (!(await save(tabId))) {
+        return;
+      }
     }
   }, [workbench, save]);
 
@@ -208,11 +219,15 @@ export function useSourceSave(notify: (message: string, failed?: boolean) => voi
         codepage: codepageFor(conflict.path),
         db: dbPath ?? undefined,
       })
-      .then((result) =>
-        setConflict((current) =>
-          current === null ? null : { ...current, diskText: result.text },
-        ),
-      )
+      .then((result) => {
+        // A decode that failed resolves with an empty text; showing it would present the file as
+        // empty and invite an overwrite of something the user never saw.
+        if (result.error !== "") {
+          notify(result.error, true);
+          return;
+        }
+        setConflict((current) => (current === null ? null : { ...current, diskText: result.text }));
+      })
       .catch((error: unknown) => notify(errorMessage(error), true));
   }, [conflict, inputDir, dbPath, codepageFor, notify]);
 

@@ -93,6 +93,19 @@ describe("tabs", () => {
     expect(activeTabOf(state)).toBeNull();
   });
 
+  it("closes every tab, its drafts included, when the asset folder changes", () => {
+    const state = apply(
+      initialWorkbenchState,
+      { type: "OPEN_TAB", tab: A },
+      { type: "OPEN_TAB", tab: B },
+      { type: "SET_DRAFT", id: A.id, draft: "EDITED" },
+      { type: "CLOSE_ALL_TABS" },
+    );
+    expect(state.tabs).toEqual([]);
+    expect(state.activeTabId).toBeNull();
+    expect(state.drafts).toEqual({});
+  });
+
   it("wraps around at either end when stepping", () => {
     const open = apply(
       initialWorkbenchState,
