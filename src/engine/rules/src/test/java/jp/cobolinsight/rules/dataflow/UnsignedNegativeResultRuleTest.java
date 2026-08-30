@@ -13,7 +13,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** R028 符号なし項目への負値算出の合成fixture検証。 */
+/** Synthetic fixture verification for R028 negative-result computation into an unsigned item. */
 class UnsignedNegativeResultRuleTest {
 
     @TempDir

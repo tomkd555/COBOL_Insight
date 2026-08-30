@@ -16,9 +16,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * S004 カーソルの宣言・後始末。DECLARE CURSOR で FOR UPDATE を伴わない(更新を伴わない)のに
- * FOR READ ONLY・FOR FETCH ONLY のいずれも指定していないカーソルを指摘する。更新可能カーソルと
- * して扱われ、ロック競合の原因になる。OPEN/CLOSE の突合は R019 の責務のため本ルールでは扱わない。
+ * S004 Cursor declaration and cleanup. Flags a DECLARE CURSOR that has no FOR UPDATE
+ * (i.e. does not perform updates) but also specifies neither FOR READ ONLY nor FOR FETCH
+ * ONLY. Such a cursor is treated as updatable, which causes lock contention. Matching
+ * OPEN against CLOSE is R019's responsibility and is not handled by this rule.
  */
 public final class CursorDeclarationRule implements Rule {
 

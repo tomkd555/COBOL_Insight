@@ -13,7 +13,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** R012 終了条件が更新されない PERFORM UNTIL の合成fixture検証。 */
+/** R012 synthetic fixture verification for a PERFORM UNTIL whose exit condition is never updated. */
 class PerformUntilNotUpdatedRuleTest {
 
     @TempDir

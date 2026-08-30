@@ -16,7 +16,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** R024 COPY REPLACINGによる置換漏れの合成fixture検証。 */
+/** Synthetic fixture verification for R024 missing COPY REPLACING substitutions. */
 class CopyReplacingRuleTest {
 
     @TempDir

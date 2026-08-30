@@ -13,7 +13,10 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** R005 OCCURS 範囲外の添字・指標の合成fixture検証(無検査カウンタ・範囲内ループ・LINKAGE 表)。 */
+/**
+ * Synthetic-fixture verification for R005, out-of-range OCCURS subscripts/indexes
+ * (an unchecked counter, an in-bounds loop, a LINKAGE-section table).
+ */
 class OccursSubscriptRangeRuleTest {
 
     @TempDir

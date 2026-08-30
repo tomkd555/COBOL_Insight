@@ -24,9 +24,11 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * R029 CALL後のRETURN-CODE未検査。CALL 文の後、次の CALL または終端に達するまでの前方経路で
- * RETURN-CODE を条件参照しない CALL を検出する。ただし当該プログラムが RETURN-CODE を1回以上
- * 参照する場合に限る(RETURN-CODE を使う設計でこの CALL だけ無検査という不整合を捉える)。
+ * R029 Unchecked RETURN-CODE after a CALL. Detects a CALL statement whose forward path, up to
+ * the next CALL or the program's terminal point, never references RETURN-CODE in a condition.
+ * This applies only when the program references RETURN-CODE at least once elsewhere (catching
+ * the inconsistency of a design that uses RETURN-CODE everywhere except this one unchecked
+ * CALL).
  */
 public final class ReturnCodeUncheckedRule implements Rule {
 

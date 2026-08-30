@@ -18,9 +18,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * R023 パラグラフ・セクション名の重複。同一プログラム内でパラグラフ名またはセクション名が
- * 重複して宣言されている箇所を検出する。所属セクションと名前の組で判定するため、異なる
- * セクションの同名パラグラフ(合法)は検出しない。2件目以降の宣言位置で報告する。
+ * R023 Duplicate paragraph or section names. Detects places where a paragraph name or a
+ * section name is declared more than once within the same program. Judged on the pair of
+ * owning section and name, so a same-named paragraph in a different section (which is
+ * legal) is not detected. Reported at the location of the second and later declarations.
  */
 public final class DuplicateProcedureNameRule implements Rule {
 
@@ -59,9 +60,11 @@ public final class DuplicateProcedureNameRule implements Rule {
         List<Finding> findings = new ArrayList<>();
         for (CobolSemanticModel model : context.cobolPrograms()) {
             Map<String, List<Procedure>> byName = new LinkedHashMap<>();
-            // 重複判定のキーは所属セクション名と手続き名の組。区切りにはCOBOLの名前に現れない
-            // NUL(U+0000)を用い、名前に含まれる文字との衝突を避ける。生のNULを埋めるとこの
-            // ソース自体がバイナリ扱いになるため、必ずエスケープ \0 で書く。
+            // The duplicate-detection key is the pair of owning section name and procedure
+            // name. The separator is NUL (U+0000), a character that never appears in a
+            // COBOL name, to avoid colliding with characters in the name. Embedding a raw
+            // NUL would make this source file itself get treated as binary, so it must
+            // always be written as the escape \0.
             for (Procedure procedure : model.procedures()) {
                 String key = procedure.sectionName().map(CobolTexts::upper).orElse("")
                         + "\0" + CobolTexts.upper(procedure.name());

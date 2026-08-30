@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** samples/cobol 9本のCFG構築・決定論・到達可能性・PERFORM呼出/復帰の検証。 */
+/** Verifies CFG construction, determinism, reachability, and PERFORM call/return for the 9 samples/cobol files. */
 class CfgBuilderSamplesTest {
 
     static List<String> sampleFiles() {
@@ -43,7 +43,8 @@ class CfgBuilderSamplesTest {
 
     @Test
     void unreachableStatementAfterGoback() {
-        // SYK005: 1000-エラーメッセージ編集 の GOBACK(39行) 直後の DISPLAY(40行) は入辺を持たず到達不能。
+        // SYK005: the DISPLAY (line 40) right after the GOBACK (line 39) in 1000-エラーメッセージ編集
+        // has no incoming edge, so it is unreachable.
         ControlFlowGraph cfg = CfgBuilder.build(SampleModels.model("SYK005.cbl"));
         Set<CfgNode> reachable = cfg.reachableNodes();
 
@@ -55,7 +56,7 @@ class CfgBuilderSamplesTest {
 
     @Test
     void performedParagraphsAreReachable() {
-        // SYK004: 0000-メイン処理 が PERFORM する 1000-在庫確認・2000-引当判定 の全ノードが到達可能。
+        // SYK004: every node in 1000-在庫確認 and 2000-引当判定, which 0000-メイン処理 performs, is reachable.
         ControlFlowGraph cfg = CfgBuilder.build(SampleModels.model("SYK004.cbl"));
         Set<CfgNode> reachable = cfg.reachableNodes();
 

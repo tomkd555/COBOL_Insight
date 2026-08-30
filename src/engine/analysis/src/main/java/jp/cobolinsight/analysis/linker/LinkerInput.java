@@ -9,8 +9,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * linker への入力一式。sqlStatementsByProgramId は PROGRAM-ID をキーとする埋め込みSQL解析結果、
- * programByTransactionId はトランザクション定義表(トランザクションID→プログラム名)である。
+ * The full set of inputs to the linker. sqlStatementsByProgramId holds the embedded SQL
+ * analysis results keyed by PROGRAM-ID, and programByTransactionId is the transaction
+ * definition table (transaction ID -> program name).
  */
 public record LinkerInput(List<CobolSemanticModel> cobolModels, List<JclJobModel> jobs,
         List<BmsMapset> mapsets, Map<String, List<SqlStatementModel>> sqlStatementsByProgramId,

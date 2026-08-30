@@ -13,7 +13,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** R008 PERFORM単独段落名の直接指定の合成fixture検証。 */
+/** Synthetic fixture verification for R008 direct PERFORM of a single paragraph name. */
 class PerformSingleParagraphRuleTest {
 
     @TempDir
@@ -80,8 +80,9 @@ class PerformSingleParagraphRuleTest {
 
     @Test
     void detectsPerformOfSingleParagraphWithoutThru() {
-        // PERFORM は4つあるが、検出は10行の1件だけである。11行は THRU 指定、12行は遷移先が
-        // セクション、13行はインライン PERFORM であり、いずれも単独段落名の直接指定に当たらない。
+        // There are 4 PERFORM statements, but only line 10 is detected. Line 11 specifies
+        // THRU, line 12's target is a section, and line 13 is an inline PERFORM; none of
+        // these count as a direct reference to a single paragraph name.
         CobolSemanticModel model = Fixtures.parse(tempDir, "FIX008.cbl", SOURCE);
 
         List<Finding> findings = new PerformSingleParagraphRule()

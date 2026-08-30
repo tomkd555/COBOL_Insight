@@ -25,10 +25,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * R003 MOVE による桁落ち・切り捨て。MOVE 文の送信項目と各受信項目の PICTURE を共有リゾルバで解決し、
- * 数値項目間で受信の整数部または小数部の桁数が送信より小さい切り捨て、英数字項目間で送信の文字長が
- * 受信より長いあふれを検出する。図形定数・文字列リテラル・集団項目・参照修飾を送信に含む MOVE、
- * および送受信の種別が異なる MOVE は対象外とする。
+ * R003 Digit loss / truncation from MOVE. Resolves the PICTURE of a MOVE statement's sending item
+ * and each receiving item through the shared resolver, and detects: between numeric items,
+ * truncation where the receiving item's integer or fractional digit count is smaller than the
+ * sending item's; and between alphanumeric items, overflow where the sending item's character
+ * length is longer than the receiving item's. A MOVE whose sending side is a figurative constant,
+ * a string literal, a group item, or a reference modification, and a MOVE whose sending and
+ * receiving items differ in kind, are excluded.
  */
 public final class MoveTruncationRule implements Rule {
 
@@ -101,7 +104,7 @@ public final class MoveTruncationRule implements Rule {
         }
     }
 
-    /** 桁落ちする最初の受信項目名。無ければ null。 */
+    /** The name of the first receiving item that loses digits. null if none. */
     private static String truncatingReceiver(String text, DataFlowSupport support) {
         String masked = maskLiterals(text);
         String upper = masked.toUpperCase(Locale.ROOT);
@@ -114,15 +117,15 @@ public final class MoveTruncationRule implements Rule {
         }
         String senderRegion = masked.substring(0, to);
         if (senderRegion.indexOf(':') >= 0) {
-            return null; // 参照修飾は送信長が変わるため対象外
+            return null; // excluded: a reference modification changes the sending length
         }
         String senderName = firstName(senderRegion.substring("MOVE".length()));
         if (senderName == null) {
-            return null; // 送信が図形定数・リテラル
+            return null; // the sending side is a figurative constant or literal
         }
         PictureType sender = support.pictureType(senderName).orElse(null);
         if (sender == null) {
-            return null; // 送信が集団項目・未解決
+            return null; // the sending side is a group item or unresolved
         }
         Matcher m = NAME_TOKEN.matcher(
                 maskParenthesized(masked.substring(to + "TO".length())));
@@ -137,10 +140,13 @@ public final class MoveTruncationRule implements Rule {
     }
 
     /**
-     * 送信から受信への移送で桁が失われるか。数字項目どうしは整数部と小数部を別に比べる。COBOL は
-     * 小数点位置をそろえて移送するため、整数部が足りなければ上位桁が、小数部が足りなければ下位桁が
-     * 落ちる。英数字項目どうしは PICTURE の文字数(totalDigits)を長さとして比べ、左詰めで移送した
-     * ときに右端があふれる場合を桁落ちとみなす。種別が異なる組は判定しない。
+     * Whether digits are lost when moving from the sending item to the receiving item. Between
+     * numeric items, the integer and fractional parts are compared separately. Because COBOL moves
+     * data by aligning the decimal point, insufficient integer digits lose the high-order digits,
+     * and insufficient fractional digits lose the low-order digits. Between alphanumeric items, the
+     * PICTURE character count (totalDigits) is compared as the length, and a case where the right
+     * end overflows when moved left-justified is treated as digit loss. A pair of differing kinds
+     * is not judged.
      */
     private static boolean truncates(PictureType sender, PictureType recv) {
         if (sender.isNumeric() && recv.isNumeric()) {
@@ -158,7 +164,7 @@ public final class MoveTruncationRule implements Rule {
         return m.find() ? m.group() : null;
     }
 
-    /** 空白で囲まれた語 word の開始位置。無ければ -1。 */
+    /** The start position of the word `word` surrounded by whitespace. -1 if none. */
     private static int indexOfWord(String upper, String word) {
         Matcher m = Pattern.compile("(?<![\\p{L}\\p{N}$#_-])" + word + "(?![\\p{L}\\p{N}$#_-])")
                 .matcher(upper);
@@ -166,8 +172,9 @@ public final class MoveTruncationRule implements Rule {
     }
 
     /**
-     * 括弧で囲む添字・参照修飾を空白へ置き換える。添字に使う変数は受信項目ではないため、
-     * 桁比較の対象から外す必要がある。
+     * Replaces a subscript or reference modification enclosed in parentheses with spaces. Since a
+     * variable used as a subscript is not a receiving item, it must be excluded from the digit
+     * comparison.
      */
     private static String maskParenthesized(String region) {
         StringBuilder sb = new StringBuilder(region);

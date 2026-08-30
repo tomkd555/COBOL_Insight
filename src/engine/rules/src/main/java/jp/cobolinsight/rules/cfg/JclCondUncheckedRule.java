@@ -16,8 +16,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * R030 JCLの先行ステップ結果未検査。ジョブの2番目以降のステップが、先行ステップの結果に依存し
- * 得るにもかかわらず COND 句を持たない場合を検出する。先行ステップの異常終了後も後続が実行される。
+ * R030 JCL preceding-step result unchecked. Flags a job's second and later steps that lack a
+ * COND clause even though they can depend on a preceding step's outcome. Without one, later
+ * steps still run even after a preceding step ends abnormally.
  */
 public final class JclCondUncheckedRule implements Rule {
 

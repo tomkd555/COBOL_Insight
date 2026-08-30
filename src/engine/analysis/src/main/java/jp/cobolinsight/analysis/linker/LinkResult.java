@@ -10,9 +10,10 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * linker の出力。findings は解決根拠・未解決の記録(ファイル・行・ルールID順)、
- * dynamicCallVariables は動的CALL由来の辺に対する指定変数名の集合(辞書順)である。
- * 同一辺へ複数の変数が解決した場合、全変数名を保持する。
+ * Output of the linker. findings records resolution bases and unresolved cases (ordered by
+ * file, line, rule ID); dynamicCallVariables is the set of designated variable names (in
+ * dictionary order) for edges originating from a dynamic CALL. If multiple variables resolve to
+ * the same edge, all their names are kept.
  */
 public record LinkResult(CallGraph graph, List<Finding> findings,
         Map<CallGraphEdge, Set<String>> dynamicCallVariables) {

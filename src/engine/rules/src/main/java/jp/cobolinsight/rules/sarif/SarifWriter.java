@@ -17,11 +17,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * findings を SARIF 2.1.0 の JSON テキストへ整形する。severity→level の対応は
- * FindingLevel.sarifName に従う。修正案を持つ finding には fixes(artifactChanges の
- * ソース範囲置換)を付し、汚染追跡由来の経路を持つ finding には codeFlows(threadFlows の
- * 位置列)を付す。いずれも持たない finding へは当該キーを出さない。出力は決定論とする:
- * ルールは id 昇順、結果は(ファイル・行・桁・ルールID・メッセージ)の昇順に正規化する。
+ * Formats findings as SARIF 2.1.0 JSON text. The severity→level mapping follows
+ * FindingLevel.sarifName. A finding with a fix suggestion gets fixes (a source-range replacement
+ * under artifactChanges), and a finding with a taint-tracking-derived path gets codeFlows (a
+ * location sequence under threadFlows). A finding with neither omits the corresponding key. Output
+ * is deterministic: rules are normalized in ascending id order, and results in ascending
+ * (file, line, column, rule id, message) order.
  */
 public final class SarifWriter {
 
@@ -33,7 +34,7 @@ public final class SarifWriter {
     private SarifWriter() {
     }
 
-    /** findings の決定論整列順。ファイル(スラッシュ正規化)・行・桁・ルールID・メッセージの昇順。 */
+    /** The deterministic sort order for findings. Ascending by file (slash-normalized), line, column, rule id, message. */
     public static Comparator<Finding> findingOrder() {
         return Comparator
                 .comparing((Finding f) -> f.location().file().replace('\\', '/'))
@@ -107,15 +108,16 @@ public final class SarifWriter {
     }
 
     /**
-     * 汚染追跡由来の経路を SARIF の codeFlows(codeFlow → threadFlows → locations → location)へ
-     * 直列化する。1本の経路は単一の実行の流れであり、1つの threadFlow で表す。
+     * Serializes a taint-tracking-derived path into SARIF's codeFlows (codeFlow → threadFlows →
+     * locations → location). A single path represents one execution flow and is expressed as one
+     * threadFlow.
      */
-    /** 検出内容の全文。要約・理由・検出条件を、この順で1つのテキストへまとめる。 */
+    /** The full text of the detection description. Combines the summary, rationale, and detection condition, in that order, into a single text. */
     private static String fullDescriptionOf(RuleMeta meta) {
         return meta.summary() + "\n\n" + meta.rationale() + "\n\n" + meta.detection();
     }
 
-    /** SARIF を読む側(IDE・レビュー基盤)が指摘の隣へ出す助け。対処と、あれば対比の例を載せる。 */
+    /** The help text a SARIF reader (an IDE, a review platform) shows alongside the finding. Carries the remedy and, if present, a before/after example. */
     private static String helpTextOf(RuleMeta meta) {
         StringBuilder out = new StringBuilder("対処: ").append(meta.remedy());
         if (meta.hasExample()) {
@@ -156,9 +158,10 @@ public final class SarifWriter {
     }
 
     /**
-     * 修正案を SARIF の fixes(fix → artifactChanges → replacements)へ直列化する。1つの修正案が
-     * 複数ファイルへまたがる編集を含む場合は、artifactChanges の一意性制約に従いファイル単位へ束ねる。
-     * 空範囲の編集は挿入を表し、deletedRegion の開始と終了が一致する。
+     * Serializes a fix suggestion into SARIF's fixes (fix → artifactChanges → replacements). When a
+     * single fix suggestion contains edits spanning multiple files, they are grouped per file to
+     * satisfy artifactChanges' uniqueness constraint. An edit with an empty range represents an
+     * insertion, where deletedRegion's start and end coincide.
      */
     private static void writeFixes(JsonWriter writer, List<FixSuggestion> fixes) {
         if (fixes.isEmpty()) {
@@ -209,9 +212,10 @@ public final class SarifWriter {
     }
 
     /**
-     * パス文字列をSARIFのartifactLocation.uri(相対URI参照)へ整形する。区切りをスラッシュへ
-     * 正規化し、各セグメントをRFC 3986のpchar(非予約文字・sub-delims・':'・'@')以外について
-     * UTF-8のパーセントエンコードで表す。'/'はセグメント区切りとして保持する。
+     * Formats a path string as SARIF's artifactLocation.uri (a relative URI reference). Normalizes
+     * separators to forward slashes, and represents each segment's characters outside RFC 3986's
+     * pchar (unreserved characters, sub-delims, ':', '@') using UTF-8 percent-encoding. '/' is kept
+     * as the segment delimiter.
      */
     private static String uriOf(String file) {
         String normalized = file.replace('\\', '/');

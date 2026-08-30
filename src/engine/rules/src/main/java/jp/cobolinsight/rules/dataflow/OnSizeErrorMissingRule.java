@@ -37,10 +37,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * R004 ON SIZE ERROR 句の欠如。ADD/SUBTRACT/MULTIPLY/DIVIDE/COMPUTE の算術文に ON SIZE ERROR 句が
- * 無く、かつ演算結果が受信項目の PICTURE 容量を超え得る箇所を検出する。全算術を一律に指摘せず、
- * 受信項目自身を被加算に含む累算(カウンタ・合計)は対象外とし、結果区間が受信の整数部桁容量を超え得る
- * (非有界を含む)場合のみ指摘する。結果区間は不動点結果(算術文の後続ノード入口)で照会する。
+ * R004 Missing ON SIZE ERROR clause. Detects an ADD/SUBTRACT/MULTIPLY/DIVIDE/COMPUTE arithmetic
+ * statement that has no ON SIZE ERROR clause and whose result may exceed the receiving item's
+ * PICTURE capacity. Rather than flagging every arithmetic statement uniformly, an accumulation
+ * (counter/total) that includes the receiving item itself among the addends is excluded, and only
+ * a case where the result interval may exceed the receiving item's integer-part digit capacity
+ * (including an unbounded interval) is flagged. The result interval is queried from the fixed-point
+ * result (the entry of the node following the arithmetic statement).
  */
 public final class OnSizeErrorMissingRule implements Rule {
 
@@ -115,11 +118,11 @@ public final class OnSizeErrorMissingRule implements Rule {
             }
             String text = simple.text();
             if (text.toUpperCase(Locale.ROOT).contains("SIZE ERROR")) {
-                continue; // ON SIZE ERROR で防御済み
+                continue; // already guarded by ON SIZE ERROR
             }
             List<String> receivers = receivers(verb, text);
             if (receivers.isEmpty()) {
-                continue; // 累算(受信を被加算に含む)などは対象外
+                continue; // excluded: an accumulation (receiving item included among the addends), etc.
             }
             if (receivers.stream().anyMatch(r -> resultMayOverflow(cfg, df, node, r, support))) {
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
@@ -137,12 +140,16 @@ public final class OnSizeErrorMissingRule implements Rule {
     }
 
     /**
-     * ON SIZE ERROR 句を欠く算術文へ、DISPLAY ハンドラ付きの ON SIZE ERROR 句と END-句を付与する。
-     * 句は算術文の内容終端(range.end)へ挿入する。ON SIZE ERROR 句は算術文のスコープ内の要素で
-     * あり、END-句がスコープを閉じる。文が文末(直後に終止ピリオド)の場合、挿入は終止ピリオドの
-     * 直前に入るため、ピリオドは自然に END-句の後へ回る。文が文の途中(直後に別の文)の場合は、
-     * END-句が算術文のスコープを区切り、後続文はそのまま続く。Finding.location の行(=算術文の
-     * 開始行)を anchor に対象文を再同定する。
+     * Attaches an ON SIZE ERROR clause with a DISPLAY handler, plus its END- clause, to an
+     * arithmetic statement that lacks ON SIZE ERROR. The clause is inserted at the end of the
+     * arithmetic statement's content (range.end). The ON SIZE ERROR clause is an element within the
+     * arithmetic statement's scope, and the END- clause closes that scope. If the statement ends the
+     * sentence (immediately followed by a terminating period), the insertion lands just before that
+     * period, so the period naturally ends up after the END- clause. If the statement is mid-sentence
+     * (immediately followed by another statement), the END- clause delimits the arithmetic
+     * statement's scope and the following statement continues as-is. The target statement is
+     * re-identified using the line from Finding.location (= the arithmetic statement's start line)
+     * as the anchor.
      */
     private static final class OnSizeErrorFixProducer implements FixProducer {
 
@@ -173,7 +180,8 @@ public final class OnSizeErrorMissingRule implements Rule {
             }
             String clause = "ON SIZE ERROR DISPLAY 'SIZE ERROR: " + receivers.get(0)
                     + "' END-" + verb;
-            // 原ソースの終止ピリオドが挿入文の末尾へ回るため、その1バイトを桁予算から差し引く。
+            // The original source's terminating period ends up after the inserted clause, so
+            // subtract that one byte from the column budget.
             List<String> layout = NORMALIZER.layoutStatement(clause, FixEdits.LAYOUT_CHARSET, 1);
             String replacement = "\n" + String.join("\n", layout);
             SourcePosition at = arithmetic.range().end();
@@ -182,7 +190,7 @@ public final class OnSizeErrorMissingRule implements Rule {
         }
     }
 
-    /** 累算でない算術文の受信項目名。受信項目の現在値を演算対象に含む累算なら空リストを返す。 */
+    /** The receiving item names of an arithmetic statement that is not an accumulation. Returns an empty list if it is an accumulation that includes the receiving item's current value among the operands. */
     private static List<String> receivers(String verb, String text) {
         String masked = maskLiterals(text);
         if (verb.equals("COMPUTE")) {
@@ -196,8 +204,8 @@ public final class OnSizeErrorMissingRule implements Rule {
         }
         int giving = indexOfWord(masked.toUpperCase(Locale.ROOT), "GIVING");
         if (giving < 0) {
-            // GIVING を持たない ADD/SUBTRACT などは、最終オペランドが送信と受信を兼ねる
-            // 累算(カウンタ・合計)であり、対象外とする。
+            // An ADD/SUBTRACT etc. without GIVING is an accumulation (counter/total) whose final
+            // operand serves as both sender and receiver, and is excluded.
             return List.of();
         }
         List<String> targets = names(masked.substring(giving + "GIVING".length()));
@@ -205,7 +213,7 @@ public final class OnSizeErrorMissingRule implements Rule {
         return targets.stream().anyMatch(source::contains) ? List.of() : targets;
     }
 
-    /** 算術文の流出(後続ノード入口)で受信項目区間が桁容量を超え得るか。 */
+    /** Whether the receiving item's interval, at the arithmetic statement's outflow (the entry of the following node), may exceed the digit capacity. */
     private static boolean resultMayOverflow(ControlFlowGraph cfg, ProgramDataFlow df, CfgNode node,
             String receiver, DataFlowSupport support) {
         PictureType pt = support.pictureType(receiver).orElse(null);
@@ -224,8 +232,9 @@ public final class OnSizeErrorMissingRule implements Rule {
     }
 
     /**
-     * 受信項目の整数部が保持できる最大値。桁数が範囲外なら 0(=いかなる正値も超過)。範囲の上限
-     * 18 桁は、標準COBOLの数字項目が保持できる最大桁数である。
+     * The maximum value the receiving item's integer part can hold. 0 if the digit count is out of
+     * range (meaning any positive value exceeds it). The upper bound of 18 digits is the maximum
+     * digit count a standard COBOL numeric item can hold.
      */
     private static long capacity(PictureType pt) {
         int digits = pt.integerDigits();

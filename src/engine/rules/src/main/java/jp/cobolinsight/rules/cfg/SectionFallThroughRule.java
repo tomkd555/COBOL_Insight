@@ -20,13 +20,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * R014 節(SECTION)の流下。節の末尾が EXIT・終端(STOP/GOBACK/EXIT PROGRAM)・無条件 GO TO で
- * 終わらず、次の節へ物理的に流下する構成を検出する。PERFORM で呼ぶ設計の節が、意図せず次節へ
- * 流れ込む誤りを捉える。
+ * R014 Fall-through of a SECTION. Detects a construct where a section's end does not terminate
+ * with EXIT, a terminal statement (STOP/GOBACK/EXIT PROGRAM), or an unconditional GO TO, and
+ * instead physically falls through into the next section. Catches the error of a section
+ * designed to be called via PERFORM unintentionally flowing into the next section.
  */
 public final class SectionFallThroughRule implements Rule {
 
-    /** 節単位(節ヘッダ手続きと、その配下の段落群を定義順に保持)。 */
+    /** A section unit (the section-header procedure plus its subordinate paragraphs, kept in definition order). */
     private record SectionUnit(String name, List<Procedure> members) {
     }
 
@@ -91,13 +92,13 @@ public final class SectionFallThroughRule implements Rule {
             } else if (current != null && procedure.sectionName().isPresent()) {
                 current.add(procedure);
             } else {
-                current = null; // どの節にも属さない段落は節の連なりを断つ
+                current = null; // A paragraph belonging to no section breaks the run of sections
             }
         }
         return units;
     }
 
-    /** 節の最後の実行文(文を持つ最後の手続きの、末尾のトップレベル文)。 */
+    /** The section's last executable statement (the last top-level statement of the last procedure that has any statements). */
     private static Statement lastExecutable(SectionUnit unit) {
         for (int i = unit.members().size() - 1; i >= 0; i--) {
             List<Statement> statements = unit.members().get(i).statements();
@@ -109,8 +110,10 @@ public final class SectionFallThroughRule implements Rule {
     }
 
     /**
-     * 制御がこの文で節の外へ出るか。GO TO は、飛び先が1つで DEPENDING ON を持たないものだけを
-     * 無条件分岐とみなす。GO TO ... DEPENDING ON は添字の値によって分岐せず流下し得るため除く。
+     * Whether control leaves the section at this statement. For GO TO, only one with a single
+     * target and no DEPENDING ON is treated as an unconditional branch. GO TO ... DEPENDING ON is
+     * excluded because, depending on the subscript's value, it may not branch and can fall
+     * through instead.
      */
     private static boolean isTerminating(Statement statement) {
         if (statement instanceof SimpleStatement simple) {

@@ -17,8 +17,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * R010 ALTER文の使用。ALTER文は GO TO の飛び先を実行時に書き換え、制御フローを静的に
- * 追えなくする。手続き部の ALTER 文をすべて検出する。
+ * R010 Use of the ALTER statement. The ALTER statement rewrites a GO TO's destination at
+ * runtime, making the control flow impossible to trace statically. Detects every ALTER
+ * statement in the procedure division.
  */
 public final class AlterStatementRule implements Rule {
 

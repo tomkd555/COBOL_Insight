@@ -1,16 +1,18 @@
 package jp.cobolinsight.analysis.dataflow;
 
 /**
- * 汚染追跡の1事実。variable がノード nodeId で汚染を得たことを表し、fromVariable と fromNodeId は
- * その汚染の直接の伝播元になった事実を指す。ノードの同一性ではなく id で持つことで集合の等価
- * 判定を安定させ、伝播元を事実の値として持つことで有限束を保つ(経路を入れ子で持たない)。
+ * One fact from taint tracking. Represents variable acquiring taint at node nodeId; fromVariable
+ * and fromNodeId point to the fact that is the direct propagation source of that taint. Holding
+ * a node by id rather than identity keeps set equality checks stable, and holding the
+ * propagation source as a value of the fact keeps the lattice finite (the path is not nested
+ * within it).
  */
 record TaintFact(String variable, int nodeId, String fromVariable, int fromNodeId) {
 
-    /** データ部の宣言に由来する汚染(機密名義)の nodeId。対応する CFG ノードは無い。 */
+    /** The nodeId for taint originating from a data-division declaration (a sensitive name). There is no corresponding CFG node. */
     static final int DECLARATION = -1;
 
-    /** 伝播元を持たない(汚染源そのものである)ことを表す fromNodeId。 */
+    /** The fromNodeId denoting that this has no propagation source (it is itself a taint source). */
     static final int NO_SOURCE = -2;
 
     static TaintFact declared(String variable) {

@@ -3,9 +3,10 @@ package jp.cobolinsight.analysis.dataflow;
 import jp.cobolinsight.core.dataflow.ValueInterval;
 
 /**
- * {@link ValueInterval} 上の区間演算・合流(hull)・widening・条件による絞り込み(narrowing)。
- * 非有界端は算術・widening で伝播させ、加減乗はオーバーフロー時に該当端を非有界へ退避する。
- * 除算は精度を追わず常に両側非有界へ退避する。
+ * Interval arithmetic, join (hull), widening, and condition-based tightening (narrowing) over
+ * {@link ValueInterval}. An unbounded end is propagated through arithmetic and widening; on
+ * overflow, addition/subtraction/multiplication fall the affected end back to unbounded.
+ * Division does not track precision and always falls back to unbounded on both sides.
  */
 final class Intervals {
 
@@ -14,7 +15,7 @@ final class Intervals {
     private Intervals() {
     }
 
-    /** 区間の合流(包含最小の外接区間)。いずれかが非有界の端は結果も非有界。 */
+    /** Joins two intervals (the smallest enclosing interval). Any end that is unbounded on either side keeps the result unbounded there too. */
     static ValueInterval hull(ValueInterval x, ValueInterval y) {
         Long lo = (x.loUnbounded() || y.loUnbounded()) ? null : Math.min(x.lo(), y.lo());
         Long hi = (x.hiUnbounded() || y.hiUnbounded()) ? null : Math.max(x.hi(), y.hi());
@@ -22,8 +23,10 @@ final class Intervals {
     }
 
     /**
-     * 区間 widening。{@code old} を基準に、{@code next} が下端で下回る/上端で上回るときだけ当該端を
-     * 非有界へ飛ばす。無限昇鎖を有限回で打ち切り不動点計算を収束させる。
+     * Interval widening. Relative to {@code old}, jumps the corresponding end to unbounded only
+     * when {@code next} goes below the lower end or above the upper end. This cuts off an
+     * infinite ascending chain after finitely many steps and converges the fixed-point
+     * computation.
      */
     static ValueInterval widen(ValueInterval old, ValueInterval next) {
         boolean loU;
@@ -89,12 +92,12 @@ final class Intervals {
         return make(min, max);
     }
 
-    /** 除算は区間精度を追わず両側非有界へ退避する。 */
+    /** Division does not track interval precision and falls back to unbounded on both sides. */
     static ValueInterval div(ValueInterval x, ValueInterval y) {
         return UNBOUNDED;
     }
 
-    /** 上端を bound 以下へ絞る(下端は不変)。矛盾(下端>bound)は点区間 [bound,bound] へ丸める。 */
+    /** Tightens the upper end to at most bound (the lower end is unchanged). A contradiction (lower end > bound) is rounded to the point interval [bound,bound]. */
     static ValueInterval capHi(ValueInterval v, long bound) {
         long newHi = v.hiUnbounded() ? bound : Math.min(v.hi(), bound);
         if (!v.loUnbounded() && v.lo() > newHi) {
@@ -103,7 +106,7 @@ final class Intervals {
         return new ValueInterval(v.loUnbounded() ? 0 : v.lo(), newHi, v.loUnbounded(), false);
     }
 
-    /** 下端を bound 以上へ絞る(上端は不変)。矛盾(bound>上端)は点区間 [bound,bound] へ丸める。 */
+    /** Tightens the lower end to at least bound (the upper end is unchanged). A contradiction (bound > upper end) is rounded to the point interval [bound,bound]. */
     static ValueInterval capLo(ValueInterval v, long bound) {
         long newLo = v.loUnbounded() ? bound : Math.max(v.lo(), bound);
         if (!v.hiUnbounded() && newLo > v.hi()) {
@@ -112,7 +115,7 @@ final class Intervals {
         return new ValueInterval(newLo, v.hiUnbounded() ? 0 : v.hi(), false, v.hiUnbounded());
     }
 
-    /** 端(null=非有界)から区間を組む。両端有界で lo>hi の矛盾は上端優先で点区間へ丸める。 */
+    /** Builds an interval from its ends (null = unbounded). If both ends are bounded and lo>hi is a contradiction, it is rounded to a point interval, favoring the upper end. */
     static ValueInterval make(Long lo, Long hi) {
         boolean lu = lo == null;
         boolean hu = hi == null;

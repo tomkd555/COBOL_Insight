@@ -26,9 +26,11 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * R027 機密データ項目のマスキングなし出力。名称末尾が -SSN / -ACCT-NO / -CARD-NO の機密項目(および
- * それを伝播した変数)が、マスキング・暗号化を経ずに DISPLAY・帳票出力(WRITE)・ログ出力(CALL)へ
- * 渡る箇所を汚染追跡で検出する。リテラル代入などで値を差し替えた変数は汚染が絶たれるため対象外になる。
+ * R027 Output of a sensitive data item without masking. Detects, via taint tracking, places where a
+ * sensitive item whose name ends in -SSN / -ACCT-NO / -CARD-NO (or a variable that propagated it)
+ * reaches a DISPLAY, report output (WRITE), or log output (CALL) without going through masking or
+ * encryption. A variable whose value was replaced by, say, a literal assignment is excluded because
+ * the taint is cut off.
  */
 public final class SensitiveDataOutputRule implements Rule {
 

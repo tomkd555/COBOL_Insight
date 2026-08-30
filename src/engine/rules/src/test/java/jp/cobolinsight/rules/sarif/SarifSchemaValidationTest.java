@@ -42,9 +42,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
- * SarifWriter の出力が SARIF 2.1.0 の公式JSONスキーマ(src/test/resources/sarif)に違反しない
- * ことの検証。合成した finding 群と、samples/ 全体を構文段の全ルールで lint した結果の両方を
- * 対象とする。
+ * Verifies that SarifWriter output does not violate the official SARIF 2.1.0 JSON schema
+ * (src/test/resources/sarif). Covers both a set of synthetic findings and the result of
+ * linting the entire samples/ tree with every syntax-level rule.
  */
 class SarifSchemaValidationTest {
 
@@ -59,8 +59,8 @@ class SarifSchemaValidationTest {
     @Test
     void syntheticFindingsProduceSchemaValidSarif() {
         List<Rule> rules = BuiltinRules.all();
-        // 1件目のファイル名には空白・#・非ASCII文字を含める。URI へ変換したうえでスキーマへ
-        // 適合することまで確認する。
+        // Give the first file a name containing a space, '#', and non-ASCII characters,
+        // to confirm it still conforms to the schema after conversion to a URI.
         List<Finding> findings = List.of(
                 Finding.of("R026", FindingLevel.ERROR, "認証情報の直書き",
                         new SourcePosition("cobol\\B 資産#1.cbl", 5, 12,
@@ -79,7 +79,8 @@ class SarifSchemaValidationTest {
         assertEquals(List.of(), errors, "SARIF 2.1.0スキーマ違反が0件であること");
     }
 
-    /** 挿入(空範囲)と置換の2編集を持つ修正案。fixes の直列化がスキーマへ適合することを検証する。 */
+    /** A fix suggestion with two edits: an insertion (empty range) and a replacement.
+     * Verifies that fixes serialization conforms to the schema. */
     private static FixSuggestion fixSuggestion() {
         SourcePosition insertAt =
                 new SourcePosition("cobol/A.cbl", 20, 40, SourcePosition.UNKNOWN_BYTE_OFFSET);
@@ -92,7 +93,8 @@ class SarifSchemaValidationTest {
                         new TextEdit(replacement, "END-ADD")));
     }
 
-    /** 汚染経路付きの finding が codeFlows(threadFlows → locations)としてスキーマへ適合すること。 */
+    /** Verifies that a finding with a taint path conforms to the schema as codeFlows
+     * (threadFlows -> locations). */
     @Test
     void codeFlowFindingsProduceSchemaValidSarif() {
         List<Rule> rules = BuiltinRules.all();
@@ -167,8 +169,9 @@ class SarifSchemaValidationTest {
     }
 
     /**
-     * テキストを DecodedSource へ包む。offsets は文字位置からUTF-8バイト位置への対応表であり、
-     * サロゲートペアの2文字目にもコードポイント先頭のバイト位置を入れる。
+     * Wraps text in a DecodedSource. offsets maps character positions to UTF-8 byte positions,
+     * and also assigns the code point's starting byte position to the second char of a
+     * surrogate pair.
      */
     private static DecodedSource decoded(String path, String text) {
         int[] offsets = new int[text.length()];

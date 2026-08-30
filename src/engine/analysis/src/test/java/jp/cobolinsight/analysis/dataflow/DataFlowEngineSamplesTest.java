@@ -17,8 +17,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * samples/cobol 9本に対する不動点解析の頑健性と、R001(未初期化変数の参照)の判定根拠となる
- * 未初期化到達を実サンプルで検証する。
+ * Verifies the robustness of the fixed-point analysis against the 9 samples/cobol files, and
+ * verifies against a real sample the reachability of uninitialized values that grounds R001
+ * (reference to an uninitialized variable).
  */
 class DataFlowEngineSamplesTest {
 
@@ -45,9 +46,10 @@ class DataFlowEngineSamplesTest {
 
     @Test
     void detectsUninitializedStockOnGuardedMoveInSyk004() {
-        // SYK004: 1000-在庫確認 の MOVE 999 TO WS-在庫残数 は IF LK-商品コード NOT = SPACES の
-        // ガード内のみ。ガード偽の経路では WS-在庫残数 が未定義のまま 2000-引当判定 の
-        // IF WS-在庫残数 >= LK-要求数量(41行)へ到達する。R001 が検出する状況である。
+        // SYK004: the MOVE 999 TO WS-在庫残数 in 1000-在庫確認 exists only inside the
+        // IF LK-商品コード NOT = SPACES guard. On the path where the guard is false, WS-在庫残数
+        // stays undefined and reaches the IF WS-在庫残数 >= LK-要求数量 (line 41) in 2000-引当判定.
+        // This is the situation R001 detects.
         CobolSemanticModel model = SampleModels.model("SYK004.cbl");
         ControlFlowGraph cfg = CfgBuilder.build(model);
         ProgramDataFlow df = DataFlowEngine.analyze(model, cfg);

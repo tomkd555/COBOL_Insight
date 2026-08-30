@@ -7,9 +7,12 @@ import java.util.List;
 import java.util.function.Function;
 
 /**
- * COMPUTE 右辺の単純算術式を区間で評価する再帰下降エバリュエータ。加減乗除と括弧・単項符号を
- * 扱い、優先順位は乗除 &gt; 加減。未対応トークン・構文不整合に当たると評価は両側非有界へ退避する。
- * データ名の区間解決は呼出側の resolver に委ねる(未追跡は非有界)。
+ * A recursive-descent evaluator that evaluates a COMPUTE right-hand side's simple arithmetic
+ * expression over intervals. Handles addition, subtraction, multiplication, division,
+ * parentheses, and unary sign, with precedence multiplication/division &gt; addition/subtraction.
+ * When it hits an unsupported token or a syntax inconsistency, evaluation falls back to an
+ * interval unbounded on both sides. Resolving a data name's interval is delegated to the
+ * caller's resolver (unbounded when untracked).
  */
 final class IntervalExpr {
 
@@ -22,7 +25,7 @@ final class IntervalExpr {
         this.resolver = resolver;
     }
 
-    /** 式を評価する。トークン化・構文で失敗したら両側非有界を返す。 */
+    /** Evaluates the expression. Returns an interval unbounded on both sides if tokenization or parsing fails. */
     static ValueInterval eval(String expr, Function<String, ValueInterval> resolver) {
         List<String> tokens = tokenize(expr);
         if (tokens == null) {
@@ -106,7 +109,7 @@ final class IntervalExpr {
         return resolver.apply(tok);
     }
 
-    /** 空白区切りで数値・データ名・演算子(+ - * / ( ))へ分解する。未知文字は失敗(null)。 */
+    /** Splits on whitespace into numbers, data names, and operators (+ - * / ( )). An unknown character is a failure (null). */
     private static List<String> tokenize(String expr) {
         List<String> out = new ArrayList<>();
         int i = 0;

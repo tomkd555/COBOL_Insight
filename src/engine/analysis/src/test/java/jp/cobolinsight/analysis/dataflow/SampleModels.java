@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** samples/cobol の9本を実パーサーで解析し、テスト間で結果を共有する。 */
+/** Parses the 9 samples/cobol files with the real parser and shares the results across tests. */
 final class SampleModels {
 
     static final List<String> SAMPLE_FILES = List.of(

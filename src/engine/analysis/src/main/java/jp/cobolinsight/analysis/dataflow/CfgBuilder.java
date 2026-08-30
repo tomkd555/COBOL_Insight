@@ -24,16 +24,18 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * 正規化意味モデルから制御フローグラフを構築する。段落・節の並び、IF/EVALUATEの分岐、
- * インラインPERFORMの反復、GO TOの分岐、STOP RUN・GOBACK・EXIT PROGRAMの終端、
- * 段落末尾の後続段落への流下、および段落PERFORM(THRU範囲を含む)の呼出・復帰を辺にする。
+ * Builds a control flow graph from the normalized semantic model. Edges are created for the
+ * paragraph/section sequence, IF/EVALUATE branches, inline PERFORM iteration, GO TO branches,
+ * STOP RUN/GOBACK/EXIT PROGRAM terminators, fall-through from a paragraph's end to the next
+ * paragraph, and paragraph PERFORM (including THRU ranges) call/return.
  *
- * <p>PERFORMの復帰辺は文脈非依存(範囲末尾から全呼出箇所の後続へ張る)であり、経路は
- * 過大近似になる。到達性の問い合わせ(検査有無・到達可能性)にはこの近似で足りる。
+ * <p>A PERFORM's return edge is context-insensitive (drawn from the end of the range to the
+ * successors of every call site), so paths are an over-approximation. This approximation is
+ * sufficient for reachability queries (whether a check exists, whether a point is reachable).
  */
 public final class CfgBuilder {
 
-    /** 手続き部の文リストの構築結果。first は先頭ノード(空リストでは null)、ends は末尾到達点。 */
+    /** Result of building the node list for a procedure division. first is the head node (null for an empty list); ends are the trailing reach points. */
     private record Chain(CfgNode first, List<CfgNode> ends) {
     }
 
@@ -66,13 +68,14 @@ public final class CfgBuilder {
         }
         CfgNode exit = newNode(CfgNodeKind.EXIT, null, "");
 
-        // 手続き名 → 定義順の索引(重複名は先勝ち)
+        // Procedure name -> index in definition order (first occurrence wins for duplicate names)
         Map<String, Integer> indexByName = new LinkedHashMap<>();
         for (int i = 0; i < procedures.size(); i++) {
             indexByName.putIfAbsent(upper(procedures.get(i).name()), i);
         }
 
-        // 入口 → 最初の実行文。段落末尾 → 次段落先頭(流下)。最終段落末尾 → 出口。
+        // entry -> first executable statement. End of a paragraph -> start of the next paragraph
+        // (fall-through). End of the last paragraph -> exit.
         addEdge(entry, effectiveEntry(chains, 0, exit));
         for (int i = 0; i < chains.size(); i++) {
             CfgNode next = effectiveEntry(chains, i + 1, exit);
@@ -81,7 +84,8 @@ public final class CfgBuilder {
             }
         }
 
-        // PERFORM呼出・復帰辺を張る前に、PERFORM文ノードの逐次後続を控える(復帰先)。
+        // Before drawing PERFORM call/return edges, record each PERFORM statement node's
+        // sequential successor (the return point).
         Map<CfgNode, List<CfgNode>> returnPointsByPerform = new LinkedHashMap<>();
         for (CfgNode node : performNodeByRange.values()) {
             returnPointsByPerform.put(node, List.copyOf(successorsOf(node)));
@@ -110,7 +114,8 @@ public final class CfgBuilder {
             addEdge(node, effectiveEntry(chains, target, exit));
             List<CfgNode> returnPoints = new ArrayList<>(returnPointsByPerform.get(node));
             if (isUntilPerform(node)) {
-                // PERFORM ... UNTIL は復帰後に自ノード(条件判定)へ戻る反復を表す
+                // PERFORM ... UNTIL represents an iteration that, after returning, loops back
+                // to its own node (the condition check)
                 returnPoints.add(node);
             }
             for (CfgNode end : chains.get(thru).ends()) {
@@ -129,7 +134,7 @@ public final class CfgBuilder {
         return new ControlFlowGraph(model.programId(), nodes, entry, exit, edges, byStatement);
     }
 
-    /** index 以降で最初に文を持つ手続きの先頭ノード。無ければ出口。 */
+    /** Head node of the first procedure at or after index that has statements. If none, the exit node. */
     private CfgNode effectiveEntry(List<Chain> chains, int index, CfgNode exit) {
         for (int i = index; i < chains.size(); i++) {
             if (chains.get(i).first() != null) {
@@ -155,7 +160,7 @@ public final class CfgBuilder {
         return new Chain(first, open);
     }
 
-    /** 1文のノードと辺を構築する。first は当該文の入口ノード、ends は実行後の到達点。 */
+    /** Builds the node and edges for a single statement. first is the statement's entry node; ends are the reach points after execution. */
     private Chain buildStatement(Statement statement, String procedureName) {
         CfgNode node = newNode(CfgNodeKind.STATEMENT, statement, procedureName);
         if (statement instanceof SimpleStatement simple) {
@@ -172,7 +177,8 @@ public final class CfgBuilder {
             if (!goTo.targets().isEmpty()) {
                 gotos.add(new PendingGoTo(node, goTo.targets()));
             }
-            // 単一飛び先の無条件GO TOは流下しない。DEPENDING ON(複数飛び先)は不成立時に流下する。
+            // An unconditional GO TO with a single target does not fall through. DEPENDING ON
+            // (multiple targets) falls through when none of the conditions is met.
             boolean conditional = goTo.targets().size() > 1 || goTo.dependingOn().isPresent();
             return new Chain(node, conditional ? List.of(node) : List.of());
         }
@@ -190,8 +196,9 @@ public final class CfgBuilder {
             ends.add(node);
             return new Chain(node, ends);
         }
-        // 分岐(IF/EVALUATE)。ELSE・WHEN OTHER を持たない分岐はどの枝も通らない経路があるため、
-        // 分岐ノード自身を実行後の到達点に加えて後続へ流下させる。
+        // Branch (IF/EVALUATE). A branch without ELSE/WHEN OTHER has a path that takes none of
+        // the arms, so the branch node itself is added to the post-execution reach points and
+        // falls through to what follows.
         boolean exhaustive = false;
         for (StatementBlock block : compound.blocks()) {
             if ("ELSE".equals(block.label()) || "OTHER".equals(block.label())) {
@@ -214,10 +221,11 @@ public final class CfgBuilder {
     }
 
     /**
-     * 実行を打ち切る文か。EXIT は EXIT PROGRAM のみ終端で、EXIT PARAGRAPH などは流下する。
+     * Whether this statement terminates execution. For EXIT, only EXIT PROGRAM is a terminator;
+     * EXIT PARAGRAPH and the like fall through.
      *
-     * <p>段落間の流れを導く scan も同じ判定を要するため公開している。同じ COBOL の意味を
-     * 2箇所で書くと、片方だけが直った状態が起こる。
+     * <p>Made public because the scan that derives flow between paragraphs needs the same
+     * judgment. Encoding the same COBOL semantics in two places risks fixing only one of them.
      */
     public static boolean isTerminator(SimpleStatement statement) {
         String verb = statement.verb();
@@ -228,7 +236,7 @@ public final class CfgBuilder {
                 && statement.text().toUpperCase(Locale.ROOT).contains("PROGRAM");
     }
 
-    /** 段落 PERFORM が UNTIL 句を持つか。意味モデルは句を分解しないため文テキストで判定する。 */
+    /** Whether a paragraph PERFORM has a UNTIL clause. The semantic model does not decompose the clause, so this checks the statement text. */
     private boolean isUntilPerform(CfgNode node) {
         return node.statement().orElseThrow() instanceof SimpleStatement simple
                 && simple.text().toUpperCase(Locale.ROOT).contains("UNTIL");

@@ -24,10 +24,11 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * SQL指摘(Sルール)テストの補助。合成SQL・samples の埋め込みSQLを、本番と同じ SqlParser SPI
- * (sql-frontend の {@link Db2zSqlParser})で {@link SqlStatementModel} へ変換し、それを
- * {@code sqlStatements} に載せた AnalysisContext を組む。sql-frontend が算出した構造シグナルを
- * 消費側ルールへそのまま流す点は、本番経路(ScanRunner.persistSqlStatements)と同じである。
+ * Test support for SQL advisory (S-rule) tests. Converts synthetic SQL and the samples'
+ * embedded SQL into {@link SqlStatementModel} using the same SqlParser SPI as production
+ * (sql-frontend's {@link Db2zSqlParser}), and builds an AnalysisContext carrying them in
+ * {@code sqlStatements}. Passing the structural signals computed by sql-frontend straight
+ * through to the consuming rule mirrors the production path (ScanRunner.persistSqlStatements).
  */
 final class SqlAdviceFixtures {
 
@@ -38,7 +39,7 @@ final class SqlAdviceFixtures {
     private SqlAdviceFixtures() {
     }
 
-    /** 単一行の合成SQLを、指定行に位置づけた SqlStatementModel へ変換する。 */
+    /** Converts a single-line synthetic SQL statement into a SqlStatementModel positioned at the given line. */
     static SqlStatementModel model(String sql, int line) {
         SourcePosition start = new SourcePosition(SYNTHETIC_FILE, line, 1,
                 SourcePosition.UNKNOWN_BYTE_OFFSET);
@@ -52,13 +53,13 @@ final class SqlAdviceFixtures {
                         + outcome.failureFinding().map(Object::toString).orElse("原因不明")));
     }
 
-    /** SqlStatementModel 群を sqlStatements に載せた AnalysisContext。 */
+    /** An AnalysisContext carrying the given SqlStatementModel instances in sqlStatements. */
     static AnalysisContext context(SqlStatementModel... statements) {
         return AnalysisContext.of(List.of(), List.of(), List.of(statements), List.of(),
                 Optional.empty(), Map.of());
     }
 
-    /** samples/cobol/<name>.cbl を実パーサーで解析し、埋め込みSQLの SqlStatementModel を集める。 */
+    /** Parses samples/cobol/<name>.cbl with the real parser and collects the SqlStatementModel of its embedded SQL. */
     static List<SqlStatementModel> samplesSqlModels(String cobolBaseName) {
         Path file = SAMPLES.resolve("cobol").resolve(cobolBaseName);
         String text = readText(file);
@@ -76,7 +77,7 @@ final class SqlAdviceFixtures {
         return statements;
     }
 
-    /** samples の埋め込みSQLを sqlStatements に載せた AnalysisContext。 */
+    /** An AnalysisContext carrying the samples' embedded SQL in sqlStatements. */
     static AnalysisContext samplesContext(String cobolBaseName) {
         return AnalysisContext.of(List.of(), List.of(), samplesSqlModels(cobolBaseName),
                 List.of(), Optional.empty(), Map.of());

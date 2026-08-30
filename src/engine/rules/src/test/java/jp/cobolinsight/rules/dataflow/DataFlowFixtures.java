@@ -27,11 +27,12 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
- * データフロー段ルールのテスト補助。samples および合成ソースを実パーサー(cobol-frontend)で解析し、
- * CFG・不動点結果(DataFlowFacts)・SourceTextIndex を artifact として載せた AnalysisContext を組む。
- * 事実の供給経路は {@code parse → CfgBuilder.build → DataFlowEngine.analyzeAll} で、消費側ルールが
- * 本番で受け取るのと同じ artifact 形をテストでも再現する。制御フロー段の {@code CfgFixtures} と
- * 同じ構成を採る。
+ * Test helper for data-flow-stage rules. Parses samples and synthetic sources with the real
+ * parser (cobol-frontend), and builds an AnalysisContext that carries the CFG, the fixed-point
+ * result (DataFlowFacts), and a SourceTextIndex as artifacts. The fact-supply path is
+ * {@code parse → CfgBuilder.build → DataFlowEngine.analyzeAll}, so tests reproduce the same
+ * artifact shape that consuming rules receive in production. Mirrors the structure of the
+ * control-flow-stage {@code CfgFixtures}.
  */
 final class DataFlowFixtures {
 
@@ -42,7 +43,7 @@ final class DataFlowFixtures {
     private DataFlowFixtures() {
     }
 
-    /** 合成fixtureテキストをファイルへ書き出し、実パーサーで解析する。 */
+    /** Writes synthetic fixture text to a file and parses it with the real parser. */
     static CobolSemanticModel parse(Path dir, String fileName, String text, Path... copybookDirs) {
         Path file = dir.resolve(fileName);
         try {
@@ -56,7 +57,7 @@ final class DataFlowFixtures {
                 fileName + " のパースが失敗した: " + outcome.failureFinding().orElse(null)));
     }
 
-    /** model と texts から、CFG と不動点結果を載せた DATA_FLOW 段の AnalysisContext を組む。 */
+    /** Builds a DATA_FLOW-stage AnalysisContext carrying the CFG and fixed-point result, from the model and texts. */
     static AnalysisContext context(List<CobolSemanticModel> models, Map<String, String> texts) {
         List<ControlFlowGraph> graphs = new ArrayList<>();
         for (CobolSemanticModel model : models) {
@@ -72,7 +73,7 @@ final class DataFlowFixtures {
                 artifacts);
     }
 
-    /** samples 全体(cobol 9本 + copybook)を解析した DATA_FLOW 段の AnalysisContext。 */
+    /** DATA_FLOW-stage AnalysisContext from parsing the whole samples set (9 cobol programs + copybooks). */
     static synchronized AnalysisContext samples() {
         if (samplesContext != null) {
             return samplesContext;
@@ -94,7 +95,7 @@ final class DataFlowFixtures {
         return samplesContext;
     }
 
-    /** samples の cobol/<name>.cbl と一致する sourceFile 文字列。 */
+    /** The sourceFile string matching samples' cobol/<name>.cbl. */
     static String samplesFile(String cobolBaseName) {
         return SAMPLES.resolve("cobol").resolve(cobolBaseName).toString();
     }
@@ -120,8 +121,8 @@ final class DataFlowFixtures {
     }
 
     /**
-     * テキストを DecodedSource へ包む。offsets は文字位置からUTF-8バイト位置への対応表であり、
-     * サロゲートペアの2文字目にもコードポイント先頭のバイト位置を入れる。
+     * Wraps text into a DecodedSource. offsets maps character position to UTF-8 byte position;
+     * the second char of a surrogate pair also gets the byte position of the code point's start.
      */
     static DecodedSource decoded(String path, String text) {
         int[] offsets = new int[text.length()];

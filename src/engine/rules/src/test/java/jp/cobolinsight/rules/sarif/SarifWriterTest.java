@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** SARIF 2.1.0 出力の構造・決定論の検証。 */
+/** Verifies the structure and determinism of SARIF 2.1.0 output. */
 class SarifWriterTest {
 
     private static Rule stubRule(String id, Severity severity) {
@@ -238,7 +238,8 @@ class SarifWriterTest {
         assertEquals(first, reversed, "同一入力集合なら並び順によらず同一のSARIFテキストになること");
     }
 
-    /** テスト検証用の最小JSONパーサー。値は Map・List・String・Long・Double・Boolean・null で表す。 */
+    /** Minimal JSON parser for test verification. Values are represented as
+     * Map, List, String, Long, Double, Boolean, or null. */
     static final class MiniJson {
 
         private final String text;

@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** GO TO正規化の可約性判定と、不可約領域を複製して単一入口化する処理の検証。 */
+/** Verifies GO TO normalization's reducibility judgment and the process that duplicates irreducible regions into a single entry point. */
 class GotoNormalizerTest {
 
     static List<String> sampleFiles() {
@@ -37,13 +37,13 @@ class GotoNormalizerTest {
         assertTrue(GotoNormalizer.isReducible(normalized),
                 fileName + " の正規化後CFGが不可約である");
         if (reducibleBefore) {
-            // 可約なグラフは複製を伴わずそのまま返す(恒等正規化)。
+            // A reducible graph is returned as-is without duplication (identity normalization).
             assertSame(cfg, normalized, fileName + " の可約グラフが恒等正規化されていない");
         } else {
             assertTrue(normalized.nodes().size() >= cfg.nodes().size(),
                     fileName + " の不可約グラフがnode splittingで拡張されていない");
         }
-        // 決定論: 同一入力からの正規化2回でノード数が一致。
+        // Determinism: normalizing the same input twice yields the same node count.
         assertEquals(normalized.nodes().size(), GotoNormalizer.normalize(cfg).nodes().size(),
                 fileName + " の正規化が非決定的である");
     }
@@ -77,7 +77,7 @@ class GotoNormalizerTest {
         }
     }
 
-    /** 2つの流入口を持つループ {B, C}。B・Cとも入口から直接到達し互いに分岐するため不可約。 */
+    /** A loop {B, C} with two entry points. Both B and C are reachable directly from the entry and branch to each other, so it is irreducible. */
     private static ControlFlowGraph twoEntryLoop() {
         SourceRange rangeB = lineRange(10);
         SourceRange rangeC = lineRange(11);

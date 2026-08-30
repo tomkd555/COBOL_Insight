@@ -18,7 +18,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-/** 制御フロー解析のルールが共有する走査・探索の補助。状態を持たない。 */
+/** Traversal and search helpers shared by control-flow analysis rules. Stateless. */
 public final class CfgSupport {
 
     private CfgSupport() {
@@ -28,7 +28,7 @@ public final class CfgSupport {
         return s == null ? "" : s.toUpperCase(Locale.ROOT);
     }
 
-    /** 文とその複合文の入れ子本体を、定義順に前順走査する。 */
+    /** Pre-order traversal, in definition order, of statements and the nested bodies of their compound statements. */
     static void walk(List<Statement> statements, Consumer<Statement> visitor) {
         for (Statement statement : statements) {
             visitor.accept(statement);
@@ -40,7 +40,7 @@ public final class CfgSupport {
         }
     }
 
-    /** target(同一インスタンス)を(入れ子を含め)含む手続きを返す。無ければ null。 */
+    /** Returns the procedure that contains target (by instance identity, including nested statements). Null if none does. */
     static Procedure containingProcedure(CobolSemanticModel model, Statement target) {
         for (Procedure procedure : model.procedures()) {
             if (containsStatement(procedure.statements(), target)) {
@@ -67,9 +67,10 @@ public final class CfgSupport {
     }
 
     /**
-     * start から後続辺を前方BFSする。boundary ノードに達したらそこで打ち切り(後続を辿らず、
-     * check の判定もしない)。それ以外の到達ノードに check を満たすものがあれば true。
-     * start 自身は判定せず、その後続から辿る。
+     * Performs a forward BFS over successor edges starting from start. When a boundary node is
+     * reached, the search stops there (its successors are not followed, and check is not
+     * evaluated on it). Returns true if any other reached node satisfies check. start itself is
+     * not evaluated; traversal begins from its successors.
      */
     public static boolean forwardHasMatch(ControlFlowGraph cfg, CfgNode start,
             Predicate<CfgNode> boundary, Predicate<CfgNode> check) {

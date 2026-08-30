@@ -12,12 +12,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * SQL指摘3ルール(S001・S002・S004)の検出。S001 と S002 が陽性になる文は samples に無いため、
- * 合成SQLで検証する。S004 は samples SYK006 のカーソル宣言 DECLARE SYKZAIKOCUR で陽性になる。
- * SqlStatementModel は本番と同じ SqlParser SPI で組む({@link SqlAdviceFixtures})。
+ * Detection for the three SQL advisory rules (S001, S002, S004). Since samples contains no
+ * statement that triggers S001 or S002, those are verified with synthetic SQL. S004 fires on
+ * the cursor declaration DECLARE SYKZAIKOCUR in samples SYK006. SqlStatementModel is built
+ * with the same SqlParser SPI as production ({@link SqlAdviceFixtures}).
  *
- * <p>S002 は V2 の計測で S003(インデックス列への関数適用)を畳んだため、左辺を式で包む述語・
- * 先頭 % の LIKE と、いずれかの辺が列を関数・CAST で包む比較の両方を出す。
+ * <p>V2's measurements folded S003 (function applied to an indexed column) into S002, so it
+ * now fires both on a predicate that wraps the left side in an expression, a leading-% LIKE,
+ * and a comparison where either side wraps a column in a function or CAST.
  */
 class SqlAdviceRuleTest {
 
@@ -40,7 +42,7 @@ class SqlAdviceRuleTest {
         assertTrue(new SelectStarRule().evaluate(ctx).isEmpty());
     }
 
-    // ---- S002 非SARGableな述語 ----
+    // ---- S002 Non-sargable predicates ----
 
     @Test
     void s002FiresOnLeadingWildcardLike() {
@@ -68,7 +70,8 @@ class SqlAdviceRuleTest {
         assertTrue(new NonSargablePredicateRule().evaluate(ctx).isEmpty());
     }
 
-    /** 旧 S003。右辺の関数は左辺だけを見る非SARGable判定に当たらないため、別の文言で出る。 */
+    /** Formerly S003. Since the non-sargable check only looks at the left side, a function
+     * on the right side triggers a different message. */
     @Test
     void s002FiresOnFunctionAppliedToColumn() {
         AnalysisContext ctx = SqlAdviceFixtures.context(SqlAdviceFixtures.model(
@@ -89,8 +92,9 @@ class SqlAdviceRuleTest {
     }
 
     /**
-     * 左辺の関数適用は非SARGable判定と関数適用判定の両方に当たる。S003 を畳んだ後も同じ箇所を
-     * 二度報告しないことを固める(畳んだ理由そのもの)。
+     * A function applied to the left side triggers both the non-sargable check and the
+     * function-applied check. Pins down that the same location is not reported twice even
+     * after folding in S003 (this is the very reason S003 was folded in).
      */
     @Test
     void s002ReportsALeftHandFunctionOnlyOnce() {
@@ -107,7 +111,7 @@ class SqlAdviceRuleTest {
         assertTrue(new NonSargablePredicateRule().evaluate(ctx).isEmpty());
     }
 
-    // ---- S004 カーソルの宣言・後始末 ----
+    // ---- S004 Cursor declaration and cleanup ----
 
     @Test
     void s004FiresOnReadOnlyCursorMissingForClause() {
@@ -132,7 +136,7 @@ class SqlAdviceRuleTest {
         assertTrue(new CursorDeclarationRule().evaluate(ctx).isEmpty());
     }
 
-    // ---- samples SYK006 / SYK007 での発火 ----
+    // ---- Firing on samples SYK006 / SYK007 ----
 
     @Test
     void samplesSyk006MatchesPrediction() {

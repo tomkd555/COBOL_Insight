@@ -15,9 +15,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 区間値域解析(intervalAt)の単体検証。リテラル代入の点区間・加算の区間・VARYING の範囲・
- * 単調増加カウンタの widening 収束・UNTIL narrowing・R005(添字の OCCURS 範囲外アクセス)の
- * 判定根拠・R028(符号なし項目への負値算出)の判定根拠を、実パーサーで解析した小さなソースで確認する。
+ * Unit verification of the interval value-range analysis (intervalAt). Confirms, using small
+ * sources parsed with the real parser: the point interval of a literal assignment, the interval
+ * of an addition, the range of a VARYING loop, widening convergence for a monotonically
+ * increasing counter, UNTIL narrowing, the grounds for R005 (out-of-OCCURS-range subscript
+ * access), and the grounds for R028 (a negative value computed into an unsigned item).
  */
 class IntervalAnalysisTest {
 
@@ -30,7 +32,7 @@ class IntervalAnalysisTest {
                 () -> new AssertionError(var + " の区間が " + atSubstring + " で追跡外である"));
     }
 
-    // ---- リテラル代入・MOVE・加算 ----
+    // ---- literal assignment, MOVE, addition ----
 
     private static final String ARITH = InlinePrograms.source(
             "       IDENTIFICATION DIVISION.",
@@ -68,7 +70,7 @@ class IntervalAnalysisTest {
                 "ADD WS-A(5) TO WS-B(8) GIVING WS-C で WS-C は [13,13]");
     }
 
-    // ---- 段落 PERFORM VARYING: FROM/BY/UNTIL が文テキストに残る経路 + narrowing ----
+    // ---- paragraph PERFORM VARYING: path where FROM/BY/UNTIL remain in the statement text + narrowing ----
 
     private static final String VARY_PARA = InlinePrograms.source(
             "       IDENTIFICATION DIVISION.",
@@ -95,7 +97,7 @@ class IntervalAnalysisTest {
         assertFalse(idx.mayExceed(10), "OCCURS 10 を超えない(偽陽性を出さない)");
     }
 
-    // ---- インライン PERFORM VARYING: OCCURS を超えない場合と超え得る場合 ----
+    // ---- inline PERFORM VARYING: the case that stays within OCCURS and the case that may exceed it ----
 
     private static final String INLINE_SAFE = InlinePrograms.source(
             "       IDENTIFICATION DIVISION.",
@@ -147,7 +149,7 @@ class IntervalAnalysisTest {
         assertTrue(idx.mayExceed(10), "OCCURS 10 を超え得る(R005 相当)");
     }
 
-    // ---- 単調増加カウンタ: widening で [下限,+∞) に収束し停止する ----
+    // ---- monotonically increasing counter: widening converges to [lower bound, +infinity) and terminates ----
 
     private static final String COUNTER = InlinePrograms.source(
             "       IDENTIFICATION DIVISION.",
@@ -173,7 +175,7 @@ class IntervalAnalysisTest {
         assertTrue(cnt.hiUnbounded(), "終了条件が上限を絞らないため上端は widening で +∞");
     }
 
-    // ---- 単調増加カウンタを添字にする場合: OCCURS 超過を取り得る ----
+    // ---- when a monotonically increasing counter is used as a subscript: it may exceed OCCURS ----
 
     private static final String COUNTER_SUBSCRIPT = InlinePrograms.source(
             "       IDENTIFICATION DIVISION.",
@@ -201,7 +203,7 @@ class IntervalAnalysisTest {
                 "ADD 1 の単調増加カウンタは上限検査が無く OCCURS 20 を超え得る(R005 相当)");
     }
 
-    // ---- 符号なし受信項目への負値算出 ----
+    // ---- a negative value computed into an unsigned receiving item ----
 
     private static final String NEGATIVE = InlinePrograms.source(
             "       IDENTIFICATION DIVISION.",
@@ -225,7 +227,7 @@ class IntervalAnalysisTest {
         assertTrue(c.mayBeNegative(), "符号なし WS-C に負値が算出され得る(R028 相当)");
     }
 
-    // ---- 追跡外は empty ----
+    // ---- untracked variables yield empty ----
 
     @Test
     void untrackedVariableReturnsEmpty() {

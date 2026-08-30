@@ -17,10 +17,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * R013 EVALUATE文のWHEN OTHER欠如。EVALUATE文にWHEN OTHER句が指定されていない箇所を検出する。
- * WHEN OTHER句が無いと、いずれのWHEN句にも一致しない値が何の処理も受けずに通過する。
- * 意味モデル上、EVALUATE文は分岐(BRANCH)の複合文であり、先頭ブロックのラベルが "THEN" である
- * IF文と区別する。WHEN OTHER句はラベル "OTHER" のブロックとして現れる。
+ * R013 EVALUATE statement missing WHEN OTHER. Detects places where an EVALUATE statement has
+ * no WHEN OTHER clause. Without a WHEN OTHER clause, a value that matches none of the WHEN
+ * clauses passes through without any handling. In the semantic model, an EVALUATE statement
+ * is a branch (BRANCH) compound statement, distinguished from an IF statement, whose first
+ * block's label is {@code "THEN"}. A WHEN OTHER clause appears as a block labeled {@code "OTHER"}.
  */
 public final class EvaluateWhenOtherRule implements Rule {
 

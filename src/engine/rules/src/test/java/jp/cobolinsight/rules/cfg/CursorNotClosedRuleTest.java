@@ -13,7 +13,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** R019 カーソルクローズ漏れの合成fixture検証。 */
+/** R019 synthetic fixture verification for a missing cursor close. */
 class CursorNotClosedRuleTest {
 
     @TempDir

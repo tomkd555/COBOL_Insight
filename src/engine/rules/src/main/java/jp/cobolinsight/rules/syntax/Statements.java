@@ -12,13 +12,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
-/** 構文ルールが共有する文の走査ヘルパー。入れ子を含む全文を深さ優先で訪問する。 */
+/** Statement-walking helper shared by the syntax rules. Visits every statement, including nested ones, depth-first. */
 final class Statements {
 
     private Statements() {
     }
 
-    /** プログラム内の全文(複合文の入れ子を含む)を深さ優先で訪問する。 */
+    /** Visits every statement in the program (including compound statements' nested statements) depth-first. */
     static void walk(CobolSemanticModel model, Consumer<Statement> visitor) {
         for (Procedure procedure : model.procedures()) {
             walk(procedure.statements(), visitor);
@@ -36,7 +36,7 @@ final class Statements {
         }
     }
 
-    /** 1文が自身で保持するテキスト(入れ子の文のテキストを除く)。 */
+    /** The text a single statement holds itself (excluding the text of its nested statements). */
     static List<String> ownTexts(Statement statement) {
         List<String> texts = new ArrayList<>();
         if (statement instanceof SimpleStatement simple) {

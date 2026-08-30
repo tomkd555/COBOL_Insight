@@ -20,9 +20,10 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 /**
- * R031 未定義BMSマップ参照。EXEC CICS SEND/RECEIVE MAP が参照する MAP・MAPSET を BMS マップ
- * モデルと突合し、マップセットが存在しない、または該当マップがマップセットに定義されていない
- * 参照を検出する。定義の無いマップを参照すると、画面の送受信が実行時に失敗する。
+ * R031 Reference to an undefined BMS map. Cross-references the MAP/MAPSET referenced by an
+ * EXEC CICS SEND/RECEIVE MAP against the BMS map model, and detects a reference where the
+ * mapset does not exist, or the map is not defined within that mapset. Referencing an undefined
+ * map causes the screen send/receive to fail at runtime.
  */
 public final class UndefinedBmsMapReferenceRule implements Rule {
 
@@ -97,7 +98,7 @@ public final class UndefinedBmsMapReferenceRule implements Rule {
         return false;
     }
 
-    /** MAP オペランドが最初に現れる行。ブロック先頭(EXEC CICS 行)とは異なるため走査する。 */
+    /** The line where the MAP operand first appears. Scanned because it can differ from the block's first line (the EXEC CICS line). */
     private static int mapOperandLine(EmbeddedBlock block) {
         int startLine = block.range().start().line();
         List<String> lines = block.text().lines().toList();

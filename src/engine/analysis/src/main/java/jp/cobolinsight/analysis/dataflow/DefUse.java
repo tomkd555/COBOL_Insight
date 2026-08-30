@@ -2,7 +2,7 @@ package jp.cobolinsight.analysis.dataflow;
 
 import java.util.Set;
 
-/** 1文の定義(代入先)変数と参照(被読取)変数。名称は正規化(大文字化)済み。 */
+/** The definition (assignment target) and use (read) variables of one statement. Names are already normalized (uppercased). */
 record DefUse(Set<String> defs, Set<String> uses) {
 
     static final DefUse EMPTY = new DefUse(Set.of(), Set.of());

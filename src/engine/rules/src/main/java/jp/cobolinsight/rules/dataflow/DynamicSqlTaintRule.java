@@ -28,9 +28,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * R020 動的SQLへの外部入力の未検証組込。EXECUTE IMMEDIATE / PREPARE の SQL 文字列オペランド(ホスト
- * 変数)が、画面・帳票などの外部入力で汚染された変数を検証・置換なしに含む箇所を汚染追跡で検出する。
- * システムレジスタ由来(ACCEPT ... FROM DATE / TIME / DAY 等)の汚染は偽陽性として除外する。
+ * R020 Unvalidated inclusion of external input into dynamic SQL. Detects, via taint tracking,
+ * places where the SQL string operand (host variable) of EXECUTE IMMEDIATE / PREPARE contains a
+ * variable tainted by external input such as a screen or report, without validation or
+ * substitution. Taint originating from system registers (ACCEPT ... FROM DATE / TIME / DAY, etc.)
+ * is excluded as a false positive.
  */
 public final class DynamicSqlTaintRule implements Rule {
 

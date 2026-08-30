@@ -27,10 +27,13 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * R011 到達不能コード・使われない段落。2つの下位判定を1ルールで返す。
- * (a) 到達不能コード: 構築済みCFGで ENTRY から到達できない STATEMENT ノードの文。
- * (b) 使われない段落: どの PERFORM・GO TO からも参照されず、本流の流下経路上にもない段落。
- * (b) はCFGの流下辺が過大近似となるため、CFG到達性ではなく意味モデルで判定する。
+ * R011 Unreachable code and unused paragraphs. Combines two sub-checks into one rule.
+ * (a) Unreachable code: the statement of a STATEMENT node in the built CFG that cannot be
+ * reached from ENTRY.
+ * (b) Unused paragraph: a paragraph that is neither referenced by any PERFORM/GO TO nor on the
+ * mainline fall-through path.
+ * (b) is judged using the semantic model rather than CFG reachability, because the CFG's
+ * fall-through edges are an over-approximation.
  */
 public final class UnreachableCodeRule implements Rule {
 
@@ -74,7 +77,7 @@ public final class UnreachableCodeRule implements Rule {
         return findings;
     }
 
-    /** (a) CFGでENTRYから到達できないSTATEMENTノードの文。 */
+    /** (a) The statement of a STATEMENT node unreachable from ENTRY in the CFG. */
     private void detectUnreachable(CobolSemanticModel model, ControlFlowGraph cfg,
             List<Finding> findings) {
         Set<CfgNode> reachable = cfg.reachableNodes();
@@ -90,7 +93,7 @@ public final class UnreachableCodeRule implements Rule {
         }
     }
 
-    /** (b) 参照されず本流上にもない段落。 */
+    /** (b) A paragraph that is neither referenced nor on the mainline path. */
     private void detectUnusedParagraphs(AnalysisContext context, CobolSemanticModel model,
             List<Finding> findings) {
         List<Procedure> procedures = model.procedures();
@@ -103,7 +106,7 @@ public final class UnreachableCodeRule implements Rule {
 
         for (int i = 0; i < procedures.size(); i++) {
             Procedure procedure = procedures.get(i);
-            // 先頭の手続きは手続き部の入口であり、どこからも参照されなくても実行される。
+            // The first procedure is the procedure division's entry point, and runs even if never referenced.
             if (i == 0 || procedure.kind() != ProcedureKind.PARAGRAPH) {
                 continue;
             }
@@ -120,7 +123,7 @@ public final class UnreachableCodeRule implements Rule {
         }
     }
 
-    /** PERFORM の対象段落と、THRU 範囲(定義順の連続集合)に含まれる段落名。 */
+    /** PERFORM target paragraphs, plus paragraph names contained in a THRU range (a contiguous set in definition order). */
     private static Set<String> performTargets(CobolSemanticModel model) {
         List<Procedure> procedures = model.procedures();
         Set<String> targets = new LinkedHashSet<>();
@@ -157,8 +160,10 @@ public final class UnreachableCodeRule implements Rule {
     }
 
     /**
-     * 本流 = 先頭手続きから定義順に流下し、無条件終端(STOP/GOBACK/EXIT PROGRAM、または単一
-     * 飛び先の無条件 GO TO)を含む段落に達した時点で打ち切る。打ち切りまでの段落名の集合。
+     * The mainline = falling through in definition order from the first procedure, stopping once
+     * a paragraph containing an unconditional terminal (STOP/GOBACK/EXIT PROGRAM, or an
+     * unconditional GO TO with a single target) is reached. The set of paragraph names up to that
+     * stopping point.
      */
     private static Set<String> mainline(List<Procedure> procedures) {
         Set<String> mainline = new LinkedHashSet<>();

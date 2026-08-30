@@ -11,7 +11,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** 到達定義解析: VALUE無項目の未初期化使用の検出と、定義後・VALUE有での非検出を検証する。 */
+/** Reaching-definitions analysis: verifies detecting uninitialized use of an item without VALUE, and not detecting it after a definition or when VALUE is present. */
 class ReachingDefinitionsTest {
 
     private static final String SRC = InlinePrograms.source(

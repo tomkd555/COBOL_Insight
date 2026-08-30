@@ -12,7 +12,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** R021 CICS応答コード未検査の合成fixture検証(RESPなしで検出・RESPありで非検出)。 */
+/** R021 synthetic fixture verification for unchecked CICS response codes (detected without RESP, not detected with RESP). */
 class CicsResponseUncheckedRuleTest {
 
     @TempDir

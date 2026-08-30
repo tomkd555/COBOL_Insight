@@ -12,7 +12,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** R025 二項演算子の両辺が同一の式の合成fixture検証。 */
+/** Synthetic-fixture verification for R025, expressions where both sides of a binary operator are identical. */
 class IdenticalOperandsRuleTest {
 
     @TempDir

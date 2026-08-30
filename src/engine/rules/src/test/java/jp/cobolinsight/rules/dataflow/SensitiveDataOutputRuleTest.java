@@ -13,7 +13,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** R027 機密データ項目のマスキングなし出力の合成fixture検証。 */
+/** R027 synthetic fixture verification for unmasked output of a sensitive data item. */
 class SensitiveDataOutputRuleTest {
 
     @TempDir

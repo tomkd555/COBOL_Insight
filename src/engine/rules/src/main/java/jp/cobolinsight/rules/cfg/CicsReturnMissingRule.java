@@ -22,10 +22,12 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * R022 CICS RETURN欠如による疑似会話の途絶。CICS 参加プログラムが EXEC CICS RETURN TRANSID を
- * 1つも持たずに終端に達する場合、疑似会話トランザクションの制御が CICS へ戻らないため検出する。
- * CICS 参加は、自プログラムに CICS ブロックを持つか、他プログラムの XCTL/LINK/START の遷移先で
- * あるかで判定する(呼出関係グラフもトランザクション定義表も用いない)。
+ * R022 Pseudo-conversational break due to a missing CICS RETURN. Flags a CICS-participating
+ * program that reaches its terminal point without a single EXEC CICS RETURN TRANSID, since
+ * control of the pseudo-conversational transaction then never returns to CICS. CICS
+ * participation is judged by whether the program itself has a CICS block, or is the transfer
+ * target of another program's XCTL/LINK/START (neither the call graph nor the transaction
+ * definition table is used).
  */
 public final class CicsReturnMissingRule implements Rule {
 
@@ -108,7 +110,7 @@ public final class CicsReturnMissingRule implements Rule {
     }
 
     private static Statement firstTerminal(CobolSemanticModel model) {
-        // 段落 top-level の終端(無条件の可能性が高い)を優先する。
+        // Prefer a top-level terminal statement of a paragraph (more likely unconditional).
         for (Procedure procedure : model.procedures()) {
             for (Statement statement : procedure.statements()) {
                 if (isTerminal(statement)) {
@@ -116,7 +118,7 @@ public final class CicsReturnMissingRule implements Rule {
                 }
             }
         }
-        // top-level に無ければ、IF/EVALUATE 内に入れ子の終端を探す。
+        // If none at top level, look for a nested terminal statement inside IF/EVALUATE.
         Statement[] nested = {null};
         for (Procedure procedure : model.procedures()) {
             CfgSupport.walk(procedure.statements(), statement -> {

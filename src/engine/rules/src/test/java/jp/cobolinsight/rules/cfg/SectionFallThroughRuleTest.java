@@ -12,7 +12,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** R014 節の流下の合成fixture検証。 */
+/** R014 synthetic fixture verification for section fall-through. */
 class SectionFallThroughRuleTest {
 
     @TempDir
