@@ -14,8 +14,8 @@ body,
 }
 
 body {
-  background: var(--ci-bg-app);
-  color: var(--ci-fg);
+  background: var(--color-background);
+  color: var(--color-foreground);
   font-family: var(--ci-font-ui);
   font-size: var(--ci-size-md);
   line-height: var(--ci-line);
@@ -40,7 +40,7 @@ textarea {
  * stays visible on a control sitting flush against the edge of its region.
  */
 :focus-visible {
-  outline: 2px solid var(--ci-focus);
+  outline: 2px solid var(--color-primary);
   outline-offset: -2px;
 }
 
@@ -57,11 +57,17 @@ textarea {
 }
 
 .ci-button {
-  padding: var(--ci-space-1) var(--ci-space-3);
-  background: var(--ci-bg-raised);
-  border: 1px solid var(--ci-border-strong);
+  height: 28px;
+  padding: 0 var(--ci-space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--ci-radius);
+  color: var(--color-foreground);
   cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
 }
 
 .ci-button:hover:not(:disabled) {
@@ -69,20 +75,20 @@ textarea {
 }
 
 .ci-button:disabled {
-  color: var(--ci-fg-dim);
   cursor: default;
+  opacity: 0.5;
 }
 
 .ci-button--primary {
-  background: var(--ci-focus);
-  border-color: var(--ci-focus);
-  color: var(--ci-fg-strong);
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-foreground);
 }
 
 .ci-button--danger {
-  background: var(--ci-danger-bg);
-  border-color: var(--ci-danger);
-  color: var(--ci-fg-strong);
+  background: var(--color-destructive);
+  border-color: var(--color-destructive);
+  color: var(--color-primary-foreground);
 }
 
 .ci-button--quiet {
@@ -92,21 +98,28 @@ textarea {
 
 .ci-input,
 .ci-select {
+  height: 28px;
   min-width: 0;
-  padding: var(--ci-space-1) var(--ci-space-2);
-  background: var(--ci-bg-raised);
-  border: 1px solid var(--ci-border-strong);
+  padding: 0 var(--ci-space-2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--ci-radius);
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+
+.ci-input:focus-visible,
+.ci-select:focus-visible {
+  border-color: var(--color-primary);
 }
 
 .ci-input::placeholder {
-  color: var(--ci-fg-dim);
+  color: var(--color-muted-foreground);
 }
 
 kbd {
   padding: 0 var(--ci-space-1);
-  background: var(--ci-bg-raised);
-  border: 1px solid var(--ci-border-strong);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--ci-radius);
   font-family: var(--ci-font-code);
   font-size: var(--ci-size-sm);

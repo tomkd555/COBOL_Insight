@@ -42,11 +42,7 @@
   /* ---- Shim: aliases still consumed by shell.css. Delete each with its last consumer. ---- */
   --ci-bg-app: var(--color-background);
   --ci-bg-editor: var(--color-background);
-  --ci-bg-activitybar: var(--color-muted);
-  --ci-bg-sidebar: var(--color-muted);
   --ci-bg-panel: var(--color-muted);
-  --ci-bg-titlebar: var(--color-muted);
-  --ci-bg-statusbar: var(--color-muted);
   --ci-bg-raised: var(--color-surface);
   --ci-bg-active: var(--ci-bg-selected);
   --ci-fg: var(--color-foreground);
