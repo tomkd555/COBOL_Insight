@@ -190,26 +190,30 @@ export function ImportDialog({ inputDir, onClose }: ImportDialogProps): ReactEle
           <div className="ci-form__field">
             <span className="ci-form__label">{text.import.columns}</span>
             <div className="ci-import__columns">
-              <input
-                className="ci-input"
-                type="number"
-                min={MIN_COLUMN}
-                max={MAX_COLUMN}
-                aria-label={text.import.columnFrom}
-                value={columnFrom}
-                onChange={(event) => setColumnFrom(columnValue(event.target.value, columnFrom))}
-                data-testid="import-column-from"
-              />
-              <input
-                className="ci-input"
-                type="number"
-                min={MIN_COLUMN}
-                max={MAX_COLUMN}
-                aria-label={text.import.columnTo}
-                value={columnTo}
-                onChange={(event) => setColumnTo(columnValue(event.target.value, columnTo))}
-                data-testid="import-column-to"
-              />
+              <label className="ci-form__field">
+                <span className="ci-form__label">{text.import.columnFrom}</span>
+                <input
+                  className="ci-input"
+                  type="number"
+                  min={MIN_COLUMN}
+                  max={MAX_COLUMN}
+                  value={columnFrom}
+                  onChange={(event) => setColumnFrom(columnValue(event.target.value, columnFrom))}
+                  data-testid="import-column-from"
+                />
+              </label>
+              <label className="ci-form__field">
+                <span className="ci-form__label">{text.import.columnTo}</span>
+                <input
+                  className="ci-input"
+                  type="number"
+                  min={MIN_COLUMN}
+                  max={MAX_COLUMN}
+                  value={columnTo}
+                  onChange={(event) => setColumnTo(columnValue(event.target.value, columnTo))}
+                  data-testid="import-column-to"
+                />
+              </label>
             </div>
             <span className={columnsValid ? "ci-form__note" : "ci-form__error"}>
               {columnsValid ? text.import.columnsNote : text.import.columnsInvalid}

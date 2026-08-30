@@ -393,12 +393,6 @@ export function SourceEditor({ path, line, onShowFix }: SourceEditorProps): Reac
             ))}
           </select>
         </label>
-        {load.status === "ready" ? (
-          <span>
-            {text.sourceView.codepage} {load.result.codepage}
-            {load.result.detected ? `（${text.sourceView.detected}）` : ""}
-          </span>
-        ) : null}
         {editable ? null : <span className="ci-source__badge">{text.sourceView.readOnly}</span>}
         <div className="ci-source__spacer" />
         {dirty ? (

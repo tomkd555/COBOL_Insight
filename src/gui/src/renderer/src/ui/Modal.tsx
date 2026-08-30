@@ -25,7 +25,10 @@ export function Modal({ title, children, actions, onDismiss, testId, wide }: Mod
   useEffect(() => {
     const dialog = dialogRef.current;
     const focusable = dialog?.querySelectorAll<HTMLElement>("button, [href], input, select, textarea");
-    focusable?.[focusable.length - 1]?.focus();
+    // A disabled last action (an import with nothing pasted yet) cannot take focus; fall back to
+    // the nearest enabled one, so the first Tab still starts inside the dialog.
+    const enabled = focusable === undefined ? [] : [...focusable].filter((element) => !element.matches(":disabled"));
+    enabled[enabled.length - 1]?.focus();
 
     const onKeyDown = (event: globalThis.KeyboardEvent): void => {
       if (event.key === "Escape") {

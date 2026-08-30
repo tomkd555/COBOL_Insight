@@ -21,7 +21,8 @@
   padding: var(--ci-space-2) var(--ci-space-3);
 }
 
-.ci-explorer__toolbar {
+.ci-explorer__toolbar,
+.ci-explorer__filters {
   flex-wrap: wrap;
 }
 
@@ -29,6 +30,11 @@
 .ci-explorer__filters > * {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+/* The filters wrap before either shrinks under its own placeholder. */
+.ci-explorer__filters .ci-input {
+  min-width: 9ch;
 }
 
 .ci-explorer__state {
@@ -71,6 +77,7 @@
 
 .ci-tree__row[aria-selected="true"] {
   background: var(--ci-bg-selected);
+  box-shadow: inset 2px 0 0 var(--color-primary);
   color: var(--color-foreground);
 }
 
@@ -101,22 +108,20 @@
   gap: var(--ci-space-1);
   flex: 0 0 auto;
   padding: 0 var(--ci-space-1);
+  /* A fill and no edge: a static label never carries a control's border. */
   background: var(--color-muted);
-  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   color: var(--color-muted-foreground);
   font-size: var(--ci-size-sm);
 }
 
 .ci-badge--warn {
-  border-color: var(--color-accent);
   color: var(--color-accent);
 }
 
 .ci-badge--count {
   padding: 0 var(--ci-space-2);
   background: var(--color-destructive);
-  border-color: var(--color-destructive);
   border-radius: var(--radius-full);
   color: var(--color-primary-foreground);
 }
@@ -212,15 +217,19 @@
 
 .ci-problems__graph {
   margin-inline-start: var(--ci-space-1);
-  padding: 0;
+  padding: 0 var(--ci-space-1);
   background: none;
-  border: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   color: var(--color-muted-foreground);
   cursor: pointer;
-  transition: color var(--duration-fast) var(--ease-standard);
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
 }
 
 .ci-problems__graph:hover {
+  background: var(--ci-bg-hover);
   color: var(--color-foreground);
 }
 
@@ -304,18 +313,6 @@
   max-width: 36rem;
   margin-inline: auto;
   text-align: center;
-}
-
-.ci-welcome__title {
-  margin: 0;
-  font-size: var(--ci-size-xl);
-  font-weight: 600;
-}
-
-.ci-welcome__lead {
-  margin: 0;
-  color: var(--color-muted-foreground);
-  font-size: var(--ci-size-md);
 }
 
 .ci-welcome__recent,

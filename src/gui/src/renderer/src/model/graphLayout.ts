@@ -59,7 +59,7 @@ const NODE_KIND_SHAPES: readonly {
   { kind: "DB2_TABLE", shape: "cut-rectangle", fill: ["#1f3327", "#dff1e3"], line: ["#6fc28b", "#236c3d"], borderStyle: "solid" },
   { kind: "TRANSACTION", shape: "octagon", fill: ["#312a3a", "#efe3f3"], line: ["#c586c0", "#6d2f80"], borderStyle: "solid" },
   { kind: "BMS_MAP", shape: "rhomboid", fill: ["#22303a", "#dfeef8"], line: ["#9cdcfe", "#17567c"], borderStyle: "solid" },
-  { kind: "EXTERNAL_UTILITY", shape: "tag", fill: ["#2b2f38", "#eceef2"], line: ["#b0b5bf", "#555a64"], borderStyle: "solid" },
+  { kind: "EXTERNAL_UTILITY", shape: "tag", fill: ["#33291f", "#f5e6d8"], line: ["#e0955a", "#8c4a1a"], borderStyle: "solid" },
   { kind: "UNRESOLVED", shape: "diamond", fill: ["#3a2323", "#fbe0dd"], line: ["#ff6b5e", "#a82e24"], borderStyle: "dashed" },
   { kind: "UNANALYZABLE", shape: "star", fill: ["#332b1f", "#f7ead2"], line: ["#e8b04a", "#8a5c14"], borderStyle: "solid" },
 ];
@@ -272,9 +272,9 @@ export function graphStylesheet(theme: ThemeName): cytoscape.StylesheetJsonBlock
     {
       selector: `node.${SELECTED_NODE_CLASS}`,
       style: {
-        "border-width": 3.5,
-        "border-color": dark ? "#ffffff" : "#111111",
-        "border-style": "solid",
+        "overlay-color": dark ? "#6aa7ff" : "#2a66d0",
+        "overlay-padding": 5,
+        "overlay-opacity": 0.35,
       },
     },
   ];

@@ -129,7 +129,7 @@ export function FixDiff({ path, onNotify }: FixDiffProps): ReactElement {
       ) : null}
       {load.status === "ready" ? (
         <>
-          <div className="ci-sidebyside">
+          <div className="ci-sidebyside ci-sidebyside--labels">
             <div className="ci-sidebyside__pane">
               <span className="ci-sidebyside__label">{text.fixView.original}</span>
             </div>

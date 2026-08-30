@@ -6,6 +6,15 @@
   box-sizing: border-box;
 }
 
+/* Form controls and scrollbars follow the theme, not the OS. */
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
 html,
 body,
 #root {
@@ -60,7 +69,7 @@ textarea {
   height: 28px;
   padding: 0 var(--ci-space-3);
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--ci-border-strong);
   border-radius: var(--ci-radius);
   color: var(--color-foreground);
   cursor: pointer;
@@ -88,9 +97,10 @@ textarea {
   color: var(--color-primary-foreground);
 }
 
+/* A disabled primary keeps a trace of its colour, so the screen's action stays findable. */
 .ci-button--primary:disabled {
-  background: var(--color-muted);
-  border-color: var(--color-border);
+  background: color-mix(in oklch, var(--color-primary) 35%, var(--color-background));
+  border-color: transparent;
   color: var(--color-muted-foreground);
 }
 
@@ -117,7 +127,7 @@ textarea {
   min-width: 0;
   padding: 0 var(--ci-space-2);
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--ci-border-strong);
   border-radius: var(--ci-radius);
   transition: border-color var(--duration-fast) var(--ease-standard);
 }

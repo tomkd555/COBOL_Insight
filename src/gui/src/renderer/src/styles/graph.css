@@ -102,7 +102,6 @@
   min-width: 0;
   padding: 0 var(--ci-space-2);
   background: var(--color-muted);
-  border-left: 1px solid var(--color-border);
 }
 
 .ci-graph__detail-title {
@@ -124,6 +123,15 @@
   font-size: var(--ci-size-sm);
   font-weight: 600;
   letter-spacing: 0;
+}
+
+.ci-graph__legend > summary {
+  cursor: pointer;
+}
+
+.ci-graph .ci-chip:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
 
 .ci-graph__table {
@@ -150,8 +158,8 @@
 }
 
 .ci-graph__legend-list {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
   gap: var(--ci-space-1) var(--ci-space-3);
   margin: 0;
   padding: 0;
@@ -167,14 +175,14 @@
 }
 
 .ci-graph__swatch {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-width: 2px;
-  border-radius: var(--radius-sm);
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
 }
 
 .ci-graph__swatch--edge {
+  display: inline-block;
+  width: 14px;
   height: 3px;
   border: none;
 }
@@ -182,12 +190,14 @@
 .ci-graph__state {
   padding: var(--ci-space-4);
   color: var(--color-muted-foreground);
+  word-break: auto-phrase;
 }
 
 /* Only the placeholder that opens the detail pane, matching .ci-trace__title's block padding so the
    two side panes start on one baseline. */
 .ci-graph__detail > .ci-graph__state:first-child {
   padding-block: var(--ci-space-1);
+  font-size: var(--ci-size-sm);
 }
 
 .ci-graph__state--error {
@@ -209,7 +219,6 @@
   min-height: 0;
   min-width: 0;
   background: var(--color-muted);
-  border-right: 1px solid var(--color-border);
 }
 
 .ci-trace__title {

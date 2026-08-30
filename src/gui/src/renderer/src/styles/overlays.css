@@ -75,6 +75,7 @@
 
 .ci-palette__item--active {
   background: var(--ci-bg-selected);
+  box-shadow: inset 3px 0 0 var(--color-primary);
   color: var(--color-foreground);
 }
 
@@ -101,7 +102,7 @@
   max-height: 88vh;
   padding: var(--ci-space-4);
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--ci-border-strong);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   overflow: auto;
@@ -130,16 +131,18 @@
 
 .ci-modal__actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--ci-space-2);
   margin-top: var(--ci-space-4);
 }
 
+/* Bottom right, above the status bar: no view puts a control there. */
 .ci-toasts {
   position: fixed;
-  top: calc(var(--ci-titlebar-height) + var(--ci-tab-height) + var(--ci-space-3));
+  top: auto;
   right: var(--ci-space-3);
-  bottom: auto;
+  bottom: calc(var(--ci-statusbar-height) + var(--ci-space-3));
   display: flex;
   flex-direction: column;
   gap: var(--ci-space-2);

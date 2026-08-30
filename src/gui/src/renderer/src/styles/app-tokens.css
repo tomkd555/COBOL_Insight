@@ -11,7 +11,8 @@
   /* The one value not mixed from the palette: a scrim must darken under both themes, and the dark
      theme's foreground is light. check_slop reads hex/rgb/hsl only, and this is the deliberate case. */
   --ci-bg-overlay: oklch(0% 0 0 / 45%);
-  --ci-border-strong: color-mix(in oklch, var(--color-border) 55%, var(--color-foreground));
+  /* Control edges: the separator border is too faint for a boundary (WCAG 1.4.11 wants 3:1). */
+  --ci-border-strong: color-mix(in oklch, var(--color-border) 45%, var(--color-muted-foreground));
   --ci-danger-bg: color-mix(in oklch, var(--color-destructive) 20%, var(--color-background));
 
   /* Type. The UI face comes from theme.css; code is the fixed-pitch member of the same family. */

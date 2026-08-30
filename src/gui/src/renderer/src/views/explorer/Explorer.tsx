@@ -151,7 +151,7 @@ export function Explorer({ onSelectFolder, onOpenAsset }: ExplorerProps): ReactE
       );
     }
     if (project.inventory.status === "none") {
-      return null;
+      return <p className="ci-explorer__state">{text.explorer.emptyNoFolder}</p>;
     }
     if (rows.length === 0) {
       return (

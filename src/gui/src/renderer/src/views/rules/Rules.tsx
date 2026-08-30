@@ -152,6 +152,7 @@ export function Rules({ notify }: RulesProps): ReactElement {
                   {entry.name}
                 </button>
                 {severityBadge(entry)}
+                <div className="ci-rules__meta">
                 {entry.hasFix ? (
                   <span className="ci-badge">{text.rules.hasFix}</span>
                 ) : null}
@@ -174,6 +175,7 @@ export function Rules({ notify }: RulesProps): ReactElement {
                     </option>
                   ))}
                 </select>
+                </div>
               </div>
             ))}
           </section>

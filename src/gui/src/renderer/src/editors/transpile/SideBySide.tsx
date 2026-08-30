@@ -39,6 +39,8 @@ const OPTIONS: monacoApi.editor.IStandaloneEditorConstructionOptions = {
   smoothScrolling: false,
   minimap: { enabled: false },
   lineNumbersMinChars: 5,
+  // The left pane is fixed-format COBOL: the same column rulers as the source view.
+  rulers: [6, 7, 11, 72],
   renderLineHighlight: "line",
   scrollBeyondLastLine: false,
   wordWrap: "off",

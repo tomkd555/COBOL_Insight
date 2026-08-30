@@ -17,12 +17,9 @@
 
 .ci-rules__toolbar {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--ci-space-2);
   padding: var(--ci-space-2) var(--ci-space-2) 0;
-}
-
-.ci-rules__toolbar > * {
-  min-width: 0;
 }
 
 .ci-rules__state {
@@ -57,13 +54,15 @@
   padding: 0;
 }
 
+/* Two lines per rule: the toggle, name and severity on the first, the badges and override on the
+   second, so every column holds one x down the list. */
 .ci-rules__row {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--ci-space-1);
-  min-height: 28px;
-  padding: 0 var(--ci-space-2);
+  column-gap: var(--ci-space-1);
+  row-gap: 2px;
+  padding: var(--ci-space-1) var(--ci-space-2);
   font-size: var(--ci-size-sm);
 }
 
@@ -71,19 +70,35 @@
   background: var(--ci-bg-hover);
 }
 
-.ci-rules__row .ci-select {
+.ci-rules__meta {
+  display: flex;
+  grid-column: 2 / -1;
+  align-items: center;
+  gap: var(--ci-space-1);
+}
+
+.ci-rules__meta .ci-select {
   height: 24px;
+  margin-inline-start: auto;
 }
 
 .ci-rules__name {
-  flex: 1 1 40%;
   min-width: 0;
   padding: 0;
+  overflow: hidden;
   background: transparent;
   border: none;
   color: inherit;
   cursor: pointer;
   text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A rule switched off reads as off, the way an off chip does. */
+.ci-rules__row:has(> input:not(:checked)) .ci-rules__name {
+  color: var(--color-muted-foreground);
+  text-decoration: line-through;
 }
 
 .ci-rules__id {
@@ -161,9 +176,9 @@
 
 .ci-form__legend {
   padding: 0;
-  color: var(--color-muted-foreground);
-  font-size: var(--ci-size-sm);
-  font-weight: 400;
+  color: var(--color-foreground);
+  font-size: var(--ci-size-md);
+  font-weight: 600;
 }
 
 .ci-form__field {
@@ -222,7 +237,7 @@
   height: 24px;
   padding: 0 var(--ci-space-2);
   background: transparent;
-  border: 1px dashed var(--color-border);
+  border: 1px dashed var(--ci-border-strong);
   border-radius: var(--radius-full);
   color: var(--color-muted-foreground);
   cursor: pointer;
@@ -252,6 +267,11 @@
    choice, not an exclusion, so the off state keeps no strikethrough. */
 [role="radiogroup"] .ci-chip {
   text-decoration: none;
+}
+
+[role="radiogroup"] .ci-chip--on {
+  background: color-mix(in oklch, var(--color-primary) 15%, var(--color-surface));
+  border-color: var(--color-primary);
 }
 
 /* ---------------------------------------------------------------- custom rules */
@@ -301,7 +321,7 @@
   margin-top: var(--ci-space-3);
   padding: var(--ci-space-2);
   background: var(--color-muted);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--ci-border-strong);
   border-radius: var(--radius-md);
   font-family: var(--ci-font-code);
   white-space: pre;
@@ -342,6 +362,7 @@
   align-items: center;
   justify-content: flex-end;
   gap: var(--ci-space-2);
+  max-width: 72ch;
 }
 
 /* ---------------------------------------------------------------- terminal import */
@@ -386,6 +407,7 @@
 
 .ci-import__paste {
   background: var(--color-surface);
+  border-color: var(--ci-border-strong);
   resize: vertical;
   transition: border-color var(--duration-fast) var(--ease-standard);
 }

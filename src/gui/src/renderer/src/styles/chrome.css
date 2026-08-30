@@ -69,7 +69,7 @@
   height: 28px;
   padding: 0 var(--ci-space-2);
   background: transparent;
-  border: 1px solid transparent;
+  border: 1px solid var(--color-border);
   border-radius: var(--ci-radius);
   color: var(--color-muted-foreground);
   cursor: pointer;
@@ -106,7 +106,7 @@
   height: 28px;
   padding: 0 var(--ci-space-3);
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--ci-border-strong);
   border-radius: var(--ci-radius);
   color: var(--color-foreground);
   cursor: pointer;
@@ -131,8 +131,15 @@
 }
 
 .ci-titlebar__action:disabled {
+  background: var(--color-muted);
+  border-color: var(--color-border);
+  color: var(--color-muted-foreground);
   cursor: default;
-  opacity: 0.5;
+}
+
+.ci-titlebar__action--primary:disabled {
+  background: color-mix(in oklch, var(--color-primary) 35%, var(--color-background));
+  border-color: transparent;
 }
 
 /* ---------------------------------------------------------------- activity bar */
@@ -203,8 +210,8 @@
 .ci-sidebar__body {
   flex: 1 1 auto;
   min-height: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
+  /* A row wider than the bar scrolls rather than losing its badges at the edge. */
+  overflow: auto;
 }
 
 /* ---------------------------------------------------------------- split handles */
@@ -255,6 +262,11 @@
   border-bottom: 1px solid var(--color-border);
   overflow-x: auto;
   overflow-y: hidden;
+}
+
+/* No tab, no strip: the welcome view is not headed by an empty band. */
+.ci-tabs:empty {
+  display: none;
 }
 
 .ci-tab {

@@ -201,8 +201,9 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
         </button>
         <button
           type="button"
-          className="ci-button"
+          className="ci-button ci-button--quiet"
           aria-label={text.graph.zoomOut}
+          title={text.graph.zoomOut}
           onClick={() => canvasRef.current?.zoomBy(1 / 1.2)}
           data-testid="graph-zoom-out"
         >
@@ -210,8 +211,9 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
         </button>
         <button
           type="button"
-          className="ci-button"
+          className="ci-button ci-button--quiet"
           aria-label={text.graph.zoomIn}
+          title={text.graph.zoomIn}
           onClick={() => canvasRef.current?.zoomBy(1.2)}
           data-testid="graph-zoom-in"
         >
@@ -237,6 +239,7 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
             type="button"
             className={`ci-chip${filter.kinds[kind] ? " ci-chip--on" : ""}`}
             aria-pressed={filter.kinds[kind]}
+            disabled={counts[kind] === 0}
             onClick={() => setFilter(toggleKind(filter, kind))}
             data-testid={`graph-kind-${kind}`}
           >
@@ -269,7 +272,7 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
             onLayoutRunning={setLayoutRunning}
           />
         </div>
-        <GraphDetailPane detail={detail} theme={theme} onOpenAsset={openAsset} />
+        <GraphDetailPane detail={detail} theme={theme} counts={counts} onOpenAsset={openAsset} />
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent, type ReactElement } from "react";
+import { useEffect, useRef, type KeyboardEvent, type ReactElement } from "react";
 import { text } from "../i18n/text";
 import { isTabDirty, useWorkbench, useWorkbenchDispatch } from "../state/workbenchStore";
 
@@ -15,6 +15,15 @@ export function EditorTabs({ onRequestClose }: EditorTabsProps): ReactElement {
   const workbench = useWorkbench();
   const dispatch = useWorkbenchDispatch();
   const stripRef = useRef<HTMLDivElement | null>(null);
+
+  // A strip wider than the group scrolls; the selected tab is brought into view when it changes.
+  useEffect(() => {
+    const selected = stripRef.current?.querySelector<HTMLElement>('[aria-selected="true"]');
+    // jsdom has no scrollIntoView; the guard keeps the shell tests running.
+    if (selected !== null && selected !== undefined && typeof selected.scrollIntoView === "function") {
+      selected.scrollIntoView({ inline: "nearest", block: "nearest" });
+    }
+  }, [workbench.activeTabId]);
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     if (event.key === "ArrowLeft" || event.key === "ArrowRight") {

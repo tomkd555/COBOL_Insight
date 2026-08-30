@@ -121,6 +121,7 @@ export function Settings({ notify }: SettingsEditorProps): ReactElement {
 
   return (
     <div className="ci-settings" data-testid="settings">
+      <h2 className="ci-settings__title">{text.settings.title}</h2>
       <fieldset className="ci-form">
         <legend className="ci-form__legend">{text.settings.theme}</legend>
         <div className="ci-chips" role="radiogroup" aria-label={text.settings.theme}>

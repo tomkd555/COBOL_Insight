@@ -6,6 +6,7 @@ import {
   nodeKindStyles,
   isGraphNodeKind,
   type GraphNodeKind,
+  type NodeKindStyle,
 } from "../../model/graphLayout";
 import type { ThemeName } from "../../vendor/monarch";
 
@@ -14,8 +15,61 @@ export interface GraphDetailPaneProps {
   theme: ThemeName;
   /** The selected node, or null when nothing is selected. */
   detail: GraphNodeDetail | null;
+  /** How many nodes of each kind the project has; the legend hides a kind with none. */
+  counts: Readonly<Record<GraphNodeKind, number>>;
   /** Opens the asset the node stands for. */
   onOpenAsset: (path: string, line: number | null) => void;
+}
+
+/** The inner mark for one node kind's swatch, in a 16x16 viewBox, matching the cytoscape shape. */
+function shapeMark(shape: NodeKindStyle["shape"]): ReactElement {
+  switch (shape) {
+    case "hexagon":
+      return <polygon points="4,1 12,1 15,8 12,15 4,15 1,8" />;
+    case "round-rectangle":
+      return <rect x="1" y="3" width="14" height="10" rx="3" />;
+    case "rectangle":
+      return <rect x="1" y="3" width="14" height="10" />;
+    case "ellipse":
+      return <circle cx="8" cy="8" r="6.5" />;
+    case "barrel":
+      return <rect x="1" y="3" width="14" height="10" rx="5" ry="3" />;
+    case "cut-rectangle":
+      return <polygon points="3,1 13,1 15,3 15,13 13,15 3,15 1,13 1,3" />;
+    case "octagon":
+      return <polygon points="5,1 11,1 15,5 15,11 11,15 5,15 1,11 1,5" />;
+    case "rhomboid":
+      return <polygon points="5,2 15,2 11,14 1,14" />;
+    case "tag":
+      return <polygon points="1,2 11,2 15,8 11,14 1,14" />;
+    case "diamond":
+      return <polygon points="8,1 15,8 8,15 1,8" />;
+    case "star":
+      return (
+        <polygon points="8,1 9.9,5.9 15,6.2 11,9.6 12.3,14.6 8,11.8 3.7,14.6 5,9.6 1,6.2 6.1,5.9" />
+      );
+    default:
+      return <rect x="1" y="3" width="14" height="10" />;
+  }
+}
+
+/** One node kind's swatch: the cytoscape shape it is drawn with, not a generic square. */
+function NodeSwatch({ style }: { style: NodeKindStyle }): ReactElement {
+  return (
+    <svg
+      className="ci-graph__swatch"
+      viewBox="0 0 16 16"
+      width="14"
+      height="14"
+      aria-hidden="true"
+      fill={style.background}
+      stroke={style.border}
+      strokeWidth={1.5}
+      strokeDasharray={style.borderStyle === "dashed" ? "2 1.5" : undefined}
+    >
+      {shapeMark(style.shape)}
+    </svg>
+  );
 }
 
 /** The kind's name, falling back to the raw value for a kind this build does not know. */
@@ -86,26 +140,28 @@ function EdgeTable({
   );
 }
 
-/** The legend: every node kind's shape and colour, and every edge kind's colour. */
-function Legend({ theme }: { theme: ThemeName }): ReactElement {
+/** The legend: every node kind present in the project, its shape and colour, and every edge kind. */
+function Legend({
+  theme,
+  counts,
+  open,
+}: {
+  theme: ThemeName;
+  counts: Readonly<Record<GraphNodeKind, number>>;
+  open: boolean;
+}): ReactElement {
   return (
-    <section className="ci-graph__legend" data-testid="graph-legend">
-      <h4 className="ci-graph__subtitle">{text.graph.legend}</h4>
+    <details className="ci-graph__legend" open={open} data-testid="graph-legend">
+      <summary className="ci-graph__subtitle">{text.graph.legend}</summary>
       <ul className="ci-graph__legend-list">
-        {nodeKindStyles(theme).map((style) => (
-          <li key={style.kind}>
-            <span
-              className="ci-graph__swatch"
-              style={{
-                background: style.background,
-                borderColor: style.border,
-                borderStyle: style.borderStyle,
-              }}
-              aria-hidden="true"
-            />
-            {text.graph.nodeKind[style.kind]}
-          </li>
-        ))}
+        {nodeKindStyles(theme)
+          .filter((style) => counts[style.kind] > 0)
+          .map((style) => (
+            <li key={style.kind}>
+              <NodeSwatch style={style} />
+              {text.graph.nodeKind[style.kind]}
+            </li>
+          ))}
         {edgeKindStyles(theme).map((style) => (
           <li key={style.kind}>
             <span
@@ -117,12 +173,17 @@ function Legend({ theme }: { theme: ThemeName }): ReactElement {
           </li>
         ))}
       </ul>
-    </section>
+    </details>
   );
 }
 
 /** The right-hand pane: what is selected, the calls into and out of it, and the legend. */
-export function GraphDetailPane({ detail, theme, onOpenAsset }: GraphDetailPaneProps): ReactElement {
+export function GraphDetailPane({
+  detail,
+  theme,
+  counts,
+  onOpenAsset,
+}: GraphDetailPaneProps): ReactElement {
   return (
     <aside className="ci-graph__detail" aria-label={text.graph.detail} data-testid="graph-detail">
       {detail === null ? (
@@ -147,7 +208,7 @@ export function GraphDetailPane({ detail, theme, onOpenAsset }: GraphDetailPaneP
           <EdgeTable caption={text.graph.outgoing} edges={detail.outgoing} />
         </>
       )}
-      <Legend theme={theme} />
+      <Legend theme={theme} counts={counts} open={detail === null} />
     </aside>
   );
 }

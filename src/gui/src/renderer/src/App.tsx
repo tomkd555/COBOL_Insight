@@ -391,18 +391,6 @@ function Shell(): ReactElement {
               </button>
               <button
                 type="button"
-                className="ci-button ci-button--primary"
-                onClick={() => {
-                  const id = conflict.tabId;
-                  sourceSave.dismissConflict();
-                  void sourceSave.reload(id);
-                }}
-                data-testid="save-conflict-reload"
-              >
-                {text.save.reload}
-              </button>
-              <button
-                type="button"
                 className="ci-button"
                 onClick={sourceSave.showConflictDiff}
                 data-testid="save-conflict-diff"
@@ -416,6 +404,18 @@ function Shell(): ReactElement {
                 data-testid="save-conflict-cancel"
               >
                 {text.save.conflictCancel}
+              </button>
+              <button
+                type="button"
+                className="ci-button ci-button--primary"
+                onClick={() => {
+                  const id = conflict.tabId;
+                  sourceSave.dismissConflict();
+                  void sourceSave.reload(id);
+                }}
+                data-testid="save-conflict-reload"
+              >
+                {text.save.reload}
               </button>
             </>
           }
