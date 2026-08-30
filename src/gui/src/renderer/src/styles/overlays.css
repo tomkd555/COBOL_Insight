@@ -1,0 +1,173 @@
+/*
+ * What floats over the shell: palette, modal, toast, and the message strips.
+ *
+ * Class names follow BEM; every value comes from a token. No region carries a pixel min-width of
+ * its own: a hard floor would produce a horizontal scrollbar as soon as the viewport shrank under
+ * zoom, leaving the page scrolling in both directions at once.
+ */
+
+/* ---------------------------------------------------------------- palette, modal, toast */
+
+.ci-palette,
+.ci-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+}
+
+.ci-palette__backdrop,
+.ci-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--ci-bg-overlay);
+}
+
+
+.ci-palette__dialog {
+  position: relative;
+  margin: 10vh auto 0;
+  width: min(600px, 90vw);
+  background: var(--ci-bg-raised);
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 40%);
+  overflow: hidden;
+}
+
+.ci-palette__input {
+  width: 100%;
+  padding: var(--ci-space-2) var(--ci-space-3);
+  background: var(--ci-bg-app);
+  border: none;
+  border-bottom: 1px solid var(--ci-border);
+}
+
+.ci-palette__list {
+  margin: 0;
+  padding: 0;
+  max-height: 50vh;
+  overflow: auto;
+  list-style: none;
+}
+
+.ci-palette__item {
+  display: flex;
+  gap: var(--ci-space-2);
+  padding: var(--ci-space-1) var(--ci-space-3);
+  cursor: pointer;
+}
+
+.ci-palette__item--active {
+  background: var(--ci-bg-active);
+  color: var(--ci-fg-strong);
+}
+
+.ci-palette__category {
+  flex: 0 0 auto;
+  color: var(--ci-fg-dim);
+}
+
+.ci-palette__empty {
+  margin: 0;
+  padding: var(--ci-space-3);
+  color: var(--ci-fg-dim);
+}
+
+.ci-modal__dialog {
+  position: relative;
+  margin: 20vh auto 0;
+  width: min(440px, 90vw);
+  padding: var(--ci-space-4);
+  background: var(--ci-bg-raised);
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 40%);
+}
+
+.ci-modal__dialog--wide {
+  width: min(1000px, 92vw);
+}
+
+.ci-modal__diff {
+  height: min(420px, 50vh);
+  margin-top: var(--ci-space-3);
+  border: 1px solid var(--ci-border-strong);
+}
+
+.ci-modal__title {
+  margin: 0 0 var(--ci-space-2);
+  font-size: var(--ci-size-lg);
+}
+
+.ci-modal__body {
+  color: var(--ci-fg-dim);
+}
+
+.ci-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--ci-space-2);
+  margin-top: var(--ci-space-4);
+}
+
+.ci-toasts {
+  position: fixed;
+  right: var(--ci-space-3);
+  bottom: calc(var(--ci-statusbar-height) + var(--ci-space-3));
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-space-2);
+  z-index: 20;
+  max-width: min(420px, 80vw);
+}
+
+.ci-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ci-space-2);
+  padding: var(--ci-space-2) var(--ci-space-3);
+  background: var(--ci-bg-raised);
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 40%);
+}
+
+.ci-toast--failed {
+  border-color: var(--ci-danger);
+}
+
+.ci-toast__close {
+  background: transparent;
+  border: none;
+  color: var(--ci-fg-dim);
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------------- strips */
+
+.ci-strip {
+  margin: var(--ci-space-2) 0;
+  padding: var(--ci-space-2);
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-strip--error {
+  background: var(--ci-danger-bg);
+  border-color: var(--ci-danger);
+}
+
+.ci-strip--ok {
+  border-color: var(--ci-kind-cobol);
+}
+
+.ci-strip__title {
+  margin: 0;
+  color: var(--ci-fg-strong);
+}
+
+.ci-strip__list {
+  margin: var(--ci-space-1) 0 0;
+  padding-inline-start: var(--ci-space-4);
+}

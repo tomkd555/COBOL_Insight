@@ -6,7 +6,13 @@ import { applyStartupTheme } from "./theme";
 import "../../../theme.css";
 import "./styles/app-tokens.css";
 import "./styles/base.css";
-import "./styles/shell.css";
+import "./styles/chrome.css";
+import "./styles/lists.css";
+import "./styles/editor.css";
+import "./styles/overlays.css";
+import "./styles/forms.css";
+import "./styles/graph.css";
+import "./styles/report.css";
 
 // The shell's icons are Monaco's codicon glyphs, so the font is registered before the first paint.
 registerCodicons();

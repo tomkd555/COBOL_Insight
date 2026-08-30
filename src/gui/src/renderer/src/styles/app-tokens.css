@@ -3,7 +3,7 @@
  * theme.css (generated from tokens.json) holds the palette. This file holds what the shell needs on
  * top of it: derived surfaces mixed from the palette, the code font, and the fixed chrome sizes.
  *
- * The --ci-* names below are the shim that keeps every not-yet-rewritten rule in shell.css working;
+ * The --ci-* names below are the shim that keeps every not-yet-rewritten rule in the component stylesheets working;
  * an alias is deleted when its last consumer is rewritten against the --color-* names directly.
  */
 
@@ -39,7 +39,7 @@
   --ci-split-size: 6px;
   --ci-radius: var(--radius-md);
 
-  /* ---- Shim: aliases still consumed by shell.css. Delete each with its last consumer. ---- */
+  /* ---- Shim: aliases still consumed by the component stylesheets. Delete each with its last consumer. ---- */
   --ci-bg-app: var(--color-background);
   --ci-bg-editor: var(--color-background);
   --ci-bg-panel: var(--color-muted);

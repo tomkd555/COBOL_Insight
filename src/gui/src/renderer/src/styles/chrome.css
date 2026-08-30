@@ -1,0 +1,416 @@
+/*
+ * The shell frame and its chrome: title bar, activity bar, side bar, split handles, editor group, panel, status bar.
+ *
+ * Class names follow BEM; every value comes from a token. No region carries a pixel min-width of
+ * its own: a hard floor would produce a horizontal scrollbar as soon as the viewport shrank under
+ * zoom, leaving the page scrolling in both directions at once.
+ */
+
+/* ---------------------------------------------------------------- shell frame */
+
+.ci-shell {
+  display: grid;
+  grid-template-rows: var(--ci-titlebar-height) 1fr var(--ci-statusbar-height);
+  height: 100%;
+  overflow: hidden;
+}
+
+.ci-shell__body {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ci-shell__side {
+  flex: 0 0 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ci-shell__main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.ci-shell__panel {
+  flex: 0 0 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------- title bar */
+
+.ci-titlebar {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-2);
+  height: var(--ci-titlebar-height);
+  padding-inline: var(--ci-space-3);
+  background: var(--color-muted);
+  border-bottom: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+.ci-titlebar__name {
+  color: var(--color-foreground);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ci-titlebar__folder {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-1);
+  min-width: 0;
+  height: 28px;
+  padding: 0 var(--ci-space-2);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--ci-radius);
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.ci-titlebar__folder:hover:not(:disabled) {
+  background: var(--ci-bg-hover);
+}
+
+.ci-titlebar__folder-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ci-titlebar__spacer {
+  flex: 1 1 auto;
+}
+
+.ci-titlebar__stage {
+  color: var(--color-muted-foreground);
+  white-space: nowrap;
+}
+
+.ci-titlebar__progress {
+  width: 96px;
+}
+
+.ci-titlebar__action {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-1);
+  height: 28px;
+  padding: 0 var(--ci-space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--ci-radius);
+  color: var(--color-foreground);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.ci-titlebar__action:hover:not(:disabled) {
+  background: var(--ci-bg-hover);
+}
+
+.ci-titlebar__action--primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-foreground);
+}
+
+.ci-titlebar__action--primary:hover:not(:disabled) {
+  background: var(--color-primary);
+}
+
+.ci-titlebar__action:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* ---------------------------------------------------------------- activity bar */
+
+.ci-activitybar {
+  display: flex;
+  flex: 0 0 var(--ci-activitybar-width);
+  flex-direction: column;
+  background: var(--color-muted);
+  border-right: 1px solid var(--color-border);
+}
+
+.ci-activitybar__group {
+  display: flex;
+  flex-direction: column;
+}
+
+/* The editors sit at the foot of the bar, apart from the side-bar views. */
+.ci-activitybar__group--end {
+  margin-top: auto;
+}
+
+.ci-activitybar__item {
+  display: grid;
+  place-items: center;
+  height: var(--ci-activitybar-width);
+  background: transparent;
+  border: none;
+  border-left: 2px solid transparent;
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  font-size: 20px;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.ci-activitybar__item:hover {
+  background: var(--ci-bg-hover);
+  color: var(--color-foreground);
+}
+
+.ci-activitybar__item--active {
+  border-left-color: var(--color-primary);
+  color: var(--color-foreground);
+}
+
+/* ---------------------------------------------------------------- side bar */
+
+.ci-sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  background: var(--color-muted);
+  border-right: 1px solid var(--color-border);
+}
+
+.ci-sidebar__title {
+  margin: 0;
+  padding: var(--ci-space-2) var(--ci-space-3);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+  font-weight: 400;
+}
+
+.ci-sidebar__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* ---------------------------------------------------------------- split handles */
+
+.ci-split {
+  flex: 0 0 var(--ci-split-size);
+  background: transparent;
+  cursor: col-resize;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.ci-split--horizontal {
+  cursor: row-resize;
+}
+
+.ci-split:hover,
+.ci-split--dragging {
+  background: var(--color-primary);
+}
+
+.ci-split__grip {
+  display: block;
+  height: 100%;
+}
+
+/* ---------------------------------------------------------------- editor group */
+
+.ci-editorgroup {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: var(--color-background);
+}
+
+.ci-editorgroup__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.ci-tabs {
+  display: flex;
+  flex: 0 0 var(--ci-tab-height);
+  background: var(--color-muted);
+  border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
+}
+
+.ci-tab {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  border-right: 1px solid var(--color-border);
+  border-top: 1px solid transparent;
+  color: var(--color-muted-foreground);
+}
+
+.ci-tab--active {
+  background: var(--color-background);
+  border-top-color: var(--color-primary);
+  color: var(--color-foreground);
+}
+
+.ci-tab__label {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-1);
+  padding: 0 var(--ci-space-2) 0 var(--ci-space-3);
+  height: 100%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ci-tab__dirty {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
+.ci-tab__close {
+  padding: 0 var(--ci-space-2);
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.ci-tab:hover .ci-tab__close,
+.ci-tab__close:focus-visible,
+.ci-tab--active .ci-tab__close {
+  opacity: 1;
+}
+
+.ci-tab__close:hover {
+  background: var(--ci-bg-hover);
+}
+
+/* ---------------------------------------------------------------- panel */
+
+.ci-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--color-muted);
+  border-top: 1px solid var(--color-border);
+}
+
+.ci-panel__header {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ci-panel__tabs {
+  display: flex;
+  flex: 1 1 auto;
+  overflow-x: auto;
+}
+
+.ci-panel__tab {
+  padding: var(--ci-space-2) var(--ci-space-3);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.ci-panel__tab--active {
+  border-bottom-color: var(--color-primary);
+  color: var(--color-foreground);
+}
+
+.ci-panel__close {
+  padding: var(--ci-space-2);
+  background: transparent;
+  border: none;
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.ci-panel__close:hover {
+  background: var(--ci-bg-hover);
+}
+
+.ci-panel__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* ---------------------------------------------------------------- status bar */
+
+.ci-statusbar {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-3);
+  height: var(--ci-statusbar-height);
+  padding-inline: var(--ci-space-3);
+  background: var(--color-muted);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+  overflow: hidden;
+}
+
+.ci-statusbar__item {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-1);
+  white-space: nowrap;
+}
+
+.ci-statusbar__item--button {
+  padding: 0 var(--ci-space-1);
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: inherit;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.ci-statusbar__item--button:hover {
+  background: var(--ci-bg-hover);
+}
+
+.ci-statusbar__spacer {
+  flex: 1 1 auto;
+}
+
+.ci-statusbar__item--dim {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

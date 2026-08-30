@@ -1,0 +1,63 @@
+/*
+ * The report view.
+ *
+ * Class names follow BEM; every value comes from a token. No region carries a pixel min-width of
+ * its own: a hard floor would produce a horizontal scrollbar as soon as the viewport shrank under
+ * zoom, leaving the page scrolling in both directions at once.
+ */
+
+/* ---------------------------------------------------------------- report */
+
+.ci-report {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-space-2);
+  height: 100%;
+  min-height: 0;
+  padding: var(--ci-space-2);
+}
+
+.ci-report__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ci-space-2);
+}
+
+.ci-report__title {
+  flex: 1;
+  margin: 0;
+  font-size: var(--ci-size-lg);
+}
+
+.ci-report__path,
+.ci-report__state {
+  margin: 0;
+  color: var(--ci-fg-dim);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-report__state--error {
+  color: var(--ci-danger);
+}
+
+.ci-report__frame {
+  flex: 1;
+  min-height: 0;
+  background: #ffffff;
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius);
+}
+
+.ci-report__text {
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: var(--ci-space-2);
+  background: var(--ci-bg-raised);
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius);
+  font-family: var(--ci-font-code);
+  white-space: pre;
+}
