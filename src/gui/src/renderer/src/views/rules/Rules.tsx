@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactElement } from "react";
-import { text } from "../../text";
+import { text } from "../../i18n/text";
 import { useProject } from "../../state/projectStore";
 import { useRulesState } from "../../state/rulesStore";
 import { useRules } from "../../state/useRules";
@@ -152,10 +152,9 @@ export function Rules({ notify }: RulesProps): ReactElement {
                   {entry.name}
                 </button>
                 {severityBadge(entry)}
+                <div className="ci-rules__meta">
                 {entry.hasFix ? (
-                  <span className="ci-badge" title={text.rules.hasFix}>
-                    {text.rules.hasFix}
-                  </span>
+                  <span className="ci-badge">{text.rules.hasFix}</span>
                 ) : null}
                 <span className={`ci-badge ci-badge--${entry.source === "user" ? "copybook" : "other"}`}>
                   {entry.source === "user" ? text.rules.user : text.rules.builtin}
@@ -176,6 +175,7 @@ export function Rules({ notify }: RulesProps): ReactElement {
                     </option>
                   ))}
                 </select>
+                </div>
               </div>
             ))}
           </section>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import type { GraphData } from "../../../../shared/ipc";
 import { api, errorMessage } from "../../api";
-import { text } from "../../text";
+import { text } from "../../i18n/text";
 import { artifactItems, useProject } from "../../state/projectStore";
 import { sourceTab, useWorkbenchDispatch } from "../../state/workbenchStore";
 import {
@@ -13,7 +13,8 @@ import {
   withDepth,
   type GraphFilter,
 } from "../../model/graphFilter";
-import { buildGraphElements, NODE_KIND_STYLES, isGraphNodeKind } from "../../model/graphLayout";
+import { buildGraphElements, NODE_KINDS, isGraphNodeKind } from "../../model/graphLayout";
+import { useResolvedTheme } from "../../state/useTheme";
 import { nodeDetail } from "../../model/graphDetail";
 import { buildTrace, flattenTrace, initialExpanded, type TraceNode } from "../../model/traceTree";
 import { GraphCanvas, type GraphCanvasHandle } from "./GraphCanvas";
@@ -43,6 +44,7 @@ const EMPTY_GRAPH: GraphData = { nodes: [], edges: [], paragraphs: [], paragraph
  * the tree and the canvas in both directions, so the keyboard reaches everything the mouse does.
  */
 export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
+  const theme = useResolvedTheme();
   const project = useProject();
   const dispatch = useWorkbenchDispatch();
   const canvasRef = useRef<GraphCanvasHandle>(null);
@@ -136,7 +138,11 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
   };
 
   if (state.status === "idle") {
-    return <p className="ci-graph__state">{text.graph.empty}</p>;
+    return (
+      <p className="ci-graph__state">
+        {project.inputDir === null ? text.graph.emptyNoFolder : text.graph.empty}
+      </p>
+    );
   }
   if (state.status === "loading") {
     return <p className="ci-graph__state">{text.graph.loading}</p>;
@@ -177,7 +183,9 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
             onChange={(event) => setFilter(withDepth(filter, Number(event.target.value)))}
             data-testid="graph-depth"
           />
-          <span>{filter.depth}</span>
+          <span>
+            {filter.depth} / {DEPTH_LIMITS.max}
+          </span>
         </label>
         <button
           type="button"
@@ -189,25 +197,27 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
           }}
           data-testid="graph-recenter"
         >
-          {text.graph.recenter}
+          {text.graph.clearFocus}
         </button>
         <button
           type="button"
-          className="ci-button"
+          className="ci-button ci-button--quiet"
           aria-label={text.graph.zoomOut}
+          title={text.graph.zoomOut}
           onClick={() => canvasRef.current?.zoomBy(1 / 1.2)}
           data-testid="graph-zoom-out"
         >
-          −
+          <span className="codicon codicon-zoom-out" aria-hidden="true" />
         </button>
         <button
           type="button"
-          className="ci-button"
+          className="ci-button ci-button--quiet"
           aria-label={text.graph.zoomIn}
+          title={text.graph.zoomIn}
           onClick={() => canvasRef.current?.zoomBy(1.2)}
           data-testid="graph-zoom-in"
         >
-          ＋
+          <span className="codicon codicon-zoom-in" aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -223,17 +233,18 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
       </div>
 
       <div className="ci-chips" role="group" aria-label={text.graph.kinds}>
-        {NODE_KIND_STYLES.map((style) => (
+        {NODE_KINDS.map((kind) => (
           <button
-            key={style.kind}
+            key={kind}
             type="button"
-            className={`ci-chip${filter.kinds[style.kind] ? " ci-chip--on" : ""}`}
-            aria-pressed={filter.kinds[style.kind]}
-            onClick={() => setFilter(toggleKind(filter, style.kind))}
-            data-testid={`graph-kind-${style.kind}`}
+            className={`ci-chip${filter.kinds[kind] ? " ci-chip--on" : ""}`}
+            aria-pressed={filter.kinds[kind]}
+            disabled={counts[kind] === 0}
+            onClick={() => setFilter(toggleKind(filter, kind))}
+            data-testid={`graph-kind-${kind}`}
           >
-            {text.graph.nodeKind[style.kind]}
-            <span className="ci-chip__count">{counts[style.kind]}</span>
+            {text.graph.nodeKind[kind]}
+            <span className="ci-chip__count">{counts[kind]}</span>
           </button>
         ))}
       </div>
@@ -256,11 +267,12 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
             ref={canvasRef}
             elements={elements}
             selectedId={selectedNodeId}
+            theme={theme}
             onSelectNode={selectGraphNode}
             onLayoutRunning={setLayoutRunning}
           />
         </div>
-        <GraphDetailPane detail={detail} onOpenAsset={openAsset} />
+        <GraphDetailPane detail={detail} theme={theme} counts={counts} onOpenAsset={openAsset} />
       </div>
     </div>
   );

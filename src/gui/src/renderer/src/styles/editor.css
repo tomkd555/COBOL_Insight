@@ -1,0 +1,307 @@
+/*
+ * The editor surfaces: source view, the Monaco host, the COPY expansion zones, the transpile view.
+ *
+ * Class names follow BEM; every value comes from a token. No region carries a pixel min-width of
+ * its own: a hard floor would produce a horizontal scrollbar as soon as the viewport shrank under
+ * zoom, leaving the page scrolling in both directions at once.
+ */
+
+/* ---------------------------------------------------------------- source view */
+
+.ci-source {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+}
+
+.ci-source__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-3);
+  padding: var(--ci-space-1) var(--ci-space-3);
+  background: var(--color-muted);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-source__body {
+  flex: 1 1 auto;
+  margin: 0;
+  padding: var(--ci-space-2) 0;
+  overflow: auto;
+  font-family: var(--ci-font-code);
+  font-size: var(--ci-size-md);
+  /* Fixed-format COBOL depends on column positions, so lines are never wrapped. */
+  white-space: pre;
+}
+
+.ci-source__line {
+  display: block;
+}
+
+.ci-source__line--target {
+  background: var(--ci-bg-selected);
+}
+
+.ci-source__number {
+  display: inline-block;
+  width: 5ch;
+  margin-inline-end: var(--ci-space-2);
+  color: var(--color-muted-foreground);
+  text-align: right;
+  user-select: none;
+}
+
+.ci-source__control {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-2);
+}
+
+.ci-source__control-label {
+  white-space: nowrap;
+}
+
+.ci-source__badge {
+  padding: 0 var(--ci-space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--ci-radius);
+  background: var(--color-muted);
+  color: var(--color-muted-foreground);
+}
+
+.ci-source__spacer {
+  flex: 1 1 auto;
+}
+
+.ci-source__state {
+  margin: 0;
+  padding: var(--ci-space-4);
+  color: var(--color-muted-foreground);
+}
+
+/* ---------------------------------------------------------------- the code editor */
+
+.ci-code,
+.ci-diff {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/*
+ * The fixed-format areas. The engine reports the byte column each area starts at and the editor
+ * turns those into inline decorations, so the colouring stays right on a line holding double-byte
+ * characters, where a character count would drift from the column.
+ */
+/* The dimming is Monaco's own token colour (vendor/monarch.ts); this decoration adds none of its own. */
+.ci-code__sequence {
+  color: inherit;
+}
+
+/* Monaco's own token colour overrides a decoration's `color`, so these are background bands. */
+.ci-code__indicator {
+  background: color-mix(in oklch, var(--color-muted-foreground) 18%, transparent);
+  font-weight: 700;
+}
+
+.ci-code__indicator--comment {
+  background: color-mix(in oklch, var(--color-muted-foreground) 18%, transparent);
+  font-weight: 400;
+}
+
+.ci-code__indicator--debug {
+  background: color-mix(in oklch, var(--color-muted-foreground) 18%, transparent);
+}
+
+.ci-code__indicator--continuation {
+  background: color-mix(in oklch, var(--color-muted-foreground) 18%, transparent);
+}
+
+/* A background only: the text colour stays Monaco's token colour. */
+.ci-code__identification {
+  background: color-mix(in oklch, var(--color-muted-foreground) 14%, transparent);
+  opacity: 0.6;
+}
+
+/* Past column 80 the fixed format gives the bytes no meaning at all. */
+.ci-code__overflow {
+  background: color-mix(in oklch, var(--color-destructive) 18%, transparent);
+  border-left: 1px solid var(--color-destructive);
+}
+
+/* The glyph margin marks the worst finding on the line. */
+.ci-code__glyph::before {
+  content: "";
+  display: block;
+  margin: 6px 0 0 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.ci-code__glyph--high::before {
+  background: var(--color-destructive);
+}
+
+.ci-code__glyph--medium::before {
+  background: var(--color-accent);
+}
+
+.ci-code__glyph--low::before {
+  background: var(--color-primary);
+}
+
+.ci-code__glyph--warning::before {
+  background: var(--color-muted-foreground);
+}
+
+.ci-source__state--error {
+  color: var(--color-destructive);
+}
+
+.ci-source__reason {
+  display: block;
+  margin-top: var(--ci-space-1);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+}
+
+/* ---------------------------------------------------------------- the COPY expansion */
+
+/*
+ * A COPY expansion, drawn as a Monaco view zone between the lines of the source. It is set apart from
+ * the body by its own ground and a left rule, because none of it is text the file holds.
+ */
+.ci-copy {
+  height: 100%;
+  overflow: auto;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  border-left: 2px solid var(--color-primary);
+  background: color-mix(in oklch, var(--color-foreground) 12%, var(--color-surface));
+  font-family: var(--ci-font-code);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-copy__header {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-2);
+  padding: 0 var(--ci-space-2);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-copy__toggle {
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius);
+  padding: 0 var(--ci-space-2);
+  background: var(--color-surface);
+  color: var(--color-foreground);
+  font-family: var(--ci-font-ui);
+  font-size: var(--ci-size-sm);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.ci-copy__toggle:hover {
+  background: var(--ci-bg-hover);
+}
+
+.ci-copy__toggle:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+.ci-copy__name {
+  color: var(--color-muted-foreground);
+}
+
+.ci-copy__path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ci-copy__lines {
+  padding: 0 var(--ci-space-2);
+  color: var(--color-foreground);
+  white-space: pre;
+}
+
+.ci-copy__number {
+  display: inline-block;
+  width: 5ch;
+  margin-inline-end: var(--ci-space-2);
+  color: var(--color-muted-foreground);
+  text-align: right;
+  user-select: none;
+}
+
+/* The copybook's own line, as the engine preprocessed it. */
+.ci-copy__text {
+  color: var(--color-foreground);
+}
+
+/* The glyph that opens and closes the expansion, on the COPY statement's own line. */
+.ci-copy__glyph::before {
+  content: "";
+  display: block;
+  margin: 6px 0 0 4px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--color-primary);
+  border-radius: 2px;
+}
+
+/* ---------------------------------------------------------------- the transpile view */
+
+.ci-transpile {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+}
+
+.ci-sidebyside {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  min-height: 0;
+  background: var(--color-border);
+}
+
+/* The fix diff's heading row only: it must not take the height DiffView needs. */
+.ci-sidebyside--labels {
+  flex: 0 0 auto;
+}
+
+.ci-sidebyside__pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--color-background);
+}
+
+/* Styled like the source view header (.ci-source__meta): the same strip, the same rule below it. */
+.ci-sidebyside__label {
+  padding: var(--ci-space-1) var(--ci-space-3);
+  overflow: hidden;
+  background: var(--color-muted);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ci-sidebyside__code {
+  flex: 1 1 auto;
+  min-height: 0;
+}

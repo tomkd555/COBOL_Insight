@@ -17,7 +17,7 @@ import { useEffect, useState } from "react";
 import type * as monacoApi from "monaco-editor/editor/editor.api";
 import type { CopyExpansion } from "../../../../shared/ipc";
 import { api } from "../../api";
-import { text } from "../../text";
+import { text } from "../../i18n/text";
 import { useProject } from "../../state/projectStore";
 import { monacoEditor } from "../../vendor/monacoEditor";
 

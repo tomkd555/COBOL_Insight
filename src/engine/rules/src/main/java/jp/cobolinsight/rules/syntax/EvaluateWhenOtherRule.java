@@ -25,13 +25,12 @@ import java.util.List;
  */
 public final class EvaluateWhenOtherRule implements Rule {
 
-    private static final RuleMeta META = RuleMeta.named("R013", "EVALUATE文のWHEN OTHER欠如", "制御フロー")
-            .summary("WHEN OTHER 句を持たない EVALUATE 文を検出します。")
-            .rationale("どの WHEN にも一致しない値が何の処理も受けずに素通りするため、"
-                    + "想定外の入力が記録も通知もされないまま無視されます。")
-            .detection("分岐の複合文のうち EVALUATE 文を対象とし、"
-                    + "ラベル OTHER のブロックを持たないものを検出します。IF 文は対象外とします。")
-            .remedy("WHEN OTHER 句を置き、想定外の値に対する処理(異常扱い・既定値の設定)を書きます。")
+    private static final RuleMeta META = RuleMeta.named("R013", "EVALUATE文のWHEN OTHER句欠如", "制御フロー")
+            .summary("WHEN OTHER 句を持たない EVALUATE 文を検出する。")
+            .rationale("どの WHEN 句にも一致しない値は処理を受けずに通り抜け、"
+                    + "想定外の入力が記録も通知もないまま無視される。")
+            .detection("EVALUATE 文のうち WHEN OTHER 句を持たないものを検出する。IF 文は対象外とする。")
+            .remedy("WHEN OTHER 句を置き、想定外の値に対する処理（異常扱い・既定値の設定）を書く。")
             .example("""
                     EVALUATE WS-KBN
                         WHEN "1" PERFORM SHINKI-SHORI
@@ -68,8 +67,8 @@ public final class EvaluateWhenOtherRule implements Rule {
                         .anyMatch(block -> "OTHER".equals(block.label()));
                 if (!hasOther) {
                     findings.add(Finding.of("R013", Severity.MEDIUM.toLevel(),
-                            "EVALUATE文にWHEN OTHER句が指定されておらず、いずれのWHEN句にも"
-                                    + "一致しない値の場合に処理が素通りする。",
+                            "EVALUATE 文に WHEN OTHER 句がなく、いずれの WHEN 句にも"
+                                    + "一致しない値は処理を受けずに通り抜ける。",
                             compound.range().start()));
                 }
             });

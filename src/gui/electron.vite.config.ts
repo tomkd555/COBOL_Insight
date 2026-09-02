@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { defineConfig, externalizeDepsPlugin } from "electron-vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
 /**
  * electron-vite configuration: three separate builds (main, preload, renderer).
@@ -30,6 +31,7 @@ export default defineConfig({
       outDir: "out/renderer",
       rollupOptions: { input: { index: resolve(__dirname, "src/renderer/index.html") } },
     },
-    plugins: [react()],
+    // Tailwind supplies the @theme token layer of theme.css only; no utility class is written in JSX.
+    plugins: [react(), tailwindcss()],
   },
 });

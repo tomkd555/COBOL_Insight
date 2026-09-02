@@ -13,13 +13,13 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
-import { text } from "../text";
+import { text } from "../i18n/text";
 
 /** Tab kinds. `source`, `fix` and `transpile` bind to one asset; the rest open at most one tab each. */
 export type TabKind = "source" | "graph" | "rules" | "report" | "settings" | "fix" | "transpile";
 
 /** What the activity bar can put in the side bar. */
-export type SideView = "explorer" | "search" | "rules" | "problems";
+export type SideView = "explorer" | "rules" | "problems";
 
 /** What the panel can show. */
 export type PanelView = "problems" | "output";
@@ -130,7 +130,7 @@ export function fixTabId(path: string): string {
 /** A tab holding the fix proposal for one asset, against the original. */
 export function fixTab(path: string): WorkbenchTab {
   const name = path.split("/").pop() ?? path;
-  return { id: fixTabId(path), kind: "fix", title: `${name}（${text.fixView.diff}）`, path, line: null };
+  return { id: fixTabId(path), kind: "fix", title: `${name}（${text.fixView.title}）`, path, line: null };
 }
 
 /** The id of an asset's translation. Its own tab, so the COBOL source stays open beside it. */

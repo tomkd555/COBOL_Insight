@@ -106,10 +106,10 @@ public final class RulesRunner {
                             .map(Command::name).sorted().reduce((a, b) -> a + "・" + b).orElse(""))
                     .append(" / 修正案: ").append(entry.hasFix() ? "あり" : "なし")
                     .append("\n\n");
-            appendSection(out, "何を検出するか", meta.summary());
+            appendSection(out, "検出する内容", meta.summary());
             appendSection(out, "なぜ問題か", meta.rationale());
             appendSection(out, "検出条件", meta.detection());
-            appendSection(out, "どう直すか", meta.remedy());
+            appendSection(out, "直し方", meta.remedy());
             if (meta.hasExample()) {
                 appendSection(out, "該当する例", meta.badExample());
                 appendSection(out, "直した例", meta.goodExample());

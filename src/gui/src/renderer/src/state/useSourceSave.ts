@@ -12,7 +12,7 @@
 import { useCallback, useState } from "react";
 import type { SaveResult } from "../../../shared/ipc";
 import { api, errorMessage } from "../api";
-import { text } from "../text";
+import { text } from "../i18n/text";
 import { artifactItems, useProject, useProjectDispatch } from "./projectStore";
 import { useSettings } from "./settingsStore";
 import {

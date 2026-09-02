@@ -5,6 +5,8 @@ import jp.cobolinsight.core.cfg.CfgNodeKind;
 import jp.cobolinsight.core.cfg.ControlFlowGraph;
 import jp.cobolinsight.core.cfg.ControlFlowGraphs;
 import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.CodeFlow;
+import jp.cobolinsight.core.finding.CodeFlowStep;
 import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.GoToStatement;
@@ -38,14 +40,14 @@ import java.util.Set;
 public final class UnreachableCodeRule implements Rule {
 
     private static final RuleMeta META = RuleMeta.named("R011", "到達不能コード", "制御フロー")
-            .summary("制御が届かない文と、どこからも呼ばれない段落を検出します。")
+            .summary("制御が到達しない文と、どこからも呼び出されない段落を検出する。")
             .rationale("実行されない記述が残ると、読む者が生きた処理と取り違え、"
-                    + "改修を効かない場所へ加えます。")
+                    + "実行されない場所に改修を加える。")
             .detection("(a) 制御フローグラフで入口から到達できない文と、"
-                    + "(b) PERFORM・GO TO のいずれからも参照されず流下経路上にもない段落の"
-                    + "2つを検出します。(b) は流下辺が過大に見積もられるため、"
-                    + "到達性ではなく意味モデルで判定します。")
-            .remedy("不要なら削ります。必要な処理なら、呼び出しか分岐を加えて到達させます。")
+                    + "(b) PERFORM・GO TO のいずれからも参照されず、前の段落から制御が移る経路もない"
+                    + "段落の 2 つを検出する。(b) は段落間の暗黙の移行が過大に見積もられるため、"
+                    + "到達性ではなく意味モデルで判断する。")
+            .remedy("不要なら削る。必要な処理なら、呼び出しか分岐を加えて実行されるようにする。")
             .example("""
                         GOBACK.
                         MOVE WS-A TO WS-B.
@@ -85,12 +87,57 @@ public final class UnreachableCodeRule implements Rule {
             if (node.kind() != CfgNodeKind.STATEMENT || reachable.contains(node)) {
                 continue;
             }
-            node.statement().ifPresent(statement -> findings.add(Finding.of(META.id(),
-                    META.defaultSeverity().toLevel(),
-                    "この文は制御フロー上どの経路からも到達せず、実行されることがない。",
-                    new SourcePosition(model.sourceFile(), statement.range().start().line(), 1,
-                            SourcePosition.UNKNOWN_BYTE_OFFSET))));
+            node.statement().ifPresent(statement -> {
+                int line = statement.range().start().line();
+                Statement leaver = lastReachableBefore(cfg, reachable, node, line);
+                String file = model.sourceFile();
+                List<CodeFlowStep> steps = new ArrayList<>();
+                String cause = "";
+                if (leaver != null) {
+                    int at = leaver.range().start().line();
+                    cause = "直前の " + verbOf(leaver) + "（" + at + "行）で制御が移り、";
+                    steps.add(CfgSupport.step(file, at, "ここで制御が移る"));
+                }
+                steps.add(CfgSupport.step(file, line, "実行されない文"));
+                findings.add(new Finding(META.id(), META.defaultSeverity().toLevel(),
+                        line + "行の文には制御が到達しない。" + cause
+                                + "戻ってくる経路も分岐もない。不要なら削り、必要なら "
+                                + (leaver == null ? "分岐か PERFORM で到達させる。"
+                                        : verbOf(leaver) + " の前へ移すか分岐を加える。"),
+                        new SourcePosition(file, line, 1, SourcePosition.UNKNOWN_BYTE_OFFSET),
+                        List.of(new CodeFlow(steps)), List.of()));
+            });
         }
+    }
+
+    /** The reachable statement of the same procedure that starts closest before {@code line}. */
+    private static Statement lastReachableBefore(ControlFlowGraph cfg, Set<CfgNode> reachable,
+            CfgNode target, int line) {
+        Statement best = null;
+        for (CfgNode node : cfg.nodes()) {
+            if (!reachable.contains(node) || node.kind() != CfgNodeKind.STATEMENT
+                    || !node.procedureName().equals(target.procedureName())) {
+                continue;
+            }
+            Statement statement = node.statement().orElse(null);
+            if (statement == null || statement.range().start().line() >= line) {
+                continue;
+            }
+            if (best == null || statement.range().start().line() > best.range().start().line()) {
+                best = statement;
+            }
+        }
+        return best;
+    }
+
+    private static String verbOf(Statement statement) {
+        if (statement instanceof SimpleStatement simple) {
+            return CfgSupport.upper(simple.verb());
+        }
+        if (statement instanceof GoToStatement) {
+            return "GO TO";
+        }
+        return "文";
     }
 
     /** (b) A paragraph that is neither referenced nor on the mainline path. */
@@ -116,8 +163,9 @@ public final class UnreachableCodeRule implements Rule {
                 continue;
             }
             findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                    "段落 " + procedure.name()
-                            + " はどの PERFORM・GO TO からも参照されず、本流の流下経路上にもない。",
+                    "段落 " + procedure.name() + "（" + procedure.range().start().line()
+                            + "行）を呼ぶ PERFORM・GO TO はなく、前の段落から制御が移る経路もない。"
+                            + "実行される機会がないので、呼び出しを加えるか、段落ごと削る。",
                     new SourcePosition(model.sourceFile(), procedure.range().start().line(), 1,
                             SourcePosition.UNKNOWN_BYTE_OFFSET)));
         }

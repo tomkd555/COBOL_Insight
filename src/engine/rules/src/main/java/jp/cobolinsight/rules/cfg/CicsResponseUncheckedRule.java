@@ -36,12 +36,12 @@ public final class CicsResponseUncheckedRule implements Rule {
 
     private static final RuleMeta META =
             RuleMeta.named("R021", "CICS応答コード(RESP/RESP2)未検査", "例外処理")
-                    .summary("RESP・RESP2 のいずれも指定していない EXEC CICS コマンドを検出します。")
+                    .summary("RESP・RESP2 のいずれも指定しない EXEC CICS コマンドを検出する。")
                     .rationale("応答コードを受け取れないため、資源の不在や排他の失敗を"
-                            + "プログラム側で判定できず、異常時は既定の異常終了へ落ちます。")
-                    .detection("EXEC CICS コマンドのうち、RESP・RESP2 のいずれのオペランドも"
-                            + "持たないものを検出します。")
-                    .remedy("RESP を付けて応答コードを受け、直後に DFHRESP との比較で分岐します。")
+                            + "プログラム側で検査できず、異常時は既定の異常終了になる。")
+                    .detection("EXEC CICS コマンドのうち、RESP・RESP2 のいずれの作用対象も"
+                            + "持たないものを検出する。")
+                    .remedy("RESP を付けて応答コードを受け取り、直後に DFHRESP との比較で分岐する。")
                     .example("""
                             EXEC CICS READ FILE('CUSTFILE') INTO(WS-REC)
                                  RIDFLD(WS-KEY) END-EXEC.
@@ -75,8 +75,8 @@ public final class CicsResponseUncheckedRule implements Rule {
                     continue;
                 }
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                        "EXEC CICS コマンド(" + cicsVerb(block) + ")が RESP・RESP2 を持たず、"
-                                + "応答コードを検査していない。異常終了しても後続処理が継続する。",
+                        "EXEC CICS コマンド（" + cicsVerb(block) + "）が RESP・RESP2 を持たず、"
+                                + "応答コードを検査していない。異常が起きても後続処理が続く。",
                         new SourcePosition(model.sourceFile(), block.range().end().line(), 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
             }
@@ -153,7 +153,7 @@ public final class CicsResponseUncheckedRule implements Rule {
             String check = "IF " + var + " NOT = 0 DISPLAY '" + model.programId() + " "
                     + verbLabel(block) + "エラー RESP=' " + var + " END-IF" + terminator;
             TextEdit judgement = insertLinesAt(file, endExecLine + 1, check);
-            return Optional.of(new FixSuggestion("RESP/RESP2 検査を挿入する",
+            return Optional.of(new FixSuggestion("RESP/RESP2 の検査を挿入する",
                     List.of(operand, judgement)));
         }
 

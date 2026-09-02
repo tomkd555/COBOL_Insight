@@ -1,20 +1,25 @@
 /**
  * The codicon icon font, on its own.
  *
- * The shell's icons are codicon glyphs, but the shell does not yet open a Monaco editor. Importing
- * vendor/monacoEditor for the font alone would pull the whole ~6MB editor into the bundle, so the
- * font registration is imported here by itself. When the source editor arrives, that module brings
- * the same registration with it and this one becomes redundant.
+ * The shell's icons are codicon glyphs, but the shell does not open a Monaco editor until an asset
+ * is opened. The font face comes from the feature import below; the per-icon rules
+ * (`.codicon-files::before { content: … }`) do not, because Monaco's theme service writes them only
+ * when its first editor container is registered. Until then every icon in the shell was blank. So
+ * the same rules are generated here from Monaco's icon map, once, before the first paint.
  *
  * The @font-face rule references codicon.ttf relatively, so it also loads from file://.
  */
 
 import "monaco-editor/features/codicon/register";
+import { getCodiconFontCharacters } from "monaco-editor/base/common/codiconsUtil.js";
 
-/**
- * Registers the font. The side-effect import above is what does the work; this function exists so
- * the registration is a deliberate call rather than an import a bundler might treat as removable.
- */
+/** Registers the font face and the icon rules. */
 export function registerCodicons(): void {
-  // Nothing further: importing this module has already installed the @font-face rule.
+  const rules = Object.entries(getCodiconFontCharacters()).map(
+    ([name, codePoint]) =>
+      `.codicon-${name}::before { content: "\\${codePoint.toString(16)}"; }`,
+  );
+  const style = document.createElement("style");
+  style.textContent = rules.join("\n");
+  document.head.appendChild(style);
 }

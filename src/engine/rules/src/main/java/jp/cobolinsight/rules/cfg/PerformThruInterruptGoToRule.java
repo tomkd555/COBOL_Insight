@@ -28,15 +28,15 @@ import java.util.Set;
  */
 public final class PerformThruInterruptGoToRule implements Rule {
 
-    private static final RuleMeta META = RuleMeta.named("R007", "PERFORM THRUの範囲不整合", "制御フロー")
-            .summary("PERFORM THRU の実行範囲へ、入口段落を経由せず"
-                    + "外から GO TO で直接飛び込む箇所を検出します。")
-            .rationale("入口段落が担う初期化を飛ばして途中から実行されるため、"
-                    + "初期化前の値のまま処理が進みます。")
-            .detection("PERFORM ... THRU の範囲に含まれる段落のうち、入口段落以外へ、"
-                    + "範囲外の段落から GO TO で分岐するものを検出します。")
-            .remedy("範囲の入口段落から入るようにするか、"
-                    + "飛び込み先の処理を別の段落へ分けて PERFORM で呼びます。")
+    private static final RuleMeta META = RuleMeta.named("R007", "PERFORM THRUの範囲への外からのGO TO", "制御フロー")
+            .summary("PERFORM THRU の範囲に、入口の段落を経由せず"
+                    + "範囲外から GO TO 文で入る箇所を検出する。")
+            .rationale("入口の段落が担う初期化を飛ばして途中から実行するため、"
+                    + "初期化前の値のまま処理が進む。")
+            .detection("PERFORM ... THRU の範囲に含まれる段落のうち入口の段落以外に、"
+                    + "範囲外の段落から GO TO 文で制御を移すものを検出する。")
+            .remedy("範囲の入口の段落から入るか、"
+                    + "飛び込み先の処理を別の段落に分けて PERFORM 文で呼び出す。")
             .example("""
                     GO TO CALC-STEP2.
                     CALC-START.
@@ -111,8 +111,8 @@ public final class PerformThruInterruptGoToRule implements Rule {
                     findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                             "PERFORM " + perform.targetProcedure() + " THRU "
                                     + perform.thruProcedure().get()
-                                    + " の実行範囲へ、範囲外の段落 " + holder.name()
-                                    + " から GO TO " + hit + " で入口を経由せず割り込んでいる。",
+                                    + " の範囲に、範囲外の段落 " + holder.name()
+                                    + " から GO TO " + hit + " で入口を経由せず制御が移る。",
                             new SourcePosition(model.sourceFile(),
                                     goTo.range().start().line(), 1,
                                     SourcePosition.UNKNOWN_BYTE_OFFSET)));

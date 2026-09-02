@@ -1,0 +1,428 @@
+/*
+ * Rules, rule description, forms, the custom-rule editor, settings, and the terminal import dialog.
+ *
+ * Class names follow BEM; every value comes from a token. No region carries a pixel min-width of
+ * its own: a hard floor would produce a horizontal scrollbar as soon as the viewport shrank under
+ * zoom, leaving the page scrolling in both directions at once.
+ */
+
+/* ---------------------------------------------------------------- rules */
+
+.ci-rules {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-bottom: var(--ci-space-3);
+}
+
+.ci-rules__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ci-space-2);
+  padding: var(--ci-space-2) var(--ci-space-2) 0;
+}
+
+.ci-rules__state {
+  margin: var(--ci-space-3) var(--ci-space-2);
+  color: var(--color-muted-foreground);
+}
+
+.ci-rules__group {
+  margin-top: var(--ci-space-3);
+}
+
+.ci-rules__grouphead {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-1);
+  padding: 0 var(--ci-space-2);
+}
+
+.ci-rules__groupname {
+  flex: 1;
+  margin: 0;
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+  font-weight: 400;
+}
+
+.ci-rules__grouphead .ci-button--quiet {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+}
+
+/* Two lines per rule: the toggle, name and severity on the first, the badges and override on the
+   second, so every column holds one x down the list. */
+.ci-rules__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--ci-space-1);
+  row-gap: 2px;
+  padding: var(--ci-space-1) var(--ci-space-2);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-rules__row:hover {
+  background: var(--ci-bg-hover);
+}
+
+.ci-rules__meta {
+  display: flex;
+  grid-column: 2 / -1;
+  align-items: center;
+  gap: var(--ci-space-1);
+}
+
+.ci-rules__meta .ci-select {
+  height: 24px;
+  margin-inline-start: auto;
+}
+
+.ci-rules__name {
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A rule switched off reads as off, the way an off chip does. */
+.ci-rules__row:has(> input:not(:checked)) .ci-rules__name {
+  color: var(--color-muted-foreground);
+  text-decoration: line-through;
+}
+
+.ci-rules__id {
+  margin-inline-end: var(--ci-space-2);
+  color: var(--color-muted-foreground);
+  font-family: var(--ci-font-code);
+}
+
+/* ---------------------------------------------------------------- rule description */
+
+.ci-ruledetail {
+  overflow: auto;
+  max-width: 48rem;
+  height: 100%;
+  padding: var(--ci-space-4);
+  font-size: var(--ci-size-md);
+  line-height: var(--ci-line);
+}
+
+.ci-ruledetail__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ci-space-2);
+}
+
+.ci-ruledetail__title {
+  margin: 0;
+  font-size: var(--ci-size-lg);
+  font-weight: 600;
+}
+
+.ci-ruledetail__section {
+  margin-top: var(--ci-space-4);
+}
+
+.ci-ruledetail__label {
+  margin: 0 0 var(--ci-space-1);
+  font-size: var(--ci-size-lg);
+  font-weight: 600;
+}
+
+.ci-ruledetail__prose {
+  margin: 0;
+  font-size: var(--ci-size-md);
+  line-height: var(--ci-line);
+}
+
+.ci-ruledetail__code {
+  overflow-x: auto;
+  margin: 0;
+  padding: var(--ci-space-3);
+  background: var(--color-muted);
+  border-radius: var(--radius-md);
+  font-family: var(--ci-font-code);
+}
+
+.ci-ruledetail__state {
+  padding: var(--ci-space-4);
+  color: var(--color-muted-foreground);
+}
+
+/* ---------------------------------------------------------------- forms */
+
+.ci-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ci-space-3);
+  max-width: 72ch;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.ci-form__legend {
+  padding: 0;
+  color: var(--color-foreground);
+  font-size: var(--ci-size-md);
+  font-weight: 600;
+}
+
+.ci-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-space-1);
+  max-width: 72ch;
+}
+
+.ci-form__label {
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-form__note {
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-form__error {
+  color: var(--color-destructive);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-form__checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ci-space-3);
+}
+
+.ci-form__check {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-1);
+}
+
+.ci-input--code {
+  font-family: var(--ci-font-code);
+}
+
+/* ---------------------------------------------------------------- chips */
+
+/* The radio-like toggle used by the custom-rule editor's pane switch, the settings theme picker
+   and the import/graph filters. Defined once, here; lists.css and chrome.css must not also define
+   it. */
+
+.ci-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ci-space-1);
+}
+
+.ci-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 var(--ci-space-2);
+  background: transparent;
+  border: 1px dashed var(--ci-border-strong);
+  border-radius: var(--radius-full);
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  font-size: var(--ci-size-sm);
+  text-decoration: line-through;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.ci-chip:hover {
+  background: var(--ci-bg-hover);
+}
+
+.ci-chip--on {
+  background: var(--color-surface);
+  border: 1px solid var(--ci-border-strong);
+  color: var(--color-foreground);
+  text-decoration: none;
+}
+
+.ci-chip--on:hover {
+  background: var(--ci-bg-hover);
+}
+
+/* Single-choice groups (settings theme, custom-rule pane switch): every option reads as a live
+   choice, not an exclusion, so the off state keeps no strikethrough. */
+[role="radiogroup"] .ci-chip {
+  text-decoration: none;
+}
+
+/* The radio input inside is visually hidden; its keyboard focus is drawn on the chip. */
+.ci-chip:has(:focus-visible) {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+[role="radiogroup"] .ci-chip--on {
+  background: color-mix(in oklch, var(--color-primary) 15%, var(--color-surface));
+  border-color: var(--color-primary);
+}
+
+/* ---------------------------------------------------------------- custom rules */
+
+.ci-custom {
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  height: 100%;
+  padding: var(--ci-space-4);
+}
+
+.ci-custom__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ci-space-2);
+}
+
+.ci-custom__title {
+  flex: 1;
+  margin: 0;
+  font-size: var(--ci-size-lg);
+  font-weight: 600;
+}
+
+.ci-custom__dirty,
+.ci-settings__state {
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-custom__state {
+  color: var(--color-muted-foreground);
+}
+
+.ci-custom__forms {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ci-space-4);
+  margin-top: var(--ci-space-3);
+}
+
+.ci-custom__raw {
+  min-height: 24em;
+  margin-top: var(--ci-space-3);
+  padding: var(--ci-space-2);
+  background: var(--color-muted);
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--radius-md);
+  font-family: var(--ci-font-code);
+  white-space: pre;
+  resize: vertical;
+}
+
+/* ---------------------------------------------------------------- settings */
+
+.ci-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-space-5);
+  overflow: auto;
+  height: 100%;
+  padding: var(--ci-space-4);
+}
+
+.ci-settings__title {
+  margin: 0;
+  font-size: var(--ci-size-lg);
+  font-weight: 600;
+}
+
+.ci-settings__path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ci-space-2);
+  max-width: 72ch;
+}
+
+.ci-settings__path .ci-input {
+  flex: 1;
+}
+
+.ci-settings__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ci-space-2);
+  max-width: 72ch;
+}
+
+/* ---------------------------------------------------------------- terminal import */
+
+.ci-import {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ci-space-4);
+}
+
+.ci-import__form,
+.ci-import__body {
+  display: flex;
+  flex: 1 1 22rem;
+  flex-direction: column;
+  gap: var(--ci-space-2);
+  min-width: 0;
+}
+
+.ci-import__columns {
+  display: flex;
+  gap: var(--ci-space-2);
+}
+
+.ci-import__columns .ci-input {
+  width: 6rem;
+}
+
+.ci-import__paste,
+.ci-import__preview {
+  overflow: auto;
+  min-height: 10em;
+  max-height: 40vh;
+  margin: 0;
+  padding: var(--ci-space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-family: var(--ci-font-code);
+  font-size: var(--ci-size-sm);
+  white-space: pre;
+}
+
+.ci-import__paste {
+  background: var(--color-surface);
+  border-color: var(--ci-border-strong);
+  resize: vertical;
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+
+.ci-import__paste:focus-visible {
+  border-color: var(--color-primary);
+}
+
+.ci-import__preview {
+  /* The preview shows only the columns that will be kept, so the whole block carries the tint. */
+  background: color-mix(in oklch, var(--color-primary) 18%, var(--color-muted));
+}

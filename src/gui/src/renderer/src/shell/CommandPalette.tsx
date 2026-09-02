@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
-import { text } from "../text";
+import { text } from "../i18n/text";
 import { availableCommands, filterCommands, type Command } from "../state/commands";
 
 export interface CommandPaletteProps {

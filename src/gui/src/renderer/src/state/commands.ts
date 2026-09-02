@@ -7,7 +7,7 @@
  */
 
 import type { Dispatch } from "react";
-import { text } from "../text";
+import { text } from "../i18n/text";
 import type { ProjectState } from "./projectStore";
 import {
   CUSTOM_RULES_TAB_ID,
@@ -29,7 +29,6 @@ export type CommandId =
   | "view.toggleSideBar"
   | "view.togglePanel"
   | "view.showExplorer"
-  | "view.showSearch"
   | "view.showRules"
   | "view.showProblems"
   | "view.showOutput"
@@ -148,13 +147,6 @@ export function buildCommands(context: CommandContext): Command[] {
       category: text.command.categoryView,
       when: () => true,
       run: () => workbenchDispatch({ type: "SHOW_SIDE", view: "explorer" }),
-    },
-    {
-      id: "view.showSearch",
-      title: text.command.showSearch,
-      category: text.command.categoryView,
-      when: () => true,
-      run: () => workbenchDispatch({ type: "SHOW_SIDE", view: "search" }),
     },
     {
       id: "view.showRules",

@@ -35,13 +35,13 @@ public final class ReturnCodeUncheckedRule implements Rule {
     private static final RuleMeta META = RuleMeta
             .named("R029", "呼び出し先プログラムの戻りコード(RETURN-CODE)未検査", "制御フロー")
             .summary("RETURN-CODE を使う設計のプログラムで、"
-                    + "その検査を伴わない CALL を検出します。")
-            .rationale("呼び出し先の失敗に気付かないまま後続が進みます。"
-                    + "同じプログラム内で検査している CALL と扱いが不揃いになる点も誤りの兆候です。")
-            .detection("CALL の後、次の CALL または終端に達するまでの前方経路で"
-                    + "RETURN-CODE を条件参照しないものを検出します。"
-                    + "プログラム内で RETURN-CODE を1回以上参照している場合に限ります。")
-            .remedy("CALL の直後に RETURN-CODE を判定し、正常値以外を異常として処理します。")
+                    + "その検査を伴わない CALL 文を検出する。")
+            .rationale("呼び出し先の失敗に気づかないまま後続が進む。"
+                    + "同じプログラム内で検査している CALL 文と扱いが不ぞろいになる点も誤りの兆候である。")
+            .detection("CALL 文の後、次の CALL 文または終端に達するまでの前方経路で"
+                    + "RETURN-CODE を条件で参照しないものを検出する。"
+                    + "プログラム内で RETURN-CODE を 1 回以上参照している場合に限る。")
+            .remedy("CALL 文の直後に RETURN-CODE を検査し、正常値以外を異常として処理する。")
             .example("""
                     CALL "SUBPGM2" USING WS-PARM.
                     MOVE WS-PARM TO WS-OUT.
@@ -88,8 +88,8 @@ public final class ReturnCodeUncheckedRule implements Rule {
                     ReturnCodeUncheckedRule::referencesReturnCodeInCondition);
             if (!checked) {
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                        "CALL の後、RETURN-CODE を検査しないまま後続処理へ進んでいる。"
-                                + "他所では RETURN-CODE を参照しており、検査の欠落が不整合となる。",
+                        "CALL 文の後、RETURN-CODE を検査しないまま後続処理に進む。"
+                                + "同じプログラムの他の箇所では RETURN-CODE を参照しており、検査の欠落が不ぞろいになる。",
                         new SourcePosition(model.sourceFile(),
                                 node.statement().orElseThrow().range().start().line(), 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));

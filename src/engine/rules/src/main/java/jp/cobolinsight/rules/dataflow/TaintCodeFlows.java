@@ -28,7 +28,7 @@ final class TaintCodeFlows {
 
     /**
      * For each tainted variable, builds one path from the taint source to the sink. sinkAction is
-     * the phrase used in the sink step's description, following "(変数) を" ("the variable"). Because
+     * the phrase used in the sink step's description, following "(項目名) を" ("the item"). Because
      * a SENSITIVE taint source is a declaration with no statement, a step for the data-division
      * declaration position is prepended to the path.
      */
@@ -56,7 +56,7 @@ final class TaintCodeFlows {
 
     private static String describe(TaintStep step) {
         return step.from()
-                .map(from -> from + " から " + step.variable() + " へ汚染が伝播する")
+                .map(from -> from + " から " + step.variable() + " に値が渡る")
                 .orElseGet(() -> step.variable() + " が外部入力を受け取る");
     }
 

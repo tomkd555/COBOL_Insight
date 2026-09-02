@@ -2,7 +2,7 @@ import { useEffect, useRef, type ReactElement } from "react";
 import type * as monacoApi from "monaco-editor/editor/editor.api";
 import { monacoEditor } from "../../vendor/monacoEditor";
 import { registerLanguages } from "../../vendor/monacoLanguages";
-import { COBOL_INSIGHT_THEME } from "../../vendor/monarch";
+import { CODE_FONT } from "../../vendor/monarch";
 
 /** Maps a line of one pane onto a line of the other, or null when there is no correspondence. */
 export type LineLink = (line: number) => number | null;
@@ -30,7 +30,7 @@ const OPTIONS: monacoApi.editor.IStandaloneEditorConstructionOptions = {
   // Without this the editor creates a model of its own, which the first model effect would then
   // dispose a second time after `setModel` had already disposed it.
   model: null,
-  theme: COBOL_INSIGHT_THEME,
+  ...CODE_FONT,
   automaticLayout: true,
   readOnly: true,
   domReadOnly: true,
@@ -38,10 +38,9 @@ const OPTIONS: monacoApi.editor.IStandaloneEditorConstructionOptions = {
   // animated scroll does not.
   smoothScrolling: false,
   minimap: { enabled: false },
-  fontFamily: "'BIZ UDGothic','MS Gothic',monospace",
-  fontSize: 12,
-  lineHeight: 19,
   lineNumbersMinChars: 5,
+  // The left pane is fixed-format COBOL: the same column rulers as the source view.
+  rulers: [6, 7, 11, 72],
   renderLineHighlight: "line",
   scrollBeyondLastLine: false,
   wordWrap: "off",

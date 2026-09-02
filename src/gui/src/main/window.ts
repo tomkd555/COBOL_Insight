@@ -41,6 +41,7 @@ export function clampWindowSize(preferred: WindowSize, workArea: WindowSize): Wi
 export function buildWindowOptions(
   preloadPath: string,
   workArea?: WindowSize,
+  dark = true,
 ): BrowserWindowConstructorOptions {
   const size = workArea === undefined ? PREFERRED_SIZE : clampWindowSize(PREFERRED_SIZE, workArea);
   return {
@@ -51,7 +52,8 @@ export function buildWindowOptions(
     center: true,
     show: false,
     title: "COBOL Insight",
-    backgroundColor: "#1f1f1f",
+    // The frame's colour until the renderer paints: tokens.json's two `background` values as hex.
+    backgroundColor: dark ? "#101418" : "#f4f7fa",
     webPreferences: {
       preload: preloadPath,
       contextIsolation: true,

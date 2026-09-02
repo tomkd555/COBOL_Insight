@@ -18,6 +18,7 @@ import type { AppSettings } from "../../../shared/settings";
 import { emptyAppSettings } from "../../../shared/settings";
 import { CODEPAGES } from "../../../shared/codepage";
 import { SEVERITIES, type Severity } from "../model/severity";
+import { isThemeChoice, type ThemeChoice } from "../theme";
 
 export interface SettingsState {
   readonly severityThreshold: Severity;
@@ -28,6 +29,7 @@ export interface SettingsState {
   readonly fixOutDir: string;
   readonly lastInputDir: string;
   readonly paneSizes: Readonly<Record<string, number>>;
+  readonly theme: ThemeChoice;
   /** Whether the stored settings have been read yet. Saving before that would erase them. */
   readonly restored: boolean;
 }
@@ -39,6 +41,7 @@ export const initialSettingsState: SettingsState = {
   fixOutDir: "",
   lastInputDir: "",
   paneSizes: {},
+  theme: "system",
   restored: false,
 };
 
@@ -49,7 +52,8 @@ export type SettingsAction =
   | { type: "SET_COPYBOOK_PATHS"; paths: readonly string[] }
   | { type: "SET_FIX_OUT_DIR"; dir: string }
   | { type: "SET_LAST_INPUT_DIR"; dir: string }
-  | { type: "SET_PANE_SIZE"; key: string; size: number };
+  | { type: "SET_PANE_SIZE"; key: string; size: number }
+  | { type: "SET_THEME"; theme: ThemeChoice };
 
 function isSeverity(value: string): value is Severity {
   return (SEVERITIES as readonly string[]).includes(value);
@@ -73,6 +77,7 @@ export function settingsReducer(state: SettingsState, action: SettingsAction): S
         fixOutDir: action.settings.fixOutDir,
         lastInputDir: action.settings.lastInputDir,
         paneSizes: { ...action.settings.paneSizes },
+        theme: isThemeChoice(action.settings.theme) ? action.settings.theme : "system",
         restored: true,
       };
 
@@ -94,6 +99,9 @@ export function settingsReducer(state: SettingsState, action: SettingsAction): S
     case "SET_PANE_SIZE":
       return { ...state, paneSizes: { ...state.paneSizes, [action.key]: action.size } };
 
+    case "SET_THEME":
+      return { ...state, theme: action.theme };
+
     default: {
       const exhaustive: never = action;
       return exhaustive;
@@ -111,6 +119,7 @@ export function toAppSettings(state: SettingsState): AppSettings {
     fixOutDir: state.fixOutDir,
     lastInputDir: state.lastInputDir,
     paneSizes: { ...state.paneSizes },
+    theme: state.theme,
   };
 }
 

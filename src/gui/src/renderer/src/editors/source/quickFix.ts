@@ -10,7 +10,7 @@
  */
 
 import type * as monacoApi from "monaco-editor/editor/editor.api";
-import { text } from "../../text";
+import { text } from "../../i18n/text";
 import { LANGUAGE_ID } from "../../vendor/monarch";
 
 /** The command a quick fix runs. Monaco needs an id; nothing outside this module uses it. */

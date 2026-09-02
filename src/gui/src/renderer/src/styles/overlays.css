@@ -1,0 +1,205 @@
+/*
+ * What floats over the shell: palette, modal, toast, and the message strips.
+ *
+ * Class names follow BEM; every value comes from a token. No region carries a pixel min-width of
+ * its own: a hard floor would produce a horizontal scrollbar as soon as the viewport shrank under
+ * zoom, leaving the page scrolling in both directions at once.
+ */
+
+/* ---------------------------------------------------------------- palette, modal, toast */
+
+@keyframes ci-overlay-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ci-palette,
+.ci-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  overflow: auto;
+}
+
+.ci-palette__backdrop,
+.ci-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--ci-bg-overlay);
+}
+
+
+.ci-palette__dialog {
+  position: relative;
+  margin: 10vh auto 0;
+  width: min(600px, 90vw);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: ci-overlay-in var(--duration-base) var(--ease-standard);
+}
+
+.ci-palette__input {
+  width: 100%;
+  height: 32px;
+  padding: 0 var(--ci-space-3);
+  background: var(--color-background);
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ci-palette__list {
+  margin: 0;
+  padding: 0;
+  max-height: 50vh;
+  overflow: auto;
+  list-style: none;
+}
+
+.ci-palette__item {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-2);
+  height: 28px;
+  padding: 0 var(--ci-space-3);
+  cursor: pointer;
+}
+
+.ci-palette__item--active {
+  background: var(--ci-bg-selected);
+  box-shadow: inset 3px 0 0 var(--color-primary);
+  color: var(--color-foreground);
+}
+
+.ci-palette__category {
+  flex: 0 0 auto;
+  color: var(--color-muted-foreground);
+}
+
+.ci-palette__item--active .ci-palette__category {
+  color: var(--color-foreground);
+  opacity: 0.8;
+}
+
+.ci-palette__empty {
+  margin: 0;
+  padding: var(--ci-space-3);
+  color: var(--color-muted-foreground);
+}
+
+.ci-modal__dialog {
+  position: relative;
+  margin: 20vh auto 0;
+  width: min(440px, 90vw);
+  max-height: 88vh;
+  padding: var(--ci-space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: auto;
+  animation: ci-overlay-in var(--duration-base) var(--ease-standard);
+}
+
+.ci-modal__dialog--wide {
+  width: min(1040px, 94vw);
+}
+
+.ci-modal__diff {
+  height: min(420px, 50vh);
+  margin-top: var(--ci-space-3);
+  border: 1px solid var(--color-border);
+}
+
+.ci-modal__title {
+  margin: 0 0 var(--ci-space-2);
+  font-size: var(--ci-size-lg);
+  font-weight: 600;
+}
+
+.ci-modal__body {
+  color: var(--color-foreground);
+}
+
+.ci-modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--ci-space-2);
+  margin-top: var(--ci-space-4);
+}
+
+/* Bottom right, above the status bar: no view puts a control there. */
+.ci-toasts {
+  position: fixed;
+  top: auto;
+  right: var(--ci-space-3);
+  bottom: calc(var(--ci-statusbar-height) + var(--ci-space-3));
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-space-2);
+  z-index: 20;
+  max-width: min(420px, 80vw);
+}
+
+.ci-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ci-space-2);
+  padding: var(--ci-space-2) var(--ci-space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  font-size: var(--ci-size-md);
+}
+
+.ci-toast--failed {
+  border-left: 3px solid var(--color-destructive);
+  color: var(--color-foreground);
+}
+
+.ci-toast__close {
+  background: transparent;
+  border: none;
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------------- strips */
+
+.ci-strip {
+  margin: var(--ci-space-2) 0;
+  padding: var(--ci-space-2);
+  background: var(--color-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-strip--error {
+  background: var(--ci-danger-bg);
+  color: var(--color-destructive);
+}
+
+.ci-strip--ok {
+  border-left: 3px solid var(--color-primary);
+}
+
+.ci-strip__title {
+  margin: 0;
+}
+
+.ci-strip__list {
+  margin: var(--ci-space-1) 0 0;
+  padding-inline-start: 1.2em;
+  list-style: disc;
+}

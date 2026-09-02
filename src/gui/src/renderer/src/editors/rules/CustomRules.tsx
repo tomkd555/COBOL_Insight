@@ -1,5 +1,5 @@
 import { useMemo, type ReactElement } from "react";
-import { text } from "../../text";
+import { text } from "../../i18n/text";
 import type { CustomRule } from "../../../../shared/rulesFile";
 import {
   NOT_AN_ARRAY,
@@ -121,9 +121,7 @@ export function CustomRules({ notify }: CustomRulesProps): ReactElement {
         />
       ) : (
         <div className="ci-custom__forms">
-          {rules.draft.length === 0 ? (
-            <p className="ci-custom__state">{text.customRules.empty}</p>
-          ) : (
+          {rules.draft.length === 0 ? null : (
             rules.draft.map((rule, index) => (
               <CustomRuleForm
                 key={index}

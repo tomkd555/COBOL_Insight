@@ -1,0 +1,275 @@
+/*
+ * The call graph and the execution-order tree.
+ *
+ * Class names follow BEM; every value comes from a token. No region carries a pixel min-width of
+ * its own: a hard floor would produce a horizontal scrollbar as soon as the viewport shrank under
+ * zoom, leaving the page scrolling in both directions at once.
+ */
+
+/* ---------------------------------------------------------------- call graph */
+
+.ci-graph {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-space-2);
+  height: 100%;
+  min-height: 0;
+  padding: var(--ci-space-2);
+}
+
+.ci-graph__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ci-space-2);
+}
+
+.ci-graph__toolbar .ci-input {
+  flex: 1 1 12rem;
+  min-width: 8rem;
+  max-width: 20rem;
+}
+
+.ci-graph__depth {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-1);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-graph__depth input {
+  width: 7rem;
+  accent-color: var(--color-primary);
+}
+
+.ci-graph__count {
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.ci-graph .ci-chips {
+  flex-wrap: wrap;
+}
+
+.ci-chip__count {
+  margin-inline-start: var(--ci-space-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.ci-graph__body {
+  display: flex;
+  flex: 1;
+  gap: var(--ci-space-2);
+  min-height: 0;
+}
+
+.ci-graph__stage {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--ci-radius);
+}
+
+.ci-graph__canvas {
+  flex: 1;
+  min-height: 0;
+  background: var(--color-background);
+}
+
+.ci-graph__laying {
+  position: absolute;
+  top: var(--ci-space-2);
+  left: var(--ci-space-2);
+  z-index: 1;
+  margin: 0;
+  padding: 0 var(--ci-space-2);
+  background: var(--color-muted);
+  border-radius: var(--ci-radius);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-graph__detail {
+  overflow: auto;
+  /* Both side panes give way before the drawing does, so a narrow window still shows the graph. */
+  flex: 0 1 20rem;
+  min-width: 0;
+  padding: 0 var(--ci-space-2);
+  background: var(--color-muted);
+}
+
+.ci-graph__detail-title {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-2);
+  margin: var(--ci-space-2) 0;
+  font-size: var(--ci-size-md);
+}
+
+.ci-graph__edges,
+.ci-graph__legend {
+  margin-top: var(--ci-space-3);
+}
+
+.ci-graph__subtitle {
+  margin: var(--ci-space-3) 0 var(--ci-space-1);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.ci-graph__legend > summary {
+  cursor: pointer;
+}
+
+.ci-graph .ci-chip:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.ci-graph__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--ci-size-sm);
+}
+
+.ci-graph__table th,
+.ci-graph__table td {
+  padding: 1px var(--ci-space-1);
+  text-align: left;
+  vertical-align: top;
+}
+
+.ci-graph__table th {
+  color: var(--color-muted-foreground);
+  font-weight: 400;
+}
+
+.ci-graph__resolution {
+  margin-inline-start: var(--ci-space-1);
+  color: var(--color-muted-foreground);
+}
+
+.ci-graph__legend-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--ci-space-1) var(--ci-space-3);
+  margin: 0;
+  padding: 0;
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+  list-style: none;
+}
+
+.ci-graph__legend-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-1);
+}
+
+.ci-graph__swatch {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.ci-graph__swatch--edge {
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  border: none;
+}
+
+.ci-graph__state {
+  padding: var(--ci-space-4);
+  color: var(--color-muted-foreground);
+  word-break: auto-phrase;
+}
+
+/* Only the placeholder that opens the detail pane, matching .ci-trace__title's block padding so the
+   two side panes start on one baseline. */
+.ci-graph__detail > .ci-graph__state:first-child {
+  padding-block: var(--ci-space-1);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-graph__state--error {
+  color: var(--color-destructive);
+}
+
+.ci-graph__reason {
+  display: block;
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+}
+
+/* ---------------------------------------------------------------- execution order */
+
+.ci-trace {
+  display: flex;
+  flex: 0 1 18rem;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: var(--color-muted);
+}
+
+.ci-trace__title {
+  margin: 0;
+  padding: var(--ci-space-1) var(--ci-space-2);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-trace__tree {
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.ci-trace__row {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-1);
+  height: 24px;
+  cursor: pointer;
+  font-size: var(--ci-size-sm);
+  white-space: nowrap;
+}
+
+.ci-trace__row:hover {
+  background: var(--ci-bg-hover);
+}
+
+.ci-trace__row--selected {
+  background: var(--ci-bg-selected);
+  color: var(--color-foreground);
+}
+
+.ci-trace__marker {
+  width: 1em;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.ci-trace__kind,
+.ci-trace__line,
+.ci-trace__note {
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-trace__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--ci-font-code);
+}

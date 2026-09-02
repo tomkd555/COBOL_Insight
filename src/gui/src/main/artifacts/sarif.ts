@@ -1,4 +1,4 @@
-import type { SarifFinding } from "../../shared/ipc";
+import type { RelatedLocation, SarifFinding } from "../../shared/ipc";
 
 /**
  * Flattens SARIF 2.1.0 text (the --sarif output of lint and sql-lint) into the finding list the
@@ -27,12 +27,35 @@ function toFinding(result: unknown): SarifFinding {
     file: decodeUri(asString(prop(prop(physical, "artifactLocation"), "uri")) ?? ""),
     startLine: asNumber(prop(region, "startLine")) ?? 0,
     startColumn: asNumber(prop(region, "startColumn")) ?? 0,
+    related: relatedOf(result),
   };
   const ruleIndex = asNumber(prop(result, "ruleIndex"));
   if (ruleIndex !== undefined) {
     finding.ruleIndex = ruleIndex;
   }
   return finding;
+}
+
+/** Every codeFlow step, in order. A step without a file or line is dropped. */
+function relatedOf(result: unknown): RelatedLocation[] {
+  const related: RelatedLocation[] = [];
+  for (const flow of asArray(prop(result, "codeFlows"))) {
+    for (const thread of asArray(prop(flow, "threadFlows"))) {
+      for (const step of asArray(prop(thread, "locations"))) {
+        const location = prop(step, "location");
+        const physical = prop(location, "physicalLocation");
+        const file = asString(prop(prop(physical, "artifactLocation"), "uri"));
+        const line = asNumber(prop(prop(physical, "region"), "startLine"));
+        if (file === undefined || line === undefined) continue;
+        related.push({
+          file: decodeUri(file),
+          line,
+          label: asString(prop(prop(location, "message"), "text")) ?? "",
+        });
+      }
+    }
+  }
+  return related;
 }
 
 /**

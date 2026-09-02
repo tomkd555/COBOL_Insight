@@ -1,0 +1,41 @@
+/* app-tokens.css — the project's own tokens, derived from theme.css. No colour literal lives here.
+ *
+ * theme.css (generated from tokens.json) holds the palette. This file holds what the shell needs on
+ * top of it: derived surfaces mixed from the palette, the code font, and the fixed chrome sizes.
+ */
+
+:root {
+  /* Derived surfaces: mixed at use site, so both themes get them from the one palette. */
+  --ci-bg-hover: color-mix(in oklch, var(--color-foreground) 8%, transparent);
+  --ci-bg-selected: color-mix(in oklch, var(--color-primary) 28%, var(--color-background));
+  /* The one value not mixed from the palette: a scrim must darken under both themes, and the dark
+     theme's foreground is light. check_slop reads hex/rgb/hsl only, and this is the deliberate case. */
+  --ci-bg-overlay: oklch(0% 0 0 / 45%);
+  /* Control edges: the separator border is too faint for a boundary (WCAG 1.4.11 wants 3:1). */
+  --ci-border-strong: color-mix(in oklch, var(--color-border) 45%, var(--color-muted-foreground));
+  --ci-danger-bg: color-mix(in oklch, var(--color-destructive) 20%, var(--color-background));
+
+  /* Type. The UI face comes from theme.css; code is the fixed-pitch member of the same family. */
+  --ci-font-ui: "BIZ UDPGothic", "Yu Gothic UI", "Meiryo", sans-serif;
+  --ci-font-code: "BIZ UDGothic", "MS Gothic", monospace;
+  --ci-size-sm: 12px;
+  --ci-size-md: 14px;
+  --ci-size-lg: 16px;
+  --ci-size-xl: 22px;
+  --ci-line: 1.5;
+
+  /* Space, on the 4px base of tokens.json. */
+  --ci-space-1: 4px;
+  --ci-space-2: 8px;
+  --ci-space-3: 12px;
+  --ci-space-4: 16px;
+  --ci-space-5: 24px;
+
+  /* Chrome sizes. */
+  --ci-titlebar-height: 36px;
+  --ci-statusbar-height: 24px;
+  --ci-activitybar-width: 48px;
+  --ci-tab-height: 34px;
+  --ci-split-size: 6px;
+  --ci-radius: var(--radius-md);
+}

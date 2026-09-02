@@ -1,6 +1,6 @@
 import { useReducer, type ReactElement } from "react";
 import { api, errorMessage } from "../../api";
-import { text } from "../../text";
+import { text } from "../../i18n/text";
 import { useProject } from "../../state/projectStore";
 import { useSettings } from "../../state/settingsStore";
 import type { Notify } from "../../state/useShellStartup";
@@ -118,6 +118,9 @@ export function ReportEditor({ notify }: ReportEditorProps): ReactElement {
       {view.kind === "no-project" ? (
         <p className="ci-report__state">{text.report.noProject}</p>
       ) : null}
+      {view.kind === "not-generated" ? (
+        <p className="ci-report__state">{text.report.notGenerated}</p>
+      ) : null}
       {view.kind === "generating" ? (
         <p className="ci-report__state" data-testid="report-generating">
           {text.report.generating}
@@ -127,9 +130,6 @@ export function ReportEditor({ notify }: ReportEditorProps): ReactElement {
         <p className="ci-report__state ci-report__state--error" role="alert">
           {text.report.failed(view.message)}
         </p>
-      ) : null}
-      {view.kind === "not-generated" ? (
-        <p className="ci-report__state">{text.report.notGenerated}</p>
       ) : null}
 
       {view.kind === "ready" && state.status === "ready" ? (

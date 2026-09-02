@@ -1,11 +1,10 @@
 import type { ReactElement } from "react";
-import { text } from "../text";
+import { text } from "../i18n/text";
 import { useWorkbench, type SideView } from "../state/workbenchStore";
 import type { Notify } from "../state/useShellStartup";
 import { Explorer } from "../views/explorer/Explorer";
 import { Problems } from "../views/problems/Problems";
 import { Rules } from "../views/rules/Rules";
-import { Placeholder } from "../editors/Placeholder";
 
 export interface SideBarProps {
   onSelectFolder: () => void;
@@ -16,7 +15,6 @@ export interface SideBarProps {
 
 const TITLES: Readonly<Record<SideView, string>> = {
   explorer: text.sideBar.explorerTitle,
-  search: text.sideBar.searchTitle,
   rules: text.sideBar.rulesTitle,
   problems: text.sideBar.problemsTitle,
 };
@@ -37,10 +35,8 @@ export function SideBar({ onSelectFolder, onOpenAsset, notify }: SideBarProps): 
           <Explorer onSelectFolder={onSelectFolder} onOpenAsset={onOpenAsset} />
         ) : view === "problems" ? (
           <Problems onOpenAsset={onOpenAsset} compact />
-        ) : view === "rules" ? (
-          <Rules notify={notify} />
         ) : (
-          <Placeholder />
+          <Rules notify={notify} />
         )}
       </div>
     </aside>

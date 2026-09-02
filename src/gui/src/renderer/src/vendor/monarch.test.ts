@@ -147,9 +147,11 @@ describe("the JSON grammar", () => {
 
 describe("the theme", () => {
   it("colours every token the grammars emit", () => {
-    const tokens = new Set(cobolInsightTheme().rules.map((rule) => rule.token));
-    for (const token of ["sequence", "indicator", "comment", "keyword", "identifier.name"]) {
-      expect(tokens, token).toContain(token);
+    for (const theme of ["dark", "light"] as const) {
+      const tokens = new Set(cobolInsightTheme(theme).rules.map((rule) => rule.token));
+      for (const token of ["sequence", "indicator", "comment", "keyword", "identifier.name"]) {
+        expect(tokens, `${theme} ${token}`).toContain(token);
+      }
     }
   });
 });
@@ -163,9 +165,14 @@ describe("registerLanguages", () => {
     registerLanguages(target);
     registerLanguages(target);
     expect(target.languages.register).toHaveBeenCalledTimes(4);
+    expect(target.editor.defineTheme).toHaveBeenCalledTimes(2);
     expect(target.editor.defineTheme).toHaveBeenCalledWith(
-      COBOL_INSIGHT_THEME,
+      COBOL_INSIGHT_THEME.dark,
       expect.objectContaining({ base: "vs-dark" }),
+    );
+    expect(target.editor.defineTheme).toHaveBeenCalledWith(
+      COBOL_INSIGHT_THEME.light,
+      expect.objectContaining({ base: "vs" }),
     );
   });
 });

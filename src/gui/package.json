@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "check": "npm run typecheck && npm test",
     "smoke:render": "electron-vite build && electron smoke/render.cjs",
+    "smoke:shots": "electron-vite build && electron smoke/render.cjs --shots out/screenshots",
     "dist": "electron-vite build && electron-builder"
   },
   "dependencies": {
@@ -20,6 +21,7 @@
     "sql.js": "1.14.2"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
     "@testing-library/dom": "10.4.1",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.3",
@@ -37,6 +39,7 @@
     "elkjs": "0.12.0",
     "jsdom": "26.1.0",
     "monaco-editor": "0.56.0",
+    "tailwindcss": "4.3.3",
     "typescript": "5.9.3",
     "vite": "7.3.6",
     "vitest": "3.2.7"

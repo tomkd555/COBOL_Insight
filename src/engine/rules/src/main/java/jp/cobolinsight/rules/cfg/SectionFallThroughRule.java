@@ -32,14 +32,14 @@ public final class SectionFallThroughRule implements Rule {
     }
 
     private static final RuleMeta META = RuleMeta
-            .named("R014", "セクション末尾のEXIT文欠如によるフォールスルー", "制御フロー")
-            .summary("末尾が EXIT・終了文・無条件 GO TO のいずれでもなく、"
-                    + "次の節へ流れ落ちる節を検出します。")
-            .rationale("PERFORM で呼ぶ設計の節が、直接実行されたときに次の節まで続けて"
-                    + "実行され、二重処理や順序の狂いを生みます。")
-            .detection("節の末尾が EXIT・STOP・GOBACK・EXIT PROGRAM・無条件 GO TO の"
-                    + "いずれでもないものを検出します。")
-            .remedy("節の末尾に EXIT 段落を置き、そこで処理を閉じます。")
+            .named("R014", "節末尾のEXIT文欠如", "制御フロー")
+            .summary("末尾が EXIT 文・終了文・無条件の GO TO 文のいずれでもなく、"
+                    + "次の節へ制御が移る節を検出する。")
+            .rationale("PERFORM 文で呼び出す設計の節が、直接実行されたときに次の節まで続けて"
+                    + "実行され、二重処理や順序の狂いを生む。")
+            .detection("節の末尾が EXIT・STOP・GOBACK・EXIT PROGRAM・無条件の GO TO の"
+                    + "いずれでもないものを検出する。")
+            .remedy("節の末尾に EXIT 段落を置き、そこで処理を閉じる。")
             .example("""
                     CALC-SEC SECTION.
                         COMPUTE WS-TAX = WS-AMT * 0.10.
@@ -72,8 +72,8 @@ public final class SectionFallThroughRule implements Rule {
                     continue;
                 }
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                        "節 " + units.get(i).name() + " は末尾が EXIT・終端・GO TO で終わらず、"
-                                + "次の節 " + units.get(i + 1).name() + " へ流下する。",
+                        "節 " + units.get(i).name() + " は末尾が EXIT・終了文・GO TO で終わらず、"
+                                + "次の節 " + units.get(i + 1).name() + " へ制御が移る。",
                         new SourcePosition(model.sourceFile(), last.range().start().line(), 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
             }

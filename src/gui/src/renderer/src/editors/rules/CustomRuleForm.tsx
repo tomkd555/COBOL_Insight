@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactElement, type ReactNode } from "react";
-import { text } from "../../text";
+import { text } from "../../i18n/text";
 import type {
   CheckedAfterMatch,
   CustomMatch,

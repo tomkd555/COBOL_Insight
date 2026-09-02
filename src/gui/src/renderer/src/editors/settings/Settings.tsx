@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactElement } from "react";
-import { text } from "../../text";
+import { text } from "../../i18n/text";
 import { api, errorMessage } from "../../api";
 import { CODEPAGES } from "../../../../shared/codepage";
 import { SEVERITIES, type Severity } from "../../model/severity";
@@ -12,6 +12,7 @@ import {
   type SettingsState,
 } from "../../state/settingsStore";
 import type { Notify } from "../../state/useShellStartup";
+import { THEME_CHOICES, type ThemeChoice } from "../../theme";
 
 export interface SettingsEditorProps {
   notify: Notify;
@@ -19,6 +20,7 @@ export interface SettingsEditorProps {
 
 /** The part of the settings this screen edits. The pane sizes and the last folder are not here. */
 interface Draft {
+  readonly theme: ThemeChoice;
   readonly severityThreshold: Severity;
   readonly defaultEncoding: string;
   readonly copybookPaths: readonly string[];
@@ -27,12 +29,19 @@ interface Draft {
 
 function draftOf(settings: SettingsState): Draft {
   return {
+    theme: settings.theme,
     severityThreshold: settings.severityThreshold,
     defaultEncoding: settings.defaultEncoding,
     copybookPaths: [...settings.copybookPaths],
     fixOutDir: settings.fixOutDir,
   };
 }
+
+const THEME_LABEL: Record<ThemeChoice, string> = {
+  system: text.settings.themeSystem,
+  dark: text.settings.themeDark,
+  light: text.settings.themeLight,
+};
 
 function same(left: Draft, right: Draft): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
@@ -89,6 +98,7 @@ export function Settings({ notify }: SettingsEditorProps): ReactElement {
 
   const save = (): void => {
     const paths = draft.copybookPaths.map((path) => path.trim()).filter((path) => path !== "");
+    dispatch({ type: "SET_THEME", theme: draft.theme });
     dispatch({ type: "SET_THRESHOLD", threshold: draft.severityThreshold });
     dispatch({ type: "SET_ENCODING", encoding: draft.defaultEncoding });
     dispatch({ type: "SET_COPYBOOK_PATHS", paths });
@@ -112,6 +122,25 @@ export function Settings({ notify }: SettingsEditorProps): ReactElement {
   return (
     <div className="ci-settings" data-testid="settings">
       <h2 className="ci-settings__title">{text.settings.title}</h2>
+      <fieldset className="ci-form">
+        <legend className="ci-form__legend">{text.settings.theme}</legend>
+        <div className="ci-chips" role="radiogroup" aria-label={text.settings.theme}>
+          {THEME_CHOICES.map((choice) => (
+            <label key={choice} className={`ci-chip${draft.theme === choice ? " ci-chip--on" : ""}`}>
+              <input
+                type="radio"
+                name="theme"
+                className="ci-visually-hidden"
+                value={choice}
+                checked={draft.theme === choice}
+                onChange={() => edit({ theme: choice })}
+                data-testid={`settings-theme-${choice}`}
+              />
+              {THEME_LABEL[choice]}
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       <label className="ci-form__field">
         <span className="ci-form__label">{text.settings.encoding}</span>
@@ -128,7 +157,6 @@ export function Settings({ notify }: SettingsEditorProps): ReactElement {
             </option>
           ))}
         </select>
-        <span className="ci-form__note">{text.settings.encodingNote}</span>
       </label>
 
       <fieldset className="ci-form">

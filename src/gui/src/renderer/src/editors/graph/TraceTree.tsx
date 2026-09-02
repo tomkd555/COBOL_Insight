@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from "react";
-import { text } from "../../text";
+import { text } from "../../i18n/text";
 import type { TraceNode, TraceRow } from "../../model/traceTree";
 
 export interface TraceTreeProps {

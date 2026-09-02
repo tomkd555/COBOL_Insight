@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactElement } from "react";
-import { text } from "../../text";
+import { text } from "../../i18n/text";
 import { useProject, useProjectDispatch } from "../../state/projectStore";
 
 /**
@@ -16,7 +16,11 @@ export function Output(): ReactElement {
   }, [project.runLog.length]);
 
   if (project.runLog.length === 0) {
-    return <p className="ci-output__state">{text.output.empty}</p>;
+    return (
+      <p className="ci-output__state">
+        {project.inputDir === null ? text.output.emptyNoFolder : text.output.empty}
+      </p>
+    );
   }
 
   return (

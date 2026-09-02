@@ -23,13 +23,13 @@ import java.util.List;
  */
 public final class AlterStatementRule implements Rule {
 
-    private static final RuleMeta META = RuleMeta.named("R010", "ALTER文による遷移先の動的変更", "制御フロー")
-            .summary("手続き部の ALTER 文をすべて検出します。")
-            .rationale("ALTER は GO TO の飛び先を実行時に書き換えるため、"
-                    + "ソースを読んでも制御の流れを追えず、静的解析も遷移先を決められません。")
-            .detection("手続き部に現れる ALTER 文を無条件に検出します。")
-            .remedy("遷移先の切替を条件分岐(IF・EVALUATE)または PERFORM の呼び分けへ"
-                    + "置き換え、ALTER を除きます。")
+    private static final RuleMeta META = RuleMeta.named("R010", "ALTER文による制御の移行先の変更", "制御フロー")
+            .summary("手続き部の ALTER 文をすべて検出する。")
+            .rationale("ALTER 文は GO TO 文の移行先を実行時に書き換えるため、"
+                    + "原始プログラムを読んでも制御の流れを追えず、静的解析も移行先を決められない。")
+            .detection("手続き部に現れる ALTER 文を無条件に検出する。")
+            .remedy("移行先の切り替えを条件分岐（IF・EVALUATE）または PERFORM 文の呼び分けに"
+                    + "置き換え、ALTER 文を除く。")
             .example("""
                     ALTER SWITCH-PARA TO PROCEED TO ERROR-EXIT.
                     """, """
@@ -59,7 +59,7 @@ public final class AlterStatementRule implements Rule {
                     if (statement instanceof SimpleStatement simple
                             && "ALTER".equals(CfgSupport.upper(simple.verb()))) {
                         findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                                "ALTER文は GO TO の飛び先を実行時に書き換え、制御フローを"
+                                "ALTER 文は GO TO 文の移行先を実行時に書き換え、制御の流れを"
                                         + "静的に追えなくする。",
                                 new SourcePosition(model.sourceFile(),
                                         simple.range().start().line(), 1,

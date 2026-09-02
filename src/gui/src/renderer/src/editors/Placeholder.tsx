@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { text } from "../text";
+import { text } from "../i18n/text";
 
 /**
  * The stand-in for a view a later phase will fill. It exists so every activity entry and every tab

@@ -11,3 +11,8 @@ declare module "*?worker&inline" {
 
 /** The codicon registration is a side-effect-only CSS import with no exports of its own. */
 declare module "monaco-editor/features/codicon/register";
+
+/** Monaco's icon map, name to code point. The ESM internals ship without declarations. */
+declare module "monaco-editor/base/common/codiconsUtil.js" {
+  export function getCodiconFontCharacters(): Record<string, number>;
+}

@@ -51,13 +51,13 @@ public final class IdenticalOperandsRule implements Rule {
 
     private static final RuleMeta META =
             RuleMeta.named("R025", "二項演算子の両辺が同一の式", "データフロー")
-                    .summary("条件式の両辺が同じ、または COMPUTE 右辺が A - A・A / A の"
-                            + "形になっている箇所を検出します。")
-                    .rationale("条件が常に真か常に偽になり、演算は定数になります。"
-                            + "多くは、別の項目を指すつもりだった書き間違いです。")
-                    .detection("比較・論理演算子の両辺が単一のオペランド(変数・定数・リテラル)として"
-                            + "字句一致するもの、および COMPUTE 右辺の A - A・A / A を検出します。")
-                    .remedy("意図した項目名へ直します。意図どおりなら定数へ置き換えます。")
+                    .summary("条件式の両辺が同じ、または COMPUTE 文の右辺が A - A・A / A の"
+                            + "形になっている箇所を検出する。")
+                    .rationale("条件が常に真か常に偽になり、演算の結果は定数になる。"
+                            + "多くは、別の項目を指すつもりだった書き間違いである。")
+                    .detection("比較・論理演算子の両辺が単一の作用対象（データ項目・定数）として"
+                            + "字句一致するもの、および COMPUTE 文の右辺の A - A・A / A を検出する。")
+                    .remedy("意図した項目名に直す。意図どおりなら定数に置き換える。")
                     .example("""
                             IF WS-TOTAL = WS-TOTAL
                                 PERFORM SHORI
@@ -121,7 +121,7 @@ public final class IdenticalOperandsRule implements Rule {
             String right = tokens.get(i + 1);
             if (isOperand(left) && isOperand(right) && left.equalsIgnoreCase(right)) {
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                        "二項演算子の両辺が同一のオペランドである。常真・常偽、または無意味な演算になる。",
+                        "二項演算子の両辺が同一の作用対象である。常に真、常に偽、または無意味な演算になる。",
                         new SourcePosition(model.sourceFile(), statement.range().start().line(), 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
                 return;

@@ -72,6 +72,7 @@ describe("toAppSettings", () => {
       defaultEncoding: "Shift_JIS",
       copybookPaths: ["C:/cpy"],
       fixOutDir: "C:/out",
+      theme: "light",
       lastInputDir: "C:/assets",
       paneSizes: { sideWidth: 320 },
       restored: true,
@@ -83,6 +84,7 @@ describe("toAppSettings", () => {
       fixOutDir: "C:/out",
       lastInputDir: "C:/assets",
       paneSizes: { sideWidth: 320 },
+      theme: "light",
     });
   });
 });

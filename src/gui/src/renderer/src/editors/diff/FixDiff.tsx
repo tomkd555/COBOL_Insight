@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactElement } from "react";
 import type { FixDiff as FixDiffData } from "../../../../shared/ipc";
 import { api, errorMessage } from "../../api";
-import { text } from "../../text";
+import { text } from "../../i18n/text";
 import { useProject } from "../../state/projectStore";
 import { useSettings } from "../../state/settingsStore";
 import { artifactSubdir, fixOutDirOf } from "../../model/artifactPaths";
@@ -128,12 +128,22 @@ export function FixDiff({ path, onNotify }: FixDiffProps): ReactElement {
         </p>
       ) : null}
       {load.status === "ready" ? (
-        <DiffView
-          original={load.diff.originalText}
-          modified={load.diff.fixedText}
-          languageId={languageIdFor(path)}
-          ariaLabel={`${text.fixView.title} ${path}`}
-        />
+        <>
+          <div className="ci-sidebyside ci-sidebyside--labels">
+            <div className="ci-sidebyside__pane">
+              <span className="ci-sidebyside__label">{text.fixView.original}</span>
+            </div>
+            <div className="ci-sidebyside__pane">
+              <span className="ci-sidebyside__label">{text.fixView.fixed}</span>
+            </div>
+          </div>
+          <DiffView
+            original={load.diff.originalText}
+            modified={load.diff.fixedText}
+            languageId={languageIdFor(path)}
+            ariaLabel={`${text.fixView.title} ${path}`}
+          />
+        </>
       ) : null}
     </div>
   );

@@ -60,7 +60,7 @@ class RulesRunnerTest {
         assertEquals(34, result.rules().size());
         Map<String, Object> first = JsonReader.asObject(rulesOf(result).get(0));
         assertEquals("R001", first.get("id"));
-        assertEquals("未初期化変数の参照", first.get("name"));
+        assertEquals("未初期化のデータ項目の参照", first.get("name"));
         assertEquals("HIGH", first.get("severity"));
         assertEquals("builtin", first.get("source"));
         assertTrue(!((String) first.get("remedy")).isBlank());

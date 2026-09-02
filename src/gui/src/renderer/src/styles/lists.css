@@ -1,0 +1,459 @@
+/*
+ * The list views: explorer, problems, output, and the welcome placeholder.
+ *
+ * Class names follow BEM; every value comes from a token. No region carries a pixel min-width of
+ * its own: a hard floor would produce a horizontal scrollbar as soon as the viewport shrank under
+ * zoom, leaving the page scrolling in both directions at once.
+ */
+
+/* ---------------------------------------------------------------- explorer */
+
+.ci-explorer {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ci-explorer__toolbar,
+.ci-explorer__filters {
+  display: flex;
+  gap: var(--ci-space-2);
+  padding: var(--ci-space-2) var(--ci-space-3);
+}
+
+.ci-explorer__toolbar,
+.ci-explorer__filters {
+  flex-wrap: wrap;
+}
+
+.ci-explorer__toolbar > *,
+.ci-explorer__filters > * {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* The filters wrap before either shrinks under its own placeholder. */
+.ci-explorer__filters .ci-input {
+  min-width: 9ch;
+}
+
+.ci-explorer__state {
+  margin: 0;
+  padding: var(--ci-space-4);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-md);
+}
+
+.ci-explorer__state--error {
+  color: var(--color-destructive);
+}
+
+.ci-explorer__reason {
+  display: block;
+  margin-top: var(--ci-space-1);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-tree {
+  padding-bottom: var(--ci-space-2);
+}
+
+.ci-tree__row {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-1);
+  height: 24px;
+  padding: 0 var(--ci-space-2);
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: var(--ci-size-sm);
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.ci-tree__row:hover {
+  background: var(--ci-bg-hover);
+}
+
+.ci-tree__row[aria-selected="true"] {
+  background: var(--ci-bg-selected);
+  box-shadow: inset 2px 0 0 var(--color-primary);
+  color: var(--color-foreground);
+}
+
+.ci-tree__row .codicon {
+  flex: 0 0 auto;
+  color: var(--color-muted-foreground);
+}
+
+.ci-tree__name {
+  flex: 1 1 auto;
+  min-width: 6em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ci-tree__codepage {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ci-space-1);
+  flex: 0 0 auto;
+  padding: 0 var(--ci-space-1);
+  /* A fill and no edge: a static label never carries a control's border. */
+  background: var(--color-muted);
+  border-radius: var(--radius-sm);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-badge--warn {
+  color: var(--color-accent);
+}
+
+.ci-badge--count {
+  padding: 0 var(--ci-space-2);
+  background: var(--color-destructive);
+  border-radius: var(--radius-full);
+  color: var(--color-primary-foreground);
+}
+
+/* ---------------------------------------------------------------- problems */
+
+.ci-problems {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* The side bar has no detail pane, so its list is the scrolling surface. */
+.ci-problems--compact {
+  height: auto;
+  overflow-x: auto;
+}
+
+/* One line per finding; the full sentence is read in the detail pane. */
+.ci-problems__message,
+.ci-problems__rule,
+.ci-problems__file {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ci-problems__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ci-space-2);
+  padding: var(--ci-space-2) var(--ci-space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ci-problems__state {
+  margin: 0;
+  padding: var(--ci-space-4);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-md);
+}
+
+.ci-problems__state--error {
+  color: var(--color-destructive);
+}
+
+.ci-problems__reason {
+  display: block;
+  margin-top: var(--ci-space-1);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-problems__note {
+  margin: 0;
+  padding: var(--ci-space-1) var(--ci-space-3);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-problems__table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.ci-problems__table th:nth-child(1) {
+  width: 4em;
+}
+
+.ci-problems__table th:nth-child(2),
+.ci-problems__table th:nth-child(4) {
+  width: 16em;
+}
+
+.ci-problems__table th:nth-child(5) {
+  width: 4em;
+}
+
+.ci-problems__table th {
+  position: sticky;
+  top: 0;
+  padding: var(--ci-space-1) var(--ci-space-2);
+  background: var(--color-muted);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+  font-weight: 400;
+}
+
+.ci-problems__table th:first-child {
+  text-align: center;
+}
+
+.ci-problems__table th:last-child {
+  text-align: right;
+}
+
+.ci-problems__row td {
+  height: 24px;
+  padding: 0 var(--ci-space-2);
+  vertical-align: middle;
+  font-size: var(--ci-size-sm);
+}
+
+.ci-problems__row {
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.ci-problems__row:hover {
+  background: var(--ci-bg-hover);
+}
+
+.ci-problems__rule,
+.ci-problems__file {
+  color: var(--color-muted-foreground);
+  white-space: nowrap;
+}
+
+.ci-problems__graph {
+  margin-inline-start: var(--ci-space-1);
+  padding: 0 var(--ci-space-1);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+.ci-problems__graph:hover {
+  background: var(--ci-bg-hover);
+  color: var(--color-foreground);
+}
+
+.ci-problems__line {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.ci-problems__row--selected,
+.ci-problems__row--selected:hover {
+  background: var(--ci-bg-selected, var(--ci-bg-hover));
+}
+
+.ci-problems__body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.ci-problems__list {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: auto;
+}
+
+.ci-problems__detail {
+  flex: 0 0 min(40%, 480px);
+  overflow: auto;
+  padding: var(--ci-space-3) var(--ci-space-4);
+  border-inline-start: 1px solid var(--color-border);
+}
+
+.ci-problems__detail-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-2);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-problems__detail-message {
+  margin: var(--ci-space-2) 0 0;
+  font-size: var(--ci-size-md);
+  line-height: var(--ci-line);
+}
+
+.ci-problems__detail-section {
+  margin-top: var(--ci-space-3);
+}
+
+.ci-problems__detail-label {
+  margin: 0 0 var(--ci-space-1);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+  font-weight: 600;
+}
+
+.ci-problems__detail-prose {
+  margin: 0;
+  font-size: var(--ci-size-md);
+  line-height: var(--ci-line);
+}
+
+.ci-problems__related {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ci-problems__related li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ci-space-2);
+  padding: 2px 0;
+  font-size: var(--ci-size-sm);
+}
+
+.ci-problems__jump {
+  min-width: 3.5em;
+  padding: 0 var(--ci-space-1);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-primary);
+  font-family: var(--ci-font-code);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  cursor: pointer;
+}
+
+.ci-problems__jump:hover {
+  background: var(--ci-bg-hover);
+}
+
+.ci-problems__detail-actions {
+  display: flex;
+  gap: var(--ci-space-2);
+  margin-top: var(--ci-space-4);
+}
+
+.ci-severity {
+  display: inline-block;
+  min-width: 2.5em;
+  text-align: center;
+  font-size: var(--ci-size-sm);
+}
+
+.ci-severity--high {
+  color: var(--color-destructive);
+}
+
+.ci-severity--medium {
+  color: var(--color-accent);
+}
+
+.ci-severity--low {
+  color: var(--color-primary);
+}
+
+.ci-severity--warning {
+  color: var(--color-muted-foreground);
+}
+
+/* ---------------------------------------------------------------- output */
+
+.ci-output__state {
+  margin: 0;
+  padding: var(--ci-space-4);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-md);
+}
+
+.ci-output__toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--ci-space-1) var(--ci-space-2);
+}
+
+.ci-output__lines {
+  margin: 0;
+  padding: 0 var(--ci-space-3) var(--ci-space-2);
+  list-style: none;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--ci-font-code);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-output__line {
+  display: flex;
+  gap: var(--ci-space-2);
+}
+
+.ci-output__line--failed {
+  color: var(--color-destructive);
+}
+
+.ci-output__time {
+  flex: 0 0 auto;
+  color: var(--color-muted-foreground);
+}
+
+/* ---------------------------------------------------------------- welcome and placeholder */
+
+.ci-welcome {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ci-space-3);
+  padding: var(--ci-space-5);
+  max-width: 36rem;
+  margin-inline: auto;
+  text-align: center;
+}
+
+.ci-welcome__recent,
+.ci-welcome__hint {
+  margin: 0;
+  color: var(--color-muted-foreground);
+}
+
+.ci-welcome__recent-label {
+  margin-inline-end: var(--ci-space-2);
+}
+
+.ci-welcome__recent-path {
+  font-family: var(--ci-font-code);
+}
+
+.ci-placeholder {
+  margin: 0;
+  padding: var(--ci-space-4);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-md);
+}

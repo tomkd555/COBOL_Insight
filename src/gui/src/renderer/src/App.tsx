@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { api, errorMessage } from "./api";
-import { text } from "./text";
+import { text } from "./i18n/text";
 import { ProjectProvider, useProject } from "./state/projectStore";
 import {
   PANEL_LIMITS,
@@ -17,6 +17,7 @@ import { RulesProvider } from "./state/rulesStore";
 import { useRules } from "./state/useRules";
 import { EditorStatusProvider } from "./state/editorStatusStore";
 import { useShellStartup } from "./state/useShellStartup";
+import { useTheme } from "./state/useTheme";
 import { buildCommands, type Command } from "./state/commands";
 import {
   SEQUENCE_TIMEOUT_MS,
@@ -68,6 +69,7 @@ function Shell(): ReactElement {
   }, []);
 
   useShellStartup(notify);
+  useTheme();
   const rulesActions = useRules(notify);
   const sourceSave = useSourceSave(notify);
 
@@ -308,7 +310,7 @@ function Shell(): ReactElement {
                 onCommit={commitSize}
               />
               <div className="ci-shell__panel" style={{ height: `${workbench.panelHeight}px` }}>
-                <Panel onOpenAsset={openAsset} />
+                <Panel onOpenAsset={openAsset} onShowFix={showFix} />
               </div>
             </>
           ) : null}
@@ -390,6 +392,14 @@ function Shell(): ReactElement {
               <button
                 type="button"
                 className="ci-button"
+                onClick={sourceSave.showConflictDiff}
+                data-testid="save-conflict-diff"
+              >
+                {text.save.showDiff}
+              </button>
+              <button
+                type="button"
+                className="ci-button ci-button--primary"
                 onClick={() => {
                   const id = conflict.tabId;
                   sourceSave.dismissConflict();
@@ -402,10 +412,10 @@ function Shell(): ReactElement {
               <button
                 type="button"
                 className="ci-button"
-                onClick={sourceSave.showConflictDiff}
-                data-testid="save-conflict-diff"
+                onClick={sourceSave.dismissConflict}
+                data-testid="save-conflict-cancel"
               >
-                {text.save.showDiff}
+                {text.save.conflictCancel}
               </button>
             </>
           }

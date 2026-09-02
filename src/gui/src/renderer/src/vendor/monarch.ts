@@ -57,7 +57,7 @@ export interface MonacoThemeRule {
 
 /** A theme, in the shape `defineTheme` takes. */
 export interface MonacoThemeData {
-  base: "vs-dark";
+  base: "vs-dark" | "vs";
   inherit: boolean;
   rules: MonacoThemeRule[];
   colors: Record<string, string>;
@@ -71,7 +71,21 @@ export const LANGUAGE_ID = {
   json: "json",
 } as const;
 
-export const COBOL_INSIGHT_THEME = "cobol-insight";
+/** The theme names registered with Monaco, one per palette. */
+export const COBOL_INSIGHT_THEME = { dark: "cobol-insight-dark", light: "cobol-insight-light" } as const;
+
+/** Which of the two palettes a theme function returns. */
+export type ThemeName = keyof typeof COBOL_INSIGHT_THEME;
+
+/**
+ * The code face and its metrics, shared by every editor. BIZ UDGothic is the fixed-pitch member
+ * of the UI family (tokens.json); the fallbacks keep a DBCS glyph two cells wide.
+ */
+export const CODE_FONT = {
+  fontFamily: "'BIZ UDGothic','MS Gothic',monospace",
+  fontSize: 12,
+  lineHeight: 19,
+} as const;
 
 /* ------------------------------------------------------------------ COBOL fixed format */
 
@@ -307,38 +321,43 @@ export function jsonLanguage(): MonarchLanguage {
 /* ------------------------------------------------------------------ theme */
 
 /**
- * The editor theme. Monaco does not read CSS custom properties in a theme definition, so the values
- * from styles/tokens.css are repeated here as literals; they are the same palette.
+ * The editor themes. Monaco does not read CSS custom properties in a theme definition, so the two
+ * palettes of tokens.json are repeated here as hex literals: the editor ground and text are the
+ * theme's background and foreground, the line numbers its muted foreground, the rulers its border.
+ * Token colours are chosen against that ground, and the two sets are kept side by side so a change
+ * to one prompts the other.
  */
-export function cobolInsightTheme(): MonacoThemeData {
+export function cobolInsightTheme(theme: ThemeName): MonacoThemeData {
+  const dark = theme === "dark";
+  const c = (darkValue: string, lightValue: string): string => (dark ? darkValue : lightValue);
   return {
-    base: "vs-dark",
+    base: dark ? "vs-dark" : "vs",
     inherit: true,
     rules: [
-      { token: "sequence", foreground: "6b6b6b" },
-      { token: "indicator", foreground: "d7ba7d", fontStyle: "bold" },
-      { token: "continuation", foreground: "d7ba7d" },
-      { token: "debug", foreground: "c586c0" },
-      { token: "comment", foreground: "6a9955" },
-      { token: "string", foreground: "ce9178" },
-      { token: "string.invalid", foreground: "f14c4c", fontStyle: "bold" },
-      { token: "number", foreground: "b5cea8" },
-      { token: "keyword", foreground: "569cd6", fontStyle: "bold" },
-      { token: "keyword.division", foreground: "c586c0", fontStyle: "bold" },
-      { token: "constant", foreground: "4fc1ff", fontStyle: "bold" },
-      { token: "identifier", foreground: "cccccc" },
-      { token: "identifier.name", foreground: "dcdcaa" },
-      { token: "attribute.name", foreground: "9cdcfe" },
-      { token: "delimiter", foreground: "8b8b8b" },
-      { token: "operator", foreground: "d4d4d4" },
+      { token: "sequence", foreground: c("868d99", "6b7280") },
+      { token: "indicator", foreground: c("d7ba7d", "8a5f0f"), fontStyle: "bold" },
+      { token: "continuation", foreground: c("d7ba7d", "8a5f0f") },
+      { token: "debug", foreground: c("c586c0", "8a3fa0") },
+      { token: "comment", foreground: c("6a9955", "3f7d3f") },
+      { token: "string", foreground: c("ce9178", "a0522d") },
+      { token: "string.invalid", foreground: c("ff6b5e", "d03a2e"), fontStyle: "bold" },
+      { token: "number", foreground: c("b5cea8", "2f6b3d") },
+      { token: "keyword", foreground: c("6aa7ff", "2a66d0"), fontStyle: "bold" },
+      { token: "keyword.division", foreground: c("c586c0", "8a3fa0"), fontStyle: "bold" },
+      { token: "constant", foreground: c("4fc1ff", "0e6c8f"), fontStyle: "bold" },
+      { token: "identifier", foreground: c("e3e5ea", "2b2f38") },
+      { token: "identifier.name", foreground: c("dcdcaa", "6b5b00") },
+      { token: "attribute.name", foreground: c("9cdcfe", "1f5f8f") },
+      { token: "delimiter", foreground: c("a3a8b3", "626876") },
+      { token: "operator", foreground: c("d4d4d4", "2b2f38") },
     ],
     colors: {
-      "editor.background": "#1f1f1f",
-      "editor.foreground": "#cccccc",
-      "editorLineNumber.foreground": "#6b6b6b",
-      "editorLineNumber.activeForeground": "#4daafc",
-      "editorRuler.foreground": "#3c3c3c",
-      "editorGutter.background": "#1f1f1f",
+      "editor.background": c("#101418", "#f4f7fa"),
+      "editor.foreground": c("#e3e5ea", "#2b2f38"),
+      "editorLineNumber.foreground": c("#868d99", "#6b7280"),
+      "editorLineNumber.activeForeground": c("#6aa7ff", "#2a66d0"),
+      "editorRuler.foreground": c("#6e7582", "#8a92a0"),
+      "editorGutter.background": c("#101418", "#f4f7fa"),
     },
   };
 }

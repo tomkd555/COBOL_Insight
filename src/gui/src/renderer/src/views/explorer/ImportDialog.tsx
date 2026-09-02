@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactElement } from "react";
-import { text } from "../../text";
+import { text } from "../../i18n/text";
 import { api, errorMessage } from "../../api";
 import { Modal } from "../../ui/Modal";
 import { clipColumns, columnRuler, displayWidth, importRelPath } from "../../model/importModel";
@@ -171,7 +171,6 @@ export function ImportDialog({ inputDir, onClose }: ImportDialogProps): ReactEle
               onChange={(event) => setDestDir(event.target.value)}
               data-testid="import-destdir"
             />
-            <span className="ci-form__note">{text.import.destDirNote}</span>
           </label>
 
           <label className="ci-form__field">
@@ -191,26 +190,30 @@ export function ImportDialog({ inputDir, onClose }: ImportDialogProps): ReactEle
           <div className="ci-form__field">
             <span className="ci-form__label">{text.import.columns}</span>
             <div className="ci-import__columns">
-              <input
-                className="ci-input"
-                type="number"
-                min={MIN_COLUMN}
-                max={MAX_COLUMN}
-                aria-label={text.import.columnFrom}
-                value={columnFrom}
-                onChange={(event) => setColumnFrom(columnValue(event.target.value, columnFrom))}
-                data-testid="import-column-from"
-              />
-              <input
-                className="ci-input"
-                type="number"
-                min={MIN_COLUMN}
-                max={MAX_COLUMN}
-                aria-label={text.import.columnTo}
-                value={columnTo}
-                onChange={(event) => setColumnTo(columnValue(event.target.value, columnTo))}
-                data-testid="import-column-to"
-              />
+              <label className="ci-form__field">
+                <span className="ci-form__label">{text.import.columnFrom}</span>
+                <input
+                  className="ci-input"
+                  type="number"
+                  min={MIN_COLUMN}
+                  max={MAX_COLUMN}
+                  value={columnFrom}
+                  onChange={(event) => setColumnFrom(columnValue(event.target.value, columnFrom))}
+                  data-testid="import-column-from"
+                />
+              </label>
+              <label className="ci-form__field">
+                <span className="ci-form__label">{text.import.columnTo}</span>
+                <input
+                  className="ci-input"
+                  type="number"
+                  min={MIN_COLUMN}
+                  max={MAX_COLUMN}
+                  value={columnTo}
+                  onChange={(event) => setColumnTo(columnValue(event.target.value, columnTo))}
+                  data-testid="import-column-to"
+                />
+              </label>
             </div>
             <span className={columnsValid ? "ci-form__note" : "ci-form__error"}>
               {columnsValid ? text.import.columnsNote : text.import.columnsInvalid}
@@ -225,7 +228,6 @@ export function ImportDialog({ inputDir, onClose }: ImportDialogProps): ReactEle
             <textarea
               className="ci-import__paste"
               spellCheck={false}
-              placeholder={text.import.pastePlaceholder}
               value={pasted}
               onChange={(event) => setPasted(event.target.value)}
               data-testid="import-paste"

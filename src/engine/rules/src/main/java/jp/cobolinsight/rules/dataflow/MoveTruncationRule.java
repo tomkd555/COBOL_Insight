@@ -4,9 +4,12 @@ import jp.cobolinsight.core.cfg.CfgNode;
 import jp.cobolinsight.core.cfg.ControlFlowGraph;
 import jp.cobolinsight.core.cfg.ControlFlowGraphs;
 import jp.cobolinsight.core.finding.Finding;
+import jp.cobolinsight.core.finding.CodeFlow;
+import jp.cobolinsight.core.finding.CodeFlowStep;
 import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.picture.PictureType;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.semantic.DataItem;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.rule.Command;
@@ -15,6 +18,7 @@ import jp.cobolinsight.core.rule.Rule;
 import jp.cobolinsight.core.rule.RuleMeta;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
+import jp.cobolinsight.rules.cfg.CfgSupport;
 import jp.cobolinsight.core.spi.AnalysisContext;
 import jp.cobolinsight.rules.SourceTextIndex;
 
@@ -38,16 +42,16 @@ public final class MoveTruncationRule implements Rule {
     private static final Pattern NAME_TOKEN =
             Pattern.compile("[\\p{L}\\p{N}$#_-]*\\p{L}[\\p{L}\\p{N}$#_-]*");
 
-    private static final RuleMeta META = RuleMeta.named("R003", "MOVEによる桁落ち・切り捨て", "データ移動")
-            .summary("受信項目の桁数・文字長が送信項目より小さい MOVE を検出します。")
-            .rationale("数値では上位桁が、英数字では末尾の文字が失われます。"
-                    + "実行時の異常にはならないため、金額や識別子が黙って別の値になります。")
-            .detection("送受信の PICTURE を解決し、数値項目どうしで受信の整数部または小数部が"
-                    + "送信より短いもの、英数字項目どうしで送信が受信より長いものを検出します。"
-                    + "図形定数・文字列リテラル・集団項目・参照修飾を送信に含む MOVE と、"
-                    + "送受信の種別が異なる MOVE は対象外とします。")
-            .remedy("受信項目の PICTURE を送信項目以上に広げます。"
-                    + "切り捨てが意図なら、参照修飾で切り出す範囲を明示します。")
+    private static final RuleMeta META = RuleMeta.named("R003", "MOVE文による切り捨て", "データ移動")
+            .summary("受け取り側項目のけた数または文字長が送り出し側項目より小さい MOVE 文を検出する。")
+            .rationale("数字項目では上位けたが、英数字項目では右端の文字が切り捨てられる。"
+                    + "実行時エラーにはならないため、金額や識別子が別の値のまま処理が進む。")
+            .detection("送り出し側と受け取り側の PICTURE を解決し、数字項目どうしで受け取り側の"
+                    + "整数部または小数部が短いもの、英数字項目どうしで送り出し側が長いものを検出する。"
+                    + "表意定数・文字定数・集団項目・部分参照を送り出し側に含む MOVE 文と、"
+                    + "両側の項類が異なる MOVE 文は対象外とする。")
+            .remedy("受け取り側項目の PICTURE を送り出し側項目以上に広げる。"
+                    + "切り捨てが意図なら、部分参照で転記する範囲を明示する。")
             .example("""
                     01  WS-AMT-IN   PIC 9(9).
                     01  WS-AMT-OUT  PIC 9(5).
@@ -93,19 +97,37 @@ public final class MoveTruncationRule implements Rule {
                     || !"MOVE".equals(simple.verb().toUpperCase(Locale.ROOT))) {
                 continue;
             }
-            String truncated = truncatingReceiver(simple.text(), support);
-            if (truncated != null) {
-                findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                        "MOVE で送信項目より桁数の小さい受信項目 " + truncated
-                                + " へ移送している。桁落ち・切り捨てが起こる。",
-                        new SourcePosition(model.sourceFile(), simple.range().start().line(), 1,
-                                SourcePosition.UNKNOWN_BYTE_OFFSET)));
+            Truncation t = truncatingReceiver(simple.text(), support);
+            if (t != null) {
+                int line = simple.range().start().line();
+                List<CodeFlowStep> steps = new ArrayList<>();
+                support.item(t.sender()).ifPresent(item -> steps.add(CfgSupport.step(
+                        item.position().file(), item.position().line(),
+                        "送り出し側項目 " + t.sender() + " の宣言（PIC " + t.senderPic() + "）")));
+                support.item(t.receiver()).ifPresent(item -> steps.add(CfgSupport.step(
+                        item.position().file(), item.position().line(),
+                        "受け取り側項目 " + t.receiver() + " の宣言（PIC " + t.receiverPic() + "）")));
+                steps.add(CfgSupport.step(model.sourceFile(), line, "切り捨てが起きる MOVE 文"));
+                findings.add(new Finding(META.id(), META.defaultSeverity().toLevel(),
+                        "MOVE " + t.sender() + "（PIC " + t.senderPic() + "）TO " + t.receiver()
+                                + "（PIC " + t.receiverPic() + "）で" + t.lost() + "が切り捨てられる。"
+                                + "実行時エラーも警告も出ず、値が変わる。"
+                                + t.receiver() + " の PICTURE を " + t.senderPic()
+                                + " 以上に広げるか、切り捨てが意図なら部分参照で範囲を明示する。",
+                        new SourcePosition(model.sourceFile(), line, 1,
+                                SourcePosition.UNKNOWN_BYTE_OFFSET),
+                        List.of(new CodeFlow(steps)), List.of()));
             }
         }
     }
 
-    /** The name of the first receiving item that loses digits. null if none. */
-    private static String truncatingReceiver(String text, DataFlowSupport support) {
+    /** What a truncating MOVE loses: both names, both PICTUREs, and the digits or characters lost. */
+    private record Truncation(String sender, String senderPic, String receiver,
+            String receiverPic, String lost) {
+    }
+
+    /** The first receiving item that loses digits, with the sender. null if none. */
+    private static Truncation truncatingReceiver(String text, DataFlowSupport support) {
         String masked = maskLiterals(text);
         String upper = masked.toUpperCase(Locale.ROOT);
         if (upper.contains(" CORRESPONDING ") || upper.contains(" CORR ")) {
@@ -133,7 +155,8 @@ public final class MoveTruncationRule implements Rule {
             String receiver = m.group();
             PictureType recv = support.pictureType(receiver).orElse(null);
             if (recv != null && truncates(sender, recv)) {
-                return receiver;
+                return new Truncation(senderName, pictureOf(support, senderName), receiver,
+                        pictureOf(support, receiver), lost(sender, recv));
             }
         }
         return null;
@@ -157,6 +180,23 @@ public final class MoveTruncationRule implements Rule {
             return sender.totalDigits() > recv.totalDigits();
         }
         return false;
+    }
+
+    private static String pictureOf(DataFlowSupport support, String name) {
+        return support.item(name).flatMap(DataItem::picture).orElse("?");
+    }
+
+    /** "上位 4 けた", "小数部 2 けた", "上位 4 けたと小数部 2 けた" or "右端 3 文字". */
+    private static String lost(PictureType sender, PictureType recv) {
+        if (!sender.isNumeric()) {
+            return "右端 " + (sender.totalDigits() - recv.totalDigits()) + " 文字";
+        }
+        int high = sender.integerDigits() - recv.integerDigits();
+        int low = sender.fractionDigits() - recv.fractionDigits();
+        if (high > 0 && low > 0) {
+            return "上位 " + high + " けたと小数部 " + low + " けた";
+        }
+        return high > 0 ? "上位 " + high + " けた" : "小数部 " + low + " けた";
     }
 
     private static String firstName(String region) {

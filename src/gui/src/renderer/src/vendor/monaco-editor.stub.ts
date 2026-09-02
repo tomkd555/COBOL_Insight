@@ -207,6 +207,11 @@ export const languages = {
 };
 
 /** Stands in for the key enums an editor action's keybinding is built from. */
+/** Stands in for monaco-editor/base/common/codiconsUtil.js. */
+export function getCodiconFontCharacters(): Record<string, number> {
+  return {};
+}
+
 export const KeyMod = { CtrlCmd: 2048, Shift: 1024, Alt: 512, WinCtrl: 256 };
 
 export const KeyCode = { KeyC: 33 };

@@ -36,7 +36,6 @@ export const KEYBINDINGS: readonly Keybinding[] = [
   { chord: "Ctrl+PageDown", key: "pagedown", shift: false, command: "editor.nextTab" },
   { chord: "Ctrl+PageUp", key: "pageup", shift: false, command: "editor.previousTab" },
   { chord: "Ctrl+Shift+E", key: "e", shift: true, command: "view.showExplorer" },
-  { chord: "Ctrl+Shift+F", key: "f", shift: true, command: "view.showSearch" },
   { chord: "Ctrl+Shift+M", key: "m", shift: true, command: "view.showProblems" },
   { chord: "Ctrl+Shift+U", key: "u", shift: true, command: "view.showOutput" },
 ];

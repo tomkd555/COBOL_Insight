@@ -34,11 +34,21 @@
  * check exits non-zero.
  *
  * Run: npm run smoke:render (electron-vite build, then electron smoke/render.cjs)
+ *
+ * With `--shots <dir>` the suite runs once per theme, dark then light, and writes a PNG of the
+ * window after every check into <dir>/<theme>/. That is how the design review sees the screens:
+ * the renderer needs the preload bridge, so a browser cannot open it on its own.
  */
 
 const { app, BrowserWindow } = require("electron");
-const { existsSync } = require("node:fs");
+const { existsSync, mkdirSync, writeFileSync } = require("node:fs");
 const { join } = require("node:path");
+
+/** The directory the screenshots go to, or null when the run is the plain smoke. */
+const SHOTS_DIR = (() => {
+  const at = process.argv.indexOf("--shots");
+  return at < 0 || process.argv[at + 1] === undefined ? null : process.argv[at + 1];
+})();
 
 /** The ceiling on each wait. Generous, because it covers rendering start-up. */
 const WAIT_TIMEOUT_MS = 30000;
@@ -64,6 +74,23 @@ const BENIGN = [/^ResizeObserver loop /];
 function record(name, ok, detail) {
   results.push({ name, ok, detail });
   console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail === undefined ? "" : ` — ${detail}`}`);
+}
+
+/** The theme of the suite in progress; `snap` files its captures under it. */
+let currentTheme = "dark";
+
+/** Writes the window as it stands to <shots>/<theme>/<name>.png. A no-op in the plain smoke. */
+async function snap(win, name) {
+  if (SHOTS_DIR === null) {
+    return;
+  }
+  const dir = join(SHOTS_DIR, currentTheme);
+  mkdirSync(dir, { recursive: true });
+  // Let the icon font, the last click's re-render and Monaco's next frame land before the capture.
+  await evaluate(win, "document.fonts.ready.then(() => true)");
+  await delay(250);
+  const image = await win.webContents.capturePage();
+  writeFileSync(join(dir, `${name}.png`), image.toPNG());
 }
 
 function delay(ms) {
@@ -401,6 +428,7 @@ async function checkSaveConflict(win) {
     ok: false,
     reason: error.message,
   }));
+  await snap(win, "checkSaveConflict-dialog");
   record(
     "14. saving over a changed original raises the conflict dialog",
     raised.ok === true,
@@ -585,6 +613,7 @@ async function checkTranspile(win) {
     "the caret the Java pane followed to",
   );
 
+  await snap(win, "checkTranspile-panes");
   record(
     "17. the transpile view lines the generated code up through the line map",
     python === 3 && java === 4,
@@ -614,7 +643,20 @@ async function checkFindings(win) {
     `document.querySelector('[data-testid="tab-source:cobol/SYK002.cbl"]') !== null`,
     "the tab the row opened",
   );
-  record("5. a problems row opens the asset's tab", rows >= 3 && opened === true, `${rows} rows`);
+  const detailed = await waitUntil(
+    win,
+    `(() => {
+      const detail = document.querySelector('[data-testid="problem-detail"]');
+      return detail !== null && detail.textContent.includes('宣言 12行');
+    })()`,
+    "the finding detail",
+  );
+  await snap(win, "checkFindings-detail");
+  record(
+    "5. a problems row opens the asset's tab and its detail",
+    rows >= 3 && opened === true && detailed === true,
+    `${rows} rows`,
+  );
 }
 
 /**
@@ -697,6 +739,7 @@ async function checkRules(win) {
     })()`,
     "the toggle round trip through the rule file",
   );
+  await snap(win, "checkRules-view");
   record(
     "8. a rules toggle round-trips through the rule file",
     toggles >= 3 && severities >= 3 && roundTripped === "round-tripped",
@@ -732,6 +775,7 @@ async function checkRuleAndSettingsEditors(win) {
     "the raw JSON of the custom rules",
   );
 
+  await snap(win, "checkRuleAndSettingsEditors-customRules");
   await waitUntil(win, clickTestId("activity-explorer"), "the explorer");
   await evaluate(
     win,
@@ -806,6 +850,7 @@ async function checkImportDialog(win) {
     "the preview of the cut text",
   );
 
+  await snap(win, "checkImportDialog-open");
   await waitUntil(win, clickTestId("import-save"), "the save button");
   const saved = await waitUntil(
     win,
@@ -858,6 +903,7 @@ async function checkCommandPalette(win) {
     "the filtered commands",
   );
 
+  await snap(win, "checkCommandPalette-open");
   await evaluate(
     win,
     `document.querySelector('[data-testid="command-palette-input"]')
@@ -928,6 +974,20 @@ async function main() {
     return;
   }
 
+  for (const theme of SHOTS_DIR === null ? ["dark"] : ["dark", "light"]) {
+    await runSuite(theme);
+  }
+
+  const failed = results.filter((result) => !result.ok);
+  console.log(`\nrender smoke: ${results.length - failed.length} / ${results.length} checks passed`);
+  app.exit(failed.length === 0 ? 0 : 1);
+}
+
+/** Loads the renderer with the fake preload told to store that theme, and runs every check. */
+async function runSuite(theme) {
+  // One suite's console faults must not be charged to the next.
+  consoleErrors.length = 0;
+  currentTheme = theme;
   const win = new BrowserWindow({
     // The production default size (see src/main/window.ts).
     width: 1440,
@@ -940,6 +1000,8 @@ async function main() {
       nodeIntegration: false,
       // Render for real regardless of the display environment.
       offscreen: true,
+      // The fake preload reads this into the stored settings, so the shell resolves that theme.
+      additionalArguments: [`--ci-theme=${theme}`],
     },
   });
 
@@ -993,18 +1055,18 @@ async function main() {
           error instanceof Error ? error.message : String(error),
         );
       }
+      await snap(win, check.name);
     }
     checkConsole();
   } catch (error) {
     record("the smoke ran to completion", false, error instanceof Error ? error.message : String(error));
     checkConsole();
   }
-
-  const failed = results.filter((result) => !result.ok);
-  console.log(`\nrender smoke: ${results.length - failed.length} / ${results.length} checks passed`);
-  app.exit(failed.length === 0 ? 0 : 1);
+  win.destroy();
 }
 
+// Closing the first theme's window must not end the app before the second theme has run.
+app.on("window-all-closed", () => undefined);
 app.commandLine.appendSwitch("disable-gpu");
 app.disableHardwareAcceleration();
 app.whenReady().then(main);
