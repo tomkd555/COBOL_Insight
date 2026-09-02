@@ -5,7 +5,7 @@
  * The checklist, numbered as the plan numbers it:
  *
  *   1. the shell is built from four regions (activity bar, side bar, editor area, panel)
- *   2. choosing a folder runs the analysis and fills the asset tree with kind badges
+ *   2. choosing a folder runs the scan and fills the asset tree with kind badges
  *   3. opening an asset starts Monaco and its lines land on distinct y coordinates
  *      (without 'unsafe-inline' in style-src every line collapses onto the same y)
  *   4. typing into the body raises the unsaved mark on that tab
@@ -151,7 +151,8 @@ async function checkShell(win) {
 
 /** Check 2: choosing a folder through to the asset tree. */
 async function checkAssetTree(win) {
-  await waitUntil(win, clickTestId("select-folder"), "the folder picker");
+  // With no folder open the welcome view carries the action; the title bar's chip appears with one.
+  await waitUntil(win, clickTestId("welcome-select-folder"), "the folder picker");
   const rows = await waitUntil(win, countOf('[data-testid^="tree-"]'), "the asset tree");
   const badges = await evaluate(
     win,
@@ -626,6 +627,8 @@ async function checkTranspile(win) {
 
 /** Check 5: the problems table and the route from a row into the source. */
 async function checkFindings(win) {
+  // Opening a folder only scans it; the findings arrive with the analysis the run button starts.
+  await waitUntil(win, clickTestId("run-analysis"), "the run button");
   const rows = await waitUntil(win, countOf('[data-testid^="finding-"]'), "the problems rows");
   await waitUntil(
     win,
@@ -798,9 +801,10 @@ async function checkRuleAndSettingsEditors(win) {
     `document.querySelector('[data-testid="command-palette-input"]')
        .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))`,
   );
+  // The settings apply as they are changed, so the screen has no save button to wait for.
   const settings = await waitUntil(
     win,
-    `document.querySelector('[data-testid="settings-save"]') !== null`,
+    `document.querySelector('[data-testid="settings-threshold"]') !== null`,
     "the settings screen",
   );
 
@@ -951,6 +955,9 @@ async function checkZoomReflow(win) {
       overflow.scroll <= overflow.client,
       `scrollWidth ${overflow.scroll} / clientWidth ${overflow.client}`,
     );
+    // Captured here, while the zoom is still applied: a shot taken after the reset shows the
+    // ordinary layout and says nothing about what the check looked at.
+    await snap(win, "checkZoomReflow");
   } finally {
     win.webContents.setZoomFactor(original);
     await delay(200);
@@ -1055,7 +1062,10 @@ async function runSuite(theme) {
           error instanceof Error ? error.message : String(error),
         );
       }
-      await snap(win, check.name);
+      // The zoom check captures its own shot, before it puts the zoom factor back.
+      if (check !== checkZoomReflow) {
+        await snap(win, check.name);
+      }
     }
     checkConsole();
   } catch (error) {

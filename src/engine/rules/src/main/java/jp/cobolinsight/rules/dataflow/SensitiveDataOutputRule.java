@@ -39,13 +39,13 @@ public final class SensitiveDataOutputRule implements Rule {
     private static final RuleMeta META =
             RuleMeta.named("R027", "機密データ項目のマスキングなし出力", "セキュリティ")
                     .summary("機密項目の値を、マスキングも暗号化も経ずに"
-                            + "表示・帳票・ログへ渡す箇所を検出する。")
+                            + "表示・帳票・ログへ渡す箇所を検出します。")
                     .rationale("個人番号や口座番号が画面・帳票・ログに残り、"
-                            + "それらを閲覧できる範囲がそのまま漏えいの範囲になる。")
-                    .detection("名前の末尾が -SSN・-ACCT-NO・-CARD-NO の項目を機密とみなし、その値を追跡して"
-                            + "DISPLAY・帳票出力（WRITE）・ログ出力（CALL）に到達するものを検出する。"
-                            + "定数の転記で値を差し替えた項目は追跡を打ち切るため対象外とする。")
-                    .remedy("出力する前に伏せ字へ置き換えるか、末尾の数けただけを残す。")
+                            + "それらを閲覧できる範囲がそのまま漏えいの範囲になります。")
+                    .detection("名前の末尾が -SSN・-ACCT-NO・-CARD-NO の項目を機密とみなし、その値が"
+                            + "DISPLAY・帳票出力（WRITE）・ログ出力（CALL）に到達するものを検出します。"
+                            + "定数の転記で値を差し替えた項目は対象外です。")
+                    .remedy("出力する前に伏せ字へ置き換えるか、末尾の数けただけを残してください。")
                     .example("""
                             DISPLAY "口座番号: " WS-ACCT-NO.
                             """, """
@@ -100,8 +100,9 @@ public final class SensitiveDataOutputRule implements Rule {
                 SourcePosition position = new SourcePosition(model.sourceFile(),
                         simple.range().start().line(), 1, SourcePosition.UNKNOWN_BYTE_OFFSET);
                 findings.add(new Finding(META.id(), META.defaultSeverity().toLevel(),
-                        "機密項目 " + String.join(", ", exposed)
-                                + " をマスキング・暗号化せずに出力している。機密情報が露出する。",
+                        String.join(", ", exposed) + " をマスキングせずに "
+                                + simple.verb().toUpperCase(Locale.ROOT)
+                                + " へ渡しています。機密情報が露出します。",
                         position,
                         TaintCodeFlows.of(model, df, node, TaintKind.SENSITIVE, exposed, position,
                                 "出力する"),

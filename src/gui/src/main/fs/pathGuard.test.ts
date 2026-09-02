@@ -64,7 +64,7 @@ describe("resolveSourceFile", () => {
 
   it("rejects a literal path outside the base before touching the filesystem", async () => {
     await expect(resolveSourceFile(resolver(), BASE, "../secrets.txt")).rejects.toThrow(
-      /outside the asset folder/,
+      /資産フォルダの外/,
     );
   });
 
@@ -72,7 +72,7 @@ describe("resolveSourceFile", () => {
     const link = resolve(BASE, "link.cbl").replace(/\\/g, "/");
     await expect(
       resolveSourceFile(resolver({ [link]: "C:/elsewhere/secret.cbl" }), BASE, "link.cbl"),
-    ).rejects.toThrow(/outside the asset folder/);
+    ).rejects.toThrow(/資産フォルダの外/);
   });
 
   it("still accepts a file when the base itself is a junction", async () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SaveResult } from "../../../shared/ipc";
 import { isStale, saveOutcomeOf, showsReparseErrors } from "./save";
-import { REPARSE_RULE_ID } from "./markers";
+import { REPARSE_RULE_ID } from "./ruleIndex";
 
 function result(overrides: Partial<SaveResult> = {}): SaveResult {
   return {
@@ -37,14 +37,15 @@ describe("saveOutcomeOf", () => {
     expect(outcome.message).toContain("Shift_JIS へ変換できない文字");
   });
 
-  it("says so when the engine refused without a reason", () => {
+  it("reports a refused write with no reason as a complete sentence", () => {
     const outcome = saveOutcomeOf("cobol/A.cbl", "PROGRAM", result({ written: false, exitCode: 2 }));
-    expect(outcome.message).toContain("理由");
+    expect(outcome.message).toBe("「cobol/A.cbl」を保存できませんでした。");
   });
 
   it("treats a clean write as saved with nothing to report", () => {
+    // A written file is silent: nothing is raised unless the verification found something.
     const outcome = saveOutcomeOf("cobol/A.cbl", "PROGRAM", result());
-    expect(outcome).toEqual({ kind: "saved", message: expect.any(String), diagnostics: [] });
+    expect(outcome).toEqual({ kind: "saved", message: null, diagnostics: [] });
   });
 
   it("turns a program's reparse errors into findings, the write standing", () => {

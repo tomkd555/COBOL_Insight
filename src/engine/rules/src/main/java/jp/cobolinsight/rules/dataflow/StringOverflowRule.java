@@ -42,15 +42,16 @@ public final class StringOverflowRule implements Rule {
                     + "|(?i)\\bTALLYING\\s+IN\\s+[\\p{L}\\p{N}$#_-]+");
 
     private static final RuleMeta META =
-            RuleMeta.named("R016", "STRING/UNSTRING文の受け取り側項目のあふれ", "データ移動")
+            RuleMeta.named("R016", "STRING/UNSTRING 文の受け取り側項目のあふれ", "データ移動")
                     .summary("STRING の連結結果が受け取り側項目に収まらない、または UNSTRING の"
-                            + "送り出し側項目が受け取り側項目群に収まらない構成を検出する。")
+                            + "送り出し側項目が受け取り側項目群に収まらない構成を検出します。")
                     .rationale("収まらない分が切り捨てられ、"
-                            + "連結した文字列や分割した結果が途中で欠ける。")
+                            + "連結した文字列や分割した結果が途中で欠けます。")
                     .detection("送り出し側の合計長と受け取り側の長さをバイト長で突き合わせ、"
-                            + "超えるものを検出する。長さを解決できない項目を含む文と、"
-                            + "ON OVERFLOW 句であふれ時の処理を書いてある文は対象外とする。")
-                    .remedy("受け取り側項目の長さを広げるか、ON OVERFLOW 句であふれ時の処理を書く。")
+                            + "超えるものを検出します。長さを解決できない項目を含む文と、"
+                            + "ON OVERFLOW 句であふれ時の処理を書いてある文は対象外です。")
+                    .remedy("受け取り側項目の長さを広げるか、"
+                            + "ON OVERFLOW 句であふれ時の処理を書いてください。")
                     .example("""
                             01  WS-OUT  PIC X(10).
                                 STRING WS-A WS-B DELIMITED BY SIZE INTO WS-OUT.
@@ -132,8 +133,8 @@ public final class StringOverflowRule implements Rule {
         if (total == null || capacity == null || total <= capacity) {
             return null;
         }
-        return "STRING の送り出し側項目の合計長 " + total + " が受け取り側項目 " + receiver + " の長さ " + capacity
-                + " を超える。あふれた分が切り捨てられる。";
+        return receiver + "（" + capacity + "バイト）に STRING の結果 " + total
+                + "バイトが収まりません。あふれた分が切り捨てられます。";
     }
 
     /** The warning message when the UNSTRING sending length exceeds the total receiving length after splitting; null otherwise. */
@@ -155,8 +156,8 @@ public final class StringOverflowRule implements Rule {
         if (sourceLen == null || receiverTotal == null || sourceLen <= receiverTotal) {
             return null;
         }
-        return "UNSTRING の送り出し側項目 " + sourceName + " の長さ " + sourceLen
-                + " が受け取り側項目の合計長 " + receiverTotal + " を超える。分割結果を保持しきれない。";
+        return sourceName + "（" + sourceLen + "バイト）が受け取り側項目の合計 " + receiverTotal
+                + "バイトを超えています。分割結果を保持しきれません。";
     }
 
     /**

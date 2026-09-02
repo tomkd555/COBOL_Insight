@@ -140,7 +140,7 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
   if (state.status === "idle") {
     return (
       <p className="ci-graph__state">
-        {project.inputDir === null ? text.graph.emptyNoFolder : text.graph.empty}
+        {project.inputDir === null ? text.empty.noFolder : text.empty.notAnalysed}
       </p>
     );
   }
@@ -166,7 +166,7 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
           type="search"
           className="ci-input"
           placeholder={text.graph.search}
-          aria-label={text.graph.searchLabel}
+          aria-label={text.graph.search}
           value={filter.search}
           onChange={(event) => setFilter({ ...filter, search: event.target.value })}
           data-testid="graph-search"
@@ -184,12 +184,13 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
             data-testid="graph-depth"
           />
           <span>
-            {filter.depth} / {DEPTH_LIMITS.max}
+            {filter.depth}/{DEPTH_LIMITS.max}
           </span>
         </label>
         <button
           type="button"
           className="ci-button"
+          disabled={filter.focusId === null}
           onClick={() => {
             setFilter({ ...filter, focusId: null });
             setSelectedNodeId(null);
@@ -232,14 +233,14 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
         </span>
       </div>
 
+      {/* A kind the project has none of is not offered, as the legend already omits it. */}
       <div className="ci-chips" role="group" aria-label={text.graph.kinds}>
-        {NODE_KINDS.map((kind) => (
+        {NODE_KINDS.filter((kind) => counts[kind] > 0).map((kind) => (
           <button
             key={kind}
             type="button"
             className={`ci-chip${filter.kinds[kind] ? " ci-chip--on" : ""}`}
             aria-pressed={filter.kinds[kind]}
-            disabled={counts[kind] === 0}
             onClick={() => setFilter(toggleKind(filter, kind))}
             data-testid={`graph-kind-${kind}`}
           >

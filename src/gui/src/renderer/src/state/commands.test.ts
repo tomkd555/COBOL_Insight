@@ -19,6 +19,7 @@ function context(overrides: Partial<CommandContext> = {}): CommandContext {
     runAnalysis: vi.fn(),
     cancelAnalysis: vi.fn(),
     requestCloseTab: vi.fn(),
+    requestDiscardTab: vi.fn(),
     rulesActions: {
       setRulesEnabled: vi.fn(),
       setRuleSeverity: vi.fn(),
@@ -34,6 +35,17 @@ function context(overrides: Partial<CommandContext> = {}): CommandContext {
 
 const withFolder: ProjectState = { ...initialProjectState, inputDir: "C:/assets" };
 const running: ProjectState = { ...withFolder, mode: "running" };
+/** A scanned folder holding one COBOL program and one copybook, which is not translated. */
+const scanned: ProjectState = {
+  ...withFolder,
+  inventory: {
+    status: "ready",
+    items: [
+      { id: 1, path: "a.cbl", name: "a.cbl", type: "PROGRAM", codepage: null, byteSize: 1, findingCount: 0 },
+      { id: 2, path: "b.cpy", name: "b.cpy", type: "COPYBOOK", codepage: null, byteSize: 1, findingCount: 0 },
+    ],
+  },
+};
 const withTab: WorkbenchState = {
   ...initialWorkbenchState,
   tabs: [sourceTab("a.cbl")],
@@ -90,17 +102,31 @@ describe("when", () => {
     expect(offered(running)).toBe(true);
   });
 
-  it("offers the translation only for a source tab", () => {
+  it("offers the translation only for a COBOL source tab", () => {
     const offered = (workbench: WorkbenchState): boolean =>
-      availableCommands(buildCommands(context({ workbench }))).some(
+      availableCommands(buildCommands(context({ workbench, project: scanned }))).some(
         (command) => command.id === "view.showTranspile",
       );
     expect(offered(initialWorkbenchState)).toBe(false);
     expect(offered(withTab)).toBe(true);
+    // A copybook has no translation, so the command does not apply on its tab.
+    const copybook = sourceTab("b.cpy");
+    expect(offered({ ...initialWorkbenchState, tabs: [copybook], activeTabId: copybook.id })).toBe(
+      false,
+    );
     const settings = settingsTab("設定");
     expect(offered({ ...initialWorkbenchState, tabs: [settings], activeTabId: settings.id })).toBe(
       false,
     );
+  });
+
+  it("offers the discard only on a tab that holds unsaved edits", () => {
+    const offered = (workbench: WorkbenchState): boolean =>
+      availableCommands(buildCommands(context({ workbench }))).some(
+        (command) => command.id === "editor.discard",
+      );
+    expect(offered(withTab)).toBe(false);
+    expect(offered({ ...withTab, drafts: { [sourceTab("a.cbl").id]: "EDITED" } })).toBe(true);
   });
 
   it("offers the save only on a source tab that holds unsaved edits", () => {
@@ -139,7 +165,9 @@ describe("run", () => {
 
   it("opens the translation of the asset the active source tab shows", () => {
     const workbenchDispatch = vi.fn();
-    const commands = buildCommands(context({ workbench: withTab, workbenchDispatch }));
+    const commands = buildCommands(
+      context({ workbench: withTab, workbenchDispatch, project: scanned }),
+    );
     commands.find((command) => command.id === "view.showTranspile")?.run();
     expect(workbenchDispatch).toHaveBeenCalledWith({
       type: "OPEN_TAB",

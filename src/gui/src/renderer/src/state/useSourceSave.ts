@@ -121,7 +121,9 @@ export function useSourceSave(notify: (message: string, failed?: boolean) => voi
         path: document.path,
         findings: outcome.diagnostics,
       });
-      notify(outcome.message);
+      if (outcome.message !== null) {
+        notify(outcome.message);
+      }
       return true;
     },
     [
@@ -167,12 +169,15 @@ export function useSourceSave(notify: (message: string, failed?: boolean) => voi
    * unanswered and unreported.
    */
   const saveAll = useCallback(async (): Promise<void> => {
-    for (const tabId of dirtySourceTabs(workbench)) {
+    const pending = dirtySourceTabs(workbench);
+    for (const [index, tabId] of pending.entries()) {
       if (!(await save(tabId))) {
+        // The run stops here, so say how much of the work is still unwritten.
+        notify(text.save.unsavedRemain(pending.length - index), true);
         return;
       }
     }
-  }, [workbench, save]);
+  }, [workbench, save, notify]);
 
   const reload = useCallback(
     async (tabId: string): Promise<void> => {
@@ -192,8 +197,8 @@ export function useSourceSave(notify: (message: string, failed?: boolean) => voi
       }
       rememberDocument(tabId, document.path, result);
       resetModel(tabId, result.text);
+      // The editor visibly takes the file as it now stands; a notification would only repeat it.
       workbenchDispatch({ type: "SET_DRAFT", id: tabId, draft: null });
-      notify(text.save.reloaded(document.path));
     },
     [inputDir, dbPath, codepageFor, workbenchDispatch, notify],
   );

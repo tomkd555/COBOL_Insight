@@ -14,10 +14,10 @@ function entry(overrides: Partial<RuleCatalogEntry>): RuleCatalogEntry {
     source: "builtin",
     enabled: true,
     defaultEnabled: true,
-    commands: ["LINT"],
+    commands: ["LINT", "REPORT"],
     targets: ["COBOL"],
-    needs: ["dataflow"],
-    summary: "値を設定される前に参照され得るデータ項目を検出します。",
+    needs: ["CFG", "DATAFLOW", "SEMANTIC", "SOURCE_TEXT"],
+    summary: "値を設定する前に参照し得るデータ項目を検出します。",
     rationale: "",
     detection: "",
     remedy: "",
@@ -27,17 +27,29 @@ function entry(overrides: Partial<RuleCatalogEntry>): RuleCatalogEntry {
   };
 }
 
+// The three entries carry the engine's own name, category and summary for R001, R004 and S001.
 const ENTRIES = [
   entry({}),
-  entry({ id: "R004", name: "ON SIZE ERROR句の欠如", category: "例外処理", summary: "桁あふれ" }),
-  entry({ id: "S001", name: "SELECT * の使用", category: "SQL", summary: "列を明示しない" }),
+  entry({
+    id: "R004",
+    name: "ON SIZE ERROR 句の欠如",
+    category: "例外処理",
+    summary:
+      "結果が受け取り側項目のけた数を超え得るのに ON SIZE ERROR 句を持たない算術文を検出します。",
+  }),
+  entry({
+    id: "S001",
+    name: "列を明示しない SELECT *",
+    category: "可読性・保守性",
+    summary: "SELECT 句に * を使う問い合わせを検出します。",
+  }),
 ];
 
 describe("the search", () => {
   it("matches the id, the name and the summary", () => {
     expect(filterRules(ENTRIES, "r004").map((rule) => rule.id)).toEqual(["R004"]);
     expect(filterRules(ENTRIES, "SELECT").map((rule) => rule.id)).toEqual(["S001"]);
-    expect(filterRules(ENTRIES, "桁あふれ").map((rule) => rule.id)).toEqual(["R004"]);
+    expect(filterRules(ENTRIES, "受け取り側項目").map((rule) => rule.id)).toEqual(["R004"]);
   });
 
   it("keeps everything when nothing was typed", () => {
@@ -50,7 +62,7 @@ describe("the grouping", () => {
     expect(groupByCategory(ENTRIES)).toEqual([
       { category: "データフロー", rules: [ENTRIES[0]] },
       { category: "例外処理", rules: [ENTRIES[1]] },
-      { category: "SQL", rules: [ENTRIES[2]] },
+      { category: "可読性・保守性", rules: [ENTRIES[2]] },
     ]);
   });
 });

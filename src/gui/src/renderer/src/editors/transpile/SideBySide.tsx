@@ -39,8 +39,6 @@ const OPTIONS: monacoApi.editor.IStandaloneEditorConstructionOptions = {
   smoothScrolling: false,
   minimap: { enabled: false },
   lineNumbersMinChars: 5,
-  // The left pane is fixed-format COBOL: the same column rulers as the source view.
-  rulers: [6, 7, 11, 72],
   renderLineHighlight: "line",
   scrollBeyondLastLine: false,
   wordWrap: "off",
@@ -84,7 +82,13 @@ export function SideBySide({
     }
     const monaco = monacoEditor();
     registerLanguages(monaco);
-    const first = monaco.editor.create(leftNode, { ...OPTIONS, ariaLabel: leftLabel });
+    // The rulers mark the fixed-format columns, which only the COBOL on the left has. Over Java or
+    // Python they are four lines drawn through code that has no columns to keep.
+    const first = monaco.editor.create(leftNode, {
+      ...OPTIONS,
+      rulers: [6, 7, 11, 72],
+      ariaLabel: leftLabel,
+    });
     const second = monaco.editor.create(rightNode, { ...OPTIONS, ariaLabel: rightLabel });
     leftEditor.current = first;
     rightEditor.current = second;

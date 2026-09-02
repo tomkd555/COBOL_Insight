@@ -31,9 +31,9 @@ not override picocli's defaults:
 
 - An invalid option or argument — including a `--rules` file that is not JSON or
   carries an unsupported `version` — exits **2** (picocli's invalid-input code).
-- An uncaught exception inside a subcommand exits **1** (picocli's execution-exception
-  code), with a stack trace on standard error. `report` reaches this path when the
-  `--db` file does not exist.
+- An uncaught exception inside a subcommand exits **2** (`ExitCodes.ERRORS`) with one
+  Japanese line on standard error, `エラー: 〈cause〉。処理を中止しました。`, and no stack
+  trace. `report` reaches this path when the `--db` file does not exist.
 
 `rules` and `decode` are the exceptions to the finding-based contract and are
 documented with their own codes below.
@@ -57,8 +57,8 @@ Accepted by `scan`, `call-graph`, `lint`, `sql-lint`, `report`, `fix preview`,
 `fix apply` and `rules`. Not accepted by `translate`, `save` or `decode`.
 A missing file is not an error: the defaults apply. A file that is not JSON, or
 whose `version` this build cannot read, is rejected as a usage error. Per-entry
-problems are written to standard error as `警告: ルール設定: …` by every command
-except `rules`, which carries them in its output as `ruleErrors` instead.
+problems are written to standard error as `警告: …` by every command except `rules`,
+which carries them in its output as `ruleErrors` instead.
 
 All output paths are written as UTF-8, with parent directories created as needed.
 Backslashes in the paths echoed back in summary JSON are normalised to `/`.
@@ -364,8 +364,9 @@ same asset folder, and writes an HTML report and a text report.
 
 Exit code: 0/1/2 from the union of the persisted scan findings, the lint findings
 and the SQL advice. If `--db` names something that is not a regular file, the
-command throws and picocli exits **1** — the file is not created, so a wrong path
-cannot pass as an empty report.
+command stops with `エラー: 〈path〉 がありません。先に scan を実行してください。処理を中止しました。`
+and exits **2** — the file is not created, so a wrong path cannot pass as an empty
+report.
 
 ### Summary JSON (standard output)
 
@@ -530,12 +531,12 @@ that takes no asset folder and runs no analysis.
 | `--id` | RULE_ID | no | — | Show only this rule, with its full description. Case-insensitive |
 
 Exit code: **0** normally. **2** when `--id` names a rule that is not in the
-catalogue, with `該当するルールが無い: <id>` on standard error. Findings play no
-part — this command produces none.
+catalogue, with `該当するルールがありません: <id>。--id を外すと一覧を出します。` on
+standard error. Findings play no part — this command produces none.
 
 Unlike every other command, `rules` does not print rule-configuration problems to
 standard error; it carries them in its output (`ruleErrors` in JSON, trailing
-`警告: ルール設定: …` lines in text).
+`警告: …` lines in text).
 
 ### JSON (`--json`)
 

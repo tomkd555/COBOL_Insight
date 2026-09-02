@@ -54,15 +54,16 @@ public final class PerformUntilNotUpdatedRule implements Rule {
             "LOW-VALUE", "LOW-VALUES", "QUOTE", "QUOTES", "NULL", "NULLS", "TRUE", "FALSE", "ALL");
 
     private static final RuleMeta META = RuleMeta
-            .named("R012", "終了条件が更新されないPERFORM UNTIL", "制御フロー")
+            .named("R012", "終了条件が更新されない PERFORM UNTIL", "制御フロー")
             .summary("終了条件に使うデータ項目がループ本体のどこでも更新されない"
-                    + "PERFORM UNTIL 文を検出する。")
-            .rationale("条件が変わらないためループから抜けられず、処理が止まる。")
+                    + "PERFORM UNTIL 文を検出します。")
+            .rationale("条件が変わらないためループから抜けられず、処理が止まります。")
             .detection("UNTIL 条件のデータ項目が、ループ本体のどの文からも更新されず"
-                    + "本体の文中にも現れないものを検出する。条件名は親項目に解決し、"
-                    + "SQLCODE などの特殊レジスタと VARYING で変化させる項目は更新済みとみなす。")
-            .remedy("ループ本体で条件のデータ項目を更新する。ファイルの終わりなど外部の事象で終わる場合は、"
-                    + "その結果を条件のデータ項目に反映する。")
+                    + "本体の文中にも現れないものを検出します。条件名は親項目に解決し、"
+                    + "SQLCODE などの特殊レジスタと VARYING で変化させる項目は更新済みとみなします。")
+            .remedy("ループ本体で条件のデータ項目を更新してください。"
+                    + "ファイルの終わりなど外部の事象で終わる場合は、"
+                    + "その結果を条件のデータ項目に反映してください。")
             .example("""
                     PERFORM UNTIL WS-EOF = "Y"
                         READ CUST-FILE INTO WS-REC
@@ -130,8 +131,8 @@ public final class PerformUntilNotUpdatedRule implements Rule {
             if (!terminable) {
                 int line = statement.range().start().line();
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                        "PERFORM UNTIL の終了条件に用いる " + String.join(", ", condVars)
-                                + " がループ本体で更新されない。無限ループになり得る。",
+                        String.join(", ", condVars)
+                                + " が PERFORM UNTIL の本体で更新されていません。ループから抜けられません。",
                         new SourcePosition(model.sourceFile(), line, 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
             }

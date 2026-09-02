@@ -75,15 +75,17 @@ export async function importSource(
   request: ImportSourceRequest,
 ): Promise<ImportSourceResult> {
   if (request.lines.length === 0) {
-    throw new Error("there is no text to import");
+    throw new Error("取り込む本文がありません。端末から複写した本文を貼り付けてください。");
   }
   const relPath = importRelPath(request.kind, request.destDir, request.fileName);
   if (relPath === null) {
-    throw new Error(`unusable destination: ${request.destDir}/${request.fileName}`);
+    throw new Error(
+      `保存先「${request.destDir}/${request.fileName}」は使えません。保存先とファイル名を見直してください。`,
+    );
   }
   const absPath = resolveWithinBase(request.inputDir, relPath);
   if (absPath === null) {
-    throw new Error(`outside the asset folder: ${relPath}`);
+    throw new Error(`「${relPath}」は資産フォルダの外です。資産フォルダの中の保存先を指定してください。`);
   }
   if (!request.overwrite && (await fs.exists(absPath))) {
     return { status: "exists", relPath, lineCount: 0 };
@@ -95,7 +97,7 @@ export async function importSource(
     fs.realPath(dirname(absPath)),
   ]);
   if (!isInsideOrSame(realBase, realDir)) {
-    throw new Error(`outside the asset folder: ${relPath}`);
+    throw new Error(`「${relPath}」は資産フォルダの外です。資産フォルダの中の保存先を指定してください。`);
   }
   await fs.writeText(
     join(realDir, basename(absPath)),

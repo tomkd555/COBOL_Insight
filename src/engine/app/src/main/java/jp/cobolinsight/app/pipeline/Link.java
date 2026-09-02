@@ -68,8 +68,8 @@ public final class Link implements Step {
             try {
                 lines = Files.readAllLines(csv, StandardCharsets.UTF_8);
             } catch (IOException e) {
-                System.err.println("警告: トランザクション定義表を復号できないため読み飛ばす: "
-                        + csv + " (" + e + ")");
+                System.err.println("警告: " + csv + " を復号できませんでした（"
+                        + Failures.describe(e) + "）。このファイルは読み飛ばします。");
                 continue;
             }
             for (String line : lines.stream().skip(1).toList()) {

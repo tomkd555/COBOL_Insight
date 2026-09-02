@@ -4,7 +4,7 @@ import { api, errorMessage } from "../../api";
 import { text } from "../../i18n/text";
 import { useProject } from "../../state/projectStore";
 import { useSettings } from "../../state/settingsStore";
-import { artifactSubdir, fixOutDirOf } from "../../model/artifactPaths";
+import { artifactSubdir, fixOutDirOf, insideAssetFolder } from "../../model/artifactPaths";
 import { languageIdFor } from "../../vendor/monarch";
 import { DiffView } from "./DiffView";
 
@@ -20,6 +20,15 @@ type Load =
   | { status: "ready"; diff: FixDiffData }
   | { status: "empty" }
   | { status: "error"; message: string };
+
+/**
+ * How many files the write-out wrote. The engine's `fix apply` summary lists them under
+ * `writtenFiles`; a summary that is missing or shaped otherwise counts as none.
+ */
+function writtenCount(summary: Record<string, unknown> | null): number {
+  const written = summary?.["writtenFiles"];
+  return Array.isArray(written) ? written.length : 0;
+}
 
 /** Joins a relative path onto a base, using whichever separator the base already uses. */
 function joinPath(base: string, relPath: string): string {
@@ -91,13 +100,21 @@ export function FixDiff({ path, onNotify }: FixDiffProps): ReactElement {
     if (inputDir === null) {
       return;
     }
+    // The settings screen refuses this value as it is typed, but a stored one can still point inside
+    // the folder that was opened afterwards; the write is where the originals are actually at stake.
+    if (insideAssetFolder(applyDir, inputDir)) {
+      onNotify(text.fixView.outDirInside, true);
+      return;
+    }
     setApplying(true);
     api()
       .run({
         subcommand: "fix-apply",
         request: { inputDir, copybookPaths: [...copybookPaths], rulesFile, outDir: applyDir },
       })
-      .then(() => onNotify(text.fixView.applied(applyDir)))
+      // The write-out covers the whole asset folder, not the file on screen, so it reports how many
+      // files it wrote rather than leaving the user to assume it was this one.
+      .then((result) => onNotify(text.fixView.applied(applyDir, writtenCount(result.summary))))
       .catch((error: unknown) => onNotify(errorMessage(error), true))
       .finally(() => setApplying(false));
   };
@@ -105,15 +122,14 @@ export function FixDiff({ path, onNotify }: FixDiffProps): ReactElement {
   return (
     <div className="ci-source" data-testid={`fix-${path}`}>
       <div className="ci-source__meta">
-        <span>
-          {text.fixView.title} {path}
-        </span>
+        {/* The tab already names the asset and the proposal, so the row carries the action alone. */}
         <div className="ci-source__spacer" />
         <button
           type="button"
           className="ci-button"
           onClick={apply}
           disabled={applying || load.status !== "ready"}
+          title={applyDir}
           data-testid="fix-apply"
         >
           {text.fixView.apply}

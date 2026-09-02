@@ -154,7 +154,13 @@ export function TranspilePane({ path }: TranspilePaneProps): ReactElement {
         <p className="ci-source__state">{text.transpileView.loading}</p>
       ) : null}
       {load.status === "empty" ? (
-        <p className="ci-source__state">{text.transpileView.empty}</p>
+        <p className="ci-source__state">
+          {inputDir === null
+            ? text.empty.noFolder
+            : dbPath === null || dbPath === undefined
+              ? text.empty.notAnalysed
+              : text.transpileView.empty}
+        </p>
       ) : null}
       {load.status === "error" ? (
         <p className="ci-source__state ci-source__state--error" role="alert">
@@ -167,10 +173,10 @@ export function TranspilePane({ path }: TranspilePaneProps): ReactElement {
         <SideBySide
           left={artifacts.cobol}
           leftLanguageId={languageIdFor(path)}
-          leftLabel={text.transpileView.left(path)}
+          leftLabel={path}
           right={file.text}
           rightLanguageId={GENERATED_LANGUAGE_ID[file.language]}
-          rightLabel={text.transpileView.right(file.name)}
+          rightLabel={file.name}
           toRight={(line) => generatedLineFor(entries, line)}
           toLeft={(line) => cobolLineFor(entries, line)}
         />

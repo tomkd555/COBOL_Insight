@@ -96,7 +96,7 @@ describe("decodeSource", () => {
   it("refuses a path outside the base directory", async () => {
     await expect(
       decodeSource(deps({ json: RESULT_JSON }), { baseDir: "C:/assets", path: "../secret.cbl" }),
-    ).rejects.toThrow(/outside the asset folder/);
+    ).rejects.toThrow(/資産フォルダの外/);
   });
 
   it("reports the engine's stderr when no result file was written", async () => {
@@ -113,7 +113,7 @@ describe("decodeSource", () => {
       baseDir: "C:/assets",
       path: "cobol/A.cbl",
     });
-    expect(result.error).toContain("exit code 2");
+    expect(result.error).toContain("終了コード2");
   });
 
   it("removes the scratch file whether or not the decode succeeded", async () => {

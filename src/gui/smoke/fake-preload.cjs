@@ -19,8 +19,10 @@ const RULES_PATH = "C:\\smoke\\data\\rules.json";
 const GRAPH_ID_BASE = 1_000_000_000_000;
 
 /**
- * A minimal rule catalog: two built-in rules and one user-defined. The real count and the coverage
- * of the prose are the engine's tests and vitest's business; the smoke only watches the rendering.
+ * A minimal rule catalog: three built-in rules. Every string here is the text the engine's own
+ * RuleMeta carries for R001, R004 and S001, so a screenshot shows the prose the product ships. The
+ * real count and the coverage are the engine's tests and vitest's business; the smoke only watches
+ * the rendering.
  */
 const RULES = [
   {
@@ -33,55 +35,96 @@ const RULES = [
     source: "builtin",
     enabled: true,
     defaultEnabled: true,
-    commands: ["lint"],
+    commands: ["LINT", "REPORT"],
     targets: ["COBOL"],
-    needs: ["dataflow"],
-    summary: "値を設定する前に参照し得るデータ項目を検出する。",
-    rationale: "記憶域に残った値をそのまま使うため、実行のたびに結果が変わる。",
-    detection: "到達定義解析で、入口に置いた未初期化の定義が使用位置に到達するものを検出する。",
-    remedy: "宣言に VALUE 句を置くか、参照の前に値を設定する。",
-    badExample: "01  WS-COUNT  PIC 9(4).",
-    goodExample: "01  WS-COUNT  PIC 9(4) VALUE ZERO.",
+    needs: ["CFG", "DATAFLOW", "SEMANTIC", "SOURCE_TEXT"],
+    summary: "値を設定する前に参照し得るデータ項目を検出します。",
+    rationale:
+      "記憶域に残った値をそのまま使うため、実行のたびに結果が変わり、再現しない不具合になります。",
+    detection:
+      "値を設定する文を通らない経路がある参照を検出します。" +
+      "対象は、プログラム内のいずれかの文が明示的に値を設定する基本項目です。" +
+      "ファイル節の項目・集団項目・PROCEDURE DIVISION USING の引数・" +
+      "特殊レジスタと、入出力状態や CICS の応答コードのように実行系が暗黙に" +
+      "設定する項目は対象外です。",
+    remedy: "宣言に VALUE 句を置くか、参照の前に INITIALIZE・MOVE で値を設定してください。",
+    badExample: [
+      "01  WS-COUNT  PIC 9(4).",
+      '    IF WS-FLG = "Y"',
+      "        MOVE 1 TO WS-COUNT",
+      "    END-IF.",
+      "    DISPLAY WS-COUNT.",
+      "",
+    ].join("\n"),
+    goodExample: [
+      "01  WS-COUNT  PIC 9(4) VALUE ZERO.",
+      '    IF WS-FLG = "Y"',
+      "        MOVE 1 TO WS-COUNT",
+      "    END-IF.",
+      "    DISPLAY WS-COUNT.",
+      "",
+    ].join("\n"),
   },
   {
     id: "R004",
-    name: "ON SIZE ERROR句の欠如",
+    name: "ON SIZE ERROR 句の欠如",
     category: "例外処理",
-    severity: "MEDIUM",
+    severity: "HIGH",
     phase: "DATA_FLOW",
     hasFix: true,
     source: "builtin",
     enabled: true,
     defaultEnabled: true,
-    commands: ["lint"],
+    commands: ["FIX", "LINT", "REPORT"],
     targets: ["COBOL"],
-    needs: ["dataflow"],
-    summary: "けたあふれを検知しない算術文を検出する。",
-    rationale: "上位けたを失った値が後続に渡る。",
-    detection: "結果の範囲が受け取り側項目のけた数を超え得るものを検出する。",
-    remedy: "ON SIZE ERROR 句を付ける。",
-    badExample: "COMPUTE WS-RESULT = WS-QTY * WS-PRICE.",
-    goodExample: "COMPUTE WS-RESULT = WS-QTY * WS-PRICE ON SIZE ERROR CONTINUE END-COMPUTE.",
+    needs: ["CFG", "DATAFLOW", "SEMANTIC", "SOURCE_TEXT"],
+    summary:
+      "結果が受け取り側項目のけた数を超え得るのに ON SIZE ERROR 句を持たない算術文を検出します。",
+    rationale:
+      "けたあふれが起きても検知されず、上位けたを失った値がそのまま後続の計算と出力に渡ります。",
+    detection:
+      "ADD・SUBTRACT・MULTIPLY・DIVIDE・COMPUTE のうち、ON SIZE ERROR 句がなく、" +
+      "結果が受け取り側項目の整数部のけた数を超え得る" +
+      "（結果の範囲が定まらない場合を含む）ものを検出します。" +
+      "受け取り側項目自身を加数に含む累算は対象外です。",
+    remedy:
+      "ON SIZE ERROR 句を付けてけたあふれ時の処理を書くか、受け取り側項目のけた数を広げてください。",
+    badExample: [
+      "01  WS-RESULT  PIC 9(4).",
+      "    COMPUTE WS-RESULT = WS-QTY * WS-PRICE.",
+      "",
+    ].join("\n"),
+    goodExample: [
+      "01  WS-RESULT  PIC 9(4).",
+      "    COMPUTE WS-RESULT = WS-QTY * WS-PRICE",
+      "        ON SIZE ERROR PERFORM OVERFLOW-SHORI",
+      "    END-COMPUTE.",
+      "",
+    ].join("\n"),
   },
   {
     id: "S001",
-    name: "SELECT * の使用",
-    category: "SQL",
-    severity: "LOW",
+    name: "列を明示しない SELECT *",
+    category: "可読性・保守性",
+    severity: "MEDIUM",
     phase: "SYNTAX",
     hasFix: false,
     source: "builtin",
     enabled: true,
     defaultEnabled: true,
-    commands: ["sql-lint"],
+    commands: ["SQL_LINT"],
     targets: ["COBOL"],
-    needs: ["sql"],
-    summary: "列を明示しない SELECT を検出する。",
-    rationale: "表の定義が変わると取得する列が変わる。",
-    detection: "SELECT 句が * のものを検出する。",
-    remedy: "必要な列を並べる。",
-    badExample: "EXEC SQL SELECT * FROM ZAIKOM END-EXEC.",
-    goodExample: "EXEC SQL SELECT SOKO-CD FROM ZAIKOM END-EXEC.",
+    needs: ["SQL"],
+    summary: "SELECT 句に * を使う問い合わせを検出します。",
+    rationale:
+      "表に列を足しただけで転送量と受け側の構造が変わります。" +
+      "必要のない列まで読むため入出力も増えます。",
+    detection:
+      "埋込みSQL文の SELECT 句に * を書いたものを検出します。" +
+      "カーソル宣言の中の SELECT 句も対象です。",
+    remedy: "必要な列を明示して並べてください。",
+    badExample: "SELECT * FROM CUSTOMER WHERE ID = :WS-ID\n",
+    goodExample: "SELECT ID, NAME, ADDR FROM CUSTOMER WHERE ID = :WS-ID\n",
   },
 ];
 
@@ -94,26 +137,52 @@ const INVENTORY = [
   { id: 6, path: "encoding/SYKENC1_CP930.cbl", name: "SYKENC1_CP930.cbl", type: "PROGRAM", codepage: "IBM930", byteSize: 1200, findingCount: 0 },
 ];
 
+/*
+ * The findings each rule composes, written the way the engine writes them: R004 names the receiving
+ * item and the verb, and R001 names the item, the statements that do set it, and its declaration,
+ * with one code-flow step per place the reader has to look at.
+ */
 const FINDINGS = [
-  { ruleId: "R004", level: "warning", message: "ON SIZE ERROR 句が無い。", file: "cobol/SYK001.cbl", startLine: 10, startColumn: 12 },
+  {
+    ruleId: "R004",
+    level: "error",
+    message:
+      "WS-RESULT への COMPUTE 文に ON SIZE ERROR 句がありません。" +
+      "結果がけた数を超えても、けたあふれが検知されません。",
+    file: "cobol/SYK001.cbl",
+    startLine: 10,
+    startColumn: 12,
+  },
   {
     ruleId: "R001",
     level: "error",
     message:
-      "WK-ORDER-ID（宣言 12行）を24行で参照しているが、ここへ至る経路のどれかで値が未設定のまま。値を設定するのは 20行だけで、そこを通らないまま 24行に至る経路がある。宣言に VALUE 句を置くか、24行より前で必ず MOVE・INITIALIZE を通す。",
+      "WK-ORDER-ID を未設定のまま参照しています。" +
+      "値を設定する 20行 を通らない経路があります（宣言 12行）。",
     file: "cobol/SYK002.cbl",
     startLine: 24,
     startColumn: 12,
     related: [
-      { file: "cobol/SYK002.cbl", line: 12, label: "宣言。VALUE 句がなく、初期値は不定" },
-      { file: "cobol/SYK002.cbl", line: 20, label: "WK-ORDER-ID に値を設定する文。この文を通らない経路がある" },
+      { file: "cobol/SYK002.cbl", line: 12, label: "宣言（VALUE 句がなく初期値は不定）" },
+      {
+        file: "cobol/SYK002.cbl",
+        line: 20,
+        label: "WK-ORDER-ID に値を設定する文（この文を通らない経路がある）",
+      },
       { file: "cobol/SYK002.cbl", line: 24, label: "未設定のまま参照する箇所" },
     ],
   },
 ];
 
 const SQL_FINDINGS = [
-  { ruleId: "S001", level: "warning", message: "SELECT * を列指定へ改める。", file: "cobol/SYK001.cbl", startLine: 30, startColumn: 12 },
+  {
+    ruleId: "S001",
+    level: "warning",
+    message: "SELECT * で全列を取得しています。表の構造の変更に弱く、不要な列まで転送します。",
+    file: "cobol/SYK001.cbl",
+    startLine: 30,
+    startColumn: 12,
+  },
 ];
 
 /** Fixed-format 80-column COBOL, with a full-width comment line, a COPY statement and DBCS text. */

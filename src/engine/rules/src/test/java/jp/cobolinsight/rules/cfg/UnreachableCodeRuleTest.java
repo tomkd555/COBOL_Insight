@@ -122,7 +122,8 @@ class UnreachableCodeRuleTest {
     }
 
     private static Finding unusedParagraphFinding(List<Finding> findings) {
-        return findings.stream().filter(f -> f.message().contains("段落 ")).findFirst()
+        return findings.stream().filter(f -> f.message().contains("を呼ぶ PERFORM・GO TO がありません"))
+                .findFirst()
                 .orElseThrow(() -> new AssertionError("呼ばれない段落の検出が無い: " + findings));
     }
 }

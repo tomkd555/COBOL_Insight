@@ -196,7 +196,7 @@ public final class TranspileRunner {
         for (LineMappingEntry entry : entries) {
             Long sourceId = idByFileName.get(entry.cobolSourceId());
             if (sourceId == null) {
-                System.err.println("警告: 行対応の由来ソースを SOURCE に特定できないため保存しない: "
+                System.err.println("警告: 行対応の由来の原始プログラムを SOURCE に特定できないため保存しません: "
                         + entry.cobolSourceId() + " (" + entry.anchorId() + ")");
                 continue;
             }

@@ -68,7 +68,7 @@ describe("importSource", () => {
   it("refuses a destination outside the asset folder", async () => {
     await expect(
       importSource(memory(), { ...base, destDir: "..", fileName: "A.cbl", lines: ["ONE"] }),
-    ).rejects.toThrow(/unusable destination/);
+    ).rejects.toThrow(/保存先「\.\.\/A\.cbl」は使えません/);
   });
 
   it("refuses when the destination folder is a link leading outside the asset folder", async () => {
@@ -77,7 +77,7 @@ describe("importSource", () => {
       absPath.replace(/\\/g, "/").endsWith("/cobol") ? "C:/elsewhere" : absPath;
     await expect(
       importSource(fs, { ...base, fileName: "A.cbl", lines: ["ONE"] }),
-    ).rejects.toThrow(/outside the asset folder/);
+    ).rejects.toThrow(/資産フォルダの外/);
   });
 
   it("allows a file directly in the asset folder, where base and destination coincide", async () => {
@@ -94,6 +94,6 @@ describe("importSource", () => {
   it("refuses an import with no lines", async () => {
     await expect(
       importSource(memory(), { ...base, fileName: "A.cbl", lines: [] }),
-    ).rejects.toThrow(/no text to import/);
+    ).rejects.toThrow(/取り込む本文がありません/);
   });
 });

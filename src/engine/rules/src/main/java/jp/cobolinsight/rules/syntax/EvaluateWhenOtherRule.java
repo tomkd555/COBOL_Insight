@@ -25,12 +25,14 @@ import java.util.List;
  */
 public final class EvaluateWhenOtherRule implements Rule {
 
-    private static final RuleMeta META = RuleMeta.named("R013", "EVALUATE文のWHEN OTHER句欠如", "制御フロー")
-            .summary("WHEN OTHER 句を持たない EVALUATE 文を検出する。")
+    private static final RuleMeta META = RuleMeta.named("R013", "EVALUATE 文の WHEN OTHER 句欠如", "制御フロー")
+            .summary("WHEN OTHER 句を持たない EVALUATE 文を検出します。")
             .rationale("どの WHEN 句にも一致しない値は処理を受けずに通り抜け、"
-                    + "想定外の入力が記録も通知もないまま無視される。")
-            .detection("EVALUATE 文のうち WHEN OTHER 句を持たないものを検出する。IF 文は対象外とする。")
-            .remedy("WHEN OTHER 句を置き、想定外の値に対する処理（異常扱い・既定値の設定）を書く。")
+                    + "想定外の入力が記録も通知もないまま無視されます。")
+            .detection("EVALUATE 文のうち WHEN OTHER 句を持たないものを検出します。"
+                    + "IF 文は対象外です。")
+            .remedy("WHEN OTHER 句を置き、想定外の値に対する処理（異常扱い・既定値の設定）を"
+                    + "書いてください。")
             .example("""
                     EVALUATE WS-KBN
                         WHEN "1" PERFORM SHINKI-SHORI
@@ -67,13 +69,27 @@ public final class EvaluateWhenOtherRule implements Rule {
                         .anyMatch(block -> "OTHER".equals(block.label()));
                 if (!hasOther) {
                     findings.add(Finding.of("R013", Severity.MEDIUM.toLevel(),
-                            "EVALUATE 文に WHEN OTHER 句がなく、いずれの WHEN 句にも"
-                                    + "一致しない値は処理を受けずに通り抜ける。",
+                            subjectOf(compound) + " に WHEN OTHER 句がありません。"
+                                    + "一致しない値は処理を受けずに通り抜けます。",
                             compound.range().start()));
                 }
             });
         }
         return findings;
+    }
+
+    /**
+     * The identifier the message opens with: the first EVALUATE subject where the parse gives
+     * one (the ALSO subjects are elided so the headline stays short), and the reserved word alone
+     * where it does not.
+     */
+    private static String subjectOf(CompoundStatement compound) {
+        String subject = compound.conditionText().replaceAll("\\s+", " ").trim();
+        if (subject.isEmpty()) {
+            return "EVALUATE 文";
+        }
+        String[] subjects = subject.split("(?i)\\bALSO\\b");
+        return "EVALUATE " + subjects[0].trim() + (subjects.length > 1 ? " ALSO …" : "");
     }
 
     private static boolean isIf(CompoundStatement compound) {

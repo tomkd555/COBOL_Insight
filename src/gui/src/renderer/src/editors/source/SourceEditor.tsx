@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import type * as monacoApi from "monaco-editor/editor/editor.api";
 import type { DecodeResult } from "../../../../shared/ipc";
-import { CODEPAGES } from "../../../../shared/codepage";
 import { api, errorMessage } from "../../api";
 import { text } from "../../i18n/text";
-import { artifactItems, useProject, useProjectDispatch } from "../../state/projectStore";
+import { artifactItems, useProject } from "../../state/projectStore";
 import { useSettings } from "../../state/settingsStore";
 import { draftOf, sourceTabId, useWorkbench, useWorkbenchDispatch } from "../../state/workbenchStore";
 import { useSetEditorStatus } from "../../state/editorStatusStore";
@@ -22,7 +21,7 @@ import { ruleOf } from "../../model/ruleIndex";
 import { monacoEditor } from "../../vendor/monacoEditor";
 import { registerLanguages } from "../../vendor/monacoLanguages";
 import { CODE_FONT, languageIdFor } from "../../vendor/monarch";
-import { existingModel, modelFor, resetModel } from "../../vendor/monacoModels";
+import { existingModel, modelFor } from "../../vendor/monacoModels";
 import { useCopyZones } from "./copyZones";
 import { registerQuickFix, setQuickFixTarget } from "./quickFix";
 
@@ -64,7 +63,6 @@ type Load =
  */
 export function SourceEditor({ path, line, onShowFix }: SourceEditorProps): ReactElement {
   const project = useProject();
-  const projectDispatch = useProjectDispatch();
   const settings = useSettings();
   const workbench = useWorkbench();
   const workbenchDispatch = useWorkbenchDispatch();
@@ -156,7 +154,9 @@ export function SourceEditor({ path, line, onShowFix }: SourceEditorProps): Reac
       lineNumbersMinChars: 5,
       // The end of the sequence area, of the indicator, of area A, and of the body.
       rulers: [6, 7, 11, 72],
-      renderLineHighlight: "none",
+      // The caret line is marked here as it is in the transpile view: this is the surface being
+      // edited, and it was the one without it.
+      renderLineHighlight: "line",
       scrollBeyondLastLine: false,
       wordWrap: "off",
       renderWhitespace: "none",
@@ -220,11 +220,13 @@ export function SourceEditor({ path, line, onShowFix }: SourceEditorProps): Reac
     if (load.status !== "ready" || load.tabId !== tabId) {
       // Nothing to show for this tab: it is still being decoded, or its decode failed, or the
       // result on hand belongs to the tab that was here a moment ago. Another tab's model must not
-      // stay under this tab's heading, where it would take this tab's markers and this tab's edits.
+      // stay under this tab's heading, where it would take this tab's markers and this tab's edits;
+      // nor may its caret and codepage stay in the status bar under this tab's name.
       if (activeTabRef.current !== tabId) {
         activeTabRef.current = "";
         editor.setModel(null);
       }
+      setStatus(null);
       return;
     }
     // The listeners read this; it is set before the model moves, so no keystroke sees the pair
@@ -318,13 +320,20 @@ export function SourceEditor({ path, line, onShowFix }: SourceEditorProps): Reac
     glyphs.set(
       findings
         .filter((finding) => finding.file === path)
-        .map((finding) => ({
-          range: new monaco.Range(finding.startLine, 1, finding.startLine, 1),
-          options: {
-            glyphMarginClassName: glyphClassOf(ruleOf(project.rules, finding.ruleId).severity),
-            glyphMarginHoverMessage: { value: finding.message },
-          },
-        })),
+        .map((finding) => {
+          const severity = ruleOf(project.rules, finding.ruleId).severity;
+          return {
+            range: new monaco.Range(finding.startLine, 1, finding.startLine, 1),
+            options: {
+              glyphMarginClassName: glyphClassOf(severity),
+              // The margin marks the severity by colour alone, which a reader who does not see colour
+              // cannot read; the hover says which severity it is.
+              glyphMarginHoverMessage: {
+                value: `**${text.severity[severity]}** ${finding.message}`,
+              },
+            },
+          };
+        }),
     );
   }, [sarif, findings, path, project.rules, tabId, modelText]);
 
@@ -361,51 +370,17 @@ export function SourceEditor({ path, line, onShowFix }: SourceEditorProps): Reac
     setQuickFixTarget(fixable, () => onShowFix(path));
   }, [project.rules, path, onShowFix]);
 
-  /* ---------------------------------------------------------------- the tab's own controls */
-
-  const dirty = draftOf(workbench, tabId) !== null;
-
-  const reopen = (charset: string): void => {
-    projectDispatch({ type: "SET_CODEPAGE", path, charset });
-  };
-
-  const discard = (): void => {
-    resetModel(tabId, openDocument(tabId)?.text ?? "");
-    workbenchDispatch({ type: "SET_DRAFT", id: tabId, draft: null });
-  };
+  /* ---------------------------------------------------------------- the view */
 
   return (
     <div className="ci-source" data-testid={`source-${path}`}>
-      <div className="ci-source__meta">
-        <label className="ci-source__control">
-          <span className="ci-source__control-label">{text.sourceView.reopenLabel}</span>
-          <select
-            className="ci-select"
-            value={rawOverride}
-            onChange={(event) => reopen(event.target.value)}
-            data-testid="source-codepage"
-          >
-            <option value="">{text.sourceView.reopenAuto}</option>
-            {CODEPAGES.map((choice) => (
-              <option key={choice.value} value={choice.value}>
-                {choice.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        {editable ? null : <span className="ci-source__badge">{text.sourceView.readOnly}</span>}
-        <div className="ci-source__spacer" />
-        {dirty ? (
-          <button
-            type="button"
-            className="ci-button"
-            onClick={discard}
-            data-testid="source-discard"
-          >
-            {text.sourceView.discard}
-          </button>
-        ) : null}
-      </div>
+      {/* The codepage lives in the status bar and the discard in the palette, as in VS Code; the
+          only thing left above the body is the mark that says the file cannot be edited. */}
+      {editable ? null : (
+        <div className="ci-source__meta">
+          <span className="ci-source__badge">{text.sourceView.readOnly}</span>
+        </div>
+      )}
 
       {load.status === "error" ? (
         <p className="ci-source__state ci-source__state--error" role="alert">

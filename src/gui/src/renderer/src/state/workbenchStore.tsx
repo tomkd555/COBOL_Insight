@@ -18,8 +18,8 @@ import { text } from "../i18n/text";
 /** Tab kinds. `source`, `fix` and `transpile` bind to one asset; the rest open at most one tab each. */
 export type TabKind = "source" | "graph" | "rules" | "report" | "settings" | "fix" | "transpile";
 
-/** What the activity bar can put in the side bar. */
-export type SideView = "explorer" | "rules" | "problems";
+/** What the activity bar can put in the side bar. Findings live in the panel alone. */
+export type SideView = "explorer" | "rules";
 
 /** What the panel can show. */
 export type PanelView = "problems" | "output";
@@ -61,8 +61,12 @@ export interface WorkbenchState {
 /** Side bar sizing. `min` keeps the panel usable; `oppositeMin` is what the editor must keep. */
 export const SIDE_LIMITS = { initial: 280, min: 200, oppositeMin: 520 } as const;
 
-/** Panel sizing. `min` is a header plus two rows; `oppositeMin` is ten lines of editor. */
-export const PANEL_LIMITS = { initial: 220, min: 120, oppositeMin: 200 } as const;
+/**
+ * Panel sizing. `min` is a header plus two rows; `oppositeMin` is ten lines of editor. The default
+ * leaves the detail pane a readable height: at 220 the tab row, the filter row and the table head
+ * took all but about 130px of it.
+ */
+export const PANEL_LIMITS = { initial: 300, min: 120, oppositeMin: 200 } as const;
 
 /** Pane-size keys as stored in the settings. */
 export const PANE_SIZE_KEYS = { side: "sideWidth", panel: "panelHeight" } as const;
@@ -94,9 +98,15 @@ export function sourceTab(path: string, line: number | null = null): WorkbenchTa
 /** The tab id of the custom-rule editor. No rule can be called this: custom ids start with U. */
 export const CUSTOM_RULES_TAB_ID = "rules:custom";
 
-/** The description of one rule, as the engine wrote it. */
-export function ruleTab(ruleId: string): WorkbenchTab {
-  return { id: `rules:${ruleId}`, kind: "rules", title: ruleId, path: ruleId, line: null };
+/** The description of one rule, as the engine wrote it. The caption carries the rule's name. */
+export function ruleTab(ruleId: string, name = ""): WorkbenchTab {
+  return {
+    id: `rules:${ruleId}`,
+    kind: "rules",
+    title: name === "" ? ruleId : `${ruleId} ${name}`,
+    path: ruleId,
+    line: null,
+  };
 }
 
 /** The custom-rule editor. */

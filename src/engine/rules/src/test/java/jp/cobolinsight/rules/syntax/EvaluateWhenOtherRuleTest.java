@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Synthetic fixture verification for R013 EVALUATE statements missing WHEN OTHER. */
 class EvaluateWhenOtherRuleTest {
@@ -57,5 +58,7 @@ class EvaluateWhenOtherRuleTest {
         assertEquals("R013", finding.ruleId());
         assertEquals(FindingLevel.WARNING, finding.level());
         assertEquals(9, finding.location().line());
+        assertTrue(finding.message().startsWith("EVALUATE WS-KBN に WHEN OTHER 句がありません。"),
+                finding.message());
     }
 }

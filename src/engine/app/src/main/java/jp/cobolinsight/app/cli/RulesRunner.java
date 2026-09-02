@@ -91,7 +91,7 @@ public final class RulesRunner {
             }
             out.append(System.lineSeparator());
             for (String error : errors) {
-                out.append("警告: ルール設定: ").append(error).append('\n');
+                out.append("警告: ").append(error).append('\n');
             }
             return out.toString();
         }

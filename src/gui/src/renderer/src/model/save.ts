@@ -13,18 +13,21 @@
 import type { SarifFinding, SaveResult, SourceStamp } from "../../../shared/ipc";
 import { text } from "../i18n/text";
 
-import { REPARSE_RULE_ID } from "./markers";
+import { REPARSE_RULE_ID } from "./ruleIndex";
 
 /** Whether reparse errors mean anything for this asset kind (NODE.type). */
 export function showsReparseErrors(assetType: string): boolean {
   return assetType === "PROGRAM";
 }
 
-/** The outcome of one write-back. */
+/**
+ * The outcome of one write-back. A plain success carries no message: a written file is silent, as it
+ * is in VS Code, and only the verification findings are worth raising.
+ */
 export type SaveOutcome =
   | {
       readonly kind: "saved";
-      readonly message: string;
+      readonly message: string | null;
       /** The reparse errors, as findings. Always empty for a kind that cannot be parsed alone. */
       readonly diagnostics: readonly SarifFinding[];
     }
@@ -41,11 +44,11 @@ export function saveOutcomeOf(path: string, assetType: string, result: SaveResul
   if (result.exitCode === 2 || !result.written) {
     return {
       kind: "failed",
-      message: text.save.failed(path, result.error === "" ? text.save.noReason : result.error),
+      message: text.save.failed(path, result.error),
     };
   }
   if (!showsReparseErrors(assetType) || result.reparseErrors.length === 0) {
-    return { kind: "saved", message: text.save.saved(path), diagnostics: [] };
+    return { kind: "saved", message: null, diagnostics: [] };
   }
   return {
     kind: "saved",

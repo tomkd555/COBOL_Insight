@@ -88,9 +88,9 @@ public final class SourceDiscovery {
         public List<String> warnings() {
             List<String> messages = new ArrayList<>();
             if (!undecided.isEmpty()) {
-                messages.add(undecided.size() + "件は種別を判定できなかったため対象から外した。"
+                messages.add(undecided.size() + "件は種別を判別できなかったため対象から外しました。"
                         + "COBOL 本体なら IDENTIFICATION DIVISION、コピー句ならレベル番号で始まる"
-                        + "項目定義、JCL なら // で始まる行、BMS なら DFHMSD を含むか確認する: "
+                        + "項目定義、JCL なら // で始まる行、BMS なら DFHMSD を含むか確認してください: "
                         + String.join(", ", undecided));
             }
             if (!mismatches.isEmpty()) {
@@ -99,17 +99,17 @@ public final class SourceDiscovery {
                                 + "、内容は" + label(m.byContent()) + ")")
                         .toList();
                 messages.add(mismatches.size()
-                        + "件は拡張子と内容が食い違ったため、内容を優先して取り込んだ: "
+                        + "件は拡張子と内容が食い違ったため、内容を優先して取り込みました: "
                         + String.join(", ", details));
             }
             if (!unreadable.isEmpty()) {
-                messages.add(unreadable.size() + "件は読み取れなかったため対象から外した: "
+                messages.add(unreadable.size() + "件は読み取れなかったため対象から外しました: "
                         + String.join(", ", unreadable));
             }
             if (truncated) {
-                messages.add("走査するファイル数が上限(" + MAX_FILES
-                        + "件)に達したため、以降のファイルを対象から外した。"
-                        + "資産フォルダを分けて取り込む。");
+                messages.add("走査するファイル数が上限（" + MAX_FILES
+                        + "件）に達したため、以降のファイルを対象から外しました。"
+                        + "資産フォルダを分けて取り込んでください。");
             }
             return messages;
         }

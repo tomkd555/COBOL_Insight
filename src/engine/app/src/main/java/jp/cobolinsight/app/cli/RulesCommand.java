@@ -31,7 +31,7 @@ public final class RulesCommand implements Callable<Integer> {
         RulesRunner.Result result =
                 RulesRunner.run(new RulesRunner.Options(ruleOptions.ruleSet(), ruleId));
         if (result.detail() && result.rules().isEmpty()) {
-            System.err.println("該当するルールが無い: " + ruleId);
+            System.err.println("該当するルールがありません: " + ruleId + "。--id を外すと一覧を出します。");
             return ExitCodes.ERRORS;
         }
         System.out.print(json ? result.toJson() + System.lineSeparator() : result.toText());

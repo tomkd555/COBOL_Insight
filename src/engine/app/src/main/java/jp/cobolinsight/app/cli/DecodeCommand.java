@@ -4,6 +4,7 @@ import jp.cobolinsight.app.persistence.PersistenceDao;
 import jp.cobolinsight.app.persistence.PersistenceDatabase;
 import jp.cobolinsight.app.persistence.model.EncodingInfoRecord;
 import jp.cobolinsight.app.persistence.model.SourceRecord;
+import jp.cobolinsight.app.pipeline.Failures;
 import jp.cobolinsight.app.pipeline.Paths;
 import jp.cobolinsight.core.encoding.ByteOffsetTable;
 import jp.cobolinsight.core.encoding.CodePage;
@@ -31,7 +32,7 @@ import java.util.concurrent.Callable;
  * boundaries is the engine's job, since it holds the byte offset table.
  */
 @Command(name = "decode", mixinStandardHelpOptions = true,
-        description = "1本のソースを復号し、本文と固定形式の桁境界を JSON で書き出す")
+        description = "1本の原始プログラムを復号し、本文と固定形式の各領域の境界を JSON で書き出す")
 public final class DecodeCommand implements Callable<Integer> {
 
     /** The boundaries used to color in the columns: the byte column (1-based) where each fixed-format region starts. */
@@ -60,8 +61,9 @@ public final class DecodeCommand implements Callable<Integer> {
             Paths.writeString(outFile, decode(target));
             return ExitCodes.SUCCESS;
         } catch (IOException | RuntimeException e) {
-            Paths.writeString(outFile, errorJson(e.getMessage() == null
-                    ? e.toString() : e.getMessage()));
+            // The remedy is offered only when a different code page could help.
+            String remedy = Failures.codepageRelated(e) ? "文字コードを選び直してください。" : "";
+            Paths.writeString(outFile, errorJson(Failures.describe(e) + "。" + remedy));
             return ExitCodes.ERRORS;
         }
     }

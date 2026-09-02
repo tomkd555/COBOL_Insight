@@ -41,13 +41,14 @@ public final class UnsignedNegativeResultRule implements Rule {
     private static final RuleMeta META =
             RuleMeta.named("R028", "符号なし項目への負の結果の格納", "データ移動")
                     .summary("PICTURE に S を持たない項目に、"
-                            + "負になり得る演算結果を格納する箇所を検出する。")
+                            + "負になり得る演算結果を格納する箇所を検出します。")
                     .rationale("符号なし項目は符号を保持しないため、"
-                            + "負の結果が絶対値として格納され、以後の比較と集計が誤る。")
-                    .detection("SUBTRACT・COMPUTE の受け取り側項目のうち、算術文の直後の区間値域が"
-                            + "負を含み得るもので、PICTURE に S がないものを検出する。")
-                    .remedy("受け取り側項目の PICTURE に S を付ける。"
-                            + "負にならない前提なら、その条件を演算の前に検査する。")
+                            + "負の結果が絶対値として格納され、以後の比較と集計が誤ります。")
+                    .detection("SUBTRACT・COMPUTE の受け取り側項目のうち、"
+                            + "算術文の直後の値が負になり得るもので、"
+                            + "PICTURE に S がないものを検出します。")
+                    .remedy("受け取り側項目の PICTURE に S を付けてください。"
+                            + "負にならない前提なら、その条件を演算の前に検査してください。")
                     .example("""
                             01  WS-DIFF  PIC 9(5).
                                 COMPUTE WS-DIFF = WS-A - WS-B.
@@ -98,8 +99,8 @@ public final class UnsignedNegativeResultRule implements Rule {
                     continue;
                 }
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                        "符号なし項目 " + receiver + " に " + simple.verb().toUpperCase(Locale.ROOT)
-                                + " の結果が負になり得る値を格納している。符号が失われ、絶対値が格納される。",
+                        receiver + "（符号なし）に " + simple.verb().toUpperCase(Locale.ROOT)
+                                + " の結果が負で格納され得ます。符号が失われ、絶対値になります。",
                         new SourcePosition(model.sourceFile(), simple.range().start().line(), 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
             }

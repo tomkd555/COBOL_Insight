@@ -11,6 +11,7 @@ import jp.cobolinsight.core.finding.CodeFlowStep;
 import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.CompoundStatement;
+import jp.cobolinsight.core.semantic.DataItem;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.rule.Command;
@@ -26,6 +27,7 @@ import jp.cobolinsight.rules.SourceTextIndex;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import jp.cobolinsight.rules.dataflow.DataFlowSupport.Section;
@@ -48,15 +50,15 @@ import jp.cobolinsight.rules.dataflow.DataFlowSupport.Section;
 public final class UninitializedVariableRule implements Rule {
 
     private static final RuleMeta META = RuleMeta.named("R001", "未初期化のデータ項目の参照", "データフロー")
-            .summary("値を設定する前に参照し得るデータ項目を検出する。")
+            .summary("値を設定する前に参照し得るデータ項目を検出します。")
             .rationale("記憶域に残った値をそのまま使うため、"
-                    + "実行のたびに結果が変わり、再現しない不具合になる。")
-            .detection("到達定義解析で、入口に置いた未初期化の定義が使用位置に到達するものを"
-                    + "検出する。対象は、プログラム内のいずれかの文が明示的に値を設定する基本項目に"
-                    + "限る。ファイル節の項目・集団項目・PROCEDURE DIVISION USING の引数・"
+                    + "実行のたびに結果が変わり、再現しない不具合になります。")
+            .detection("値を設定する文を通らない経路がある参照を検出します。"
+                    + "対象は、プログラム内のいずれかの文が明示的に値を設定する基本項目です。"
+                    + "ファイル節の項目・集団項目・PROCEDURE DIVISION USING の引数・"
                     + "特殊レジスタと、入出力状態や CICS の応答コードのように実行系が暗黙に"
-                    + "設定する項目は対象外とする。")
-            .remedy("宣言に VALUE 句を置くか、参照の前に INITIALIZE・MOVE で値を設定する。")
+                    + "設定する項目は対象外です。")
+            .remedy("宣言に VALUE 句を置くか、参照の前に INITIALIZE・MOVE で値を設定してください。")
             .example("""
                     01  WS-COUNT  PIC 9(4).
                         IF WS-FLG = "Y"
@@ -130,15 +132,9 @@ public final class UninitializedVariableRule implements Rule {
             ProgramDataFlow df, DataFlowSupport support, String var, int line) {
         String file = model.sourceFile();
         List<CodeFlowStep> steps = new ArrayList<>();
-        StringBuilder message = new StringBuilder(var);
-        support.item(var).ifPresent(item -> {
-            int decl = item.position().line();
-            message.append("（宣言 ").append(decl).append("行）");
-            steps.add(CfgSupport.step(item.position().file(), decl,
-                    "宣言。VALUE 句がなく、初期値は不定"));
-        });
-        message.append("を").append(line)
-                .append("行で参照しているが、ここへ至る経路のどれかで値が未設定のまま。");
+        Optional<DataItem> declared = support.item(var);
+        declared.ifPresent(item -> steps.add(CfgSupport.step(item.position().file(),
+                item.position().line(), "宣言（VALUE 句がなく初期値は不定）")));
         List<Integer> setLines = new ArrayList<>();
         for (CfgNode node : cfg.nodes()) {
             if (df.defsAt(node).contains(var)) {
@@ -151,20 +147,17 @@ public final class UninitializedVariableRule implements Rule {
             }
         }
         setLines.sort(null);
-        if (!setLines.isEmpty()) {
-            message.append("値を設定するのは ").append(setLines.size() == 1
-                    ? setLines.get(0) + "行だけで、"
-                    : setLines.size() + "箇所（" + joinLines(setLines) + "）だけで、");
-            message.append("そこを通らないまま ").append(line).append("行に至る経路がある。");
-            for (int at : setLines.subList(0, Math.min(setLines.size(), 3))) {
-                steps.add(CfgSupport.step(file, at,
-                        var + " に値を設定する文。この文を通らない経路がある"));
-            }
+        for (int at : setLines.subList(0, Math.min(setLines.size(), 3))) {
+            steps.add(CfgSupport.step(file, at,
+                    var + " に値を設定する文（この文を通らない経路がある）"));
         }
-        message.append("宣言に VALUE 句を置くか、").append(line)
-                .append("行より前で必ず MOVE・INITIALIZE を通す。");
         steps.add(CfgSupport.step(file, line, "未設定のまま参照する箇所"));
-        return new Finding(META.id(), META.defaultSeverity().toLevel(), message.toString(),
+        String message = var + " を未設定のまま参照しています。"
+                + (setLines.isEmpty() ? "値を設定する文" : "値を設定する " + joinLines(setLines))
+                + " を通らない経路があります"
+                + declared.map(item -> "（宣言 " + item.position().line() + "行）").orElse("")
+                + "。";
+        return new Finding(META.id(), META.defaultSeverity().toLevel(), message,
                 new SourcePosition(file, line, 1, SourcePosition.UNKNOWN_BYTE_OFFSET),
                 List.of(new CodeFlow(steps)), List.of());
     }

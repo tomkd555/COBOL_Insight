@@ -1,5 +1,7 @@
 package jp.cobolinsight.app.cli;
 
+import jp.cobolinsight.app.pipeline.Failures;
+import jp.cobolinsight.core.pipeline.ExitCodes;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 
@@ -24,7 +26,21 @@ public final class Main implements Runnable {
 
     public static void main(String[] args) {
         useUtf8Streams();
-        System.exit(new CommandLine(new Main()).execute(args));
+        System.exit(commandLine().execute(args));
+    }
+
+    /**
+     * The configured command line, with every subcommand plus the handler that turns an uncaught
+     * exception into one Japanese line on stderr instead of a stack trace. Package-private so
+     * {@code MainCommandTest} can exercise the handler directly.
+     */
+    static CommandLine commandLine() {
+        CommandLine cmd = new CommandLine(new Main());
+        cmd.setExecutionExceptionHandler((ex, commandLine, parseResult) -> {
+            System.err.println("エラー: " + Failures.describe(ex) + "。処理を中止しました。");
+            return ExitCodes.ERRORS;
+        });
+        return cmd;
     }
 
     /**

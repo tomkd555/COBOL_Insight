@@ -68,7 +68,6 @@
   cursor: pointer;
   white-space: nowrap;
   font-size: var(--ci-size-sm);
-  transition: background-color var(--duration-fast) var(--ease-standard);
 }
 
 .ci-tree__row:hover {
@@ -93,15 +92,6 @@
   text-overflow: ellipsis;
 }
 
-.ci-tree__codepage {
-  flex: 0 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--color-muted-foreground);
-  font-size: var(--ci-size-sm);
-}
-
 .ci-badge {
   display: inline-flex;
   align-items: center;
@@ -115,7 +105,10 @@
   font-size: var(--ci-size-sm);
 }
 
+/* Its own ground rather than the shared muted one: the accent alone is what carries the warning, and
+   the dark accent was lowered so MEDIUM would stop out-shouting HIGH. */
 .ci-badge--warn {
+  background: color-mix(in oklch, var(--color-accent) 18%, var(--color-background));
   color: var(--color-accent);
 }
 
@@ -136,16 +129,9 @@
   overflow: hidden;
 }
 
-/* The side bar has no detail pane, so its list is the scrolling surface. */
-.ci-problems--compact {
-  height: auto;
-  overflow-x: auto;
-}
-
 /* One line per finding; the full sentence is read in the detail pane. */
 .ci-problems__message,
-.ci-problems__rule,
-.ci-problems__file {
+.ci-problems__rule {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -153,10 +139,50 @@
 
 .ci-problems__filters {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--ci-space-2);
   padding: var(--ci-space-2) var(--ci-space-3);
   border-bottom: 1px solid var(--color-border);
+}
+
+/*
+ * One control instead of five: the text filter, with the severity toggles inside its right edge. The
+ * rule and the asset are typed into the same box, and the order is set from the column heads, so the
+ * panel spends one row on filtering rather than a row taller than the table it filters.
+ */
+.ci-problems__filter {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-1);
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 28px;
+  padding-inline-end: var(--ci-space-1);
+  background: var(--color-surface);
+  border: 1px solid var(--ci-border-strong);
+  border-radius: var(--ci-radius);
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+
+/* The ring is drawn on the box, because the input inside it has no edge of its own. */
+.ci-problems__filter:has(input:focus-visible) {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.ci-problems__filter input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  padding: 0 var(--ci-space-2);
+  background: transparent;
+  border: none;
+}
+
+.ci-problems__filter input:focus-visible {
+  outline: none;
+}
+
+.ci-problems__filter input::placeholder {
+  color: var(--color-muted-foreground);
 }
 
 .ci-problems__state {
@@ -191,17 +217,50 @@
   text-align: left;
 }
 
+/* The message is the cell the engineer reads, and under table-layout: fixed it takes whatever the
+   named columns leave: it is the only one with no width of its own. */
 .ci-problems__table th:nth-child(1) {
   width: 4em;
 }
 
-.ci-problems__table th:nth-child(2),
+/* Rule ids are a fixed "Lddd" shape (R004, U001, ...); the column needs no more than that. */
+.ci-problems__table th:nth-child(2) {
+  width: 6em;
+}
+
 .ci-problems__table th:nth-child(4) {
-  width: 16em;
+  min-width: 8em;
+  max-width: 13em;
 }
 
 .ci-problems__table th:nth-child(5) {
   width: 4em;
+}
+
+/*
+ * At a narrow container width the message is what a reader is here for, so it is the last column to
+ * give up its space. The others fold away in the order they matter least: which rule, then which
+ * asset, then which line.
+ */
+@container problems (max-width: 560px) {
+  .ci-problems__table th:nth-child(2),
+  .ci-problems__table td:nth-child(2) {
+    display: none;
+  }
+}
+
+@container problems (max-width: 460px) {
+  .ci-problems__table th:nth-child(4),
+  .ci-problems__table td:nth-child(4) {
+    display: none;
+  }
+}
+
+@container problems (max-width: 360px) {
+  .ci-problems__table th:nth-child(5),
+  .ci-problems__table td:nth-child(5) {
+    display: none;
+  }
 }
 
 .ci-problems__table th {
@@ -213,6 +272,8 @@
   color: var(--color-muted-foreground);
   font-size: var(--ci-size-sm);
   font-weight: 400;
+  /* A heading is never stacked one character per line, however narrow its column. */
+  white-space: nowrap;
 }
 
 .ci-problems__table th:first-child {
@@ -221,6 +282,37 @@
 
 .ci-problems__table th:last-child {
   text-align: right;
+}
+
+/* The order is set from the head, as in a file list: the whole cell is the control. */
+.ci-problems__sort {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-1);
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: inherit;
+}
+
+.ci-problems__table th:first-child .ci-problems__sort {
+  justify-content: center;
+}
+
+.ci-problems__table th[aria-sort] .ci-problems__sort {
+  color: var(--color-foreground);
+}
+
+.ci-problems__table th[aria-sort="ascending"] .ci-problems__sort::after {
+  content: "\25b4";
+}
+
+.ci-problems__table th[aria-sort="descending"] .ci-problems__sort::after {
+  content: "\25be";
 }
 
 .ci-problems__row td {
@@ -232,7 +324,6 @@
 
 .ci-problems__row {
   cursor: pointer;
-  transition: background-color var(--duration-fast) var(--ease-standard);
 }
 
 .ci-problems__row:hover {
@@ -242,20 +333,44 @@
 .ci-problems__rule,
 .ci-problems__file {
   color: var(--color-muted-foreground);
+}
+
+/* A flex row rather than one ellipsized text node: the path and the graph button are separate boxes,
+   so a path that fits the column shows no ellipsis just because the button follows it. */
+.ci-problems__file {
+  display: flex;
+  align-items: center;
   white-space: nowrap;
 }
 
+.ci-problems__file-path {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A row action, shown on the row under the pointer or the keyboard, as VS Code's inline actions
+   are: every row carrying its own button would be the loudest thing in the table. */
 .ci-problems__graph {
+  flex: 0 0 auto;
   margin-inline-start: var(--ci-space-1);
   padding: 0 var(--ci-space-1);
   background: none;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--ci-border-strong);
   border-radius: var(--radius-sm);
   color: var(--color-muted-foreground);
   cursor: pointer;
+  opacity: 0;
   transition:
     background-color var(--duration-fast) var(--ease-standard),
-    color var(--duration-fast) var(--ease-standard);
+    color var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard);
+}
+
+.ci-problems__row:hover .ci-problems__graph,
+.ci-problems__row:focus-within .ci-problems__graph,
+.ci-problems__row--selected .ci-problems__graph {
+  opacity: 1;
 }
 
 .ci-problems__graph:hover {
@@ -268,9 +383,15 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* The tint is light enough to read through, so the rule at the row's edge is what marks it, as on a
+   tree row and a palette item. It is drawn on the first cell because a tr takes no box shadow. */
 .ci-problems__row--selected,
 .ci-problems__row--selected:hover {
   background: var(--ci-bg-selected, var(--ci-bg-hover));
+}
+
+.ci-problems__row--selected td:first-child {
+  box-shadow: inset 2px 0 0 var(--color-primary);
 }
 
 .ci-problems__body {
@@ -283,6 +404,8 @@
   flex: 1 1 auto;
   min-width: 0;
   overflow: auto;
+  container-type: inline-size;
+  container-name: problems;
 }
 
 .ci-problems__detail {
@@ -290,14 +413,6 @@
   overflow: auto;
   padding: var(--ci-space-3) var(--ci-space-4);
   border-inline-start: 1px solid var(--color-border);
-}
-
-.ci-problems__detail-head {
-  display: flex;
-  align-items: center;
-  gap: var(--ci-space-2);
-  color: var(--color-muted-foreground);
-  font-size: var(--ci-size-sm);
 }
 
 .ci-problems__detail-message {
@@ -341,7 +456,7 @@
   min-width: 3.5em;
   padding: 0 var(--ci-space-1);
   background: none;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--ci-border-strong);
   border-radius: var(--radius-sm);
   color: var(--color-primary);
   font-family: var(--ci-font-code);
@@ -354,17 +469,18 @@
   background: var(--ci-bg-hover);
 }
 
+/* The actions open the pane, so they carry no leading gap; the message's own margin follows them. */
 .ci-problems__detail-actions {
   display: flex;
   gap: var(--ci-space-2);
-  margin-top: var(--ci-space-4);
 }
 
+/* The glyph alone. The word is the cell's title and the row's accessible name, so the column costs
+   the table four characters' width instead of a header that wraps to 重大/度. */
 .ci-severity {
-  display: inline-block;
-  min-width: 2.5em;
+  display: block;
   text-align: center;
-  font-size: var(--ci-size-sm);
+  font-size: var(--ci-size-md);
 }
 
 .ci-severity--high {
@@ -443,17 +559,16 @@
   color: var(--color-muted-foreground);
 }
 
+/* Static text, not a second action beside the primary button: a smaller size keeps it read as a
+   hint rather than a competing call to act. */
+.ci-welcome__hint {
+  font-size: var(--ci-size-sm);
+}
+
 .ci-welcome__recent-label {
   margin-inline-end: var(--ci-space-2);
 }
 
 .ci-welcome__recent-path {
   font-family: var(--ci-font-code);
-}
-
-.ci-placeholder {
-  margin: 0;
-  padding: var(--ci-space-4);
-  color: var(--color-muted-foreground);
-  font-size: var(--ci-size-md);
 }

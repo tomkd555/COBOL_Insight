@@ -80,11 +80,13 @@ export type ThemeName = keyof typeof COBOL_INSIGHT_THEME;
 /**
  * The code face and its metrics, shared by every editor. BIZ UDGothic is the fixed-pitch member
  * of the UI family (tokens.json); the fallbacks keep a DBCS glyph two cells wide.
+ *
+ * 13px is the product's own floor for Japanese body text; 12px kanji in a code face lose strokes.
  */
 export const CODE_FONT = {
   fontFamily: "'BIZ UDGothic','MS Gothic',monospace",
-  fontSize: 12,
-  lineHeight: 19,
+  fontSize: 13,
+  lineHeight: 20,
 } as const;
 
 /* ------------------------------------------------------------------ COBOL fixed format */
@@ -334,11 +336,11 @@ export function cobolInsightTheme(theme: ThemeName): MonacoThemeData {
     base: dark ? "vs-dark" : "vs",
     inherit: true,
     rules: [
-      { token: "sequence", foreground: c("868d99", "6b7280") },
-      { token: "indicator", foreground: c("d7ba7d", "8a5f0f"), fontStyle: "bold" },
-      { token: "continuation", foreground: c("d7ba7d", "8a5f0f") },
+      { token: "sequence", foreground: c("868d99", "5b6270") },
+      { token: "indicator", foreground: c("d7ba7d", "6f4c0a"), fontStyle: "bold" },
+      { token: "continuation", foreground: c("d7ba7d", "6f4c0a") },
       { token: "debug", foreground: c("c586c0", "8a3fa0") },
-      { token: "comment", foreground: c("6a9955", "3f7d3f") },
+      { token: "comment", foreground: c("6a9955", "2f6a34") },
       { token: "string", foreground: c("ce9178", "a0522d") },
       { token: "string.invalid", foreground: c("ff6b5e", "d03a2e"), fontStyle: "bold" },
       { token: "number", foreground: c("b5cea8", "2f6b3d") },
@@ -354,10 +356,19 @@ export function cobolInsightTheme(theme: ThemeName): MonacoThemeData {
     colors: {
       "editor.background": c("#101418", "#f4f7fa"),
       "editor.foreground": c("#e3e5ea", "#2b2f38"),
-      "editorLineNumber.foreground": c("#868d99", "#6b7280"),
+      "editorLineNumber.foreground": c("#868d99", "#5b6270"),
       "editorLineNumber.activeForeground": c("#6aa7ff", "#2a66d0"),
       "editorRuler.foreground": c("#6e7582", "#8a92a0"),
       "editorGutter.background": c("#101418", "#f4f7fa"),
+      // The caret line, at 6% of the foreground and no border: enough to find the caret after a jump
+      // from the problems table, not enough to compete with the column bands drawn over it.
+      "editor.lineHighlightBackground": c("#e3e5ea0f", "#2b2f380f"),
+      "editor.lineHighlightBorder": "#00000000",
+      // One finding, one colour: Monaco's own red, amber and blue are not the palette's, so a marker
+      // and the glyph beside it in the margin disagreed on what severity looks like.
+      "editorError.foreground": c("#f75e54", "#bb0916"),
+      "editorWarning.foreground": c("#d59800", "#995700"),
+      "editorInfo.foreground": c("#59a0f9", "#0267c7"),
     },
   };
 }

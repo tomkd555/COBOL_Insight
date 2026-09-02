@@ -11,7 +11,6 @@ import { ReportEditor } from "../editors/report/ReportEditor";
 import { Settings } from "../editors/settings/Settings";
 import { FixDiff } from "../editors/diff/FixDiff";
 import { TranspilePane } from "../editors/transpile/TranspilePane";
-import { Placeholder } from "../editors/Placeholder";
 
 export interface EditorGroupProps {
   onRequestClose: (id: string) => void;
@@ -42,7 +41,7 @@ export function EditorGroup({
   const workbench = useWorkbench();
   const active = activeTabOf(workbench);
 
-  /** Picks the editor for a tab. Kinds a later phase will fill get the placeholder for now. */
+  /** Picks the editor for a tab. Every kind is covered; an uncovered one is a bug, not a screen. */
   const editorFor = (tab: WorkbenchTab): ReactElement => {
     if (tab.kind === "source" && tab.path !== null) {
       return <SourceEditor path={tab.path} line={tab.line} onShowFix={onShowFix} />;
@@ -66,7 +65,7 @@ export function EditorGroup({
     if (tab.kind === "settings") {
       return <Settings notify={notify} />;
     }
-    return <Placeholder />;
+    throw new Error(`no editor for tab ${tab.kind} ${tab.path}`);
   };
 
   return (

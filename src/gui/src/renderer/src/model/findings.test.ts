@@ -3,13 +3,11 @@ import type { RuleCatalogEntry, SarifFinding } from "../../../shared/ipc";
 import { buildRuleIndex } from "./ruleIndex";
 import {
   ALL,
-  fileNames,
   filterFindings,
+  hiddenByThreshold,
   initialFindingFilter,
   mergeFindings,
-  ruleIds,
   severityCounts,
-  thresholdHides,
 } from "./findings";
 
 function rule(id: string, severity: string, name = `name of ${id}`): RuleCatalogEntry {
@@ -97,14 +95,7 @@ describe("filterFindings", () => {
     expect(rows.some((row) => row.severity === "high")).toBe(false);
   });
 
-  it("filters by rule, by file and by source", () => {
-    expect(
-      filterFindings(merged, INDEX, { ...initialFindingFilter, rule: "R001" }).map(
-        (row) => row.finding.ruleId,
-      ),
-    ).toEqual(["R001"]);
-    expect(
-      filterFindings(merged, INDEX, { ...initialFindingFilter, file: "a.cbl" })).toHaveLength(2);
+  it("filters by source", () => {
     expect(
       filterFindings(merged, INDEX, { ...initialFindingFilter, source: "sql" }).map(
         (row) => row.finding.ruleId,
@@ -112,12 +103,18 @@ describe("filterFindings", () => {
     ).toEqual(["S001"]);
   });
 
-  it("searches the message, the rule name and the file", () => {
+  it("searches the message, the rule id, the rule name and the file", () => {
     const rows = mergeFindings([finding("R001", "a.cbl", 1, "桁あふれの恐れ")], []);
     expect(filterFindings(rows, INDEX, { ...initialFindingFilter, text: "桁あふれ" })).toHaveLength(1);
     expect(filterFindings(rows, INDEX, { ...initialFindingFilter, text: "name of r001" })).toHaveLength(1);
     expect(filterFindings(rows, INDEX, { ...initialFindingFilter, text: "a.cbl" })).toHaveLength(1);
     expect(filterFindings(rows, INDEX, { ...initialFindingFilter, text: "nothing" })).toHaveLength(0);
+  });
+
+  // The panel has no rule selector any more, so the id has to be reachable from the one filter box.
+  it("narrows to one rule when its id is typed", () => {
+    const rows = filterFindings(merged, INDEX, { ...initialFindingFilter, text: "R010" });
+    expect(rows.map((row) => row.finding.ruleId)).toEqual(["R010"]);
   });
 
   it("gives each row a key that survives duplicates at the same position", () => {
@@ -132,34 +129,26 @@ describe("filterFindings", () => {
   });
 });
 
-describe("the selector options", () => {
+describe("the severity counts", () => {
   const merged = mergeFindings(LINT, SQL);
-
-  it("lists the rule ids in natural order", () => {
-    expect(ruleIds(merged)).toEqual(["R001", "R002", "R010", "S001"]);
-  });
-
-  it("lists the files in ascending order, without repeats", () => {
-    expect(fileNames(merged)).toEqual(["a.cbl", "b.cbl"]);
-  });
 
   it("counts every finding by severity, before any filtering", () => {
     expect(severityCounts(merged, INDEX)).toEqual({ high: 1, medium: 1, low: 1, warning: 1 });
   });
 });
 
-describe("thresholdHides", () => {
-  it("is true for every threshold that excludes something", () => {
-    expect(thresholdHides("warning")).toBe(false);
-    expect(thresholdHides("low")).toBe(true);
-    expect(thresholdHides("high")).toBe(true);
+describe("hiddenByThreshold", () => {
+  const merged = mergeFindings(LINT, SQL);
+
+  it("counts the findings the threshold keeps out of the table", () => {
+    expect(hiddenByThreshold(merged, INDEX, "warning")).toBe(0);
+    expect(hiddenByThreshold(merged, INDEX, "low")).toBe(1);
+    expect(hiddenByThreshold(merged, INDEX, "high")).toBe(3);
   });
 });
 
 describe("the all sentinel", () => {
-  it("is the value the rule, file and source selectors use for no restriction", () => {
-    expect(initialFindingFilter.rule).toBe(ALL);
-    expect(initialFindingFilter.file).toBe(ALL);
+  it("is the value the source selector uses for no restriction", () => {
     expect(initialFindingFilter.source).toBe(ALL);
   });
 });

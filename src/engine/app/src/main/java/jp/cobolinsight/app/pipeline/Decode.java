@@ -34,8 +34,8 @@ public record Decode(Set<AssetKind> reportFailuresFor) implements Step {
             try {
                 bytes = Files.readAllBytes(unit.absPath());
             } catch (IOException e) {
-                System.err.println("警告: 読み取れないため対象から外す: " + unit.absPath()
-                        + " (" + e + ")");
+                System.err.println("警告: " + unit.absPath() + " を読み込めませんでした（"
+                        + Failures.describe(e) + "）。この資産は解析の対象外です。");
                 s.unreadable().add(unit.relPath());
                 continue;
             }

@@ -19,7 +19,7 @@ function finding(file: string, ruleId = "R001"): SarifFinding {
 }
 
 describe("the run lifecycle", () => {
-  it("discards the previous artefacts when a run starts", () => {
+  it("discards the previous findings when a run starts and keeps the inventory", () => {
     const withResults = apply(
       initialProjectState,
       { type: "SET_INVENTORY", result: { status: "ready", items: [] }, dbPath: "C:/p.db" },
@@ -29,8 +29,24 @@ describe("the run lifecycle", () => {
     expect(withResults.mode).toBe("running");
     expect(withResults.runStage).toBe(1);
     expect(withResults.findings.status).toBe("none");
+    // The tree keeps its listing while the folder is scanned again, and after a cancelled scan.
+    expect(withResults.inventory.status).toBe("ready");
     // The project file survives: it is where the next run writes, not a result of the last one.
     expect(withResults.dbPath).toBe("C:/p.db");
+  });
+
+  it("drops everything read from the previous folder when another one is chosen", () => {
+    const switched = apply(
+      initialProjectState,
+      { type: "SET_INPUT_DIR", inputDir: "C:/a" },
+      { type: "SET_INVENTORY", result: { status: "ready", items: [] }, dbPath: "C:/p.db" },
+      { type: "SET_FINDINGS", result: { status: "ready", items: [finding("a.cbl")] } },
+      { type: "SET_INPUT_DIR", inputDir: "C:/b" },
+    );
+    expect(switched.inputDir).toBe("C:/b");
+    expect(switched.dbPath).toBeNull();
+    expect(switched.inventory.status).toBe("none");
+    expect(switched.findings.status).toBe("none");
   });
 
   it("goes to results or to error according to what the run reported", () => {

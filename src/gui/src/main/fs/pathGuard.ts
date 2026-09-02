@@ -44,14 +44,14 @@ export async function resolveSourceFile(
 ): Promise<string> {
   const absPath = resolveWithinBase(baseDir, path);
   if (absPath === null) {
-    throw new Error(`outside the asset folder: ${path}`);
+    throw new Error(`「${path}」は資産フォルダの外にあります。資産フォルダの中の資産を選んでください。`);
   }
   const [realBase, realTarget] = await Promise.all([
     fs.realPath(resolve(baseDir)),
     fs.realPath(absPath),
   ]);
   if (resolveWithinBase(realBase, realTarget) === null) {
-    throw new Error(`outside the asset folder: ${path}`);
+    throw new Error(`「${path}」は資産フォルダの外にあります。資産フォルダの中の資産を選んでください。`);
   }
   return realTarget;
 }

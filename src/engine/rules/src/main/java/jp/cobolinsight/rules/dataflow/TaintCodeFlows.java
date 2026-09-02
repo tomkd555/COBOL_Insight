@@ -42,7 +42,7 @@ final class TaintCodeFlows {
             if (kind == TaintKind.SENSITIVE) {
                 String declared = path.isEmpty() ? variable : path.get(0).from().orElse(variable);
                 declarationOf(model, declared).ifPresent(position -> steps.add(
-                        new CodeFlowStep(position, "機密項目 " + declared + " を宣言する")));
+                        new CodeFlowStep(position, declared + " の宣言（機密項目）")));
             }
             for (TaintStep step : path) {
                 step.node().statement().ifPresent(statement -> steps.add(

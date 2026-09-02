@@ -123,6 +123,7 @@ class SaveCommandTest {
         assertEquals(2, run.exitCode(), "符号化できない文字は失敗(2)。stdout=" + run.stdout());
         assertTrue(run.stdout().contains("\"written\":false"), run.stdout());
         assertTrue(run.stdout().contains("windows-31j"), run.stdout());
+        assertTrue(run.stdout().contains("原本は書き換えていません"), run.stdout());
         assertArrayEquals(before, Files.readAllBytes(file), "失敗した保存は原本へ触れないこと");
     }
 
@@ -190,7 +191,7 @@ class SaveCommandTest {
 
         assertEquals(2, run.exitCode(), run.stdout());
         assertTrue(run.stdout().contains("\"written\":true"), run.stdout());
-        assertTrue(run.stdout().contains("再パース検証が落ちた"), run.stdout());
+        assertTrue(run.stdout().contains("再パース検証でエラーが発生しました"), run.stdout());
         assertArrayEquals(editedText.getBytes(SJIS), Files.readAllBytes(file),
                 "検証で落ちても書き戻し自体は済んでいること");
     }

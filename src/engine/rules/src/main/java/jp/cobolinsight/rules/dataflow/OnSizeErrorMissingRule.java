@@ -56,16 +56,17 @@ public final class OnSizeErrorMissingRule implements Rule {
             "ROUNDED", "GIVING", "TO", "FROM", "BY", "INTO", "REMAINDER", "ON", "SIZE", "ERROR",
             "CORRESPONDING", "CORR", "NOT");
 
-    private static final RuleMeta META = RuleMeta.named("R004", "ON SIZE ERROR句の欠如", "例外処理")
+    private static final RuleMeta META = RuleMeta.named("R004", "ON SIZE ERROR 句の欠如", "例外処理")
             .summary("結果が受け取り側項目のけた数を超え得るのに ON SIZE ERROR 句を持たない"
-                    + "算術文を検出する。")
+                    + "算術文を検出します。")
             .rationale("けたあふれが起きても検知されず、上位けたを失った値が"
-                    + "そのまま後続の計算と出力に渡る。")
+                    + "そのまま後続の計算と出力に渡ります。")
             .detection("ADD・SUBTRACT・MULTIPLY・DIVIDE・COMPUTE のうち、ON SIZE ERROR 句がなく、"
-                    + "区間値域解析による結果の範囲が受け取り側項目の整数部のけた数を超え得る"
-                    + "（範囲が定まらない場合を含む）ものを検出する。"
-                    + "受け取り側項目自身を加数に含む累算は対象外とする。")
-            .remedy("ON SIZE ERROR 句を付けてけたあふれ時の処理を書くか、受け取り側項目のけた数を広げる。")
+                    + "結果が受け取り側項目の整数部のけた数を超え得る"
+                    + "（結果の範囲が定まらない場合を含む）ものを検出します。"
+                    + "受け取り側項目自身を加数に含む累算は対象外です。")
+            .remedy("ON SIZE ERROR 句を付けてけたあふれ時の処理を書くか、"
+                    + "受け取り側項目のけた数を広げてください。")
             .example("""
                     01  WS-RESULT  PIC 9(4).
                         COMPUTE WS-RESULT = WS-QTY * WS-PRICE.
@@ -124,10 +125,13 @@ public final class OnSizeErrorMissingRule implements Rule {
             if (receivers.isEmpty()) {
                 continue; // excluded: an accumulation (receiving item included among the addends), etc.
             }
-            if (receivers.stream().anyMatch(r -> resultMayOverflow(cfg, df, node, r, support))) {
+            String receiver = receivers.stream()
+                    .filter(r -> resultMayOverflow(cfg, df, node, r, support))
+                    .findFirst().orElse(null);
+            if (receiver != null) {
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                        verb + " 文に ON SIZE ERROR 句がなく、結果が受け取り側項目のけた数を超え得る。"
-                                + "けたあふれが検知されない。",
+                        receiver + " への " + verb + " 文に ON SIZE ERROR 句がありません。"
+                                + "結果がけた数を超えても、けたあふれが検知されません。",
                         new SourcePosition(model.sourceFile(), simple.range().start().line(), 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
             }
@@ -186,7 +190,7 @@ public final class OnSizeErrorMissingRule implements Rule {
             String replacement = "\n" + String.join("\n", layout);
             SourcePosition at = arithmetic.range().end();
             TextEdit edit = new TextEdit(new SourceRange(at, at), replacement);
-            return Optional.of(new FixSuggestion("ON SIZE ERROR 句を付ける", List.of(edit)));
+            return Optional.of(new FixSuggestion("ON SIZE ERROR 句を付けます", List.of(edit)));
         }
     }
 

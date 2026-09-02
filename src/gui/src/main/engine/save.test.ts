@@ -60,7 +60,7 @@ describe("parseSaveSummary", () => {
   });
 
   it("throws when there is no summary at all, since the outcome is then unknown", () => {
-    expect(() => parseSaveSummary(null, 0)).toThrow(/unknown whether the file was written/);
+    expect(() => parseSaveSummary(null, 0)).toThrow(/書き込まれたかどうかを判定できません/);
   });
 
   it("drops reparse entries that are not objects", () => {
@@ -93,7 +93,7 @@ describe("saveSource", () => {
         path: "../secret.cbl",
         editedText: "x",
       }),
-    ).rejects.toThrow(/outside the asset folder/);
+    ).rejects.toThrow(/資産フォルダの外/);
   });
 
   it("removes the scratch file even when the engine reported nothing", async () => {

@@ -42,14 +42,15 @@ public final class BinarySubscriptRule implements Rule {
     private static final Set<String> BINARY_USAGES = Set.of("COMP", "COMP-4", "COMP-5",
             "COMPUTATIONAL", "COMPUTATIONAL-4", "COMPUTATIONAL-5", "BINARY", "INDEX");
 
-    private static final RuleMeta META = RuleMeta.named("R006", "USAGEがBINARYでない添字", "添字・指標")
-            .summary("表の添字に USAGE BINARY 以外のデータ項目を使う参照を検出する。")
+    private static final RuleMeta META = RuleMeta.named("R006", "USAGE が BINARY でない添字", "添字・指標")
+            .summary("表の添字に USAGE BINARY 以外のデータ項目を使う参照を検出します。")
             .rationale("DISPLAY 形式の添字は参照するたびに二進数へ変換されるため、"
-                    + "表を繰り返し参照する処理の時間が長くなる。")
+                    + "表を繰り返し参照する処理の時間が長くなります。")
             .detection("文の「名前(添字)」形式のうち、添字がデータ項目で、"
-                    + "その USAGE が BINARY（COMP）でないものを検出する。"
-                    + "INDEXED BY の指標名と定数の添字は対象外とする。")
-            .remedy("添字に使う項目を USAGE BINARY（COMP）で宣言するか、INDEXED BY の指標を使う。")
+                    + "その USAGE が BINARY（COMP）でないものを検出します。"
+                    + "INDEXED BY の指標名と定数の添字は対象外です。")
+            .remedy("添字に使う項目を USAGE BINARY（COMP）で宣言するか、"
+                    + "INDEXED BY の指標を使ってください。")
             .example("""
                     01  WS-IDX  PIC 9(4).
                         MOVE WS-TBL(WS-IDX) TO WS-OUT.
@@ -133,8 +134,8 @@ public final class BinarySubscriptRule implements Rule {
                         + CobolTexts.upper(arg);
                 if (reported.add(key)) {
                     findings.add(Finding.of("R006", Severity.LOW.toLevel(),
-                            "表 " + matcher.group(1) + " の添字に使うデータ項目 " + arg
-                                    + " の USAGE 句が BINARY（COMP）以外である（USAGE: " + usage + "）。",
+                            arg + "（USAGE " + usage + "）を表 " + matcher.group(1)
+                                    + " の添字に使っています。参照のたびに二進数へ変換されます。",
                             range.start()));
                 }
             }

@@ -27,6 +27,15 @@
   overflow: auto;
 }
 
+@keyframes ci-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .ci-palette__backdrop,
 .ci-modal__backdrop {
   position: absolute;
@@ -34,6 +43,11 @@
   background: var(--ci-bg-overlay);
 }
 
+/* The scrim is half of the dialog, so it arrives with it. The palette's stays instant, with the
+   palette itself: both are raised from the keyboard, many times a day. */
+.ci-modal__backdrop {
+  animation: ci-fade-in var(--duration-base) var(--ease-standard);
+}
 
 .ci-palette__dialog {
   position: relative;
@@ -44,15 +58,16 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   overflow: hidden;
-  animation: ci-overlay-in var(--duration-base) var(--ease-standard);
 }
 
+/* The same chrome as .ci-input, so the query row reads as a field rather than a heading; the rule
+   below it separates the query from the results list underneath. */
 .ci-palette__input {
   width: 100%;
   height: 32px;
   padding: 0 var(--ci-space-3);
-  background: var(--color-background);
-  border: none;
+  background: var(--color-surface);
+  border: 1px solid var(--ci-border-strong);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -98,7 +113,9 @@
 .ci-modal__dialog {
   position: relative;
   margin: 20vh auto 0;
-  width: min(440px, 90vw);
+  width: max-content;
+  min-width: 440px;
+  max-width: min(720px, 90vw);
   max-height: 88vh;
   padding: var(--ci-space-4);
   background: var(--color-surface);
@@ -109,8 +126,15 @@
   animation: ci-overlay-in var(--duration-base) var(--ease-standard);
 }
 
+/* A cast shadow does nothing on a dark ground, so the dialog is lifted off the surface it sits on. */
+.dark .ci-modal__dialog,
+.dark .ci-palette__dialog {
+  background: color-mix(in oklch, var(--color-foreground) 6%, var(--color-surface));
+}
+
 .ci-modal__dialog--wide {
   width: min(1040px, 94vw);
+  max-width: min(1040px, 94vw);
 }
 
 .ci-modal__diff {
@@ -131,18 +155,21 @@
 
 .ci-modal__actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
   gap: var(--ci-space-2);
   margin-top: var(--ci-space-4);
 }
 
-/* Bottom right, above the status bar: no view puts a control there. */
+/* Bottom right, clear of the panel: over it the toast would cover the findings detail pane, which is
+   where the reader is looking when a save or a fix reports back. App.tsx sets the panel's height. */
 .ci-toasts {
   position: fixed;
   top: auto;
   right: var(--ci-space-3);
-  bottom: calc(var(--ci-statusbar-height) + var(--ci-space-3));
+  bottom: calc(
+    var(--ci-panel-open-height, 0px) + var(--ci-statusbar-height) + var(--ci-space-3)
+  );
   display: flex;
   flex-direction: column;
   gap: var(--ci-space-2);
@@ -150,16 +177,39 @@
   max-width: min(420px, 80vw);
 }
 
+/*
+ * The toast is the one surface with nothing to bridge from: it appears where nothing was. It rises
+ * the short way it will fall back, so the eye is carried to it rather than surprised by it.
+ */
 .ci-toast {
   display: flex;
   align-items: flex-start;
   gap: var(--ci-space-2);
   padding: var(--ci-space-2) var(--ci-space-3);
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--ci-border-strong);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
   font-size: var(--ci-size-md);
+  opacity: 1;
+  translate: 0 0;
+  transition:
+    opacity var(--duration-base) var(--ease-standard),
+    translate var(--duration-base) var(--ease-standard);
+}
+
+@starting-style {
+  .ci-toast {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+
+/* The same edge, faster: Toast.tsx holds the element for --duration-fast before it unmounts. */
+.ci-toast--leaving {
+  opacity: 0;
+  translate: 0 8px;
+  transition-duration: var(--duration-fast);
 }
 
 .ci-toast--failed {

@@ -87,7 +87,7 @@ export async function decodeSource(
     } catch {
       return failed(
         result.stderr.trim() === ""
-          ? `the engine wrote no decode result (exit code ${result.exitCode})`
+          ? `解析エンジンが復号結果を書き出しませんでした（終了コード${result.exitCode}）。文字コードを指定して開き直してください。`
           : result.stderr.trim(),
       );
     }

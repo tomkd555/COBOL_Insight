@@ -80,17 +80,17 @@ class CopyReplacingRuleTest {
         }
         Finding fieldFinding = findings.stream()
                 .filter(f -> f.location().line() == 7).findFirst().orElseThrow();
-        assertTrue(fieldFinding.message().contains("置換対象 FIELD "),
+        assertTrue(fieldFinding.message().startsWith("FIELD がコピー句 FLDCPY "),
                 "FLD-FIELDの語中一致を出現とみなさず検出すること: " + fieldFinding.message());
-        assertTrue(findings.stream().noneMatch(f -> f.message().contains("置換対象 FLD-REC ")),
+        assertTrue(findings.stream().noneMatch(f -> f.message().startsWith("FLD-REC ")),
                 "対を複数書いたREPLACING句でも、コピー句に出現する1対目は検出しないこと");
         Finding multiLine = findings.stream()
                 .filter(f -> f.location().line() == 11).findFirst().orElseThrow();
-        assertTrue(multiLine.message().contains("置換対象 ZZ "),
+        assertTrue(multiLine.message().startsWith("ZZ がコピー句 GOODCPY "),
                 "複数行にわたるCOPY文はその先頭行で報告すること: " + multiLine.message());
-        assertTrue(findings.stream().noneMatch(f -> f.message().contains("置換対象 CP ")),
+        assertTrue(findings.stream().noneMatch(f -> f.message().startsWith("CP ")),
                 "LEADING指定は前方境界のみで照合し、CP-RECへの前方一致を出現とみなすこと");
-        assertTrue(findings.stream().noneMatch(f -> f.message().contains("置換対象 REC ")),
+        assertTrue(findings.stream().noneMatch(f -> f.message().startsWith("REC ")),
                 "TRAILING指定は後方境界のみで照合し、TRL-RECへの後方一致を出現とみなすこと");
     }
 }

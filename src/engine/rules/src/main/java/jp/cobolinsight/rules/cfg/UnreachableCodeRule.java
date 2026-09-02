@@ -40,14 +40,15 @@ import java.util.Set;
 public final class UnreachableCodeRule implements Rule {
 
     private static final RuleMeta META = RuleMeta.named("R011", "到達不能コード", "制御フロー")
-            .summary("制御が到達しない文と、どこからも呼び出されない段落を検出する。")
+            .summary("制御が到達しない文と、どこからも呼び出されない段落を検出します。")
             .rationale("実行されない記述が残ると、読む者が生きた処理と取り違え、"
-                    + "実行されない場所に改修を加える。")
-            .detection("(a) 制御フローグラフで入口から到達できない文と、"
-                    + "(b) PERFORM・GO TO のいずれからも参照されず、前の段落から制御が移る経路もない"
-                    + "段落の 2 つを検出する。(b) は段落間の暗黙の移行が過大に見積もられるため、"
-                    + "到達性ではなく意味モデルで判断する。")
-            .remedy("不要なら削る。必要な処理なら、呼び出しか分岐を加えて実行されるようにする。")
+                    + "実行されない場所に改修を加えます。")
+            .detection("(a) プログラムの入口からどの経路をたどっても実行されない文と、"
+                    + "(b) PERFORM・GO TO のいずれからも参照されず、前の段落から制御が移る経路も"
+                    + "ない段落を検出します。手続き部の先頭の手続きと、節そのものは (b) の"
+                    + "対象外です。")
+            .remedy("不要なら削ってください。必要な処理なら、呼び出しか分岐を加えて"
+                    + "実行されるようにしてください。")
             .example("""
                         GOBACK.
                         MOVE WS-A TO WS-B.
@@ -95,15 +96,12 @@ public final class UnreachableCodeRule implements Rule {
                 String cause = "";
                 if (leaver != null) {
                     int at = leaver.range().start().line();
-                    cause = "直前の " + verbOf(leaver) + "（" + at + "行）で制御が移り、";
-                    steps.add(CfgSupport.step(file, at, "ここで制御が移る"));
+                    cause = "直前の " + label(leaver) + "（" + at + "行）で制御が移ります。";
+                    steps.add(CfgSupport.step(file, at, "制御の移行（ここから戻りません）"));
                 }
                 steps.add(CfgSupport.step(file, line, "実行されない文"));
                 findings.add(new Finding(META.id(), META.defaultSeverity().toLevel(),
-                        line + "行の文には制御が到達しない。" + cause
-                                + "戻ってくる経路も分岐もない。不要なら削り、必要なら "
-                                + (leaver == null ? "分岐か PERFORM で到達させる。"
-                                        : verbOf(leaver) + " の前へ移すか分岐を加える。"),
+                        label(statement) + "に制御が到達しません。" + cause,
                         new SourcePosition(file, line, 1, SourcePosition.UNKNOWN_BYTE_OFFSET),
                         List.of(new CodeFlow(steps)), List.of()));
             });
@@ -130,12 +128,13 @@ public final class UnreachableCodeRule implements Rule {
         return best;
     }
 
-    private static String verbOf(Statement statement) {
+    /** How a statement is named in a message: "MOVE 文", "GO TO 文", or plain "文". */
+    private static String label(Statement statement) {
         if (statement instanceof SimpleStatement simple) {
-            return CfgSupport.upper(simple.verb());
+            return CfgSupport.upper(simple.verb()) + " 文";
         }
         if (statement instanceof GoToStatement) {
-            return "GO TO";
+            return "GO TO 文";
         }
         return "文";
     }
@@ -163,9 +162,8 @@ public final class UnreachableCodeRule implements Rule {
                 continue;
             }
             findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                    "段落 " + procedure.name() + "（" + procedure.range().start().line()
-                            + "行）を呼ぶ PERFORM・GO TO はなく、前の段落から制御が移る経路もない。"
-                            + "実行される機会がないので、呼び出しを加えるか、段落ごと削る。",
+                    procedure.name() + " を呼ぶ PERFORM・GO TO がありません。"
+                            + "前の段落から制御が移る経路もなく、実行される機会がありません。",
                     new SourcePosition(model.sourceFile(), procedure.range().start().line(), 1,
                             SourcePosition.UNKNOWN_BYTE_OFFSET)));
         }

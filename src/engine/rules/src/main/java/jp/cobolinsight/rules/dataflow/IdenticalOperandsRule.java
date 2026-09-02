@@ -18,10 +18,8 @@ import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -52,12 +50,12 @@ public final class IdenticalOperandsRule implements Rule {
     private static final RuleMeta META =
             RuleMeta.named("R025", "二項演算子の両辺が同一の式", "データフロー")
                     .summary("条件式の両辺が同じ、または COMPUTE 文の右辺が A - A・A / A の"
-                            + "形になっている箇所を検出する。")
-                    .rationale("条件が常に真か常に偽になり、演算の結果は定数になる。"
-                            + "多くは、別の項目を指すつもりだった書き間違いである。")
+                            + "形になっている箇所を検出します。")
+                    .rationale("条件が常に真か常に偽になり、演算の結果は定数になります。"
+                            + "多くは、別の項目を指すつもりだった書き間違いです。")
                     .detection("比較・論理演算子の両辺が単一の作用対象（データ項目・定数）として"
-                            + "字句一致するもの、および COMPUTE 文の右辺の A - A・A / A を検出する。")
-                    .remedy("意図した項目名に直す。意図どおりなら定数に置き換える。")
+                            + "字句一致するもの、および COMPUTE 文の右辺の A - A・A / A を検出します。")
+                    .remedy("意図した項目名に直してください。意図どおりなら定数に置き換えてください。")
                     .example("""
                             IF WS-TOTAL = WS-TOTAL
                                 PERFORM SHORI
@@ -98,21 +96,23 @@ public final class IdenticalOperandsRule implements Rule {
         for (CfgNode node : cfg.nodes()) {
             Statement statement = node.statement().orElse(null);
             if (statement instanceof CompoundStatement compound) {
-                reportIfIdentical(model, statement, compound.conditionText(), CONDITION_OPS, findings);
+                reportIfIdentical(model, statement, compound.conditionText(), CONDITION_OPS, false,
+                        findings);
             } else if (statement instanceof SimpleStatement simple
                     && "COMPUTE".equals(simple.verb().toUpperCase(Locale.ROOT))) {
                 int eq = simple.text().indexOf('=');
                 if (eq >= 0) {
                     reportIfIdentical(model, statement, simple.text().substring(eq + 1),
-                            ARITHMETIC_OPS, findings);
+                            ARITHMETIC_OPS, true, findings);
                 }
             }
         }
     }
 
     private void reportIfIdentical(CobolSemanticModel model, Statement statement, String expression,
-            Set<String> operators, List<Finding> findings) {
-        List<String> tokens = tokenize(expression);
+            Set<String> operators, boolean compute, List<Finding> findings) {
+        List<String> literals = new ArrayList<>();
+        List<String> tokens = tokenize(expression, literals);
         for (int i = 1; i + 1 < tokens.size(); i++) {
             if (!operators.contains(tokens.get(i))) {
                 continue;
@@ -121,7 +121,7 @@ public final class IdenticalOperandsRule implements Rule {
             String right = tokens.get(i + 1);
             if (isOperand(left) && isOperand(right) && left.equalsIgnoreCase(right)) {
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                        "二項演算子の両辺が同一の作用対象である。常に真、常に偽、または無意味な演算になる。",
+                        messageFor(display(left, literals), tokens.get(i)),
                         new SourcePosition(model.sourceFile(), statement.range().start().line(), 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
                 return;
@@ -129,10 +129,28 @@ public final class IdenticalOperandsRule implements Rule {
         }
     }
 
+    /** What the identical operands mean for this operator; the reader sees the expression as written. */
+    private static String messageFor(String operand, String operator) {
+        return switch (operator) {
+            case "-" -> operand + " - " + operand + " は常に 0 になります。";
+            case "/" -> operand + " / " + operand + " は " + operand + " が 0 でない限り 1 になります。";
+            case "AND", "OR" -> operand + " " + operator + " " + operand + " は " + operand
+                    + " だけと同じです。";
+            default -> operand + " どうしを比較しています。条件が常に同じ結果になります。";
+        };
+    }
+
+    /** The operand as the message shows it: a masked string literal is restored to its quoted form. */
+    private static String display(String token, List<String> literals) {
+        if (token.length() > 2 && token.charAt(0) == LITERAL_MARK) {
+            return "'" + literals.get(Integer.parseInt(token.substring(1, token.length() - 1))) + "'";
+        }
+        return token;
+    }
+
     /** Splits an expression into string literals (tokens that match by content), data names, numbers, and operators. */
-    private static List<String> tokenize(String expression) {
-        Map<String, Integer> literalIds = new LinkedHashMap<>();
-        String masked = maskLiterals(expression, literalIds).toUpperCase(Locale.ROOT);
+    private static List<String> tokenize(String expression, List<String> literals) {
+        String masked = maskLiterals(expression, literals).toUpperCase(Locale.ROOT);
         String worded = normalizeWordedOperators(masked);
         String spaced = spaceSymbolicOperators(worded);
         List<String> tokens = new ArrayList<>();
@@ -151,7 +169,7 @@ public final class IdenticalOperandsRule implements Rule {
         return token.matches(".*[\\p{L}\\p{N}].*");
     }
 
-    private static String maskLiterals(String text, Map<String, Integer> literalIds) {
+    private static String maskLiterals(String text, List<String> literals) {
         StringBuilder sb = new StringBuilder(text.length());
         int i = 0;
         while (i < text.length()) {
@@ -163,7 +181,11 @@ public final class IdenticalOperandsRule implements Rule {
                     break;
                 }
                 String content = text.substring(i + 1, close);
-                int id = literalIds.computeIfAbsent(content, k -> literalIds.size());
+                int id = literals.indexOf(content);
+                if (id < 0) {
+                    id = literals.size();
+                    literals.add(content);
+                }
                 sb.append(' ').append(LITERAL_MARK).append(id).append(LITERAL_MARK).append(' ');
                 i = close + 1;
             } else {

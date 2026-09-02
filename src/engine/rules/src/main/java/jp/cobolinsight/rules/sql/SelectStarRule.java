@@ -20,12 +20,13 @@ import java.util.List;
  */
 public final class SelectStarRule implements Rule {
 
-    private static final RuleMeta META = RuleMeta.named("S001", "SELECT * の使用", "可読性・保守性")
-            .summary("SELECT 句に * を使う問い合わせを検出する。")
-            .rationale("表に列を足しただけで転送量と受け側の構造が変わる。"
-                    + "必要のない列まで読むため入出力も増える。")
-            .detection("sql-frontend が算出した selectStar シグナルから検出する。")
-            .remedy("必要な列を明示して並べる。")
+    private static final RuleMeta META = RuleMeta.named("S001", "列を明示しない SELECT *", "可読性・保守性")
+            .summary("SELECT 句に * を使う問い合わせを検出します。")
+            .rationale("表に列を足しただけで転送量と受け側の構造が変わります。"
+                    + "必要のない列まで読むため入出力も増えます。")
+            .detection("埋込みSQL文の SELECT 句に * を書いたものを検出します。"
+                    + "カーソル宣言の中の SELECT 句も対象です。")
+            .remedy("必要な列を明示して並べてください。")
             .example("""
                     SELECT * FROM CUSTOMER WHERE ID = :WS-ID
                     """, """
@@ -48,8 +49,8 @@ public final class SelectStarRule implements Rule {
         for (SqlStatementModel statement : context.sqlStatements()) {
             if (statement.structureSignals().selectStar()) {
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                        "SELECT * を用いている。表の構造の変更に弱く、不要な列の転送で入出力を"
-                                + "増やす。必要な列を明示する。",
+                        "SELECT * で全列を取得しています。"
+                                + "表の構造の変更に弱く、不要な列まで転送します。",
                         SqlAdviceSupport.location(statement)));
             }
         }

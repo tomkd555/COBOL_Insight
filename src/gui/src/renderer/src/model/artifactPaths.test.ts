@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { artifactSubdir, directoryOf, fixOutDirOf } from "./artifactPaths";
+import { artifactSubdir, directoryOf, fixOutDirOf, insideAssetFolder } from "./artifactPaths";
 
 describe("directoryOf", () => {
   it("keeps the separator the path already uses", () => {
@@ -35,5 +35,29 @@ describe("fixOutDirOf", () => {
 
   it("falls back to the directory beside the project file", () => {
     expect(fixOutDirOf("", "C:\\data\\cobol-insight.db")).toBe("C:\\data\\fix");
+  });
+});
+
+describe("insideAssetFolder", () => {
+  it("catches the asset folder itself, whatever the separator or the trailing one", () => {
+    expect(insideAssetFolder("C:\\assets", "C:\\assets")).toBe(true);
+    expect(insideAssetFolder("C:\\assets\\", "C:\\assets")).toBe(true);
+    expect(insideAssetFolder("C:/assets", "C:\\assets")).toBe(true);
+  });
+
+  it("catches a directory below it, case-insensitively", () => {
+    expect(insideAssetFolder("C:\\ASSETS\\fix", "C:\\assets")).toBe(true);
+    expect(insideAssetFolder("C:\\assets\\out\\fix", "C:\\assets")).toBe(true);
+  });
+
+  it("accepts a directory outside it, including a sibling with the same prefix", () => {
+    expect(insideAssetFolder("D:\\fix", "C:\\assets")).toBe(false);
+    expect(insideAssetFolder("C:\\assets-fix", "C:\\assets")).toBe(false);
+    expect(insideAssetFolder("C:\\", "C:\\assets")).toBe(false);
+  });
+
+  it("is no boundary while either directory is unknown", () => {
+    expect(insideAssetFolder("C:\\assets\\fix", null)).toBe(false);
+    expect(insideAssetFolder("  ", "C:\\assets")).toBe(false);
   });
 });

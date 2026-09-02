@@ -30,3 +30,24 @@ export function fixOutDirOf(fixOutDir: string, dbPath: string | null | undefined
   const chosen = fixOutDir.trim();
   return chosen === "" ? artifactSubdir(dbPath, "fix") : chosen;
 }
+
+/** A directory for comparison: one separator style, no trailing separator, case folded. */
+function comparablePath(path: string): string {
+  return path.trim().replace(/[\\/]+/g, "/").replace(/\/+$/, "").toLowerCase();
+}
+
+/**
+ * Whether the chosen directory is the asset folder or sits inside it. Writing the proposals there
+ * would leave them among the originals they were derived from, so the settings screen refuses it.
+ *
+ * Windows paths are compared case-insensitively, and both separators and a trailing one are ignored.
+ * An empty asset folder (none chosen yet) is no boundary, so nothing is inside it.
+ */
+export function insideAssetFolder(fixOutDir: string, inputDir: string | null | undefined): boolean {
+  const base = comparablePath(inputDir ?? "");
+  const chosen = comparablePath(fixOutDir);
+  if (base === "" || chosen === "") {
+    return false;
+  }
+  return chosen === base || chosen.startsWith(`${base}/`);
+}

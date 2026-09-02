@@ -22,6 +22,11 @@
   padding: var(--ci-space-2) var(--ci-space-2) 0;
 }
 
+/* The filter takes whatever the button beside it leaves, so the row reaches the far edge. */
+.ci-rules__toolbar .ci-input {
+  flex: 1 1 auto;
+}
+
 .ci-rules__state {
   margin: var(--ci-space-3) var(--ci-space-2);
   color: var(--color-muted-foreground);
@@ -40,10 +45,20 @@
 
 .ci-rules__groupname {
   flex: 1;
+  min-width: 0;
   margin: 0;
+  overflow: hidden;
   color: var(--color-muted-foreground);
   font-size: var(--ci-size-sm);
   font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Pinned to the same right edge as the toolbar's button and a row's severity select, rather than
+   left to however far the name's own growth happens to push them. */
+.ci-rules__grouphead .ci-button--quiet:first-of-type {
+  margin-inline-start: auto;
 }
 
 .ci-rules__grouphead .ci-button--quiet {
@@ -58,7 +73,7 @@
    second, so every column holds one x down the list. */
 .ci-rules__row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   column-gap: var(--ci-space-1);
   row-gap: 2px;
@@ -188,6 +203,13 @@
   max-width: 72ch;
 }
 
+/* A control is not prose. 72ch is the measure a note is read at; an input that wide is a target with
+   no shape, so the controls stop at 320px and the text beside them keeps the measure. */
+.ci-form__field > .ci-input,
+.ci-form__field > .ci-select {
+  max-width: 320px;
+}
+
 .ci-form__label {
   color: var(--color-muted-foreground);
   font-size: var(--ci-size-sm);
@@ -234,6 +256,7 @@
 .ci-chip {
   display: inline-flex;
   align-items: center;
+  gap: var(--ci-space-1);
   height: 24px;
   padding: 0 var(--ci-space-2);
   background: transparent;
@@ -264,8 +287,10 @@
 }
 
 /* Single-choice groups (settings theme, custom-rule pane switch): every option reads as a live
-   choice, not an exclusion, so the off state keeps no strikethrough. */
+   choice, not an exclusion, so the off state keeps no strikethrough and no dashed border — dashed
+   reads as disabled, and an unselected radio option is neither. */
 [role="radiogroup"] .ci-chip {
+  border-style: solid;
   text-decoration: none;
 }
 
@@ -297,23 +322,6 @@
   gap: var(--ci-space-2);
 }
 
-.ci-custom__title {
-  flex: 1;
-  margin: 0;
-  font-size: var(--ci-size-lg);
-  font-weight: 600;
-}
-
-.ci-custom__dirty,
-.ci-settings__state {
-  color: var(--color-muted-foreground);
-  font-size: var(--ci-size-sm);
-}
-
-.ci-custom__state {
-  color: var(--color-muted-foreground);
-}
-
 .ci-custom__forms {
   display: flex;
   flex-direction: column;
@@ -322,16 +330,20 @@
   margin-top: var(--ci-space-3);
 }
 
+/* An editable surface carries the same ground as every other one: the muted ground it had read as a
+   read-only block beside the inputs above it. It fills the rest of the pane rather than a fixed
+   height with dead space below it, so a manual resize handle is not needed either. */
 .ci-custom__raw {
-  min-height: 24em;
+  flex: 1 1 auto;
+  min-height: 0;
   margin-top: var(--ci-space-3);
   padding: var(--ci-space-2);
-  background: var(--color-muted);
+  background: var(--color-surface);
   border: 1px solid var(--ci-border-strong);
   border-radius: var(--radius-md);
   font-family: var(--ci-font-code);
   white-space: pre;
-  resize: vertical;
+  resize: none;
 }
 
 /* ---------------------------------------------------------------- settings */
@@ -345,30 +357,16 @@
   padding: var(--ci-space-4);
 }
 
-.ci-settings__title {
-  margin: 0;
-  font-size: var(--ci-size-lg);
-  font-weight: 600;
-}
-
 .ci-settings__path {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--ci-space-2);
-  max-width: 72ch;
+  max-width: 320px;
 }
 
 .ci-settings__path .ci-input {
   flex: 1;
-}
-
-.ci-settings__actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--ci-space-2);
-  max-width: 72ch;
 }
 
 /* ---------------------------------------------------------------- terminal import */

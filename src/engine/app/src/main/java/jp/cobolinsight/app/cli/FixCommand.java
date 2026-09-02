@@ -9,7 +9,7 @@ import picocli.CommandLine.Command;
  * source is handled by the child command {@code apply}. Shows usage when invoked without a child command.
  */
 @Command(name = "fix", mixinStandardHelpOptions = true,
-        description = "検出結果への修正案を差分表示(preview)・修正後ソース出力(apply)する",
+        description = "検出結果への修正案を差分表示(preview)・修正後原始プログラム出力(apply)する",
         subcommands = {FixPreviewCommand.class, FixApplyCommand.class})
 public final class FixCommand implements Runnable {
 

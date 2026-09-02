@@ -42,16 +42,16 @@ public final class MoveTruncationRule implements Rule {
     private static final Pattern NAME_TOKEN =
             Pattern.compile("[\\p{L}\\p{N}$#_-]*\\p{L}[\\p{L}\\p{N}$#_-]*");
 
-    private static final RuleMeta META = RuleMeta.named("R003", "MOVE文による切り捨て", "データ移動")
-            .summary("受け取り側項目のけた数または文字長が送り出し側項目より小さい MOVE 文を検出する。")
-            .rationale("数字項目では上位けたが、英数字項目では右端の文字が切り捨てられる。"
-                    + "実行時エラーにはならないため、金額や識別子が別の値のまま処理が進む。")
+    private static final RuleMeta META = RuleMeta.named("R003", "MOVE 文による切り捨て", "データ移動")
+            .summary("受け取り側項目のけた数または文字長が送り出し側項目より小さい MOVE 文を検出します。")
+            .rationale("数字項目では上位けたが、英数字項目では右端の文字が切り捨てられます。"
+                    + "実行時エラーにはならないため、金額や識別子が別の値のまま処理が進みます。")
             .detection("送り出し側と受け取り側の PICTURE を解決し、数字項目どうしで受け取り側の"
-                    + "整数部または小数部が短いもの、英数字項目どうしで送り出し側が長いものを検出する。"
+                    + "整数部または小数部が短いもの、英数字項目どうしで送り出し側が長いものを検出します。"
                     + "表意定数・文字定数・集団項目・部分参照を送り出し側に含む MOVE 文と、"
-                    + "両側の項類が異なる MOVE 文は対象外とする。")
-            .remedy("受け取り側項目の PICTURE を送り出し側項目以上に広げる。"
-                    + "切り捨てが意図なら、部分参照で転記する範囲を明示する。")
+                    + "両側の項類が異なる MOVE 文は対象外です。")
+            .remedy("受け取り側項目の PICTURE を送り出し側項目以上に広げてください。"
+                    + "切り捨てが意図なら、部分参照で転記する範囲を明示してください。")
             .example("""
                     01  WS-AMT-IN   PIC 9(9).
                     01  WS-AMT-OUT  PIC 9(5).
@@ -109,11 +109,8 @@ public final class MoveTruncationRule implements Rule {
                         "受け取り側項目 " + t.receiver() + " の宣言（PIC " + t.receiverPic() + "）")));
                 steps.add(CfgSupport.step(model.sourceFile(), line, "切り捨てが起きる MOVE 文"));
                 findings.add(new Finding(META.id(), META.defaultSeverity().toLevel(),
-                        "MOVE " + t.sender() + "（PIC " + t.senderPic() + "）TO " + t.receiver()
-                                + "（PIC " + t.receiverPic() + "）で" + t.lost() + "が切り捨てられる。"
-                                + "実行時エラーも警告も出ず、値が変わる。"
-                                + t.receiver() + " の PICTURE を " + t.senderPic()
-                                + " 以上に広げるか、切り捨てが意図なら部分参照で範囲を明示する。",
+                        "MOVE " + t.sender() + " TO " + t.receiver() + " で" + t.lost()
+                                + "が切り捨てられます。実行時エラーも警告も出ません。",
                         new SourcePosition(model.sourceFile(), line, 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET),
                         List.of(new CodeFlow(steps)), List.of()));

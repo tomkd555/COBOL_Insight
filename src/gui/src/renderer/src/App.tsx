@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactElement,
+} from "react";
 import { api, errorMessage } from "./api";
 import { text } from "./i18n/text";
 import { ProjectProvider, useProject } from "./state/projectStore";
@@ -30,8 +38,8 @@ import {
 import { useAnalysis } from "./state/useAnalysis";
 import { useSourceSave } from "./state/useSourceSave";
 import { closeDecision } from "./model/closeGuard";
-import { forgetDocument } from "./model/openDocuments";
-import { disposeModel } from "./vendor/monacoModels";
+import { forgetDocument, openDocument } from "./model/openDocuments";
+import { disposeModel, resetModel } from "./vendor/monacoModels";
 import { languageIdFor } from "./vendor/monarch";
 import { ActivityBar } from "./shell/ActivityBar";
 import { SideBar } from "./shell/SideBar";
@@ -55,6 +63,8 @@ function Shell(): ReactElement {
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [pendingClose, setPendingClose] = useState<string | null>(null);
+  /** The tab whose edits are waiting to be thrown away. They are lost the moment it is confirmed. */
+  const [pendingDiscard, setPendingDiscard] = useState<string | null>(null);
   const [toasts, setToasts] = useState<readonly ToastMessage[]>([]);
   const toastId = useRef(0);
 
@@ -128,7 +138,9 @@ function Shell(): ReactElement {
           workbenchDispatch({ type: "CLOSE_ALL_TABS" });
         }
         settingsDispatch({ type: "SET_LAST_INPUT_DIR", dir: folder });
-        void analysis.run(folder);
+        // Opening a folder lists what is in it and stops there. Detecting the findings can take
+        // minutes on a large folder, and it is the analysis the user asks for by name.
+        void analysis.scan(folder);
       })
       .catch((error: unknown) => notify(errorMessage(error), true));
   }, [
@@ -157,6 +169,21 @@ function Shell(): ReactElement {
     [workbench, closeTab],
   );
 
+  /** Asks before throwing a tab's edits away; the reset clears the undo stack, so there is no way back. */
+  const requestDiscardTab = useCallback(
+    (id: string): void => setPendingDiscard(id),
+    [],
+  );
+
+  /** Takes the file as it was last read and drops the tab's unsaved text. */
+  const discardTab = useCallback(
+    (id: string): void => {
+      resetModel(id, openDocument(id)?.text ?? "");
+      workbenchDispatch({ type: "SET_DRAFT", id, draft: null });
+    },
+    [workbenchDispatch],
+  );
+
   const saveActiveTab = useCallback((): void => {
     if (workbench.activeTabId !== null) {
       void sourceSave.save(workbench.activeTabId);
@@ -177,6 +204,7 @@ function Shell(): ReactElement {
         runAnalysis,
         cancelAnalysis,
         requestCloseTab,
+        requestDiscardTab,
         rulesActions,
         saveActiveTab,
         saveAllTabs,
@@ -190,6 +218,7 @@ function Shell(): ReactElement {
       runAnalysis,
       cancelAnalysis,
       requestCloseTab,
+      requestDiscardTab,
       rulesActions,
       saveActiveTab,
       saveAllTabs,
@@ -271,14 +300,22 @@ function Shell(): ReactElement {
   const conflict = sourceSave.conflict;
 
   return (
-    <div className="ci-shell">
+    <div
+      className="ci-shell"
+      // What the toasts stack above, so they never cover the panel (styles/overlays.css).
+      style={
+        {
+          "--ci-panel-open-height": workbench.panelVisible ? `${workbench.panelHeight}px` : "0px",
+        } as CSSProperties
+      }
+    >
       <TitleBar onRun={runAnalysis} onCancel={cancelAnalysis} onSelectFolder={selectFolder} />
       <div className="ci-shell__body">
         <ActivityBar />
         {workbench.sideVisible ? (
           <>
             <div className="ci-shell__side" style={{ width: `${workbench.sideWidth}px` }}>
-              <SideBar onSelectFolder={selectFolder} onOpenAsset={openAsset} notify={notify} />
+              <SideBar onOpenAsset={openAsset} notify={notify} />
             </div>
             <SplitHandle
               size={workbench.sideWidth}
@@ -331,17 +368,6 @@ function Shell(): ReactElement {
             <>
               <button
                 type="button"
-                className="ci-button ci-button--danger"
-                onClick={() => {
-                  closeTab(pendingClose);
-                  setPendingClose(null);
-                }}
-                data-testid="confirm-discard-yes"
-              >
-                {text.modal.discard}
-              </button>
-              <button
-                type="button"
                 className="ci-button"
                 onClick={() => {
                   const id = pendingClose;
@@ -360,6 +386,17 @@ function Shell(): ReactElement {
               </button>
               <button
                 type="button"
+                className="ci-button ci-button--danger"
+                onClick={() => {
+                  closeTab(pendingClose);
+                  setPendingClose(null);
+                }}
+                data-testid="confirm-discard-yes"
+              >
+                {text.modal.discard}
+              </button>
+              <button
+                type="button"
                 className="ci-button"
                 onClick={() => setPendingClose(null)}
                 data-testid="confirm-discard-no"
@@ -368,9 +405,38 @@ function Shell(): ReactElement {
               </button>
             </>
           }
-        >
-          {text.modal.confirmDiscardBody}
-        </Modal>
+        />
+      )}
+
+      {pendingDiscard === null ? null : (
+        <Modal
+          title={text.modal.confirmDiscardTitle}
+          testId="confirm-source-discard"
+          onDismiss={() => setPendingDiscard(null)}
+          actions={
+            <>
+              <button
+                type="button"
+                className="ci-button ci-button--danger"
+                onClick={() => {
+                  discardTab(pendingDiscard);
+                  setPendingDiscard(null);
+                }}
+                data-testid="confirm-source-discard-yes"
+              >
+                {text.modal.discardConfirm}
+              </button>
+              <button
+                type="button"
+                className="ci-button"
+                onClick={() => setPendingDiscard(null)}
+                data-testid="confirm-source-discard-no"
+              >
+                {text.modal.keep}
+              </button>
+            </>
+          }
+        />
       )}
 
       {conflict === null ? null : (
@@ -380,18 +446,11 @@ function Shell(): ReactElement {
           wide={conflict.diskText !== null}
           onDismiss={sourceSave.dismissConflict}
           actions={
+            // Safest first, destructive late, cancel last: nothing terminal sits under the cursor.
             <>
               <button
                 type="button"
-                className="ci-button ci-button--danger"
-                onClick={sourceSave.overwrite}
-                data-testid="save-conflict-overwrite"
-              >
-                {text.save.overwrite}
-              </button>
-              <button
-                type="button"
-                className="ci-button"
+                className="ci-button ci-button--primary"
                 onClick={sourceSave.showConflictDiff}
                 data-testid="save-conflict-diff"
               >
@@ -399,7 +458,7 @@ function Shell(): ReactElement {
               </button>
               <button
                 type="button"
-                className="ci-button ci-button--primary"
+                className="ci-button"
                 onClick={() => {
                   const id = conflict.tabId;
                   sourceSave.dismissConflict();
@@ -408,6 +467,14 @@ function Shell(): ReactElement {
                 data-testid="save-conflict-reload"
               >
                 {text.save.reload}
+              </button>
+              <button
+                type="button"
+                className="ci-button ci-button--danger-quiet"
+                onClick={sourceSave.overwrite}
+                data-testid="save-conflict-overwrite"
+              >
+                {text.save.overwrite}
               </button>
               <button
                 type="button"

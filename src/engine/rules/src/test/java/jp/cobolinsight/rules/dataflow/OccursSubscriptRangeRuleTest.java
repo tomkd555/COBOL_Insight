@@ -124,7 +124,7 @@ class OccursSubscriptRangeRuleTest {
         List<Finding> findings = run("F005E", outerExceeds);
         assertEquals(1, findings.size(),
                 () -> "外側の添字は外側の OCCURS 上限で判定すること: " + findings);
-        assertTrue(findings.get(0).message().contains("上限 3"), findings.get(0).message());
+        assertTrue(findings.get(0).message().contains("OCCURS 3"), findings.get(0).message());
 
         String innerWithinBounds = outerExceeds
                 .replace("PROGRAM-ID. F005E.", "PROGRAM-ID. F005F.")

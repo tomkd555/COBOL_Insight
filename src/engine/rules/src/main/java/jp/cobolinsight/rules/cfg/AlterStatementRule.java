@@ -23,13 +23,15 @@ import java.util.List;
  */
 public final class AlterStatementRule implements Rule {
 
-    private static final RuleMeta META = RuleMeta.named("R010", "ALTER文による制御の移行先の変更", "制御フロー")
-            .summary("手続き部の ALTER 文をすべて検出する。")
+    private static final RuleMeta META = RuleMeta.named("R010", "静的に追えない ALTER 文", "制御フロー")
+            .summary("手続き部の ALTER 文をすべて検出します。")
             .rationale("ALTER 文は GO TO 文の移行先を実行時に書き換えるため、"
-                    + "原始プログラムを読んでも制御の流れを追えず、静的解析も移行先を決められない。")
-            .detection("手続き部に現れる ALTER 文を無条件に検出する。")
+                    + "原始プログラムを読んでも制御の流れを追えず、静的解析も移行先を"
+                    + "決められません。")
+            .detection("手続き部に現れる ALTER 文を検出します。"
+                    + "移行先が実際に書き換わるかは問わず、対象外の ALTER 文はありません。")
             .remedy("移行先の切り替えを条件分岐（IF・EVALUATE）または PERFORM 文の呼び分けに"
-                    + "置き換え、ALTER 文を除く。")
+                    + "置き換え、ALTER 文を除いてください。")
             .example("""
                     ALTER SWITCH-PARA TO PROCEED TO ERROR-EXIT.
                     """, """
@@ -59,8 +61,8 @@ public final class AlterStatementRule implements Rule {
                     if (statement instanceof SimpleStatement simple
                             && "ALTER".equals(CfgSupport.upper(simple.verb()))) {
                         findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                                "ALTER 文は GO TO 文の移行先を実行時に書き換え、制御の流れを"
-                                        + "静的に追えなくする。",
+                                procedure.name()
+                                        + " の ALTER 文が GO TO 文の移行先を実行時に書き換えます。",
                                 new SourcePosition(model.sourceFile(),
                                         simple.range().start().line(), 1,
                                         SourcePosition.UNKNOWN_BYTE_OFFSET)));

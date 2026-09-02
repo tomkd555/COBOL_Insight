@@ -7,7 +7,8 @@
 :root {
   /* Derived surfaces: mixed at use site, so both themes get them from the one palette. */
   --ci-bg-hover: color-mix(in oklch, var(--color-foreground) 8%, transparent);
-  --ci-bg-selected: color-mix(in oklch, var(--color-primary) 28%, var(--color-background));
+  /* A tint, not a fill: the selected row keeps its text legible and the inset rule marks it. */
+  --ci-bg-selected: color-mix(in oklch, var(--color-primary) 14%, var(--color-background));
   /* The one value not mixed from the palette: a scrim must darken under both themes, and the dark
      theme's foreground is light. check_slop reads hex/rgb/hsl only, and this is the deliberate case. */
   --ci-bg-overlay: oklch(0% 0 0 / 45%);
@@ -38,4 +39,20 @@
   --ci-tab-height: 34px;
   --ci-split-size: 6px;
   --ci-radius: var(--radius-md);
+}
+
+/*
+ * What the dark theme needs beyond the palette. A shadow is cast light and reads as nothing on a dark
+ * ground, so the two lifted steps carry a light ring that draws the edge the shadow cannot; the scrim
+ * is deepened for the same reason, a 45% black over an already dark shell not reading as modal.
+ * tokens.json has one shadow block for both themes (there is no shadow_dark), so the ring lives here.
+ */
+.dark {
+  --ci-bg-overlay: oklch(0% 0 0 / 70%);
+  --shadow-md:
+    0 0 0 1px color-mix(in oklch, var(--color-foreground) 14%, transparent),
+    0 4px 12px -2px oklch(0% 0 0 / 0.5);
+  --shadow-lg:
+    0 0 0 1px color-mix(in oklch, var(--color-foreground) 18%, transparent),
+    0 12px 32px -8px oklch(0% 0 0 / 0.7);
 }

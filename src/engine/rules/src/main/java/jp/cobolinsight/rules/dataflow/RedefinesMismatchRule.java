@@ -26,14 +26,15 @@ import java.util.List;
 public final class RedefinesMismatchRule implements Rule {
 
     private static final RuleMeta META =
-            RuleMeta.named("R015", "REDEFINESによる項目長の不一致", "データ定義")
+            RuleMeta.named("R015", "REDEFINES による項目長の不一致", "データ定義")
                     .summary("REDEFINES で再定義した項目群の総バイト長が"
-                            + "元の項目より大きい構成を検出する。")
-                    .rationale("再定義側への書き込みが元の項目の領域を越え、隣接する項目を壊す。")
+                            + "元の項目より大きい構成を検出します。")
+                    .rationale("再定義側への書き込みが元の項目の領域を越え、隣接する項目を壊します。")
                     .detection("PICTURE・USAGE・OCCURS と配下の集団項目からバイト長を積算し、"
-                            + "再定義側が元の項目を超えるものを検出する。"
-                            + "いずれかの長さを解決できない対は対象外とする。")
-                    .remedy("再定義側の長さを元の項目以内に収めるか、元の項目を必要な長さまで広げる。")
+                            + "再定義側が元の項目を超えるものを検出します。"
+                            + "いずれかの長さを解決できない対は対象外です。")
+                    .remedy("再定義側の長さを元の項目以内に収めるか、"
+                            + "元の項目を必要な長さまで広げてください。")
                     .example("""
                             01  WS-AREA      PIC X(10).
                             01  WS-AREA-R    REDEFINES WS-AREA.
@@ -81,9 +82,9 @@ public final class RedefinesMismatchRule implements Rule {
                 Integer origLen = support.byteLength(original).orElse(null);
                 if (redefLen != null && origLen != null && redefLen > origLen) {
                     findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                            "REDEFINES 項目 " + redefiner.name() + " の長さ " + redefLen
-                                    + " が元の項目 " + original.name() + " の長さ " + origLen
-                                    + " を超える。隣接する領域を上書きする。",
+                            redefiner.name() + "（" + redefLen + "バイト）が元の項目 "
+                                    + original.name() + "（" + origLen
+                                    + "バイト）を超えています。隣接する領域を上書きします。",
                             new SourcePosition(model.sourceFile(), redefiner.position().line(), 1,
                                     SourcePosition.UNKNOWN_BYTE_OFFSET)));
                 }

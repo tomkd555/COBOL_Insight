@@ -35,13 +35,14 @@ import java.util.regex.Pattern;
 public final class CicsResponseUncheckedRule implements Rule {
 
     private static final RuleMeta META =
-            RuleMeta.named("R021", "CICS応答コード(RESP/RESP2)未検査", "例外処理")
-                    .summary("RESP・RESP2 のいずれも指定しない EXEC CICS コマンドを検出する。")
+            RuleMeta.named("R021", "CICS 応答コード（RESP・RESP2）未検査", "例外処理")
+                    .summary("RESP・RESP2 のいずれも指定しない EXEC CICS コマンドを検出します。")
                     .rationale("応答コードを受け取れないため、資源の不在や排他の失敗を"
-                            + "プログラム側で検査できず、異常時は既定の異常終了になる。")
+                            + "プログラム側で検査できず、異常時は既定の異常終了になります。")
                     .detection("EXEC CICS コマンドのうち、RESP・RESP2 のいずれの作用対象も"
-                            + "持たないものを検出する。")
-                    .remedy("RESP を付けて応答コードを受け取り、直後に DFHRESP との比較で分岐する。")
+                            + "持たないものを検出します。どちらか一方を持つコマンドは対象外です。")
+                    .remedy("RESP を付けて応答コードを受け取り、"
+                            + "直後に DFHRESP との比較で分岐してください。")
                     .example("""
                             EXEC CICS READ FILE('CUSTFILE') INTO(WS-REC)
                                  RIDFLD(WS-KEY) END-EXEC.
@@ -75,8 +76,8 @@ public final class CicsResponseUncheckedRule implements Rule {
                     continue;
                 }
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                        "EXEC CICS コマンド（" + cicsVerb(block) + "）が RESP・RESP2 を持たず、"
-                                + "応答コードを検査していない。異常が起きても後続処理が続く。",
+                        "EXEC CICS " + cicsVerb(block) + " に RESP・RESP2 がありません。"
+                                + "応答コードを検査できず、異常時は既定の異常終了になります。",
                         new SourcePosition(model.sourceFile(), block.range().end().line(), 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
             }
@@ -153,7 +154,7 @@ public final class CicsResponseUncheckedRule implements Rule {
             String check = "IF " + var + " NOT = 0 DISPLAY '" + model.programId() + " "
                     + verbLabel(block) + "エラー RESP=' " + var + " END-IF" + terminator;
             TextEdit judgement = insertLinesAt(file, endExecLine + 1, check);
-            return Optional.of(new FixSuggestion("RESP/RESP2 の検査を挿入する",
+            return Optional.of(new FixSuggestion("RESP と応答コードの検査を挿入します",
                     List.of(operand, judgement)));
         }
 

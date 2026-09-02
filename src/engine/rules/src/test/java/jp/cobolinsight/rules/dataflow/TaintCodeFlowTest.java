@@ -100,7 +100,7 @@ class TaintCodeFlowTest {
         Finding finding = findings.get(0);
 
         assertEquals(List.of(
-                        new Step(5, "機密項目 WS-CARD-NO を宣言する"),
+                        new Step(5, "WS-CARD-NO の宣言（機密項目）"),
                         new Step(9, "WS-CARD-NO から WS-WORK に値が渡る"),
                         new Step(10, "WS-WORK を出力する")),
                 steps(onlyFlow(finding)),
@@ -124,7 +124,7 @@ class TaintCodeFlowTest {
         assertEquals(1, findings.size(), () -> "R027 を1件検出すること: " + findings);
 
         assertEquals(List.of(
-                        new Step(5, "機密項目 WS-CUST-SSN を宣言する"),
+                        new Step(5, "WS-CUST-SSN の宣言（機密項目）"),
                         new Step(8, "WS-CUST-SSN を出力する")),
                 steps(onlyFlow(findings.get(0))),
                 "代入を経ない直接出力では宣言と sink の2歩になること");
