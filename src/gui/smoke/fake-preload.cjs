@@ -25,7 +25,7 @@ const GRAPH_ID_BASE = 1_000_000_000_000;
 const RULES = [
   {
     id: "R001",
-    name: "未初期化変数の参照",
+    name: "未初期化のデータ項目の参照",
     category: "データフロー",
     severity: "HIGH",
     phase: "DATA_FLOW",
@@ -36,10 +36,10 @@ const RULES = [
     commands: ["lint"],
     targets: ["COBOL"],
     needs: ["dataflow"],
-    summary: "値を設定される前に参照され得るデータ項目を検出します。",
-    rationale: "記憶域に残った値をそのまま使うため、実行のたびに結果が変わります。",
-    detection: "到達定義解析で、入口に置いた未初期化の定義が使用位置へ届くものを検出します。",
-    remedy: "宣言へ VALUE 句を置くか、参照前に値を設定します。",
+    summary: "値を設定する前に参照し得るデータ項目を検出する。",
+    rationale: "記憶域に残った値をそのまま使うため、実行のたびに結果が変わる。",
+    detection: "到達定義解析で、入口に置いた未初期化の定義が使用位置に到達するものを検出する。",
+    remedy: "宣言に VALUE 句を置くか、参照の前に値を設定する。",
     badExample: "01  WS-COUNT  PIC 9(4).",
     goodExample: "01  WS-COUNT  PIC 9(4) VALUE ZERO.",
   },
@@ -56,10 +56,10 @@ const RULES = [
     commands: ["lint"],
     targets: ["COBOL"],
     needs: ["dataflow"],
-    summary: "桁あふれを検知しない算術文を検出します。",
-    rationale: "上位桁を失った値が後続へ渡ります。",
-    detection: "結果の範囲が受信項目の容量を超え得るものを検出します。",
-    remedy: "ON SIZE ERROR 句を付けます。",
+    summary: "けたあふれを検知しない算術文を検出する。",
+    rationale: "上位けたを失った値が後続に渡る。",
+    detection: "結果の範囲が受け取り側項目のけた数を超え得るものを検出する。",
+    remedy: "ON SIZE ERROR 句を付ける。",
     badExample: "COMPUTE WS-RESULT = WS-QTY * WS-PRICE.",
     goodExample: "COMPUTE WS-RESULT = WS-QTY * WS-PRICE ON SIZE ERROR CONTINUE END-COMPUTE.",
   },
@@ -76,10 +76,10 @@ const RULES = [
     commands: ["sql-lint"],
     targets: ["COBOL"],
     needs: ["sql"],
-    summary: "列を明示しない SELECT を検出します。",
-    rationale: "表の定義が変わると取得する列が変わります。",
-    detection: "SELECT 句が * のものを検出します。",
-    remedy: "必要な列を並べます。",
+    summary: "列を明示しない SELECT を検出する。",
+    rationale: "表の定義が変わると取得する列が変わる。",
+    detection: "SELECT 句が * のものを検出する。",
+    remedy: "必要な列を並べる。",
     badExample: "EXEC SQL SELECT * FROM ZAIKOM END-EXEC.",
     goodExample: "EXEC SQL SELECT SOKO-CD FROM ZAIKOM END-EXEC.",
   },
@@ -96,7 +96,20 @@ const INVENTORY = [
 
 const FINDINGS = [
   { ruleId: "R004", level: "warning", message: "ON SIZE ERROR 句が無い。", file: "cobol/SYK001.cbl", startLine: 10, startColumn: 12 },
-  { ruleId: "R001", level: "error", message: "WK-ORDER-ID が未初期化のまま参照されている。", file: "cobol/SYK002.cbl", startLine: 24, startColumn: 12 },
+  {
+    ruleId: "R001",
+    level: "error",
+    message:
+      "WK-ORDER-ID（宣言 12行）を24行で参照しているが、ここへ至る経路のどれかで値が未設定のまま。値を設定するのは 20行だけで、そこを通らないまま 24行に至る経路がある。宣言に VALUE 句を置くか、24行より前で必ず MOVE・INITIALIZE を通す。",
+    file: "cobol/SYK002.cbl",
+    startLine: 24,
+    startColumn: 12,
+    related: [
+      { file: "cobol/SYK002.cbl", line: 12, label: "宣言。VALUE 句がなく、初期値は不定" },
+      { file: "cobol/SYK002.cbl", line: 20, label: "WK-ORDER-ID に値を設定する文。この文を通らない経路がある" },
+      { file: "cobol/SYK002.cbl", line: 24, label: "未設定のまま参照する箇所" },
+    ],
+  },
 ];
 
 const SQL_FINDINGS = [

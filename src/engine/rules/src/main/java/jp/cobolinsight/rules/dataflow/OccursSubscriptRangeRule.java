@@ -41,16 +41,15 @@ import jp.cobolinsight.rules.dataflow.DataFlowSupport.TableRef;
 public final class OccursSubscriptRangeRule implements Rule {
 
     private static final RuleMeta META =
-            RuleMeta.named("R005", "添字・指標のOCCURS範囲外アクセス", "添字・指標")
-                    .summary("添字の取り得る値が表の上限を超える、"
-                            + "または 0 以下になり得る参照を検出します。")
+            RuleMeta.named("R005", "添字のOCCURS範囲外参照", "添字・指標")
+                    .summary("添字の取り得る値が表の上限を超えるか 0 以下になり得る参照を検出する。")
                     .rationale("表の外の記憶域を読み書きするため、"
-                            + "隣接する項目を壊すか、実行時に領域違反で異常終了します。")
-                    .detection("区間値域解析で添字の値域を求め、OCCURS の上限を超え得る、"
-                            + "または 0 以下になり得るものを検出します。上限は表項目、または OCCURS を"
-                            + "持つ直近の上位項目から解決します。LINKAGE 節の表は呼出元が領域を"
-                            + "保証するため対象外とします。")
-                    .remedy("添字の値域を参照前に検査します。表の大きさが足りないなら OCCURS を見直します。")
+                            + "隣接する項目を壊すか、実行時に領域違反で異常終了する。")
+                    .detection("区間値域解析で添字の値域を求め、OCCURS の上限を超え得るか"
+                            + "0 以下になり得るものを検出する。上限は表項目、または OCCURS を"
+                            + "持つ直近の上位項目から解決する。連絡節の表は呼び出し元が領域を"
+                            + "保証するため対象外とする。")
+                    .remedy("添字の値域を参照の前に検査する。表の大きさが足りないなら OCCURS の回数を見直す。")
                     .example("""
                             01  WS-TBL.
                                 05  WS-ITEM  PIC X(10) OCCURS 10 TIMES.
@@ -122,8 +121,8 @@ public final class OccursSubscriptRangeRule implements Rule {
                     String key = line + "|" + DataFlowSupport.norm(ref.tableName());
                     if (reported.add(key)) {
                         findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                                "表 " + ref.tableName() + " の添字が OCCURS 上限 " + max
-                                        + " を超え得る、または 0 以下になり得る。範囲外参照になる。",
+                                "表 " + ref.tableName() + " の添字が OCCURS の上限 " + max
+                                        + " を超え得るか、0 以下になり得る。表の範囲外を参照する。",
                                 new SourcePosition(model.sourceFile(), line, 1,
                                         SourcePosition.UNKNOWN_BYTE_OFFSET)));
                     }

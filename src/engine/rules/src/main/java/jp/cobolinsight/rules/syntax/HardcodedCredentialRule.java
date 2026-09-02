@@ -33,13 +33,13 @@ public final class HardcodedCredentialRule implements Rule {
     private static final Pattern STRING_LITERAL = Pattern.compile("'([^']*)'|\"([^\"]*)\"");
 
     private static final RuleMeta META = RuleMeta.named("R026", "ハードコードされたパスワード・認証情報", "セキュリティ")
-            .summary("パスワード・APIキー・トークンを表す項目と同じ行に、"
-                    + "文字列リテラルが直接書かれている箇所を検出します。")
-            .rationale("ソースを読める者が資格情報をそのまま得られます。"
-                    + "資格情報の変更のたびに再コンパイルと再配布が要る点でも運用を縛ります。")
-            .detection("原ソーステキストを走査し、資格情報を表す識別子と空白以外の"
-                    + "文字列リテラルが同じ行にある VALUE 句・MOVE 文を検出します。")
-            .remedy("資格情報を外部の資格情報管理へ移し、実行時に受け取る形にします。")
+            .summary("パスワード・API キー・トークンを表す項目と同じ行に、"
+                    + "文字定数が直接書かれている箇所を検出する。")
+            .rationale("原始プログラムを読める者が資格情報をそのまま得られる。"
+                    + "資格情報の変更のたびに再コンパイルと再配布が要る点でも運用を縛る。")
+            .detection("原始プログラムの文字列を走査し、資格情報を表す識別子と空白以外の"
+                    + "文字定数が同じ行にある VALUE 句・MOVE 文を検出する。")
+            .remedy("資格情報を外部の資格情報管理へ移し、実行時に受け取る。")
             .example("""
                     01  WS-DB-PASSWORD  PIC X(16) VALUE "P@ssw0rd123".
                     """, """
@@ -82,8 +82,8 @@ public final class HardcodedCredentialRule implements Rule {
                     continue;
                 }
                 findings.add(Finding.of("R026", Severity.HIGH.toLevel(),
-                        "パスワード・APIキー・シークレットトークンのいずれかの認証情報が、"
-                                + "文字列リテラルとして直接記述されている。",
+                        "パスワード・API キー・シークレットトークンのいずれかの認証情報が、"
+                                + "文字定数として直接記述されている。",
                         new SourcePosition(file, line.lineNumber(), literal.start() + 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
             }

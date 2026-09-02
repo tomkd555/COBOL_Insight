@@ -73,9 +73,9 @@ class TaintCodeFlowTest {
 
         assertEquals(List.of(
                         new Step(9, "WS-COND が外部入力を受け取る"),
-                        new Step(10, "WS-COND から WS-DYN-SQL へ汚染が伝播する"),
+                        new Step(10, "WS-COND から WS-DYN-SQL に値が渡る"),
                         new Step(finding.location().line(),
-                                "WS-DYN-SQL を動的SQLの文字列へ組み込む")),
+                                "WS-DYN-SQL を動的SQL文の文字列に組み込む")),
                 steps(onlyFlow(finding)),
                 "ACCEPT→STRING→動的SQL の順に経路を保持すること");
     }
@@ -101,7 +101,7 @@ class TaintCodeFlowTest {
 
         assertEquals(List.of(
                         new Step(5, "機密項目 WS-CARD-NO を宣言する"),
-                        new Step(9, "WS-CARD-NO から WS-WORK へ汚染が伝播する"),
+                        new Step(9, "WS-CARD-NO から WS-WORK に値が渡る"),
                         new Step(10, "WS-WORK を出力する")),
                 steps(onlyFlow(finding)),
                 "宣言→代入→出力 の順に経路を保持すること");

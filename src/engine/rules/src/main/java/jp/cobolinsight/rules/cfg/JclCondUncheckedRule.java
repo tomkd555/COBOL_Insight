@@ -23,12 +23,12 @@ import java.util.List;
 public final class JclCondUncheckedRule implements Rule {
 
     private static final RuleMeta META = RuleMeta.named("R030", "JCLステップ間の条件コード(COND)未検査", "JCL制御")
-            .summary("ジョブの2番目以降のステップで COND 句を持たないものを検出します。")
+            .summary("ジョブの 2 番目以降のステップで COND パラメーターを持たないものを検出する。")
             .rationale("先行ステップが異常終了しても後続が実行され、"
-                    + "不完全なデータのまま処理が進みます。")
-            .detection("ジョブの2番目以降の EXEC ステップのうち、COND 句を持たないものを検出します。")
-            .remedy("COND 句を付けるか、IF/THEN/ELSE で先行ステップの戻り値を"
-                    + "判定してから実行します。")
+                    + "不完全なデータのまま処理が進む。")
+            .detection("ジョブの 2 番目以降の EXEC ステップのうち、COND パラメーターを持たないものを検出する。")
+            .remedy("COND パラメーターを付けるか、IF/THEN/ELSE で先行ステップの戻りコードを"
+                    + "検査してから実行する。")
             .example("""
                     //STEP02 EXEC PGM=SYK002
                     """, """
@@ -54,7 +54,7 @@ public final class JclCondUncheckedRule implements Rule {
                 JclStep step = steps.get(i);
                 if (step.condition().isEmpty()) {
                     findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                            "ステップ " + step.name() + " は先行ステップに依存し得るが COND 句を"
+                            "ステップ " + step.name() + " は先行ステップに依存し得るが COND パラメーターを"
                                     + "持たず、先行ステップの異常終了後も実行される。",
                             step.position()));
                 }

@@ -25,14 +25,14 @@ import java.util.Map;
  */
 public final class DuplicateProcedureNameRule implements Rule {
 
-    private static final RuleMeta META = RuleMeta.named("R023", "パラグラフ・セクション名の重複", "制御フロー")
-            .summary("同一プログラム内で同じ名前のパラグラフまたはセクションが"
-                    + "重ねて宣言されている箇所を検出します。")
-            .rationale("PERFORM や GO TO の遷移先が一意に定まらず、"
-                    + "意図した側とは別の宣言へ制御が移ることがあります。")
-            .detection("所属セクションと名前の組で判定し、2件目以降の宣言位置で報告します。"
-                    + "異なるセクションにある同名パラグラフは合法のため検出しません。")
-            .remedy("いずれかの名前を改め、参照している側も併せて直します。")
+    private static final RuleMeta META = RuleMeta.named("R023", "段落名・節名の重複", "制御フロー")
+            .summary("同一プログラム内で同じ名前の段落または節を"
+                    + "重ねて宣言している箇所を検出する。")
+            .rationale("PERFORM 文や GO TO 文の移行先が一意に定まらず、"
+                    + "意図した側とは別の宣言に制御が移り得る。")
+            .detection("所属する節と名前の組で検出し、2 件目以降の宣言位置で報告する。"
+                    + "異なる節にある同名の段落は合法のため検出しない。")
+            .remedy("いずれかの名前を改め、参照している側も併せて直す。")
             .example("""
                     CALC-TAX.
                         COMPUTE WS-TAX = WS-AMT * 0.10.
@@ -80,9 +80,9 @@ public final class DuplicateProcedureNameRule implements Rule {
                 int firstLine = ordered.get(0).range().start().line();
                 for (Procedure duplicate : ordered.subList(1, ordered.size())) {
                     findings.add(Finding.of("R023", Severity.MEDIUM.toLevel(),
-                            "パラグラフ・セクション名 " + duplicate.name()
-                                    + " が重複して宣言されており、PERFORM文の遷移先が構文上"
-                                    + "あいまいになる(最初の宣言は" + firstLine + "行目)。",
+                            "段落名・節名 " + duplicate.name()
+                                    + " が重複して宣言され、PERFORM 文の移行先が構文上"
+                                    + "あいまいになる（最初の宣言は " + firstLine + "行）。",
                             duplicate.range().start()));
                 }
             }

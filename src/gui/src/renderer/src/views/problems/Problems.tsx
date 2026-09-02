@@ -1,8 +1,12 @@
-import { useMemo, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useState, type ReactElement } from "react";
 import { text } from "../../i18n/text";
 import { artifactItems, useProject } from "../../state/projectStore";
 import { useSettings } from "../../state/settingsStore";
-import { graphTab, useWorkbenchDispatch } from "../../state/workbenchStore";
+import {
+  graphTab,
+  ruleTab,
+  useWorkbenchDispatch,
+} from "../../state/workbenchStore";
 import {
   ALL,
   fileNames,
@@ -12,6 +16,7 @@ import {
   ruleIds,
   thresholdHides,
   type FindingFilter,
+  type FindingRow,
   type FindingSort,
 } from "../../model/findings";
 import { ruleOf } from "../../model/ruleIndex";
@@ -26,8 +31,109 @@ function programNameOf(file: string): string {
 
 export interface ProblemsProps {
   onOpenAsset: (path: string, line: number | null) => void;
-  /** The side-bar rendering, which drops the filter row for want of width. */
+  /** Opens the fix diff for one asset. Absent in the side bar, which has no room for the detail. */
+  onShowFix?: (path: string) => void;
+  /** The side-bar rendering, which drops the filter row and the detail for want of width. */
   compact?: boolean;
+}
+
+interface DetailProps {
+  row: FindingRow;
+  onOpenAsset: (path: string, line: number | null) => void;
+  onShowFix?: (path: string) => void;
+}
+
+/**
+ * The selected finding, read in full: the engine's sentence, the lines it is about, why the rule
+ * exists and how to fix it. Nothing here is authored by the GUI; every string comes from the
+ * engine's finding or its rule catalog entry.
+ */
+function Detail({ row, onOpenAsset, onShowFix }: DetailProps): ReactElement {
+  const project = useProject();
+  const dispatch = useWorkbenchDispatch();
+  const entry = project.rules.entries.find(
+    (candidate) => candidate.id === row.finding.ruleId,
+  );
+  const { finding } = row;
+  const related = finding.related ?? [];
+  return (
+    <aside
+      className="ci-problems__detail"
+      aria-label={text.problems.title}
+      data-testid="problem-detail"
+    >
+      <header className="ci-problems__detail-head">
+        <span className={`ci-severity ci-severity--${row.severity}`}>
+          {text.severity[row.severity]}
+        </span>
+        <span className="ci-problems__detail-rule">
+          {finding.ruleId} {row.ruleName}
+        </span>
+      </header>
+      <p className="ci-problems__detail-message">{finding.message}</p>
+      {related.length > 0 ? (
+        <section className="ci-problems__detail-section">
+          <h3 className="ci-problems__detail-label">
+            {text.problems.detailRelated}
+          </h3>
+          <ol className="ci-problems__related">
+            {related.map((place, index) => (
+              <li key={index}>
+                <button
+                  type="button"
+                  className="ci-problems__jump"
+                  title={text.problems.jumpTo(place.file, place.line)}
+                  onClick={() => onOpenAsset(place.file, place.line)}
+                >
+                  {place.line}
+                </button>
+                <span className="ci-problems__related-label">
+                  {place.label}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
+      {entry === undefined || entry.rationale === "" ? null : (
+        <section className="ci-problems__detail-section">
+          <h3 className="ci-problems__detail-label">
+            {text.rules.detailRationale}
+          </h3>
+          <p className="ci-problems__detail-prose">{entry.rationale}</p>
+        </section>
+      )}
+      {entry === undefined || entry.remedy === "" ? null : (
+        <section className="ci-problems__detail-section">
+          <h3 className="ci-problems__detail-label">
+            {text.rules.detailRemedy}
+          </h3>
+          <p className="ci-problems__detail-prose">{entry.remedy}</p>
+        </section>
+      )}
+      <div className="ci-problems__detail-actions">
+        {row.hasFix && onShowFix !== undefined ? (
+          <button
+            type="button"
+            className="ci-button ci-button--primary"
+            onClick={() => onShowFix(finding.file)}
+            data-testid="problem-detail-fix"
+          >
+            {text.problems.showFix}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="ci-button"
+          onClick={() =>
+            dispatch({ type: "OPEN_TAB", tab: ruleTab(finding.ruleId) })
+          }
+        >
+          {text.problems.detailRule}
+        </button>
+      </div>
+    </aside>
+  );
 }
 
 /**
@@ -37,11 +143,16 @@ export interface ProblemsProps {
  * The five states — empty, loading, results, no match and error — are all reachable, and a failed
  * analysis is never shown as "no findings".
  */
-export function Problems({ onOpenAsset, compact = false }: ProblemsProps): ReactElement {
+export function Problems({
+  onOpenAsset,
+  onShowFix,
+  compact = false,
+}: ProblemsProps): ReactElement {
   const project = useProject();
   const settings = useSettings();
   const dispatch = useWorkbenchDispatch();
   const [filter, setFilter] = useState<FindingFilter>(initialFindingFilter);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
   const merged = useMemo(
     () =>
@@ -63,8 +174,19 @@ export function Problems({ onOpenAsset, compact = false }: ProblemsProps): React
     [merged, project.rules, effective],
   );
 
+  const selected = rows.find((row) => row.key === selectedKey) ?? null;
+  // A selection that filtering or a re-run removed is dropped rather than shown stale.
+  useEffect(() => {
+    if (selectedKey !== null && selected === null) setSelectedKey(null);
+  }, [selectedKey, selected]);
+
   const update = (patch: Partial<FindingFilter>): void =>
     setFilter((current) => ({ ...current, ...patch }));
+
+  const choose = (row: FindingRow): void => {
+    setSelectedKey(row.key);
+    onOpenAsset(row.finding.file, row.finding.startLine);
+  };
 
   if (project.mode === "running" && project.findings.status === "none") {
     return <p className="ci-problems__state">{text.problems.loading}</p>;
@@ -77,10 +199,15 @@ export function Problems({ onOpenAsset, compact = false }: ProblemsProps): React
       </p>
     );
   }
-  if (project.findings.status === "none" && project.sqlFindings.status === "none") {
+  if (
+    project.findings.status === "none" &&
+    project.sqlFindings.status === "none"
+  ) {
     return (
       <p className="ci-problems__state">
-        {project.inputDir === null ? text.problems.emptyNoFolder : text.problems.empty}
+        {project.inputDir === null
+          ? text.problems.emptyNoFolder
+          : text.problems.empty}
       </p>
     );
   }
@@ -89,7 +216,11 @@ export function Problems({ onOpenAsset, compact = false }: ProblemsProps): React
     <div className={`ci-problems${compact ? " ci-problems--compact" : ""}`}>
       {compact ? null : (
         <div className="ci-problems__filters">
-          <div className="ci-chips" role="group" aria-label={text.problems.columnSeverity}>
+          <div
+            className="ci-chips"
+            role="group"
+            aria-label={text.problems.columnSeverity}
+          >
             {SEVERITIES.map((severity: Severity) => (
               <button
                 key={severity}
@@ -98,7 +229,10 @@ export function Problems({ onOpenAsset, compact = false }: ProblemsProps): React
                 aria-pressed={filter.severity[severity]}
                 onClick={() =>
                   update({
-                    severity: { ...filter.severity, [severity]: !filter.severity[severity] },
+                    severity: {
+                      ...filter.severity,
+                      [severity]: !filter.severity[severity],
+                    },
                   })
                 }
                 data-testid={`severity-chip-${severity}`}
@@ -148,7 +282,9 @@ export function Problems({ onOpenAsset, compact = false }: ProblemsProps): React
             className="ci-select"
             aria-label={text.problems.sortLabel}
             value={filter.sort}
-            onChange={(event) => update({ sort: event.target.value as FindingSort })}
+            onChange={(event) =>
+              update({ sort: event.target.value as FindingSort })
+            }
             data-testid="problems-sort"
           >
             <option value="severity">{text.problems.sortSeverity}</option>
@@ -167,65 +303,95 @@ export function Problems({ onOpenAsset, compact = false }: ProblemsProps): React
           {merged.length === 0 ? text.problems.clean : text.problems.noMatch}
         </p>
       ) : (
-        <table className="ci-problems__table">
-          <caption className="ci-visually-hidden">{text.problems.title}</caption>
-          <thead>
-            <tr>
-              <th scope="col">{text.problems.columnSeverity}</th>
-              <th scope="col">{text.problems.columnRule}</th>
-              <th scope="col">{text.problems.columnMessage}</th>
-              <th scope="col">{text.problems.columnFile}</th>
-              <th scope="col">{text.problems.columnLine}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr
-                key={row.key}
-                className="ci-problems__row"
-                tabIndex={0}
-                onClick={() => onOpenAsset(row.finding.file, row.finding.startLine)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    onOpenAsset(row.finding.file, row.finding.startLine);
-                  }
-                }}
-                data-testid={`finding-${row.key}`}
-              >
-                <td>
-                  <span className={`ci-severity ci-severity--${row.severity}`}>
-                    {text.severity[row.severity]}
-                  </span>
-                </td>
-                <td className="ci-problems__rule">
-                  {row.finding.ruleId} {row.ruleName}
-                </td>
-                <td className="ci-problems__message">{row.finding.message}</td>
-                <td className="ci-problems__file">
-                  {row.finding.file}
-                  <button
-                    type="button"
-                    className="ci-problems__graph"
-                    aria-label={text.problems.openInGraph(row.finding.file)}
-                    title={text.problems.openInGraph(row.finding.file)}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      dispatch({
-                        type: "OPEN_TAB",
-                        tab: graphTab(text.graph.title, programNameOf(row.finding.file)),
-                      });
+        <div className="ci-problems__body">
+          <div className="ci-problems__list">
+            <table className="ci-problems__table">
+              <caption className="ci-visually-hidden">
+                {text.problems.title}
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">{text.problems.columnSeverity}</th>
+                  <th scope="col">{text.problems.columnRule}</th>
+                  <th scope="col">{text.problems.columnMessage}</th>
+                  <th scope="col">{text.problems.columnFile}</th>
+                  <th scope="col">{text.problems.columnLine}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr
+                    key={row.key}
+                    className={`ci-problems__row${row.key === selectedKey ? " ci-problems__row--selected" : ""}`}
+                    tabIndex={0}
+                    aria-selected={row.key === selectedKey}
+                    onClick={() => choose(row)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        choose(row);
+                      }
                     }}
-                    data-testid={`finding-graph-${row.key}`}
+                    data-testid={`finding-${row.key}`}
                   >
-                    <span className="codicon codicon-type-hierarchy" aria-hidden="true" />
-                  </button>
-                </td>
-                <td className="ci-problems__line">{row.finding.startLine}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    <td>
+                      <span
+                        className={`ci-severity ci-severity--${row.severity}`}
+                      >
+                        {text.severity[row.severity]}
+                      </span>
+                    </td>
+                    <td className="ci-problems__rule">
+                      {row.finding.ruleId} {row.ruleName}
+                    </td>
+                    <td className="ci-problems__message">
+                      {row.finding.message}
+                    </td>
+                    <td className="ci-problems__file">
+                      {row.finding.file}
+                      <button
+                        type="button"
+                        className="ci-problems__graph"
+                        aria-label={text.problems.openInGraph(row.finding.file)}
+                        title={text.problems.openInGraph(row.finding.file)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          dispatch({
+                            type: "OPEN_TAB",
+                            tab: graphTab(
+                              text.graph.title,
+                              programNameOf(row.finding.file),
+                            ),
+                          });
+                        }}
+                        data-testid={`finding-graph-${row.key}`}
+                      >
+                        <span
+                          className="codicon codicon-type-hierarchy"
+                          aria-hidden="true"
+                        />
+                      </button>
+                    </td>
+                    <td className="ci-problems__line">
+                      {row.finding.startLine}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {compact ? null : selected === null ? (
+            <p className="ci-problems__detail ci-problems__state">
+              {text.problems.detailHint}
+            </p>
+          ) : (
+            <Detail
+              row={selected}
+              onOpenAsset={onOpenAsset}
+              onShowFix={onShowFix}
+            />
+          )}
+        </div>
       )}
     </div>
   );

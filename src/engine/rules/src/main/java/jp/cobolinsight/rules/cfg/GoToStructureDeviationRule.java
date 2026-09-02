@@ -28,14 +28,14 @@ import java.util.Optional;
 public final class GoToStructureDeviationRule implements Rule {
 
     private static final RuleMeta META =
-            RuleMeta.named("R009", "GO TO文による構造化フローからの逸脱", "制御フロー")
-                    .summary("節(SECTION)をまたぐ GO TO を検出します。")
+            RuleMeta.named("R009", "節をまたぐGO TO文", "制御フロー")
+                    .summary("節をまたぐ GO TO 文を検出する。")
                     .rationale("節で処理を区切る構成が崩れ、"
-                            + "制御の流れを節の内側だけでは追えなくなります。")
-                    .detection("GO TO を含む段落の所属節と、飛び先段落の所属節が異なるものを検出します。"
-                            + "同一節内の GO TO と、PERFORM THRU 範囲への割り込み(R007 が扱う)は"
-                            + "対象外とします。")
-                    .remedy("節の外へ出る分岐を、PERFORM の呼び分けか条件分岐へ置き換えます。")
+                            + "制御の流れを節の内側だけでは追えなくなる。")
+                    .detection("GO TO 文を含む段落の節と、制御を移す先の段落の節が異なるものを検出する。"
+                            + "同一節内の GO TO 文と、PERFORM THRU の範囲への割り込み（R007 が扱う）は"
+                            + "対象外とする。")
+                    .remedy("節の外に出る分岐を、PERFORM 文の呼び分けか条件分岐に置き換える。")
                     .example("""
                             MAIN-SEC SECTION.
                                 GO TO ERROR-PARA.
@@ -85,7 +85,7 @@ public final class GoToStructureDeviationRule implements Rule {
                         findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                                 "GO TO " + rawTarget + " は所属節 " + holder.sectionName().get()
                                         + " から別の節 " + targetSection.get()
-                                        + " へ分岐しており、節の構造から逸脱している。",
+                                        + " に制御を移し、節の構造から外れる。",
                                 new SourcePosition(model.sourceFile(),
                                         goTo.range().start().line(), 1,
                                         SourcePosition.UNKNOWN_BYTE_OFFSET)));

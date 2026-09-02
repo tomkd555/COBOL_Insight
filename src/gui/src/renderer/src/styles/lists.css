@@ -131,8 +131,24 @@
 .ci-problems {
   display: flex;
   flex-direction: column;
+  height: 100%;
   min-width: 0;
+  overflow: hidden;
+}
+
+/* The side bar has no detail pane, so its list is the scrolling surface. */
+.ci-problems--compact {
+  height: auto;
   overflow-x: auto;
+}
+
+/* One line per finding; the full sentence is read in the detail pane. */
+.ci-problems__message,
+.ci-problems__rule,
+.ci-problems__file {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ci-problems__filters {
@@ -170,8 +186,22 @@
 
 .ci-problems__table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   text-align: left;
+}
+
+.ci-problems__table th:nth-child(1) {
+  width: 4em;
+}
+
+.ci-problems__table th:nth-child(2),
+.ci-problems__table th:nth-child(4) {
+  width: 16em;
+}
+
+.ci-problems__table th:nth-child(5) {
+  width: 4em;
 }
 
 .ci-problems__table th {
@@ -236,6 +266,98 @@
 .ci-problems__line {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.ci-problems__row--selected,
+.ci-problems__row--selected:hover {
+  background: var(--ci-bg-selected, var(--ci-bg-hover));
+}
+
+.ci-problems__body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.ci-problems__list {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: auto;
+}
+
+.ci-problems__detail {
+  flex: 0 0 min(40%, 480px);
+  overflow: auto;
+  padding: var(--ci-space-3) var(--ci-space-4);
+  border-inline-start: 1px solid var(--color-border);
+}
+
+.ci-problems__detail-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-2);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-problems__detail-message {
+  margin: var(--ci-space-2) 0 0;
+  font-size: var(--ci-size-md);
+  line-height: var(--ci-line);
+}
+
+.ci-problems__detail-section {
+  margin-top: var(--ci-space-3);
+}
+
+.ci-problems__detail-label {
+  margin: 0 0 var(--ci-space-1);
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+  font-weight: 600;
+}
+
+.ci-problems__detail-prose {
+  margin: 0;
+  font-size: var(--ci-size-md);
+  line-height: var(--ci-line);
+}
+
+.ci-problems__related {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ci-problems__related li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ci-space-2);
+  padding: 2px 0;
+  font-size: var(--ci-size-sm);
+}
+
+.ci-problems__jump {
+  min-width: 3.5em;
+  padding: 0 var(--ci-space-1);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-primary);
+  font-family: var(--ci-font-code);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  cursor: pointer;
+}
+
+.ci-problems__jump:hover {
+  background: var(--ci-bg-hover);
+}
+
+.ci-problems__detail-actions {
+  display: flex;
+  gap: var(--ci-space-2);
+  margin-top: var(--ci-space-4);
 }
 
 .ci-severity {

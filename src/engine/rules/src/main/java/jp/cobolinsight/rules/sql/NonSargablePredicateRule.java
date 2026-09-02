@@ -26,16 +26,16 @@ import java.util.List;
  */
 public final class NonSargablePredicateRule implements Rule {
 
-    private static final RuleMeta META = RuleMeta.named("S002", "非SARGableな述語の検出", "性能")
-            .summary("列を式・関数・CAST で包んだ述語や、先頭が % の LIKE を指摘します。")
+    private static final RuleMeta META = RuleMeta.named("S002", "索引を使えない述語", "性能")
+            .summary("列を式・関数・CAST で包んだ述語や、先頭が % の LIKE を検出する。")
             .rationale("索引による絞り込みができず全表走査になるため、"
-                    + "処理時間が表の件数に比例して伸びます。")
-            .detection("sql-frontend が算出した nonSargablePredicates(WHERE 句の左辺が列を式で包む"
-                    + "述語・先頭 % の LIKE)と functionOnColumnPredicates(WHERE 句・JOIN 条件で"
-                    + "いずれかの辺が列を関数・CAST で包む比較)から判定し、"
-                    + "該当箇所は原データ名へ復元したテキストで示します。")
-            .remedy("列を式で包まない形へ書き換えます。関数は列側から外し、比較する値の側で変換"
-                    + "します。前方一致で足りる検索は先頭の % を外します。")
+                    + "処理時間が表の件数に比例して伸びる。")
+            .detection("sql-frontend が算出した nonSargablePredicates（WHERE 句の左辺が列を式で包む"
+                    + "述語・先頭 % の LIKE）と functionOnColumnPredicates（WHERE 句・JOIN 条件で"
+                    + "いずれかの辺が列を関数・CAST で包む比較）から検出し、"
+                    + "該当箇所は原データ名に復元したテキストで示す。")
+            .remedy("列を式で包まない形に書き換える。関数は列側から外し、比較する値の側で変換"
+                    + "する。前方一致で足りる検索は先頭の % を外す。")
             .example("""
                     WHERE CUST_NAME LIKE '%商事'
                     """, """
@@ -58,18 +58,18 @@ public final class NonSargablePredicateRule implements Rule {
         for (SqlStatementModel statement : context.sqlStatements()) {
             List<String> predicates = statement.structureSignals().nonSargablePredicates();
             if (!predicates.isEmpty()) {
-                findings.add(finding(statement, "非SARGableな述語がある: "
+                findings.add(finding(statement, "索引を使えない述語がある: "
                         + String.join(" / ", predicates)
-                        + "。インデックスで絞り込めず全表走査を招く。"));
+                        + "。索引で絞り込めず全表走査を招く。"));
             }
             // A function applied on the left side appears in both lists. To avoid reporting
             // the same location twice, a predicate already listed in the other set is skipped here.
             List<String> functions = statement.structureSignals().functionOnColumnPredicates()
                     .stream().filter(predicate -> !predicates.contains(predicate)).toList();
             if (!functions.isEmpty()) {
-                findings.add(finding(statement, "比較でインデックス列に関数・CAST を適用している: "
+                findings.add(finding(statement, "比較で索引列に関数・CAST を適用している: "
                         + String.join(" / ", functions)
-                        + "。オプティマイザがインデックスを使用できない。"));
+                        + "。オプティマイザーが索引を使えない。"));
             }
         }
         return findings;

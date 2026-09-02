@@ -342,6 +342,15 @@ export interface SarifFinding {
   file: string;
   startLine: number;
   startColumn: number;
+  /** The places the finding is about besides its own line (SARIF codeFlows, flattened). */
+  related?: RelatedLocation[];
+}
+
+/** One step of a finding's code flow: a position with the engine's label for it. */
+export interface RelatedLocation {
+  file: string;
+  line: number;
+  label: string;
 }
 
 /** One node of the call graph (NODE table). */

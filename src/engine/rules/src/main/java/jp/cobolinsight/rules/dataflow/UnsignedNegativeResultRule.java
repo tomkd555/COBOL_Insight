@@ -39,15 +39,15 @@ public final class UnsignedNegativeResultRule implements Rule {
     private static final Set<String> ARITHMETIC_VERBS = Set.of("SUBTRACT", "COMPUTE");
 
     private static final RuleMeta META =
-            RuleMeta.named("R028", "符号なし前提の数値項目への負値算出", "データ移動")
-                    .summary("PICTURE に S を持たない項目へ、"
-                            + "負になり得る演算結果を格納する箇所を検出します。")
+            RuleMeta.named("R028", "符号なし項目への負の結果の格納", "データ移動")
+                    .summary("PICTURE に S を持たない項目に、"
+                            + "負になり得る演算結果を格納する箇所を検出する。")
                     .rationale("符号なし項目は符号を保持しないため、"
-                            + "負の結果が絶対値として格納され、以後の比較と集計が誤ります。")
-                    .detection("SUBTRACT・COMPUTE の受信項目のうち、算術文の後続位置での区間値域が"
-                            + "負を含み得るもので、受信項目の PICTURE に S が無いものを検出します。")
-                    .remedy("受信項目の PICTURE へ S を付けます。"
-                            + "負にならない前提なら、その条件を演算前に検査します。")
+                            + "負の結果が絶対値として格納され、以後の比較と集計が誤る。")
+                    .detection("SUBTRACT・COMPUTE の受け取り側項目のうち、算術文の直後の区間値域が"
+                            + "負を含み得るもので、PICTURE に S がないものを検出する。")
+                    .remedy("受け取り側項目の PICTURE に S を付ける。"
+                            + "負にならない前提なら、その条件を演算の前に検査する。")
                     .example("""
                             01  WS-DIFF  PIC 9(5).
                                 COMPUTE WS-DIFF = WS-A - WS-B.
@@ -99,7 +99,7 @@ public final class UnsignedNegativeResultRule implements Rule {
                 }
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         "符号なし項目 " + receiver + " に " + simple.verb().toUpperCase(Locale.ROOT)
-                                + " の結果が負になり得る値を格納している。符号が失われ不正値になる。",
+                                + " の結果が負になり得る値を格納している。符号が失われ、絶対値が格納される。",
                         new SourcePosition(model.sourceFile(), simple.range().start().line(), 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
             }

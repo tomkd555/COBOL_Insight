@@ -119,7 +119,7 @@ public final class SarifWriter {
 
     /** The help text a SARIF reader (an IDE, a review platform) shows alongside the finding. Carries the remedy and, if present, a before/after example. */
     private static String helpTextOf(RuleMeta meta) {
-        StringBuilder out = new StringBuilder("対処: ").append(meta.remedy());
+        StringBuilder out = new StringBuilder("直し方: ").append(meta.remedy());
         if (meta.hasExample()) {
             out.append("\n\n該当する例:\n").append(meta.badExample())
                     .append("\n\n直した例:\n").append(meta.goodExample());

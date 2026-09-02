@@ -69,7 +69,7 @@ class DuplicateProcedureNameRuleTest {
         Finding finding = findings.get(0);
         assertEquals(17, finding.location().line());
         assertTrue(finding.message().contains("200-STEP"), finding.message());
-        assertTrue(finding.message().contains("15行目"), finding.message());
+        assertTrue(finding.message().contains("15行"), finding.message());
     }
 
     @Test
@@ -85,6 +85,6 @@ class DuplicateProcedureNameRuleTest {
         assertEquals(FindingLevel.WARNING, finding.level());
         assertEquals(12, finding.location().line());
         assertTrue(finding.message().contains("1000-STEP"), finding.message());
-        assertTrue(finding.message().contains("10行目"), finding.message());
+        assertTrue(finding.message().contains("10行"), finding.message());
     }
 }

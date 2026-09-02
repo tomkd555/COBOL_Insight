@@ -6,6 +6,7 @@ import { Output } from "../views/output/Output";
 
 export interface PanelProps {
   onOpenAsset: (path: string, line: number | null) => void;
+  onShowFix: (path: string) => void;
 }
 
 const TABS: readonly { view: PanelView; label: string }[] = [
@@ -17,7 +18,7 @@ const TABS: readonly { view: PanelView; label: string }[] = [
  * The bottom panel: the problems table and the run log. Its tab strip is a tab list with roving
  * tabindex, so the arrow keys move between the two views.
  */
-export function Panel({ onOpenAsset }: PanelProps): ReactElement {
+export function Panel({ onOpenAsset, onShowFix }: PanelProps): ReactElement {
   const workbench = useWorkbench();
   const dispatch = useWorkbenchDispatch();
 
@@ -73,7 +74,7 @@ export function Panel({ onOpenAsset }: PanelProps): ReactElement {
         data-testid={`panelview-${workbench.panelView}`}
       >
         {workbench.panelView === "problems" ? (
-          <Problems onOpenAsset={onOpenAsset} />
+          <Problems onOpenAsset={onOpenAsset} onShowFix={onShowFix} />
         ) : (
           <Output />
         )}

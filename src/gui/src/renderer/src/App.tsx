@@ -310,7 +310,7 @@ function Shell(): ReactElement {
                 onCommit={commitSize}
               />
               <div className="ci-shell__panel" style={{ height: `${workbench.panelHeight}px` }}>
-                <Panel onOpenAsset={openAsset} />
+                <Panel onOpenAsset={openAsset} onShowFix={showFix} />
               </div>
             </>
           ) : null}

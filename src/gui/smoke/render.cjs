@@ -643,7 +643,20 @@ async function checkFindings(win) {
     `document.querySelector('[data-testid="tab-source:cobol/SYK002.cbl"]') !== null`,
     "the tab the row opened",
   );
-  record("5. a problems row opens the asset's tab", rows >= 3 && opened === true, `${rows} rows`);
+  const detailed = await waitUntil(
+    win,
+    `(() => {
+      const detail = document.querySelector('[data-testid="problem-detail"]');
+      return detail !== null && detail.textContent.includes('宣言 12行');
+    })()`,
+    "the finding detail",
+  );
+  await snap(win, "checkFindings-detail");
+  record(
+    "5. a problems row opens the asset's tab and its detail",
+    rows >= 3 && opened === true && detailed === true,
+    `${rows} rows`,
+  );
 }
 
 /**

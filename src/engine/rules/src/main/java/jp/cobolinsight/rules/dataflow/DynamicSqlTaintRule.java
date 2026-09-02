@@ -44,14 +44,14 @@ public final class DynamicSqlTaintRule implements Rule {
 
     private static final RuleMeta META =
             RuleMeta.named("R020", "動的SQL文への外部入力の未検証組み込み", "SQL")
-                    .summary("外部入力で汚染された値を、検証も置換もせずに組み立てた文字列を"
-                            + "EXECUTE IMMEDIATE・PREPARE へ渡す箇所を検出します。")
+                    .summary("外部入力に由来する値を、検証も置換もせずに組み立てた文字列として"
+                            + "EXECUTE IMMEDIATE・PREPARE に渡す箇所を検出する。")
                     .rationale("入力に SQL の断片を混ぜられると問い合わせの意味が変わり、"
-                            + "想定していない参照・更新を許します。")
-                    .detection("画面・帳票などの外部入力を汚染源として汚染追跡を行い、"
-                            + "汚染された変数が動的 SQL の文字列オペランドへ届くものを検出します。"
-                            + "ACCEPT FROM DATE・TIME などシステムレジスタ由来の汚染は対象外とします。")
-                    .remedy("値をホスト変数として渡し、SQL 文の組み立てへ直接埋め込まないようにします。")
+                            + "想定していない参照・更新を許す。")
+                    .detection("画面・帳票などの外部入力に由来する値を追跡し、"
+                            + "その値が動的SQL文の文字列に到達するものを検出する。"
+                            + "ACCEPT FROM DATE・TIME などシステムレジスタに由来する値は対象外とする。")
+                    .remedy("値をホスト変数として渡し、SQL 文の組み立てに直接埋め込まない。")
                     .example("""
                             STRING "SELECT * FROM CUST WHERE ID='" WS-INPUT "'"
                                 DELIMITED BY SIZE INTO WS-SQL.
@@ -111,11 +111,11 @@ public final class DynamicSqlTaintRule implements Rule {
                 SourcePosition position = new SourcePosition(model.sourceFile(),
                         simple.range().start().line(), 1, SourcePosition.UNKNOWN_BYTE_OFFSET);
                 findings.add(new Finding(META.id(), META.defaultSeverity().toLevel(),
-                        "動的SQLの文字列に外部入力由来の未検証変数 " + String.join(", ", flagged)
-                                + " を組み込んでいる。SQLインジェクションになり得る。",
+                        "動的SQL文の文字列に外部入力に由来する未検証のデータ項目 " + String.join(", ", flagged)
+                                + " を組み込んでいる。SQL インジェクションになり得る。",
                         position,
                         TaintCodeFlows.of(model, df, node, TaintKind.EXTERNAL_INPUT, flagged,
-                                position, "動的SQLの文字列へ組み込む"),
+                                position, "動的SQL文の文字列に組み込む"),
                         List.of()));
             }
         }

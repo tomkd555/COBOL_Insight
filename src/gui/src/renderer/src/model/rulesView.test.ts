@@ -6,7 +6,7 @@ import { filterRules, groupByCategory, overrideOf, setEnabled, setSeverity } fro
 function entry(overrides: Partial<RuleCatalogEntry>): RuleCatalogEntry {
   return {
     id: "R001",
-    name: "未初期化変数の参照",
+    name: "未初期化のデータ項目の参照",
     category: "データフロー",
     severity: "HIGH",
     phase: "DATA_FLOW",

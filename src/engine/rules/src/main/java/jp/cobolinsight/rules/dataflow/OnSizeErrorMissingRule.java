@@ -57,15 +57,15 @@ public final class OnSizeErrorMissingRule implements Rule {
             "CORRESPONDING", "CORR", "NOT");
 
     private static final RuleMeta META = RuleMeta.named("R004", "ON SIZE ERROR句の欠如", "例外処理")
-            .summary("結果が受信項目の桁を超え得るのに ON SIZE ERROR 句を持たない"
-                    + "算術文を検出します。")
-            .rationale("桁あふれが起きても検知されず、上位桁を失った値が"
-                    + "そのまま後続の計算と出力へ渡ります。")
-            .detection("ADD・SUBTRACT・MULTIPLY・DIVIDE・COMPUTE のうち、ON SIZE ERROR 句が無く、"
-                    + "区間値域解析による結果の範囲が受信項目の整数部の容量を超え得る"
-                    + "(範囲が定まらない場合を含む)ものを検出します。"
-                    + "受信項目自身を被加算に含む累算は対象外とします。")
-            .remedy("ON SIZE ERROR 句を付けて桁あふれ時の処理を書くか、受信項目の桁を広げます。")
+            .summary("結果が受け取り側項目のけた数を超え得るのに ON SIZE ERROR 句を持たない"
+                    + "算術文を検出する。")
+            .rationale("けたあふれが起きても検知されず、上位けたを失った値が"
+                    + "そのまま後続の計算と出力に渡る。")
+            .detection("ADD・SUBTRACT・MULTIPLY・DIVIDE・COMPUTE のうち、ON SIZE ERROR 句がなく、"
+                    + "区間値域解析による結果の範囲が受け取り側項目の整数部のけた数を超え得る"
+                    + "（範囲が定まらない場合を含む）ものを検出する。"
+                    + "受け取り側項目自身を加数に含む累算は対象外とする。")
+            .remedy("ON SIZE ERROR 句を付けてけたあふれ時の処理を書くか、受け取り側項目のけた数を広げる。")
             .example("""
                     01  WS-RESULT  PIC 9(4).
                         COMPUTE WS-RESULT = WS-QTY * WS-PRICE.
@@ -126,7 +126,7 @@ public final class OnSizeErrorMissingRule implements Rule {
             }
             if (receivers.stream().anyMatch(r -> resultMayOverflow(cfg, df, node, r, support))) {
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                        verb + " 文に ON SIZE ERROR 句が無く、結果が受信項目の桁容量を超え得る。"
+                        verb + " 文に ON SIZE ERROR 句がなく、結果が受け取り側項目のけた数を超え得る。"
                                 + "けたあふれが検知されない。",
                         new SourcePosition(model.sourceFile(), simple.range().start().line(), 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
@@ -186,7 +186,7 @@ public final class OnSizeErrorMissingRule implements Rule {
             String replacement = "\n" + String.join("\n", layout);
             SourcePosition at = arithmetic.range().end();
             TextEdit edit = new TextEdit(new SourceRange(at, at), replacement);
-            return Optional.of(new FixSuggestion("ON SIZE ERROR 句を付与する", List.of(edit)));
+            return Optional.of(new FixSuggestion("ON SIZE ERROR 句を付ける", List.of(edit)));
         }
     }
 

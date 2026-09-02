@@ -35,9 +35,9 @@ public final class CustomRules {
     private static final String DEFAULT_CATEGORY = "利用者定義";
 
     private static final String DEFAULT_RATIONALE =
-            "利用者が定義したルールです。定義に理由が書かれていません。";
+            "利用者が定義したルール。定義に理由は書かれていない。";
 
-    private static final String DEFAULT_REMEDY = "定義した検査の意図に沿って該当箇所を直します。";
+    private static final String DEFAULT_REMEDY = "定義した検査の意図に沿って該当箇所を直す。";
 
     private CustomRules() {
     }
@@ -79,7 +79,7 @@ public final class CustomRules {
         Pattern exclude = excludeText.isEmpty() ? null
                 : compile(excludeText, ignoreCase, "match.excludeRegex");
         RuleMeta meta = metaOf(object, id, name, targets,
-                "正規表現「" + regex + "」に一致する行を検出します。",
+                "正規表現「" + regex + "」に一致する行を検出する。",
                 describeLine(targets, regex, ignoreCase, wholeLine, excludeText),
                 Set.of(Needs.SOURCE_TEXT));
         return new LineRule(meta, compile(regex, ignoreCase, "match.regex"), exclude, message,
@@ -90,17 +90,17 @@ public final class CustomRules {
             boolean wholeLine, String exclude) {
         StringBuilder out = new StringBuilder();
         out.append("対象は ").append(labelOf(targets))
-                .append(" の各行です。正規表現「").append(regex)
-                .append("」に一致する行を検出します(")
-                .append(ignoreCase ? "大小を区別しません" : "大小を区別します")
-                .append(")。");
+                .append(" の各行。正規表現「").append(regex)
+                .append("」に一致する行を検出する（")
+                .append(ignoreCase ? "大小を区別しない" : "大小を区別する")
+                .append("）。");
         if (wholeLine) {
-            out.append("行全体を対象とし、注記行も走査します。");
+            out.append("行全体を対象とし、注記行も走査する。");
         } else {
-            out.append("COBOL 本体とコピー句では注記行を除き、8〜72桁の範囲を対象とします。");
+            out.append("COBOL 本体とコピー句では注記行を除き、8〜72 けたの範囲を対象とする。");
         }
         if (!exclude.isEmpty()) {
-            out.append("同じ行が正規表現「").append(exclude).append("」にも一致する場合は除きます。");
+            out.append("同じ行が正規表現「").append(exclude).append("」にも一致する場合は除く。");
         }
         return out.toString();
     }
@@ -117,7 +117,7 @@ public final class CustomRules {
         Pattern inParagraph = inParagraphText.isEmpty() ? null
                 : compile(inParagraphText, true, "match.inParagraph");
         RuleMeta meta = metaOf(object, id, name, targets,
-                String.join("・", verbs) + " 文を検出します。",
+                String.join("・", verbs) + " 文を検出する。",
                 describeStatement(targets, verbs, clauses, inParagraphText),
                 Set.of(Needs.SEMANTIC));
         return new StatementRule(meta, verbs, clauses, inParagraph, message);
@@ -126,14 +126,14 @@ public final class CustomRules {
     private static String describeStatement(Set<AssetKind> targets, List<String> verbs,
             List<String> clauses, String inParagraph) {
         StringBuilder out = new StringBuilder("対象は ").append(labelOf(targets)).append(" の ")
-                .append(String.join("・", verbs)).append(" 文です。");
+                .append(String.join("・", verbs)).append(" 文。");
         if (clauses.isEmpty()) {
-            out.append("該当する文をすべて検出します。");
+            out.append("該当する文をすべて検出する。");
         } else {
-            out.append(String.join("・", clauses)).append(" のいずれの句も伴わないものを検出します。");
+            out.append(String.join("・", clauses)).append(" のいずれの句も伴わないものを検出する。");
         }
         if (!inParagraph.isEmpty()) {
-            out.append("段落名が正規表現「").append(inParagraph).append("」に一致する段落だけを見ます。");
+            out.append("段落名が正規表現「").append(inParagraph).append("」に一致する段落だけを見る。");
         }
         return out.toString();
     }
@@ -153,7 +153,7 @@ public final class CustomRules {
                 "untilNextMatchingStatement"));
         boolean onEveryPath = optionalBoolean(match, "onEveryPath");
         RuleMeta meta = metaOf(object, id, name, targets,
-                verb + " の実行後に " + String.join("・", dataItems) + " を検査しない箇所を検出します。",
+                verb + " の実行後に " + String.join("・", dataItems) + " を検査しない箇所を検出する。",
                 describeCheckedAfter(targets, verb, textRegex, dataItems, scope, onEveryPath),
                 Set.of(Needs.SEMANTIC, Needs.CFG));
         return new CheckedAfterRule(meta, verb, afterText, dataItems, scope, onEveryPath, message);
@@ -165,16 +165,16 @@ public final class CustomRules {
         StringBuilder out = new StringBuilder("対象は ").append(labelOf(targets)).append(" の ")
                 .append(verb).append(" 文");
         if (!textRegex.isEmpty()) {
-            out.append("(本文が正規表現「").append(textRegex).append("」に一致するもの)");
+            out.append("（本文が正規表現「").append(textRegex).append("」に一致するもの）");
         }
-        out.append("です。その実行後、").append(switch (scope) {
+        out.append("。その実行後、").append(switch (scope) {
             case UNTIL_NEXT_MATCHING_STATEMENT -> "次の同じ動詞の文に達するまで";
             case UNTIL_PARAGRAPH_END -> "段落の終わりまで";
             case UNTIL_PROGRAM_END -> "プログラムの終わりまで";
         }).append("の前方経路で ").append(String.join("・", dataItems))
-                .append(" を条件参照しないものを検出します(")
+                .append(" を条件で参照しないものを検出する（")
                 .append(onEveryPath ? "すべての経路で検査を要する" : "いずれかの経路に検査があれば足りる")
-                .append(")。");
+                .append("）。");
         return out.toString();
     }
 

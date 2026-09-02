@@ -213,8 +213,8 @@ the line is a `GO TO ... DEPENDING ON`:
       "targets": ["COBOL", "COPYBOOK"],
       "commands": ["LINT", "REPORT"],
       "message": "GO TO を使っている: ${match}",
-      "rationale": "段落をまたぐ飛び越しは制御の流れを追いにくくします。",
-      "remedy": "PERFORM による段落呼出しへ置き換えます。",
+      "rationale": "段落をまたぐ GO TO は制御の流れを追いにくくする。",
+      "remedy": "PERFORM 文による段落の呼び出しに置き換える。",
       "match": {
         "kind": "line",
         "regex": "GO\\s+TO\\b",
