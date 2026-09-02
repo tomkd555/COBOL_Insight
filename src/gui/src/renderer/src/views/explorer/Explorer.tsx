@@ -11,11 +11,9 @@ import {
   type AssetTypeFilter,
   type TreeRow,
 } from "../../model/assetTree";
-import { codepageLabel } from "../../../../shared/codepage";
 import { ImportDialog } from "./ImportDialog";
 
 export interface ExplorerProps {
-  onSelectFolder: () => void;
   onOpenAsset: (path: string, line: number | null) => void;
 }
 
@@ -24,7 +22,7 @@ function filterLabel(filter: AssetTypeFilter): string {
   return text.assetType[filter];
 }
 
-/** The codicon glyph shown before an asset kind badge's text. */
+/** The codicon glyph that stands for an asset kind. */
 function badgeIcon(type: AssetTypeCode): string {
   switch (type) {
     case "cobol":
@@ -44,10 +42,10 @@ function badgeIcon(type: AssetTypeCode): string {
  * The asset explorer: the tree of scanned assets, with a name filter and a kind filter.
  *
  * The tree is a real ARIA tree: rows carry their level and their expanded state, one row holds the
- * tab stop, and the arrow keys move between rows and open and close folders. The five states —
- * empty, loading, results, no match and error — are all reachable and each says which it is.
+ * tab stop, and the arrow keys move between rows and open and close folders. With no folder open
+ * the view is empty: the welcome screen is where that is said, and once, not in every region.
  */
-export function Explorer({ onSelectFolder, onOpenAsset }: ExplorerProps): ReactElement {
+export function Explorer({ onOpenAsset }: ExplorerProps): ReactElement {
   const project = useProject();
   const workbench = useWorkbench();
   const activeTabPath = activeTabOf(workbench)?.path ?? null;
@@ -151,7 +149,7 @@ export function Explorer({ onSelectFolder, onOpenAsset }: ExplorerProps): ReactE
       );
     }
     if (project.inventory.status === "none") {
-      return <p className="ci-explorer__state">{text.explorer.emptyNoFolder}</p>;
+      return <p className="ci-explorer__state">{text.empty.notAnalysed}</p>;
     }
     if (rows.length === 0) {
       return (
@@ -179,7 +177,9 @@ export function Explorer({ onSelectFolder, onOpenAsset }: ExplorerProps): ReactE
             aria-selected={(focusedPath ?? activeTabPath) === row.path}
             tabIndex={row.path === tabStop ? 0 : -1}
             className={`ci-tree__row ci-tree__row--${row.kind}`}
-            style={{ paddingInlineStart: `${row.depth * 12 + 8}px` }}
+            // One inset down the whole column: a root row starts where the toolbar and the filters
+            // above it start (12px, styles/lists.css), and each level indents by 12 from there.
+            style={{ paddingInlineStart: `${row.depth * 12 + 12}px` }}
             onClick={() => {
               setFocusedPath(row.path);
               activate(row);
@@ -198,17 +198,22 @@ export function Explorer({ onSelectFolder, onOpenAsset }: ExplorerProps): ReactE
               aria-hidden="true"
             />
             <span className="ci-tree__name">{row.name}</span>
+            {/* The kind is the glyph alone: its name repeats the extension the row already shows,
+                and the codepage is in the status bar once the asset is open. */}
             {row.type !== null ? (
-              <span className={`ci-badge ci-badge--${row.type}`}>
+              <span
+                className={`ci-badge ci-badge--${row.type}`}
+                title={text.assetType[row.type]}
+              >
                 <span className={`codicon codicon-${badgeIcon(row.type)}`} aria-hidden="true" />
-                {text.assetType[row.type]}
+                <span className="ci-visually-hidden">{text.assetType[row.type]}</span>
               </span>
             ) : null}
             {row.item !== null && row.item.codepage === null ? (
-              <span className="ci-badge ci-badge--warn">{text.explorer.codepageUnknown}</span>
-            ) : null}
-            {row.item !== null && row.item.codepage !== null ? (
-              <span className="ci-tree__codepage">{codepageLabel(row.item.codepage, "")}</span>
+              <span className="ci-badge ci-badge--warn" title={text.explorer.codepageUnknown}>
+                <span className="codicon codicon-warning" aria-hidden="true" />
+                <span className="ci-visually-hidden">{text.explorer.codepageUnknown}</span>
+              </span>
             ) : null}
             {row.findingCount > 0 ? (
               <span
@@ -224,22 +229,16 @@ export function Explorer({ onSelectFolder, onOpenAsset }: ExplorerProps): ReactE
     );
   })();
 
+  if (project.inputDir === null) {
+    return <div className="ci-explorer" />;
+  }
+
   return (
     <div className="ci-explorer">
       <div className="ci-explorer__toolbar">
         <button
           type="button"
           className="ci-button"
-          onClick={onSelectFolder}
-          data-testid="explorer-select-folder"
-        >
-          {project.inputDir === null ? text.explorer.selectFolder : text.explorer.changeFolder}
-        </button>
-        <button
-          type="button"
-          className="ci-button"
-          disabled={project.inputDir === null}
-          title={project.inputDir === null ? text.import.noFolder : undefined}
           onClick={() => setImporting(true)}
           data-testid="explorer-import"
         >
@@ -271,7 +270,7 @@ export function Explorer({ onSelectFolder, onOpenAsset }: ExplorerProps): ReactE
         </select>
       </div>
       {body}
-      {importing && project.inputDir !== null ? (
+      {importing ? (
         <ImportDialog inputDir={project.inputDir} onClose={() => setImporting(false)} />
       ) : null}
     </div>

@@ -87,8 +87,8 @@ public final class SourceDecoder {
     private static void requireNoError(CoderResult result, EncodingInfo info, int byteOffset) {
         if (result.isError()) {
             throw new IllegalArgumentException(
-                    "コードページ " + info.codePage().charsetName() + " で復号できないバイト列がある(オフセット "
-                            + byteOffset + " 付近)");
+                    "コードページ " + info.codePage().charsetName()
+                            + " で復号できないバイト列があります（オフセット " + byteOffset + " 付近）");
         }
     }
 }

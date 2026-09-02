@@ -41,15 +41,16 @@ import jp.cobolinsight.rules.dataflow.DataFlowSupport.TableRef;
 public final class OccursSubscriptRangeRule implements Rule {
 
     private static final RuleMeta META =
-            RuleMeta.named("R005", "添字のOCCURS範囲外参照", "添字・指標")
-                    .summary("添字の取り得る値が表の上限を超えるか 0 以下になり得る参照を検出する。")
+            RuleMeta.named("R005", "添字の OCCURS 範囲外参照", "添字・指標")
+                    .summary("添字の取り得る値が表の上限を超えるか 0 以下になり得る参照を検出します。")
                     .rationale("表の外の記憶域を読み書きするため、"
-                            + "隣接する項目を壊すか、実行時に領域違反で異常終了する。")
-                    .detection("区間値域解析で添字の値域を求め、OCCURS の上限を超え得るか"
-                            + "0 以下になり得るものを検出する。上限は表項目、または OCCURS を"
-                            + "持つ直近の上位項目から解決する。連絡節の表は呼び出し元が領域を"
-                            + "保証するため対象外とする。")
-                    .remedy("添字の値域を参照の前に検査する。表の大きさが足りないなら OCCURS の回数を見直す。")
+                            + "隣接する項目を壊すか、実行時に領域違反で異常終了します。")
+                    .detection("添字の取り得る値が OCCURS の上限を超え得るか"
+                            + "0 以下になり得るものを検出します。上限は表項目、または OCCURS を"
+                            + "持つ直近の上位項目から解決します。連絡節の表は呼び出し元が領域を"
+                            + "保証するため対象外です。")
+                    .remedy("添字の値域を参照の前に検査してください。"
+                            + "表の大きさが足りないなら OCCURS の回数を見直してください。")
                     .example("""
                             01  WS-TBL.
                                 05  WS-ITEM  PIC X(10) OCCURS 10 TIMES.
@@ -114,15 +115,20 @@ public final class OccursSubscriptRangeRule implements Rule {
                     // count is checked against the innermost upper bound.
                     int max = dims.get(Math.min(i, dims.size() - 1));
                     ValueInterval iv = subscriptInterval(df, node, subscripts.get(i));
-                    if (iv == null || !(iv.mayExceed(max) || iv.mayBeNonPositive())) {
+                    if (iv == null) {
+                        continue;
+                    }
+                    boolean exceeds = iv.mayExceed(max);
+                    if (!exceeds && !iv.mayBeNonPositive()) {
                         continue;
                     }
                     int line = statement.range().start().line();
                     String key = line + "|" + DataFlowSupport.norm(ref.tableName());
                     if (reported.add(key)) {
                         findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                                "表 " + ref.tableName() + " の添字が OCCURS の上限 " + max
-                                        + " を超え得るか、0 以下になり得る。表の範囲外を参照する。",
+                                ref.tableName() + " の添字が OCCURS " + max + " の範囲を"
+                                        + (exceeds ? "超え得ます" : "下回り得ます")
+                                        + "。表の外の記憶域を参照します。",
                                 new SourcePosition(model.sourceFile(), line, 1,
                                         SourcePosition.UNKNOWN_BYTE_OFFSET)));
                     }

@@ -45,16 +45,15 @@ import java.util.Set;
  */
 public final class SqlCodeUncheckedRule implements Rule {
 
-    private static final RuleMeta META = RuleMeta.named("R018", "SQLCODE/SQLSTATE未検査", "例外処理")
+    private static final RuleMeta META = RuleMeta.named("R018", "SQLCODE・SQLSTATE 未検査", "例外処理")
             .summary("INSERT・UPDATE・DELETE の後、次の埋込みSQL文までに"
-                    + "SQLCODE・SQLSTATE を検査しない箇所を検出する。")
+                    + "SQLCODE・SQLSTATE を検査しない箇所を検出します。")
             .rationale("更新の失敗を検知せずに後続が進み、"
-                    + "更新されたつもりのデータで処理を続ける。")
+                    + "更新されたつもりのデータで処理を続けます。")
             .detection("データを変更する DML の実行後、次の埋込みSQL文に達するまでの前方経路で"
-                    + "SQLCODE・SQLSTATE を条件で参照しないものを検出する。境界を次の埋込みSQL文と"
-                    + "するのは、SQLCODE が次の SQL で上書きされるためである。"
-                    + "SELECT INTO・FETCH は対象外とする。")
-            .remedy("DML の直後に SQLCODE を検査し、0 以外を異常として処理する。")
+                    + "SQLCODE・SQLSTATE を条件で参照しないものを検出します。"
+                    + "SELECT INTO・FETCH は対象外です。")
+            .remedy("DML の直後に SQLCODE を検査し、0 以外を異常として処理してください。")
             .example("""
                     EXEC SQL UPDATE CUSTOMER SET NAME = :WS-NAME
                              WHERE ID = :WS-ID END-EXEC.
@@ -130,19 +129,17 @@ public final class SqlCodeUncheckedRule implements Rule {
                 String until = nextLine == null ? "プログラムの終端まで進む"
                         : nextLine <= last ? "ループで " + nextLine + "行の SQL へ戻る"
                         : "次の SQL（" + nextLine + "行）へ進む";
-                String span = first == last ? first + "行" : first + "〜" + last + "行";
                 List<CodeFlowStep> steps = new ArrayList<>();
                 steps.add(CfgSupport.step(file, first,
-                        dml + " の実行。ここで SQLCODE が設定される"));
+                        dml + " の実行（SQLCODE が設定される）"));
                 if (nextLine != null) {
                     steps.add(CfgSupport.step(file, nextLine, (nextLine <= last
-                            ? "ループで戻る SQL。" : "次の SQL。")
-                            + "SQLCODE はここで上書きされ、前の結果は失われる"));
+                            ? "ループで戻る SQL（" : "次の SQL（")
+                            + "SQLCODE が上書きされる）"));
                 }
                 findings.add(new Finding(META.id(), META.defaultSeverity().toLevel(),
-                        "EXEC SQL " + dml + "（" + span + "）の後、SQLCODE を検査しないまま" + until
-                                + "。更新が失敗しても成功したものとして処理が続く。"
-                                + last + "行の END-EXEC の直後に IF SQLCODE NOT = 0 の検査を入れる。",
+                        "SQLCODE を EXEC SQL " + dml + " の後で検査していません。"
+                                + until + "ため、更新の失敗が検知されません。",
                         new SourcePosition(file, last, 1, SourcePosition.UNKNOWN_BYTE_OFFSET),
                         List.of(new CodeFlow(steps)), List.of()));
             }
@@ -197,7 +194,7 @@ public final class SqlCodeUncheckedRule implements Rule {
                     || FixEdits.endsSentence(source, block.range().end().line()) ? "." : "";
             TextEdit edit = FixEdits.insertStatementAfter(block.range(),
                     "IF SQLCODE NOT = 0 DISPLAY 'SQL ERROR: ' SQLCODE END-IF" + terminator);
-            return Optional.of(new FixSuggestion("SQLCODE の検査を挿入する", List.of(edit)));
+            return Optional.of(new FixSuggestion("SQLCODE の検査を挿入します", List.of(edit)));
         }
     }
 

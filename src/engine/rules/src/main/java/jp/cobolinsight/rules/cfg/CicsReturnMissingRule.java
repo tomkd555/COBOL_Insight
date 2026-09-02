@@ -32,16 +32,17 @@ import java.util.Set;
 public final class CicsReturnMissingRule implements Rule {
 
     private static final RuleMeta META =
-            RuleMeta.named("R022", "CICS RETURN文欠如による疑似会話の途絶", "制御フロー")
+            RuleMeta.named("R022", "CICS RETURN 文欠如による疑似会話の途絶", "制御フロー")
                     .summary("EXEC CICS RETURN TRANSID を 1 つも持たないまま終端に達する"
-                            + "CICS プログラムを検出する。")
+                            + "CICS プログラムを検出します。")
                     .rationale("制御が CICS に戻らず、次の入力を受け付ける状態が作られないため、"
-                            + "疑似会話が途切れて端末が応答しなくなる。")
+                            + "疑似会話が途切れて端末が応答しなくなります。")
                     .detection("自プログラムに CICS コマンドを持つか、他プログラムの XCTL・LINK・START の"
                             + "遷移先であるプログラムを CICS プログラムとみなし、"
-                            + "RETURN TRANSID の有無で検出する。")
+                            + "RETURN TRANSID の有無で検出します。"
+                            + "STOP・GOBACK・EXIT PROGRAM のいずれも持たないプログラムは対象外です。")
                     .remedy("処理の終わりに EXEC CICS RETURN TRANSID を置き、"
-                            + "次に起動するトランザクションを指定する。")
+                            + "次に起動するトランザクションを指定してください。")
                     .example("""
                             EXEC CICS SEND MAP('MAP01') MAPSET('MAPSET1') END-EXEC.
                             GOBACK.
@@ -73,9 +74,8 @@ public final class CicsReturnMissingRule implements Rule {
             Statement terminal = firstTerminal(model);
             if (terminal != null) {
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                        "CICS プログラム " + model.programId()
-                                + " は EXEC CICS RETURN を持たずに終端する。"
-                                + "疑似会話の制御が CICS に戻らない。",
+                        model.programId() + " は EXEC CICS RETURN を持たずに終端します。"
+                                + "疑似会話の制御が CICS に戻りません。",
                         new SourcePosition(model.sourceFile(), terminal.range().start().line(), 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
             }

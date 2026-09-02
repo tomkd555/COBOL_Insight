@@ -104,13 +104,16 @@ public final class ReportRunner {
     private ReportRunner() {
     }
 
+    /**
+     * Runs the report pipeline. A missing {@code options.databaseFile()} is refused: SQLite would
+     * create a new file, and a mistaken path would silently pass as "a report with 0 assets",
+     * leaving only an empty DB file. The Japanese message reaches stderr through the execution
+     * exception handler in {@code Main}.
+     */
     public static Result run(Options options) {
-        // SQLite creates a new file if the specified one is missing. Without an existence check,
-        // a mistaken path would silently pass as "a report with 0 assets", leaving only an empty DB file.
         if (!Files.isRegularFile(options.databaseFile())) {
             throw new IllegalStateException(
-                    "SQLiteプロジェクトファイルが無い: " + options.databaseFile()
-                            + "。先に scan を実行すること。");
+                    options.databaseFile() + " がありません。先に scan を実行してください。");
         }
         List<AssetEntry> inventory;
         List<Finding> scanFindings;

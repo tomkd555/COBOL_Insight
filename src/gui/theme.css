@@ -39,7 +39,7 @@
   --brand-muted-foreground: oklch(68% 0.014 250);
   --brand-border: oklch(42% 0.014 250);
   --brand-destructive: oklch(68% 0.19 27);
-  --brand-accent: oklch(78% 0.14 80);
+  --brand-accent: oklch(72% 0.15 80);
 }
 
 /* ---- Tier 2: semantic names and the utilities they generate ---- */

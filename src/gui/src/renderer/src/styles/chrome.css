@@ -69,7 +69,7 @@
   height: 28px;
   padding: 0 var(--ci-space-2);
   background: transparent;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--ci-border-strong);
   border-radius: var(--ci-radius);
   color: var(--color-muted-foreground);
   cursor: pointer;
@@ -136,10 +136,11 @@
   color: var(--color-muted-foreground);
   cursor: pointer;
   font-size: 20px;
+  /* The active marker is the left border; a view is switched from the keyboard too, and a marker
+     that fades in behind the switch reads as lag. Only the hover surface transitions. */
   transition:
     background-color var(--duration-fast) var(--ease-standard),
-    color var(--duration-fast) var(--ease-standard),
-    border-color var(--duration-fast) var(--ease-standard);
+    color var(--duration-fast) var(--ease-standard);
 }
 
 .ci-activitybar__item:hover {
@@ -174,8 +175,8 @@
 .ci-sidebar__body {
   flex: 1 1 auto;
   min-height: 0;
-  /* A row wider than the bar scrolls rather than losing its badges at the edge. */
-  overflow: auto;
+  /* The name is the only element that shrinks, so a row never needs to scroll sideways. */
+  overflow-y: auto;
 }
 
 /* ---------------------------------------------------------------- split handles */
@@ -218,6 +219,11 @@
   overflow: auto;
 }
 
+/*
+ * A thin scrollbar, not the chevron pair the platform can draw: at 200% zoom the ::scroll-button
+ * pseudo-elements this used to carry rendered in a band above the tab row instead of inside it.
+ * Native horizontal scrolling needs no affordance beyond the browser's own bar.
+ */
 .ci-tabs {
   display: flex;
   flex: 0 0 auto;
@@ -226,6 +232,7 @@
   border-bottom: 1px solid var(--color-border);
   overflow-x: auto;
   overflow-y: hidden;
+  scrollbar-width: thin;
 }
 
 /* No tab, no strip: the welcome view is not headed by an empty band. */
@@ -233,10 +240,17 @@
   display: none;
 }
 
+/*
+ * A tab keeps a fixed width range and never shrinks: the strip scrolls instead, as VS Code does.
+ * Without a floor, a long name was squeezed down to a few characters shared by every tab; without a
+ * ceiling, one long name could crowd every other tab off screen.
+ */
 .ci-tab {
   display: flex;
   align-items: center;
   flex: 0 0 auto;
+  min-width: 120px;
+  max-width: 240px;
   border-right: 1px solid var(--color-border);
   border-top: 1px solid transparent;
   color: var(--color-muted-foreground);
@@ -248,26 +262,38 @@
   color: var(--color-foreground);
 }
 
+/* Not a flex container: text-overflow needs an inline formatting context to put its ellipsis in, and
+   a flex container gives the label's text none. align-content centres the line the way align-items
+   centred the item. */
 .ci-tab__label {
-  display: flex;
-  align-items: center;
-  gap: var(--ci-space-1);
-  padding: 0 var(--ci-space-2) 0 var(--ci-space-3);
+  display: block;
+  align-content: center;
+  position: relative;
+  padding: 0 calc(var(--ci-space-2) + 12px) 0 var(--ci-space-3);
   height: 100%;
   background: transparent;
   border: none;
   cursor: pointer;
   white-space: nowrap;
+  text-align: start;
+  flex: 0 1 auto;
+  min-width: 0;
   max-width: 16em;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+/* Pinned to the label's right edge, inside the padding held for it: a name long enough to ellipsize
+   must not take the unsaved mark away with it. */
 .ci-tab__dirty {
+  position: absolute;
+  top: 50%;
+  right: var(--ci-space-2);
+  translate: 0 -50%;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--color-accent);
+  background: var(--color-foreground);
 }
 
 .ci-tab__close {
@@ -323,9 +349,8 @@
   color: var(--color-muted-foreground);
   cursor: pointer;
   white-space: nowrap;
-  transition:
-    color var(--duration-fast) var(--ease-standard),
-    border-color var(--duration-fast) var(--ease-standard);
+  /* As on the activity bar: the underline marks the active tab and must land with the switch. */
+  transition: color var(--duration-fast) var(--ease-standard);
 }
 
 .ci-panel__tab--active {
@@ -390,9 +415,4 @@
 
 .ci-statusbar__spacer {
   flex: 1 1 auto;
-}
-
-.ci-statusbar__item--dim {
-  overflow: hidden;
-  text-overflow: ellipsis;
 }

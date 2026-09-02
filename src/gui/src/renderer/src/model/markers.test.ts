@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { RuleCatalogEntry, SarifFinding } from "../../../shared/ipc";
-import { buildRuleIndex } from "./ruleIndex";
+import { REPARSE_RULE_ID, buildRuleIndex } from "./ruleIndex";
 import {
   MARKER_OWNER,
   MARKER_SEVERITY,
-  REPARSE_RULE_ID,
   findingMarkers,
   glyphClassOf,
   markerSeverityOf,

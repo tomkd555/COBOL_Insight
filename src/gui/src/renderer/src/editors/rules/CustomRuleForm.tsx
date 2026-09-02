@@ -137,9 +137,10 @@ export function CustomRuleForm({
         />
       </Field>
 
-      <Field label={text.customRules.fieldMessage} note={text.customRules.messageHint}>
+      <Field label={text.customRules.fieldMessage}>
         <input
           className="ci-input"
+          placeholder={text.customRules.messagePlaceholder}
           value={rule.message ?? ""}
           onChange={(event) => set({ message: event.target.value })}
         />
@@ -270,13 +271,18 @@ function StatementFields({
 }): ReactElement {
   return (
     <>
-      <Field label={text.customRules.fieldVerb} note={text.customRules.listHint}>
-        <ListField value={match.verb} onChange={(verb) => onChange({ ...match, verb })} />
+      <Field label={text.customRules.fieldVerb}>
+        <ListField
+          value={match.verb}
+          placeholder={text.customRules.verbPlaceholder}
+          onChange={(verb) => onChange({ ...match, verb })}
+        />
         {problemNote("verbRequired")}
       </Field>
-      <Field label={text.customRules.fieldMissingClause} note={text.customRules.listHint}>
+      <Field label={text.customRules.fieldMissingClause}>
         <ListField
           value={match.missingClause ?? []}
+          placeholder={text.customRules.missingClausePlaceholder}
           onChange={(missingClause) => onChange({ ...match, missingClause })}
         />
       </Field>
@@ -320,9 +326,10 @@ function CheckedAfterFields({
           }
         />
       </Field>
-      <Field label={text.customRules.fieldDataItem} note={text.customRules.listHint}>
+      <Field label={text.customRules.fieldDataItem}>
         <ListField
           value={match.checks?.dataItem ?? []}
+          placeholder={text.customRules.dataItemPlaceholder}
           onChange={(dataItem) => onChange({ ...match, checks: { dataItem } })}
         />
         {problemNote("dataItemRequired")}
@@ -354,20 +361,11 @@ function CheckedAfterFields({
   );
 }
 
-function Field({
-  label,
-  note,
-  children,
-}: {
-  label: string;
-  note?: string;
-  children: ReactNode;
-}): ReactElement {
+function Field({ label, children }: { label: string; children: ReactNode }): ReactElement {
   return (
     <label className="ci-form__field">
       <span className="ci-form__label">{label}</span>
       {children}
-      {note === undefined ? null : <span className="ci-form__note">{note}</span>}
     </label>
   );
 }
@@ -405,7 +403,8 @@ function CheckList({
 }
 
 /**
- * A list of short words in one text field.
+ * A list of short words in one text field. The placeholder is an example in the field's own
+ * vocabulary, which is also where the separator is shown.
  *
  * The typed text is held here rather than derived from the value on every keystroke: reformatting
  * mid-word would eat the separator the moment it was typed. The field is re-synchronised only when
@@ -413,9 +412,11 @@ function CheckList({
  */
 function ListField({
   value,
+  placeholder,
   onChange,
 }: {
   value: readonly string[];
+  placeholder: string;
   onChange: (value: string[]) => void;
 }): ReactElement {
   const [draft, setDraft] = useState(() => formatList(value));
@@ -432,6 +433,7 @@ function ListField({
   return (
     <input
       className="ci-input"
+      placeholder={placeholder}
       value={draft}
       onChange={(event) => {
         setDraft(event.target.value);

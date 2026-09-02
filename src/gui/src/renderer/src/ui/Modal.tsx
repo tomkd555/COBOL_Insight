@@ -2,7 +2,8 @@ import { useEffect, useRef, type ReactElement, type ReactNode } from "react";
 
 export interface ModalProps {
   title: string;
-  children: ReactNode;
+  /** Omitted when the title and the buttons say everything. */
+  children?: ReactNode;
   /** The buttons, laid out from left to right. The last one receives focus on opening. */
   actions: ReactNode;
   /** Escape and the backdrop both call this. */
@@ -64,7 +65,7 @@ export function Modal({ title, children, actions, onDismiss, testId, wide }: Mod
         aria-label={title}
       >
         <h2 className="ci-modal__title">{title}</h2>
-        <div className="ci-modal__body">{children}</div>
+        {children === undefined ? null : <div className="ci-modal__body">{children}</div>}
         <div className="ci-modal__actions">{actions}</div>
       </div>
     </div>

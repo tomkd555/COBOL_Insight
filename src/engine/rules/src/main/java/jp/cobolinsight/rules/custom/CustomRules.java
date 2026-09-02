@@ -35,9 +35,10 @@ public final class CustomRules {
     private static final String DEFAULT_CATEGORY = "利用者定義";
 
     private static final String DEFAULT_RATIONALE =
-            "利用者が定義したルール。定義に理由は書かれていない。";
+            "利用者が定義したルールです。定義に理由は書かれていません。";
 
-    private static final String DEFAULT_REMEDY = "定義した検査の意図に沿って該当箇所を直す。";
+    private static final String DEFAULT_REMEDY =
+            "定義した検査の意図に沿って該当箇所を直してください。";
 
     private CustomRules() {
     }
@@ -46,7 +47,7 @@ public final class CustomRules {
         String id = requireString(object, "id");
         if (!ID_FORMAT.matcher(id).matches()) {
             throw new IllegalArgumentException("id は U で始まり、英数字・ハイフン・下線が"
-                    + "1〜15文字続く形にする(指定値 " + id + ")");
+                    + "1〜15文字続く形で書いてください（指定値 " + id + "）");
         }
         String name = requireString(object, "name");
         String message = requireString(object, "message");
@@ -58,8 +59,8 @@ public final class CustomRules {
             case "line" -> lineRule(object, match, id, name, message, targets);
             case "statement" -> statementRule(object, match, id, name, message, targets);
             case "checked-after" -> checkedAfterRule(object, match, id, name, message, targets);
-            default -> throw new IllegalArgumentException("match.kind に扱えない値がある: " + kind
-                    + "(扱えるのは line・statement・checked-after)");
+            default -> throw new IllegalArgumentException("match.kind に扱えない値があります: "
+                    + kind + "（扱えるのは line・statement・checked-after）");
         };
     }
 
@@ -71,15 +72,15 @@ public final class CustomRules {
         boolean ignoreCase = optionalBoolean(match, "ignoreCase");
         String area = optionalString(match, "area", "programArea");
         if (!area.equals("programArea") && !area.equals("wholeLine")) {
-            throw new IllegalArgumentException("match.area に扱えない値がある: " + area
-                    + "(扱えるのは programArea・wholeLine)");
+            throw new IllegalArgumentException("match.area に扱えない値があります: " + area
+                    + "（扱えるのは programArea・wholeLine）");
         }
         boolean wholeLine = area.equals("wholeLine");
         String excludeText = optionalString(match, "excludeRegex", "");
         Pattern exclude = excludeText.isEmpty() ? null
                 : compile(excludeText, ignoreCase, "match.excludeRegex");
         RuleMeta meta = metaOf(object, id, name, targets,
-                "正規表現「" + regex + "」に一致する行を検出する。",
+                "正規表現「" + regex + "」に一致する行を検出します。",
                 describeLine(targets, regex, ignoreCase, wholeLine, excludeText),
                 Set.of(Needs.SOURCE_TEXT));
         return new LineRule(meta, compile(regex, ignoreCase, "match.regex"), exclude, message,
@@ -91,16 +92,17 @@ public final class CustomRules {
         StringBuilder out = new StringBuilder();
         out.append("対象は ").append(labelOf(targets))
                 .append(" の各行。正規表現「").append(regex)
-                .append("」に一致する行を検出する（")
-                .append(ignoreCase ? "大小を区別しない" : "大小を区別する")
+                .append("」に一致する行を検出します（")
+                .append(ignoreCase ? "大小を区別しません" : "大小を区別します")
                 .append("）。");
         if (wholeLine) {
-            out.append("行全体を対象とし、注記行も走査する。");
+            out.append("行全体を対象とし、注記行も走査します。");
         } else {
-            out.append("COBOL 本体とコピー句では注記行を除き、8〜72 けたの範囲を対象とする。");
+            out.append("COBOL 本体とコピー句では注記行を除き、8〜72桁の範囲を対象とします。");
         }
         if (!exclude.isEmpty()) {
-            out.append("同じ行が正規表現「").append(exclude).append("」にも一致する場合は除く。");
+            out.append("同じ行が正規表現「").append(exclude)
+                    .append("」にも一致する場合は対象外です。");
         }
         return out.toString();
     }
@@ -117,7 +119,7 @@ public final class CustomRules {
         Pattern inParagraph = inParagraphText.isEmpty() ? null
                 : compile(inParagraphText, true, "match.inParagraph");
         RuleMeta meta = metaOf(object, id, name, targets,
-                String.join("・", verbs) + " 文を検出する。",
+                String.join("・", verbs) + " 文を検出します。",
                 describeStatement(targets, verbs, clauses, inParagraphText),
                 Set.of(Needs.SEMANTIC));
         return new StatementRule(meta, verbs, clauses, inParagraph, message);
@@ -128,12 +130,14 @@ public final class CustomRules {
         StringBuilder out = new StringBuilder("対象は ").append(labelOf(targets)).append(" の ")
                 .append(String.join("・", verbs)).append(" 文。");
         if (clauses.isEmpty()) {
-            out.append("該当する文をすべて検出する。");
+            out.append("該当する文をすべて検出します。");
         } else {
-            out.append(String.join("・", clauses)).append(" のいずれの句も伴わないものを検出する。");
+            out.append(String.join("・", clauses))
+                    .append(" のいずれの句も伴わないものを検出します。");
         }
         if (!inParagraph.isEmpty()) {
-            out.append("段落名が正規表現「").append(inParagraph).append("」に一致する段落だけを見る。");
+            out.append("段落名が正規表現「").append(inParagraph)
+                    .append("」に一致する段落以外は対象外です。");
         }
         return out.toString();
     }
@@ -153,7 +157,8 @@ public final class CustomRules {
                 "untilNextMatchingStatement"));
         boolean onEveryPath = optionalBoolean(match, "onEveryPath");
         RuleMeta meta = metaOf(object, id, name, targets,
-                verb + " の実行後に " + String.join("・", dataItems) + " を検査しない箇所を検出する。",
+                verb + " の実行後に " + String.join("・", dataItems)
+                        + " を検査しない箇所を検出します。",
                 describeCheckedAfter(targets, verb, textRegex, dataItems, scope, onEveryPath),
                 Set.of(Needs.SEMANTIC, Needs.CFG));
         return new CheckedAfterRule(meta, verb, afterText, dataItems, scope, onEveryPath, message);
@@ -172,8 +177,9 @@ public final class CustomRules {
             case UNTIL_PARAGRAPH_END -> "段落の終わりまで";
             case UNTIL_PROGRAM_END -> "プログラムの終わりまで";
         }).append("の前方経路で ").append(String.join("・", dataItems))
-                .append(" を条件で参照しないものを検出する（")
-                .append(onEveryPath ? "すべての経路で検査を要する" : "いずれかの経路に検査があれば足りる")
+                .append(" を条件で参照しないものを検出します（")
+                .append(onEveryPath ? "すべての経路で検査を要します"
+                        : "いずれかの経路に検査があれば足ります")
                 .append("）。");
         return out.toString();
     }
@@ -184,8 +190,9 @@ public final class CustomRules {
                     CheckedAfterRule.Scope.UNTIL_NEXT_MATCHING_STATEMENT;
             case "untilParagraphEnd" -> CheckedAfterRule.Scope.UNTIL_PARAGRAPH_END;
             case "untilProgramEnd" -> CheckedAfterRule.Scope.UNTIL_PROGRAM_END;
-            default -> throw new IllegalArgumentException("match.scope に扱えない値がある: " + text
-                    + "(扱えるのは untilNextMatchingStatement・untilParagraphEnd・untilProgramEnd)");
+            default -> throw new IllegalArgumentException("match.scope に扱えない値があります: "
+                    + text + "（扱えるのは untilNextMatchingStatement・untilParagraphEnd・"
+                    + "untilProgramEnd）");
         };
     }
 
@@ -196,13 +203,14 @@ public final class CustomRules {
         } else if (value != null) {
             for (Object element : JsonReader.asArray(value)) {
                 if (!(element instanceof String text) || text.isBlank()) {
-                    throw new IllegalArgumentException("checks.dataItem は空でない文字列で書く");
+                    throw new IllegalArgumentException(
+                            "checks.dataItem は空でない文字列で書いてください");
                 }
                 items.add(text.strip());
             }
         }
         if (items.isEmpty()) {
-            throw new IllegalArgumentException("checks.dataItem が無い、または空である");
+            throw new IllegalArgumentException("checks.dataItem が指定されていないか、空です");
         }
         return items;
     }
@@ -229,8 +237,8 @@ public final class CustomRules {
         try {
             return Severity.valueOf(text.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("severity に扱えない値がある: " + text
-                    + "(扱えるのは HIGH・MEDIUM・LOW・ADVISORY)");
+            throw new IllegalArgumentException("severity に扱えない値があります: " + text
+                    + "（扱えるのは HIGH・MEDIUM・LOW・ADVISORY）");
         }
     }
 
@@ -242,17 +250,17 @@ public final class CustomRules {
         EnumSet<Command> commands = EnumSet.noneOf(Command.class);
         for (Object element : asArray(value, "commands")) {
             if (!(element instanceof String text)) {
-                throw new IllegalArgumentException("commands に扱えない値がある: " + element);
+                throw new IllegalArgumentException("commands に扱えない値があります: " + element);
             }
             try {
                 commands.add(Command.valueOf(text.strip().toUpperCase(Locale.ROOT)));
             } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("commands に扱えない値がある: " + text
-                        + "(扱えるのは LINT・SQL_LINT・REPORT・FIX・SCAN)");
+                throw new IllegalArgumentException("commands に扱えない値があります: " + text
+                        + "（扱えるのは LINT・SQL_LINT・REPORT・FIX・SCAN）");
             }
         }
         if (commands.isEmpty()) {
-            throw new IllegalArgumentException("commands が空である");
+            throw new IllegalArgumentException("commands が空です");
         }
         return commands;
     }
@@ -264,17 +272,17 @@ public final class CustomRules {
         EnumSet<AssetKind> targets = EnumSet.noneOf(AssetKind.class);
         for (Object element : asArray(value, "targets")) {
             if (!(element instanceof String text)) {
-                throw new IllegalArgumentException("targets に扱えない種別がある: " + element);
+                throw new IllegalArgumentException("targets に扱えない種別があります: " + element);
             }
             try {
                 targets.add(AssetKind.valueOf(text.strip().toUpperCase(Locale.ROOT)));
             } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("targets に扱えない種別がある: " + text
-                        + "(扱えるのは COBOL・COPYBOOK・BMS・JCL)");
+                throw new IllegalArgumentException("targets に扱えない種別があります: " + text
+                        + "（扱えるのは COBOL・COPYBOOK・BMS・JCL）");
             }
         }
         if (targets.isEmpty()) {
-            throw new IllegalArgumentException("targets が空である");
+            throw new IllegalArgumentException("targets が空です");
         }
         return targets;
     }
@@ -288,7 +296,7 @@ public final class CustomRules {
             return Pattern.compile(text, ignoreCase ? Pattern.CASE_INSENSITIVE : 0);
         } catch (PatternSyntaxException e) {
             throw new IllegalArgumentException(
-                    field + " の正規表現を解釈できない: " + e.getDescription());
+                    field + " の正規表現を解釈できません: " + e.getDescription());
         }
     }
 
@@ -296,26 +304,26 @@ public final class CustomRules {
         try {
             return JsonReader.asArray(value);
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException(field + " は配列で書く");
+            throw new IllegalArgumentException(field + " は配列で書いてください");
         }
     }
 
     private static Map<String, Object> requireObject(Map<String, Object> object, String field) {
         Object value = object.get(field);
         if (value == null) {
-            throw new IllegalArgumentException(field + " が無い");
+            throw new IllegalArgumentException(field + " が指定されていません");
         }
         try {
             return JsonReader.asObject(value);
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException(field + " はオブジェクトで書く");
+            throw new IllegalArgumentException(field + " はオブジェクトで書いてください");
         }
     }
 
     private static String requireString(Map<String, Object> object, String field) {
         Object value = object.get(field);
         if (!(value instanceof String text) || text.isBlank()) {
-            throw new IllegalArgumentException(field + " が無い、または空である");
+            throw new IllegalArgumentException(field + " が指定されていないか、空です");
         }
         return text.strip();
     }
@@ -323,7 +331,7 @@ public final class CustomRules {
     private static List<String> requireStrings(Map<String, Object> object, String field) {
         List<String> values = optionalStrings(object, field);
         if (values.isEmpty()) {
-            throw new IllegalArgumentException(field + " が無い、または空である");
+            throw new IllegalArgumentException(field + " が指定されていないか、空です");
         }
         return values;
     }
@@ -339,7 +347,8 @@ public final class CustomRules {
         List<String> values = new ArrayList<>();
         for (Object element : asArray(value, field)) {
             if (!(element instanceof String text) || text.isBlank()) {
-                throw new IllegalArgumentException(field + " は空でない文字列の配列で書く");
+                throw new IllegalArgumentException(
+                        field + " は空でない文字列の配列で書いてください");
             }
             values.add(text.strip());
         }
@@ -353,7 +362,7 @@ public final class CustomRules {
             return fallback;
         }
         if (!(value instanceof String text)) {
-            throw new IllegalArgumentException(field + " は文字列で書く");
+            throw new IllegalArgumentException(field + " は文字列で書いてください");
         }
         return text.isBlank() ? fallback : text.strip();
     }
@@ -364,7 +373,7 @@ public final class CustomRules {
             return false;
         }
         if (!(value instanceof Boolean flag)) {
-            throw new IllegalArgumentException(field + " は true か false で書く");
+            throw new IllegalArgumentException(field + " は true か false で書いてください");
         }
         return flag;
     }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useState, type ReactElement, type ReactNode } from "react";
 import { text } from "../../i18n/text";
 import { artifactItems, useProject } from "../../state/projectStore";
 import { useSettings } from "../../state/settingsStore";
@@ -8,18 +8,14 @@ import {
   useWorkbenchDispatch,
 } from "../../state/workbenchStore";
 import {
-  ALL,
-  fileNames,
   filterFindings,
+  hiddenByThreshold,
   initialFindingFilter,
   mergeFindings,
-  ruleIds,
-  thresholdHides,
   type FindingFilter,
   type FindingRow,
   type FindingSort,
 } from "../../model/findings";
-import { ruleOf } from "../../model/ruleIndex";
 import { SEVERITIES, type Severity } from "../../model/severity";
 
 /** The program a finding's file stands for: the file name without its folders and extension. */
@@ -29,12 +25,28 @@ function programNameOf(file: string): string {
   return dot <= 0 ? name : name.slice(0, dot);
 }
 
+/** The codicon that stands for a severity, in place of the word the column no longer has room for. */
+const SEVERITY_ICON: Readonly<Record<Severity, string>> = {
+  high: "error",
+  medium: "warning",
+  low: "info",
+  warning: "circle-outline",
+};
+
+/**
+ * How each sortable column reads when it is the one in force. Severity runs worst first, so its head
+ * is descending; the other two run from the top of the alphabet.
+ */
+const SORT_ORDER: Readonly<Record<FindingSort, "ascending" | "descending">> = {
+  severity: "descending",
+  rule: "ascending",
+  file: "ascending",
+};
+
 export interface ProblemsProps {
   onOpenAsset: (path: string, line: number | null) => void;
-  /** Opens the fix diff for one asset. Absent in the side bar, which has no room for the detail. */
+  /** Opens the fix diff for one asset. */
   onShowFix?: (path: string) => void;
-  /** The side-bar rendering, which drops the filter row and the detail for want of width. */
-  compact?: boolean;
 }
 
 interface DetailProps {
@@ -47,6 +59,10 @@ interface DetailProps {
  * The selected finding, read in full: the engine's sentence, the lines it is about, why the rule
  * exists and how to fix it. Nothing here is authored by the GUI; every string comes from the
  * engine's finding or its rule catalog entry.
+ *
+ * The fix action, where there is one, sits above the message because it is the one thing worth
+ * doing before reading further. The rule-explanation action follows the message instead of leading
+ * it, since the table row above already carries the severity and the rule.
  */
 function Detail({ row, onOpenAsset, onShowFix }: DetailProps): ReactElement {
   const project = useProject();
@@ -62,21 +78,34 @@ function Detail({ row, onOpenAsset, onShowFix }: DetailProps): ReactElement {
       aria-label={text.problems.title}
       data-testid="problem-detail"
     >
-      <header className="ci-problems__detail-head">
-        <span className={`ci-severity ci-severity--${row.severity}`}>
-          {text.severity[row.severity]}
-        </span>
-        <span className="ci-problems__detail-rule">
-          {finding.ruleId} {row.ruleName}
-        </span>
-      </header>
+      {row.hasFix && onShowFix !== undefined ? (
+        <div className="ci-problems__detail-actions">
+          <button
+            type="button"
+            className="ci-button ci-button--primary"
+            onClick={() => onShowFix(finding.file)}
+            data-testid="problem-detail-fix"
+          >
+            {text.problems.showFix}
+          </button>
+        </div>
+      ) : null}
       <p className="ci-problems__detail-message">{finding.message}</p>
+      <div className="ci-problems__detail-actions ci-problems__detail-section">
+        <button
+          type="button"
+          className="ci-button"
+          onClick={() =>
+            dispatch({ type: "OPEN_TAB", tab: ruleTab(finding.ruleId, row.ruleName) })
+          }
+        >
+          {text.problems.detailRule}
+        </button>
+      </div>
       {related.length > 0 ? (
         <section className="ci-problems__detail-section">
-          <h3 className="ci-problems__detail-label">
-            {text.problems.detailRelated}
-          </h3>
-          <ol className="ci-problems__related">
+          {/* The lines carry their own labels; only a screen reader needs the list named. */}
+          <ol className="ci-problems__related" aria-label={text.problems.detailRelated}>
             {related.map((place, index) => (
               <li key={index}>
                 <button
@@ -111,27 +140,6 @@ function Detail({ row, onOpenAsset, onShowFix }: DetailProps): ReactElement {
           <p className="ci-problems__detail-prose">{entry.remedy}</p>
         </section>
       )}
-      <div className="ci-problems__detail-actions">
-        {row.hasFix && onShowFix !== undefined ? (
-          <button
-            type="button"
-            className="ci-button ci-button--primary"
-            onClick={() => onShowFix(finding.file)}
-            data-testid="problem-detail-fix"
-          >
-            {text.problems.showFix}
-          </button>
-        ) : null}
-        <button
-          type="button"
-          className="ci-button"
-          onClick={() =>
-            dispatch({ type: "OPEN_TAB", tab: ruleTab(finding.ruleId) })
-          }
-        >
-          {text.problems.detailRule}
-        </button>
-      </div>
     </aside>
   );
 }
@@ -143,11 +151,7 @@ function Detail({ row, onOpenAsset, onShowFix }: DetailProps): ReactElement {
  * The five states — empty, loading, results, no match and error — are all reachable, and a failed
  * analysis is never shown as "no findings".
  */
-export function Problems({
-  onOpenAsset,
-  onShowFix,
-  compact = false,
-}: ProblemsProps): ReactElement {
+export function Problems({ onOpenAsset, onShowFix }: ProblemsProps): ReactElement {
   const project = useProject();
   const settings = useSettings();
   const dispatch = useWorkbenchDispatch();
@@ -174,6 +178,11 @@ export function Problems({
     [merged, project.rules, effective],
   );
 
+  const hidden = useMemo(
+    () => hiddenByThreshold(merged, project.rules, settings.severityThreshold),
+    [merged, project.rules, settings.severityThreshold],
+  );
+
   const selected = rows.find((row) => row.key === selectedKey) ?? null;
   // A selection that filtering or a re-run removed is dropped rather than shown stale.
   useEffect(() => {
@@ -187,6 +196,20 @@ export function Problems({
     setSelectedKey(row.key);
     onOpenAsset(row.finding.file, row.finding.startLine);
   };
+
+  /** A column head that sets the order. Only the head in force carries aria-sort and its marker. */
+  const sortHead = (sort: FindingSort, label: ReactNode): ReactElement => (
+    <th scope="col" aria-sort={filter.sort === sort ? SORT_ORDER[sort] : undefined}>
+      <button
+        type="button"
+        className="ci-problems__sort"
+        onClick={() => update({ sort })}
+        data-testid={`problems-sort-${sort}`}
+      >
+        {label}
+      </button>
+    </th>
+  );
 
   if (project.mode === "running" && project.findings.status === "none") {
     return <p className="ci-problems__state">{text.problems.loading}</p>;
@@ -203,19 +226,26 @@ export function Problems({
     project.findings.status === "none" &&
     project.sqlFindings.status === "none"
   ) {
-    return (
-      <p className="ci-problems__state">
-        {project.inputDir === null
-          ? text.problems.emptyNoFolder
-          : text.problems.empty}
-      </p>
+    // With no folder the panel says nothing at all; the welcome view carries that state alone.
+    return project.inputDir === null ? (
+      <div className="ci-problems" />
+    ) : (
+      <p className="ci-problems__state">{text.empty.notAnalysed}</p>
     );
   }
 
   return (
-    <div className={`ci-problems${compact ? " ci-problems--compact" : ""}`}>
-      {compact ? null : (
-        <div className="ci-problems__filters">
+    <div className="ci-problems">
+      <div className="ci-problems__filters">
+        <div className="ci-problems__filter">
+          <input
+            type="search"
+            placeholder={text.problems.search}
+            aria-label={text.problems.searchLabel}
+            value={filter.text}
+            onChange={(event) => update({ text: event.target.value })}
+            data-testid="problems-search"
+          />
           <div
             className="ci-chips"
             role="group"
@@ -237,65 +267,17 @@ export function Problems({
                 }
                 data-testid={`severity-chip-${severity}`}
               >
+                {/* The rows show the glyph alone, so the chip is where the glyph meets its word. */}
+                <span className={`codicon codicon-${SEVERITY_ICON[severity]}`} aria-hidden="true" />
                 {text.severity[severity]}
               </button>
             ))}
           </div>
-          <input
-            type="search"
-            className="ci-input"
-            placeholder={text.problems.search}
-            aria-label={text.problems.searchLabel}
-            value={filter.text}
-            onChange={(event) => update({ text: event.target.value })}
-            data-testid="problems-search"
-          />
-          <select
-            className="ci-select"
-            aria-label={text.problems.columnRule}
-            value={filter.rule}
-            onChange={(event) => update({ rule: event.target.value })}
-            data-testid="problems-rule-filter"
-          >
-            <option value={ALL}>{text.problems.allRules}</option>
-            {ruleIds(merged).map((id) => (
-              <option key={id} value={id}>
-                {id} {ruleOf(project.rules, id).name}
-              </option>
-            ))}
-          </select>
-          <select
-            className="ci-select"
-            aria-label={text.problems.columnFile}
-            value={filter.file}
-            onChange={(event) => update({ file: event.target.value })}
-            data-testid="problems-file-filter"
-          >
-            <option value={ALL}>{text.problems.allFiles}</option>
-            {fileNames(merged).map((file) => (
-              <option key={file} value={file}>
-                {file}
-              </option>
-            ))}
-          </select>
-          <select
-            className="ci-select"
-            aria-label={text.problems.sortLabel}
-            value={filter.sort}
-            onChange={(event) =>
-              update({ sort: event.target.value as FindingSort })
-            }
-            data-testid="problems-sort"
-          >
-            <option value="severity">{text.problems.sortSeverity}</option>
-            <option value="file">{text.problems.sortFile}</option>
-            <option value="rule">{text.problems.sortRule}</option>
-          </select>
         </div>
-      )}
+      </div>
 
-      {thresholdHides(settings.severityThreshold) ? (
-        <p className="ci-problems__note">{text.problems.thresholdNote}</p>
+      {hidden > 0 ? (
+        <p className="ci-problems__note">{text.problems.hidden(hidden)}</p>
       ) : null}
 
       {rows.length === 0 ? (
@@ -311,10 +293,10 @@ export function Problems({
               </caption>
               <thead>
                 <tr>
-                  <th scope="col">{text.problems.columnSeverity}</th>
-                  <th scope="col">{text.problems.columnRule}</th>
+                  {sortHead("severity", text.problems.columnSeverity)}
+                  {sortHead("rule", text.problems.columnRule)}
                   <th scope="col">{text.problems.columnMessage}</th>
-                  <th scope="col">{text.problems.columnFile}</th>
+                  {sortHead("file", text.problems.columnFile)}
                   <th scope="col">{text.problems.columnLine}</th>
                 </tr>
               </thead>
@@ -337,18 +319,25 @@ export function Problems({
                     <td>
                       <span
                         className={`ci-severity ci-severity--${row.severity}`}
+                        title={text.severity[row.severity]}
                       >
-                        {text.severity[row.severity]}
+                        <span
+                          className={`codicon codicon-${SEVERITY_ICON[row.severity]}`}
+                          aria-hidden="true"
+                        />
+                        <span className="ci-visually-hidden">
+                          {text.severity[row.severity]}
+                        </span>
                       </span>
                     </td>
-                    <td className="ci-problems__rule">
-                      {row.finding.ruleId} {row.ruleName}
+                    <td className="ci-problems__rule" title={`${row.finding.ruleId} ${row.ruleName}`}>
+                      {row.finding.ruleId}
                     </td>
                     <td className="ci-problems__message">
                       {row.finding.message}
                     </td>
                     <td className="ci-problems__file">
-                      {row.finding.file}
+                      <span className="ci-problems__file-path">{row.finding.file}</span>
                       <button
                         type="button"
                         className="ci-problems__graph"
@@ -380,9 +369,9 @@ export function Problems({
               </tbody>
             </table>
           </div>
-          {compact ? null : selected === null ? (
+          {selected === null ? (
             <p className="ci-problems__detail ci-problems__state">
-              {text.problems.detailHint}
+              {text.problems.selectOne}
             </p>
           ) : (
             <Detail

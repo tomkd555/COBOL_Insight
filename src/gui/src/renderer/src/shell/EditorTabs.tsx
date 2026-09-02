@@ -1,6 +1,12 @@
 import { useEffect, useRef, type KeyboardEvent, type ReactElement } from "react";
 import { text } from "../i18n/text";
-import { isTabDirty, useWorkbench, useWorkbenchDispatch } from "../state/workbenchStore";
+import {
+  CUSTOM_RULES_TAB_ID,
+  isTabDirty,
+  useWorkbench,
+  useWorkbenchDispatch,
+} from "../state/workbenchStore";
+import { isCustomDirty, useRulesState } from "../state/rulesStore";
 
 export interface EditorTabsProps {
   /** Closing goes through the shell, which asks before discarding unsaved edits. */
@@ -14,7 +20,15 @@ export interface EditorTabsProps {
 export function EditorTabs({ onRequestClose }: EditorTabsProps): ReactElement {
   const workbench = useWorkbench();
   const dispatch = useWorkbenchDispatch();
+  const rules = useRulesState();
   const stripRef = useRef<HTMLDivElement | null>(null);
+
+  /**
+   * Whether the tab holds unsaved work. Source tabs keep theirs in the workbench store; the
+   * custom-rule editor keeps its draft in the rules store, and it earns the same mark.
+   */
+  const dirtyTab = (id: string): boolean =>
+    isTabDirty(workbench, id) || (id === CUSTOM_RULES_TAB_ID && isCustomDirty(rules));
 
   // A strip wider than the group scrolls; the selected tab is brought into view when it changes.
   useEffect(() => {
@@ -50,7 +64,7 @@ export function EditorTabs({ onRequestClose }: EditorTabsProps): ReactElement {
     >
       {workbench.tabs.map((tab) => {
         const selected = tab.id === workbench.activeTabId;
-        const dirty = isTabDirty(workbench, tab.id);
+        const dirty = dirtyTab(tab.id);
         return (
           <div
             key={tab.id}

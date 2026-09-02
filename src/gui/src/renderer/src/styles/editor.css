@@ -26,34 +26,6 @@
   font-size: var(--ci-size-sm);
 }
 
-.ci-source__body {
-  flex: 1 1 auto;
-  margin: 0;
-  padding: var(--ci-space-2) 0;
-  overflow: auto;
-  font-family: var(--ci-font-code);
-  font-size: var(--ci-size-md);
-  /* Fixed-format COBOL depends on column positions, so lines are never wrapped. */
-  white-space: pre;
-}
-
-.ci-source__line {
-  display: block;
-}
-
-.ci-source__line--target {
-  background: var(--ci-bg-selected);
-}
-
-.ci-source__number {
-  display: inline-block;
-  width: 5ch;
-  margin-inline-end: var(--ci-space-2);
-  color: var(--color-muted-foreground);
-  text-align: right;
-  user-select: none;
-}
-
 .ci-source__control {
   display: flex;
   align-items: center;
@@ -119,10 +91,10 @@
   background: color-mix(in oklch, var(--color-muted-foreground) 18%, transparent);
 }
 
-/* A background only: the text colour stays Monaco's token colour. */
+/* A background only: the text colour stays Monaco's token colour. The band is what sets the area
+   apart; an opacity on top of it would dim the very text the reader is there to read. */
 .ci-code__identification {
-  background: color-mix(in oklch, var(--color-muted-foreground) 14%, transparent);
-  opacity: 0.6;
+  background: color-mix(in oklch, var(--color-muted-foreground) 22%, transparent);
 }
 
 /* Past column 80 the fixed format gives the bytes no meaning at all. */
@@ -180,9 +152,16 @@
   border-top: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
   border-left: 2px solid var(--color-primary);
-  background: color-mix(in oklch, var(--color-foreground) 12%, var(--color-surface));
+  /* Set apart from the code by the same amount in both themes. One mix cannot do that: the surface it
+     is mixed into sits above the editor's ground in light and below it in dark, so the fraction is
+     per theme and the two land within a hundredth of 1.3:1 against the code around them. */
+  background: color-mix(in oklch, var(--color-foreground) 14%, var(--color-surface));
   font-family: var(--ci-font-code);
   font-size: var(--ci-size-sm);
+}
+
+.dark .ci-copy {
+  background: color-mix(in oklch, var(--color-foreground) 8%, var(--color-surface));
 }
 
 .ci-copy__header {
@@ -217,11 +196,9 @@
   outline-offset: 1px;
 }
 
-.ci-copy__name {
-  color: var(--color-muted-foreground);
-}
-
 .ci-copy__path {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

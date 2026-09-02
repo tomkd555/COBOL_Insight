@@ -30,14 +30,15 @@ import java.util.Set;
  */
 public final class PerformSingleParagraphRule implements Rule {
 
-    private static final RuleMeta META = RuleMeta.named("R008", "THRU句のないPERFORM文", "制御フロー")
-            .summary("THRU 句で終端を明示せず、単一の段落名だけを指定した PERFORM 文を検出する。")
+    private static final RuleMeta META = RuleMeta.named("R008", "THRU 句のない PERFORM 文", "制御フロー")
+            .summary("THRU 句で終端を明示せず、単一の段落名だけを指定した PERFORM 文を検出します。")
             .rationale("処理の追加で段落を分けたとき、範囲の終端が書かれていないため、"
-                    + "呼び出し側の直し漏れで新しい段落が実行されない。")
-            .detection("段落を対象とする PERFORM 文のうち THRU 句を持たないものを検出する。"
-                    + "節を対象とする PERFORM 文とインライン PERFORM 文は対象外とし、"
-                    + "段落と節の双方に同じ名前がある場合は検出を保留する。")
-            .remedy("PERFORM ... THRU ...-EXIT の形にし、範囲の終端を EXIT 段落で明示する。")
+                    + "呼び出し側の直し漏れで新しい段落が実行されません。")
+            .detection("段落を対象とする PERFORM 文のうち THRU 句を持たないものを検出します。"
+                    + "節を対象とする PERFORM 文とインライン PERFORM 文は対象外で、"
+                    + "段落と節の双方に同じ名前がある場合は検出を保留します。")
+            .remedy("PERFORM ... THRU ...-EXIT の形にし、範囲の終端を EXIT 段落で"
+                    + "明示してください。")
             .example("""
                     PERFORM CALC-TAX.
                     """, """
@@ -82,8 +83,7 @@ public final class PerformSingleParagraphRule implements Rule {
                     continue;
                 }
                 findings.add(Finding.of("R008", Severity.MEDIUM.toLevel(),
-                        "PERFORM 文が単一の段落名 " + perform.targetProcedure()
-                                + " のみを指定し、THRU 句で終端を明示していない。",
+                        perform.targetProcedure() + " を PERFORM する文に THRU 句がありません。",
                         perform.range().start()));
             }
         }

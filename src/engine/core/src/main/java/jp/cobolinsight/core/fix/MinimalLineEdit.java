@@ -168,7 +168,7 @@ public final class MinimalLineEdit {
         if (original.encodingInfo().codePage().isEbcdic()
                 && original.offsetTable().byteOffsetOfChar(0) > 0) {
             throw new IllegalArgumentException(
-                    "本文がシフトコードから始まる EBCDIC ソースは、1行目を含む編集を書き戻せない");
+                    "本文がシフトコードから始まる EBCDIC の原始プログラムでは、1行目を含む変更を書き戻せません");
         }
     }
 
@@ -195,11 +195,11 @@ public final class MinimalLineEdit {
             char c = replacement.charAt(i);
             if (!encoder.canEncode(c)) {
                 throw new IllegalArgumentException("コードページ " + codePage.charsetName()
-                        + " で符号化できない文字が編集後の本文にある: '" + c
-                        + "' (U+" + String.format("%04X", (int) c) + ")");
+                        + " で符号化できない文字が変更後の本文にあります: '" + c
+                        + "'（U+" + String.format("%04X", (int) c) + "）");
             }
         }
         throw new IllegalArgumentException(
-                "コードページ " + codePage.charsetName() + " で符号化できない文字が編集後の本文にある");
+                "コードページ " + codePage.charsetName() + " で符号化できない文字が変更後の本文にあります");
     }
 }

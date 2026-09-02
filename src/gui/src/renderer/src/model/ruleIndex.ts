@@ -5,7 +5,11 @@
  */
 
 import type { RuleCatalogEntry } from "../../../shared/ipc";
+import { text } from "../i18n/text";
 import { severityOf, type Severity } from "./severity";
+
+/** The rule id the engine uses for a parse failure; the catalog does not list it. */
+export const REPARSE_RULE_ID = "parse-failure";
 
 /** What a finding row needs about its rule. */
 export interface IndexedRule {
@@ -39,10 +43,17 @@ export function buildRuleIndex(entries: readonly RuleCatalogEntry[]): RuleIndex 
 
 /**
  * The rule for an id. A finding whose rule the catalog does not know still has to be shown, so it
- * falls back to a medium-severity entry whose name is the id itself.
+ * falls back to a medium-severity entry whose name is the id itself — except for the write-back's
+ * own verification, which is not a rule the engine lists and is named for what it is.
  */
 export function ruleOf(index: RuleIndex, id: string): IndexedRule {
   return (
-    index.byId.get(id) ?? { id, name: id, category: "", severity: "medium", hasFix: false }
+    index.byId.get(id) ?? {
+      id,
+      name: id === REPARSE_RULE_ID ? text.source.save : id,
+      category: "",
+      severity: "medium",
+      hasFix: false,
+    }
   );
 }

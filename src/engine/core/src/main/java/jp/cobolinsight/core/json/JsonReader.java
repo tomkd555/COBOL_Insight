@@ -37,14 +37,14 @@ public final class JsonReader {
     /** Reads the entire JSON text as a single value. Rejects any extra characters at the end. */
     public static Object parse(String text) {
         if (text == null) {
-            throw new JsonParseException("JSONテキストが null である");
+            throw new JsonParseException("JSON テキストが null です");
         }
         JsonReader reader = new JsonReader(text);
         reader.skipWhitespace();
         Object value = reader.readValue();
         reader.skipWhitespace();
         if (reader.pos < text.length()) {
-            throw reader.error("値の後に余分な文字がある");
+            throw reader.error("値の後に余分な文字があります");
         }
         return value;
     }
@@ -53,7 +53,7 @@ public final class JsonReader {
     @SuppressWarnings("unchecked")
     public static Map<String, Object> asObject(Object value) {
         if (!(value instanceof Map<?, ?> map)) {
-            throw new JsonParseException("オブジェクトを期待したが " + typeNameOf(value) + " である");
+            throw new JsonParseException("オブジェクトではなく " + typeNameOf(value) + " です");
         }
         return (Map<String, Object>) map;
     }
@@ -62,7 +62,7 @@ public final class JsonReader {
     @SuppressWarnings("unchecked")
     public static List<Object> asArray(Object value) {
         if (!(value instanceof List<?> list)) {
-            throw new JsonParseException("配列を期待したが " + typeNameOf(value) + " である");
+            throw new JsonParseException("配列ではなく " + typeNameOf(value) + " です");
         }
         return (List<Object>) list;
     }
@@ -88,7 +88,7 @@ public final class JsonReader {
 
     private Object readValue() {
         if (pos >= text.length()) {
-            throw error("値が無いまま入力が尽きた");
+            throw error("値がないまま入力が終わっています");
         }
         char c = text.charAt(pos);
         return switch (c) {
@@ -113,7 +113,7 @@ public final class JsonReader {
         while (true) {
             skipWhitespace();
             if (peek() != '"') {
-                throw error("オブジェクトのキーは二重引用符で囲む");
+                throw error("オブジェクトのキーは二重引用符で囲んでください");
             }
             String key = readString();
             skipWhitespace();
@@ -126,7 +126,7 @@ public final class JsonReader {
                 return object;
             }
             if (c != ',') {
-                throw error("オブジェクトの要素の区切りが不正である");
+                throw error("オブジェクトの要素の区切りが正しくありません");
             }
         }
     }
@@ -148,7 +148,7 @@ public final class JsonReader {
                 return array;
             }
             if (c != ',') {
-                throw error("配列の要素の区切りが不正である");
+                throw error("配列の要素の区切りが正しくありません");
             }
         }
     }
@@ -163,7 +163,7 @@ public final class JsonReader {
             }
             if (c != '\\') {
                 if (c < 0x20) {
-                    throw error("文字列に生の制御文字がある");
+                    throw error("文字列に生の制御文字があります");
                 }
                 out.append(c);
                 continue;
@@ -179,21 +179,21 @@ public final class JsonReader {
                 case 'r' -> out.append('\r');
                 case 't' -> out.append('\t');
                 case 'u' -> out.append(readUnicodeEscape());
-                default -> throw error("扱えないエスケープ \\" + escaped + " がある");
+                default -> throw error("扱えないエスケープ \\" + escaped + " があります");
             }
         }
     }
 
     private char readUnicodeEscape() {
         if (pos + 4 > text.length()) {
-            throw error("\\u に続く4桁が足りない");
+            throw error("\\u に続く 4 文字が足りません");
         }
         String digits = text.substring(pos, pos + 4);
         pos += 4;
         try {
             return (char) Integer.parseInt(digits, 16);
         } catch (NumberFormatException e) {
-            throw error("\\u に続く4桁が16進数でない: " + digits);
+            throw error("\\u に続く 4 文字が 16 進数ではありません: " + digits);
         }
     }
 
@@ -216,18 +216,18 @@ public final class JsonReader {
         }
         String token = text.substring(start, pos);
         if (token.isEmpty() || token.equals("-")) {
-            throw error("数値として読めない");
+            throw error("数値として読めません");
         }
         try {
             return fractional ? (Object) Double.parseDouble(token) : (Object) Long.parseLong(token);
         } catch (NumberFormatException e) {
-            throw error("数値として読めない: " + token);
+            throw error("数値として読めません: " + token);
         }
     }
 
     private Object readKeyword(String keyword, Object value) {
         if (!text.startsWith(keyword, pos)) {
-            throw error("値として読めない");
+            throw error("値として読めません");
         }
         pos += keyword.length();
         return value;
@@ -246,7 +246,7 @@ public final class JsonReader {
 
     private char peek() {
         if (pos >= text.length()) {
-            throw error("入力が尽きた");
+            throw error("入力が終わっています");
         }
         return text.charAt(pos);
     }
@@ -260,12 +260,12 @@ public final class JsonReader {
     private void expect(char expected) {
         char c = next();
         if (c != expected) {
-            throw error("'" + expected + "' を期待したが '" + c + "' である");
+            throw error("'" + expected + "' ではなく '" + c + "' です");
         }
     }
 
     /** The position is given as a 0-based character offset. There is no line number because the target is a small configuration file. */
     private JsonParseException error(String message) {
-        return new JsonParseException(message + " (位置 " + pos + ")");
+        return new JsonParseException(message + "（位置 " + pos + "）");
     }
 }

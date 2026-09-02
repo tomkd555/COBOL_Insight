@@ -10,7 +10,7 @@
  */
 
 import type { SarifFinding, SaveReparseError } from "../../../shared/ipc";
-import { ruleOf, type RuleIndex } from "./ruleIndex";
+import { REPARSE_RULE_ID, ruleOf, type RuleIndex } from "./ruleIndex";
 import type { Severity } from "./severity";
 import { byteLengthOf, OVERFLOW_COLUMN, type EditorCodepage } from "./columns";
 
@@ -29,9 +29,6 @@ export const MARKER_SEVERITY = { hint: 1, info: 2, warning: 4, error: 8 } as con
 
 /** A column past the end of any line. Monaco clamps it to the line's real end. */
 const LINE_END_COLUMN = 10_000;
-
-/** The rule id the engine uses for a parse failure; the catalog resolves it to a name. */
-export const REPARSE_RULE_ID = "parse-failure";
 
 /** What `monaco.editor.setModelMarkers` needs, as plain data. */
 export interface EditorMarker {

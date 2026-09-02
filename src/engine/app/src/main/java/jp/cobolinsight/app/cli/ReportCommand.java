@@ -1,6 +1,7 @@
 package jp.cobolinsight.app.cli;
 
 import jp.cobolinsight.app.pipeline.Paths;
+import jp.cobolinsight.core.pipeline.ExitCodes;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;

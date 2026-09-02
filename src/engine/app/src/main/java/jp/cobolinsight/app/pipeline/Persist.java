@@ -568,7 +568,7 @@ public final class Persist implements Step {
         for (Finding finding : findings) {
             Long sourceId = sourceIdByModelFile.get(finding.location().file());
             if (sourceId == null) {
-                System.err.println("警告: linker finding の対象ソースを特定できないため保存しない: "
+                System.err.println("警告: linker finding の対象の原始プログラムを特定できないため保存しません: "
                         + finding.location().file() + " (" + finding.ruleId() + ")");
                 continue;
             }

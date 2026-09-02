@@ -223,7 +223,8 @@ export function graphStylesheet(theme: ThemeName): cytoscape.StylesheetJsonBlock
         "border-style": "dashed",
         label: "data(label)",
         "font-family": CODE_FONT.fontFamily,
-        "font-size": 11,
+        // A node label may be a Japanese name, and 11px was the smallest type in the product.
+        "font-size": 12,
         "font-weight": "bold",
         color: dark ? "#e3e5ea" : "#2b2f38",
         "text-valign": "center",
@@ -231,7 +232,7 @@ export function graphStylesheet(theme: ThemeName): cytoscape.StylesheetJsonBlock
         "text-wrap": "ellipsis",
         "text-max-width": "150px",
         width: "label",
-        height: 34,
+        height: 36,
         padding: "8px",
       },
     },

@@ -4,7 +4,8 @@ import { useProject, useProjectDispatch } from "../../state/projectStore";
 
 /**
  * The run log. New lines are appended at the bottom and the view scrolls to follow them, so the
- * stage in progress stays in sight during a long analysis.
+ * stage in progress stays in sight during a long analysis. With no folder it stays empty: the
+ * welcome view is where that is said.
  */
 export function Output(): ReactElement {
   const project = useProject();
@@ -16,10 +17,10 @@ export function Output(): ReactElement {
   }, [project.runLog.length]);
 
   if (project.runLog.length === 0) {
-    return (
-      <p className="ci-output__state">
-        {project.inputDir === null ? text.output.emptyNoFolder : text.output.empty}
-      </p>
+    return project.inputDir === null ? (
+      <div className="ci-output" />
+    ) : (
+      <p className="ci-output__state">{text.empty.notAnalysed}</p>
     );
   }
 

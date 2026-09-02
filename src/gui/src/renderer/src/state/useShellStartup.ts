@@ -68,7 +68,11 @@ export function useShellStartup(notify: Notify): void {
           ruleErrors: catalog.ruleErrors,
         });
       })
-      .catch((error: unknown) => notify(errorMessage(error), true));
+      .catch((error: unknown) => {
+        // The rules view says so where the list would be; the toast alone would leave it loading.
+        projectDispatch({ type: "SET_RULES_ERROR", message: errorMessage(error) });
+        notify(errorMessage(error), true);
+      });
     return () => {
       cancelled = true;
     };

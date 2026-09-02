@@ -1,9 +1,9 @@
-import { useEffect, useState, type ReactElement } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from "react";
 import { text } from "../../i18n/text";
 import { api, errorMessage } from "../../api";
 import { CODEPAGES } from "../../../../shared/codepage";
 import { SEVERITIES, type Severity } from "../../model/severity";
-import { artifactSubdir } from "../../model/artifactPaths";
+import { artifactSubdir, insideAssetFolder } from "../../model/artifactPaths";
 import { useProject } from "../../state/projectStore";
 import {
   toAppSettings,
@@ -43,29 +43,35 @@ const THEME_LABEL: Record<ThemeChoice, string> = {
   light: text.settings.themeLight,
 };
 
-function same(left: Draft, right: Draft): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
+/** Enter in a text field applies it, the way leaving it does. */
+function blurOnEnter(event: KeyboardEvent<HTMLInputElement>): void {
+  if (event.key === "Enter") {
+    event.currentTarget.blur();
+  }
 }
 
 /**
- * The settings screen. Edits are held until they are saved, so a half-typed copybook path is not
- * handed to the next analysis.
+ * The settings screen. Every control applies as it is changed, as VS Code's own settings do, so the
+ * screen has no save button and no unsaved state. A text field applies when it is left (or on
+ * Enter), not on every keystroke: a path is not a value until it is typed out, and the file on disk
+ * is written once per change rather than once per character.
  *
- * A copybook path that is not a directory is reported but does not stop the save: the folder may be
- * about to be created, and refusing would lose every other setting on the screen along with it.
+ * A copybook path that is not a directory is reported but still applied: the folder may be about to
+ * be created. A fix output directory inside the asset folder is the one value that is refused — the
+ * write-out must not land among the originals — and the stored setting keeps its last value.
  */
 export function Settings({ notify }: SettingsEditorProps): ReactElement {
   const settings = useSettings();
   const dispatch = useSettingsDispatch();
   const project = useProject();
   const [draft, setDraft] = useState<Draft>(() => draftOf(settings));
-  const [saved, setSaved] = useState(false);
   const [missing, setMissing] = useState<readonly string[]>([]);
+  /** Whether a text field has been typed into since it was last applied. */
+  const typed = useRef(false);
 
   // The stored settings arrive after the first render; the screen takes them once they are in.
   useEffect(() => {
     setDraft(draftOf(settings));
-    setSaved(false);
     // Only the arrival of the stored settings resets the screen; later edits are the user's own.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.restored]);
@@ -89,39 +95,58 @@ export function Settings({ notify }: SettingsEditorProps): ReactElement {
     };
   }, [draft.copybookPaths]);
 
-  const edit = (patch: Partial<Draft>): void => {
-    setDraft((current) => ({ ...current, ...patch }));
-    setSaved(false);
+  // The write-out must not land among the originals, so a fix output directory inside the asset
+  // folder is refused: the field keeps what was typed and the stored setting keeps its last value.
+  const fixOutDirInside = insideAssetFolder(draft.fixOutDir, project.inputDir);
+
+  /** Applies a draft: the store takes it, and the file is written once. */
+  const commit = (next: Draft): void => {
+    const paths = next.copybookPaths.map((path) => path.trim()).filter((path) => path !== "");
+    const fixOutDir = insideAssetFolder(next.fixOutDir, project.inputDir)
+      ? settings.fixOutDir
+      : next.fixOutDir.trim();
+    dispatch({ type: "SET_THEME", theme: next.theme });
+    dispatch({ type: "SET_THRESHOLD", threshold: next.severityThreshold });
+    dispatch({ type: "SET_ENCODING", encoding: next.defaultEncoding });
+    dispatch({ type: "SET_COPYBOOK_PATHS", paths });
+    dispatch({ type: "SET_FIX_OUT_DIR", dir: fixOutDir });
+    api()
+      .writeSettings(toAppSettings({ ...settings, ...next, copybookPaths: paths, fixOutDir }))
+      .catch((error: unknown) => notify(errorMessage(error), true));
   };
 
-  const dirty = !same(draft, draftOf(settings));
+  /** A control that applies as it changes: the theme, the selects, the path list's buttons. */
+  const edit = (patch: Partial<Draft>): void => {
+    const next = { ...draft, ...patch };
+    setDraft(next);
+    commit(next);
+  };
 
-  const save = (): void => {
-    const paths = draft.copybookPaths.map((path) => path.trim()).filter((path) => path !== "");
-    dispatch({ type: "SET_THEME", theme: draft.theme });
-    dispatch({ type: "SET_THRESHOLD", threshold: draft.severityThreshold });
-    dispatch({ type: "SET_ENCODING", encoding: draft.defaultEncoding });
-    dispatch({ type: "SET_COPYBOOK_PATHS", paths });
-    dispatch({ type: "SET_FIX_OUT_DIR", dir: draft.fixOutDir.trim() });
-    api()
-      .writeSettings(
-        toAppSettings({
-          ...settings,
-          ...draft,
-          copybookPaths: paths,
-          fixOutDir: draft.fixOutDir.trim(),
-        }),
-      )
-      .then(() => {
-        setDraft((current) => ({ ...current, copybookPaths: paths, fixOutDir: current.fixOutDir.trim() }));
-        setSaved(true);
-      })
-      .catch((error: unknown) => notify(errorMessage(error), true));
+  /** A text field being typed into. It applies when it is left. */
+  const type = (patch: Partial<Draft>): void => {
+    typed.current = true;
+    setDraft({ ...draft, ...patch });
+  };
+
+  const leave = (): void => {
+    if (typed.current) {
+      typed.current = false;
+      commit(draft);
+    }
+  };
+
+  const browseFixOutDir = (): void => {
+    void api()
+      .selectFolder()
+      .then((dir) => {
+        if (dir !== null) {
+          edit({ fixOutDir: dir });
+        }
+      });
   };
 
   return (
     <div className="ci-settings" data-testid="settings">
-      <h2 className="ci-settings__title">{text.settings.title}</h2>
       <fieldset className="ci-form">
         <legend className="ci-form__legend">{text.settings.theme}</legend>
         <div className="ci-chips" role="radiogroup" aria-label={text.settings.theme}>
@@ -169,12 +194,14 @@ export function Settings({ notify }: SettingsEditorProps): ReactElement {
               placeholder={text.settings.copybookPlaceholder}
               aria-label={`${text.settings.copybookPaths} ${index + 1}`}
               onChange={(event) =>
-                edit({
+                type({
                   copybookPaths: draft.copybookPaths.map((current, at) =>
                     at === index ? event.target.value : current,
                   ),
                 })
               }
+              onBlur={leave}
+              onKeyDown={blurOnEnter}
               data-testid={`settings-copybook-${index}`}
             />
             <button
@@ -189,8 +216,9 @@ export function Settings({ notify }: SettingsEditorProps): ReactElement {
             >
               <span className="codicon codicon-trash" aria-hidden="true" />
             </button>
+            {/* A note, not an error: the folder may be about to be created, and the path applies. */}
             {missing.includes(path.trim()) ? (
-              <span className="ci-form__error">{text.settings.copybookMissing}</span>
+              <span className="ci-form__note">{text.settings.copybookMissing}</span>
             ) : null}
           </div>
         ))}
@@ -218,39 +246,34 @@ export function Settings({ notify }: SettingsEditorProps): ReactElement {
             </option>
           ))}
         </select>
-        <span className="ci-form__note">{text.settings.thresholdNote}</span>
       </label>
 
       <label className="ci-form__field">
         <span className="ci-form__label">{text.settings.fixOutDir}</span>
-        <input
-          className="ci-input"
-          value={draft.fixOutDir}
-          // Left empty, the write-out goes beside the project file; the placeholder names where.
-          placeholder={artifactSubdir(project.outputPaths?.db, "fix")}
-          onChange={(event) => edit({ fixOutDir: event.target.value })}
-          data-testid="settings-fix-outdir"
-        />
-        <span className="ci-form__note">{text.settings.fixOutDirNote}</span>
-      </label>
-
-      <div className="ci-settings__actions">
-        <button
-          type="button"
-          className="ci-button ci-button--primary"
-          disabled={!dirty}
-          onClick={save}
-          data-testid="settings-save"
-        >
-          {text.settings.save}
-        </button>
-        {dirty ? <span className="ci-settings__state">{text.settings.dirty}</span> : null}
-        {saved && !dirty ? (
-          <span className="ci-settings__state" role="status">
-            {text.settings.saved}
-          </span>
+        <div className="ci-settings__path">
+          <input
+            className="ci-input"
+            value={draft.fixOutDir}
+            // Left empty, the write-out goes beside the project file; the placeholder names where.
+            placeholder={artifactSubdir(project.outputPaths?.db, "fix")}
+            onChange={(event) => type({ fixOutDir: event.target.value })}
+            onBlur={leave}
+            onKeyDown={blurOnEnter}
+            data-testid="settings-fix-outdir"
+          />
+          <button
+            type="button"
+            className="ci-button"
+            onClick={browseFixOutDir}
+            data-testid="settings-fix-outdir-browse"
+          >
+            {text.settings.browse}
+          </button>
+        </div>
+        {fixOutDirInside ? (
+          <span className="ci-form__error">{text.settings.fixOutDirInside}</span>
         ) : null}
-      </div>
+      </label>
     </div>
   );
 }

@@ -39,7 +39,7 @@ final class RuleOptions {
     RuleSet reportingRuleSet() {
         RuleSet ruleSet = ruleSet();
         for (String error : ruleSet.errors()) {
-            System.err.println("警告: ルール設定: " + error);
+            System.err.println("警告: " + error);
         }
         return ruleSet;
     }

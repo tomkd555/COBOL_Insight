@@ -63,7 +63,7 @@ public record RulesFile(Map<String, RuleOverride> overrides, List<Rule> custom,
         try {
             json = Files.readString(file, StandardCharsets.UTF_8);
         } catch (IOException e) {
-            throw new IllegalArgumentException(file + " を読めない: " + e.getMessage());
+            throw new IllegalArgumentException(file + " を読み込めませんでした");
         }
         return parse(json, file.toString());
     }
@@ -74,12 +74,13 @@ public record RulesFile(Map<String, RuleOverride> overrides, List<Rule> custom,
         try {
             root = JsonReader.asObject(JsonReader.parse(json));
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException(sourceLabel + ": " + e.getMessage());
+            throw new IllegalArgumentException(sourceLabel + " を JSON として解釈できません。"
+                    + e.getMessage());
         }
         Object version = root.get("version");
         if (!Long.valueOf(SUPPORTED_VERSION).equals(version)) {
             throw new IllegalArgumentException(sourceLabel + ": version は " + SUPPORTED_VERSION
-                    + " のみ扱える(指定値 " + version + ")");
+                    + " のみ扱えます（指定値 " + version + "）");
         }
         List<String> errors = new ArrayList<>();
         return new RulesFile(readOverrides(root.get("rules"), sourceLabel, errors),
@@ -95,7 +96,7 @@ public record RulesFile(Map<String, RuleOverride> overrides, List<Rule> custom,
         try {
             entries = JsonReader.asObject(value);
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException(sourceLabel + ": rules はオブジェクトで書く");
+            throw new IllegalArgumentException(sourceLabel + ": rules はオブジェクトで書いてください");
         }
         Map<String, RuleOverride> overrides = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : entries.entrySet()) {
@@ -103,7 +104,7 @@ public record RulesFile(Map<String, RuleOverride> overrides, List<Rule> custom,
             try {
                 overrides.put(entry.getKey(), toOverride(JsonReader.asObject(entry.getValue())));
             } catch (IllegalArgumentException e) {
-                errors.add(where + ": " + e.getMessage());
+                errors.add(where + ": " + e.getMessage() + "。この指定は無視します。");
             }
         }
         return overrides;
@@ -112,19 +113,19 @@ public record RulesFile(Map<String, RuleOverride> overrides, List<Rule> custom,
     private static RuleOverride toOverride(Map<String, Object> object) {
         Object enabled = object.get("enabled");
         if (enabled != null && !(enabled instanceof Boolean)) {
-            throw new IllegalArgumentException("enabled は true か false で書く");
+            throw new IllegalArgumentException("enabled は true か false で書いてください");
         }
         Object severity = object.get("severity");
         if (severity != null && !(severity instanceof String)) {
-            throw new IllegalArgumentException("severity は文字列で書く");
+            throw new IllegalArgumentException("severity は文字列で書いてください");
         }
         Severity parsed = null;
         if (severity != null) {
             try {
                 parsed = Severity.valueOf(((String) severity).strip().toUpperCase(Locale.ROOT));
             } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("severity に扱えない値がある: " + severity
-                        + "(扱えるのは HIGH・MEDIUM・LOW・ADVISORY)");
+                throw new IllegalArgumentException("severity に扱えない値があります: " + severity
+                        + "（扱えるのは HIGH・MEDIUM・LOW・ADVISORY）");
             }
         }
         return new RuleOverride((Boolean) enabled, parsed);
@@ -138,7 +139,7 @@ public record RulesFile(Map<String, RuleOverride> overrides, List<Rule> custom,
         try {
             elements = JsonReader.asArray(value);
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException(sourceLabel + ": custom は配列で書く");
+            throw new IllegalArgumentException(sourceLabel + ": custom は配列で書いてください");
         }
         List<Rule> rules = new ArrayList<>();
         Set<String> seenIds = new HashSet<>();
@@ -147,12 +148,13 @@ public record RulesFile(Map<String, RuleOverride> overrides, List<Rule> custom,
             try {
                 Rule rule = CustomRules.of(JsonReader.asObject(elements.get(index)));
                 if (!seenIds.add(rule.meta().id())) {
-                    errors.add(where + ": ID が重複している: " + rule.meta().id());
+                    errors.add(where + ": ID " + rule.meta().id()
+                            + " は他の利用者定義ルールと重複しています。このルールは読み込みません。");
                     continue;
                 }
                 rules.add(rule);
             } catch (IllegalArgumentException e) {
-                errors.add(where + ": " + e.getMessage());
+                errors.add(where + ": " + e.getMessage() + "。このルールは読み込みません。");
             }
         }
         return rules;

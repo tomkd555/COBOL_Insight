@@ -28,14 +28,15 @@ import java.util.Optional;
 public final class GoToStructureDeviationRule implements Rule {
 
     private static final RuleMeta META =
-            RuleMeta.named("R009", "節をまたぐGO TO文", "制御フロー")
-                    .summary("節をまたぐ GO TO 文を検出する。")
+            RuleMeta.named("R009", "節をまたぐ GO TO 文", "制御フロー")
+                    .summary("節をまたぐ GO TO 文を検出します。")
                     .rationale("節で処理を区切る構成が崩れ、"
-                            + "制御の流れを節の内側だけでは追えなくなる。")
-                    .detection("GO TO 文を含む段落の節と、制御を移す先の段落の節が異なるものを検出する。"
-                            + "同一節内の GO TO 文と、PERFORM THRU の範囲への割り込み（R007 が扱う）は"
-                            + "対象外とする。")
-                    .remedy("節の外に出る分岐を、PERFORM 文の呼び分けか条件分岐に置き換える。")
+                            + "制御の流れを節の内側だけでは追えなくなります。")
+                    .detection("GO TO 文を含む段落の節と、制御を移す先の段落の節が異なるものを"
+                            + "検出します。同一節内の GO TO 文と、どの節にも属さない段落の"
+                            + "GO TO 文は対象外です。PERFORM THRU の範囲への割り込みは"
+                            + "R007 が扱います。")
+                    .remedy("節の外に出る分岐を、PERFORM 文の呼び分けか条件分岐に置き換えてください。")
                     .example("""
                             MAIN-SEC SECTION.
                                 GO TO ERROR-PARA.
@@ -83,9 +84,10 @@ public final class GoToStructureDeviationRule implements Rule {
                     }
                     if (!CfgSupport.upper(targetSection.get()).equals(fromSection)) {
                         findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                                "GO TO " + rawTarget + " は所属節 " + holder.sectionName().get()
-                                        + " から別の節 " + targetSection.get()
-                                        + " に制御を移し、節の構造から外れる。",
+                                "GO TO " + rawTarget + " が節をまたいでいます。節 "
+                                        + holder.sectionName().get() + " から節 "
+                                        + targetSection.get()
+                                        + " へ制御が移り、流れを節の内側だけでは追えません。",
                                 new SourcePosition(model.sourceFile(),
                                         goTo.range().start().line(), 1,
                                         SourcePosition.UNKNOWN_BYTE_OFFSET)));

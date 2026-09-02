@@ -97,11 +97,13 @@ textarea {
   color: var(--color-primary-foreground);
 }
 
-/* A disabled primary keeps a trace of its colour, so the screen's action stays findable. */
+/* A disabled primary keeps a trace of its colour, so the screen's action stays findable. The label is
+   dimmed towards the muted foreground but stops short of it: at 5.2:1 light and 4.6:1 dark it is still
+   readable, which the muted foreground alone (4.0 and 3.6) was not. */
 .ci-button--primary:disabled {
   background: color-mix(in oklch, var(--color-primary) 35%, var(--color-background));
   border-color: transparent;
-  color: var(--color-muted-foreground);
+  color: color-mix(in oklch, var(--color-foreground) 25%, var(--color-muted-foreground));
 }
 
 .ci-button--danger {
@@ -114,6 +116,18 @@ textarea {
   background: var(--color-muted);
   border-color: var(--color-border);
   color: var(--color-muted-foreground);
+}
+
+/* A destructive action that is not the dialog's answer: it reads as destructive without competing
+   with the primary for the eye. */
+.ci-button--danger-quiet {
+  background: var(--color-surface);
+  border-color: var(--color-destructive);
+  color: var(--color-destructive);
+}
+
+.ci-button--danger-quiet:hover:not(:disabled) {
+  background: var(--ci-danger-bg);
 }
 
 .ci-button--quiet {
@@ -137,6 +151,12 @@ textarea {
   border-color: var(--color-primary);
 }
 
+.ci-select:disabled {
+  background: var(--color-muted);
+  border-color: var(--color-border);
+  color: var(--color-muted-foreground);
+}
+
 .ci-input::placeholder {
   color: var(--color-muted-foreground);
 }
@@ -144,7 +164,7 @@ textarea {
 kbd {
   padding: 0 var(--ci-space-1);
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--ci-border-strong);
   border-radius: var(--ci-radius);
   font-family: var(--ci-font-code);
   font-size: var(--ci-size-sm);

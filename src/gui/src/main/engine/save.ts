@@ -45,7 +45,9 @@ export function parseSaveSummary(
   exitCode: number,
 ): SaveResult {
   if (summary === null) {
-    throw new Error("the engine reported no save result, so it is unknown whether the file was written");
+    throw new Error(
+      "解析エンジンが保存結果を返さなかったため、書き込まれたかどうかを判定できません。原本を確認してから、もう一度保存してください。",
+    );
   }
   return {
     written: summary["written"] === true,

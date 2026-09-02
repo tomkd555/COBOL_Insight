@@ -91,12 +91,12 @@ describe("the shell", () => {
 });
 
 describe("choosing a folder", () => {
-  it("runs the three stages and fills the tree with kind badges", async () => {
+  it("runs the scan alone and fills the tree with kind badges", async () => {
     const api = fakeApi();
     install(api);
     render(<App />);
 
-    fireEvent.click(await screen.findByTestId("select-folder"));
+    fireEvent.click(await screen.findByTestId("welcome-select-folder"));
 
     const row = await screen.findByTestId("tree-cobol/SYK001.cbl");
     expect(row.textContent).toContain("SYK001.cbl");
@@ -106,14 +106,33 @@ describe("choosing a folder", () => {
     const subcommands = (api.run as ReturnType<typeof vi.fn>).mock.calls.map(
       (call) => (call[0] as { subcommand: string }).subcommand,
     );
-    expect(subcommands).toEqual(["scan", "lint", "sql-lint"]);
+    expect(subcommands).toEqual(["scan"]);
+  });
+
+  it("runs the three stages when the analysis is started", async () => {
+    const api = fakeApi();
+    install(api);
+    render(<App />);
+
+    fireEvent.click(await screen.findByTestId("welcome-select-folder"));
+    await screen.findByTestId("tree-cobol/SYK001.cbl");
+    // The run button is absent while the scan is in progress, so this waits for the scan to end.
+    fireEvent.click(await screen.findByTestId("run-analysis"));
+
+    await waitFor(() =>
+      expect(
+        (api.run as ReturnType<typeof vi.fn>).mock.calls.map(
+          (call) => (call[0] as { subcommand: string }).subcommand,
+        ),
+      ).toEqual(["scan", "scan", "lint", "sql-lint"]),
+    );
   });
 
   it("passes the one rule file to every stage", async () => {
     const api = fakeApi();
     install(api);
     render(<App />);
-    fireEvent.click(await screen.findByTestId("select-folder"));
+    fireEvent.click(await screen.findByTestId("welcome-select-folder"));
     await screen.findByTestId("tree-cobol/SYK001.cbl");
 
     for (const call of (api.run as ReturnType<typeof vi.fn>).mock.calls) {
@@ -126,7 +145,10 @@ describe("choosing a folder", () => {
 describe("the problems panel", () => {
   it("opens the asset's tab when a row is chosen", async () => {
     render(<App />);
-    fireEvent.click(await screen.findByTestId("select-folder"));
+    fireEvent.click(await screen.findByTestId("welcome-select-folder"));
+    // Opening the folder only scans it; the findings come from the analysis.
+    await screen.findByTestId("tree-cobol/SYK001.cbl");
+    fireEvent.click(await screen.findByTestId("run-analysis"));
 
     const row = await screen.findByTestId("finding-lint:0");
     fireEvent.click(row);
@@ -176,7 +198,7 @@ describe("the command palette", () => {
 describe("closing a tab", () => {
   it("closes a clean tab without asking", async () => {
     render(<App />);
-    fireEvent.click(await screen.findByTestId("select-folder"));
+    fireEvent.click(await screen.findByTestId("welcome-select-folder"));
     fireEvent.click(await screen.findByTestId("tree-cobol/SYK001.cbl"));
 
     const tabId = "source:cobol/SYK001.cbl";

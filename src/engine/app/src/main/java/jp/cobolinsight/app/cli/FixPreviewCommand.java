@@ -25,7 +25,7 @@ import java.util.concurrent.Callable;
  * (2 if decoding or parsing failed).
  */
 @Command(name = "preview", mixinStandardHelpOptions = true,
-        description = "修正案の差分を unified diff で表示する(原本・ソース不変)")
+        description = "修正案の差分を unified diff で表示する(原本・原始プログラム不変)")
 public final class FixPreviewCommand implements Callable<Integer> {
 
     @Mixin

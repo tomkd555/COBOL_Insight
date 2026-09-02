@@ -28,9 +28,6 @@ export type AnalysisMode = "empty" | "running" | "results" | "error";
 /** The three stages of a run: scan, lint, sql-lint. */
 export type RunStage = 1 | 2 | 3;
 
-/** How many stages a run has. The status bar and the progress bar both read it. */
-export const RUN_STAGE_COUNT = 3;
-
 /**
  * How an artefact stands. Keeping "error" apart from an empty list is what stops a failed analysis
  * from being presented as "no findings".
@@ -70,6 +67,8 @@ export interface ProjectState {
   readonly rules: RuleIndex;
   /** What the engine reported about the rule configuration file. */
   readonly ruleErrors: readonly string[];
+  /** Why the rule catalog could not be fetched at all, or null when it was. */
+  readonly rulesError: string | null;
 
   /** Manual codepage per asset, passed as codepageOverrides on the next run. */
   readonly codepageOverrides: Readonly<Record<string, string>>;
@@ -89,6 +88,7 @@ export const initialProjectState: ProjectState = {
   saveFindings: [],
   rules: EMPTY_RULE_INDEX,
   ruleErrors: [],
+  rulesError: null,
   codepageOverrides: {},
   runLog: [],
 };
@@ -105,6 +105,7 @@ export type ProjectAction =
   | { type: "FINISH_RUN"; failed: boolean }
   | { type: "CANCEL_RUN" }
   | { type: "SET_RULES"; entries: readonly RuleCatalogEntry[]; ruleErrors: readonly string[] }
+  | { type: "SET_RULES_ERROR"; message: string }
   | { type: "SET_CODEPAGE"; path: string; charset: string }
   | { type: "LOG"; text: string; failed?: boolean }
   | { type: "CLEAR_LOG" };
@@ -125,18 +126,31 @@ function appendLog(log: readonly RunLogEntry[], text: string, failed: boolean): 
 export function projectReducer(state: ProjectState, action: ProjectAction): ProjectState {
   switch (action.type) {
     case "SET_INPUT_DIR":
-      return { ...state, inputDir: action.inputDir };
+      if (action.inputDir === state.inputDir) {
+        return state;
+      }
+      // Another folder: nothing read from the previous one describes this one.
+      return {
+        ...state,
+        inputDir: action.inputDir,
+        dbPath: null,
+        inventory: { status: "none" },
+        findings: { status: "none" },
+        sqlFindings: { status: "none" },
+        saveFindings: [],
+      };
 
     case "SET_OUTPUT_PATHS":
       return { ...state, outputPaths: action.paths };
 
     case "START_RUN":
-      // Discard the previous artefacts, so one stage's result cannot be read beside an older run's.
+      // The findings are discarded, so one stage's result cannot be read beside an older run's. The
+      // inventory stays: the tree keeps naming the same folder, and a run cancelled during the scan
+      // leaves the previous listing rather than an empty one.
       return {
         ...state,
         mode: "running",
         runStage: 1,
-        inventory: { status: "none" },
         findings: { status: "none" },
         sqlFindings: { status: "none" },
         saveFindings: [],
@@ -175,7 +189,11 @@ export function projectReducer(state: ProjectState, action: ProjectAction): Proj
         ...state,
         rules: buildRuleIndex(action.entries),
         ruleErrors: [...action.ruleErrors],
+        rulesError: null,
       };
+
+    case "SET_RULES_ERROR":
+      return { ...state, rulesError: action.message };
 
     case "SET_CODEPAGE":
       return {

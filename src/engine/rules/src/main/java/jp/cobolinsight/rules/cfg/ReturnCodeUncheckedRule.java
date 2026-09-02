@@ -5,6 +5,7 @@ import jp.cobolinsight.core.cfg.ControlFlowGraph;
 import jp.cobolinsight.core.cfg.ControlFlowGraphs;
 import jp.cobolinsight.core.finding.Finding;
 import jp.cobolinsight.core.finding.Severity;
+import jp.cobolinsight.core.semantic.CallRelation;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.CompoundStatement;
 import jp.cobolinsight.core.semantic.Procedure;
@@ -33,15 +34,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class ReturnCodeUncheckedRule implements Rule {
 
     private static final RuleMeta META = RuleMeta
-            .named("R029", "呼び出し先プログラムの戻りコード(RETURN-CODE)未検査", "制御フロー")
+            .named("R029", "呼び出し先プログラムの戻りコード（RETURN-CODE）未検査", "制御フロー")
             .summary("RETURN-CODE を使う設計のプログラムで、"
-                    + "その検査を伴わない CALL 文を検出する。")
-            .rationale("呼び出し先の失敗に気づかないまま後続が進む。"
-                    + "同じプログラム内で検査している CALL 文と扱いが不ぞろいになる点も誤りの兆候である。")
+                    + "その検査を伴わない CALL 文を検出します。")
+            .rationale("呼び出し先の失敗に気づかないまま後続が進みます。")
             .detection("CALL 文の後、次の CALL 文または終端に達するまでの前方経路で"
-                    + "RETURN-CODE を条件で参照しないものを検出する。"
-                    + "プログラム内で RETURN-CODE を 1 回以上参照している場合に限る。")
-            .remedy("CALL 文の直後に RETURN-CODE を検査し、正常値以外を異常として処理する。")
+                    + "RETURN-CODE を条件で参照しないものを検出します。"
+                    + "同じプログラムの他の箇所に RETURN-CODE の参照があることが前提で、"
+                    + "RETURN-CODE をどこでも参照しないプログラムは対象外です。")
+            .remedy("CALL 文の直後に RETURN-CODE を検査し、正常値以外を異常として"
+                    + "処理してください。")
             .example("""
                     CALL "SUBPGM2" USING WS-PARM.
                     MOVE WS-PARM TO WS-OUT.
@@ -87,14 +89,25 @@ public final class ReturnCodeUncheckedRule implements Rule {
                     ReturnCodeUncheckedRule::isCall,
                     ReturnCodeUncheckedRule::referencesReturnCodeInCondition);
             if (!checked) {
+                Statement call = node.statement().orElseThrow();
+                int line = call.range().start().line();
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                        "CALL 文の後、RETURN-CODE を検査しないまま後続処理に進む。"
-                                + "同じプログラムの他の箇所では RETURN-CODE を参照しており、検査の欠落が不ぞろいになる。",
-                        new SourcePosition(model.sourceFile(),
-                                node.statement().orElseThrow().range().start().line(), 1,
+                        subjectOf(model, line) + " RETURN-CODE を検査していません。"
+                                + "呼び出し先の失敗に気づかないまま後続が進みます。",
+                        new SourcePosition(model.sourceFile(), line, 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
             }
         }
+    }
+
+    /** The CALL as the semantic model resolved it on that line, or the bare statement. */
+    private static String subjectOf(CobolSemanticModel model, int line) {
+        return model.calls().stream()
+                .filter(relation -> relation.range().start().line() == line)
+                .map(CallRelation::target)
+                .findFirst()
+                .map(target -> "CALL " + target + " の後で")
+                .orElse("CALL 文の後で");
     }
 
     private static boolean isCall(CfgNode node) {

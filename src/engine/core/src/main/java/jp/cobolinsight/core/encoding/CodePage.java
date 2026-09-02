@@ -33,7 +33,8 @@ public enum CodePage {
             case "shiftjis", "sjis", "windows31j", "ms932", "cp932", "932" -> SHIFT_JIS;
             case "ibm930", "xibm930", "cp930", "930" -> IBM930;
             case "ibm939", "xibm939", "cp939", "939" -> IBM939;
-            default -> throw new IllegalArgumentException("未対応のコードページ指定: " + charsetName);
+            default -> throw new IllegalArgumentException(
+                    "コードページ " + charsetName + " には対応していません");
         };
     }
 

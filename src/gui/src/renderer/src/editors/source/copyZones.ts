@@ -62,11 +62,8 @@ function buildZone(expansion: CopyExpansion, onToggle: () => void): Zone {
   toggle.addEventListener("click", onToggle);
   header.appendChild(toggle);
 
-  const name = document.createElement("span");
-  name.className = "ci-copy__name";
-  name.textContent = text.copyExpansion.heading(expansion.copybookName, expansion.lines.length);
-  header.appendChild(name);
-
+  // The source line above the zone already reads "COPY <name>."; the header says only where it
+  // resolved to, not the statement's name again.
   const path = document.createElement("span");
   path.className = "ci-copy__path";
   path.textContent = expansion.copybookPath;

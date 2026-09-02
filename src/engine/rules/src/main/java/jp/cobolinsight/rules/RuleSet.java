@@ -69,8 +69,8 @@ public final class RuleSet {
         }
         for (Rule rule : file.custom()) {
             if (ids.contains(rule.meta().id())) {
-                errors.add("利用者定義ルールの ID が組み込みルールと重なっている: "
-                        + rule.meta().id());
+                errors.add("利用者定義ルール " + rule.meta().id()
+                        + " の ID は組み込みルールと重なっています。このルールは読み込みません。");
                 continue;
             }
             add(catalogue, ids, rule, Source.CUSTOM, file);
@@ -80,8 +80,8 @@ public final class RuleSet {
                 continue;
             }
             errors.add(RemovedRules.contains(id)
-                    ? "rule " + id + " was removed in V2"
-                    : "設定にあるルールIDがカタログに無い: " + id);
+                    ? "ルール " + id + " は V2 で廃止されました。この指定は無視します。"
+                    : "ルール " + id + " はカタログにありません。この指定は無視します。");
         }
         catalogue.sort(Comparator.comparing(RuleEntry::id));
         return new RuleSet(catalogue, errors);

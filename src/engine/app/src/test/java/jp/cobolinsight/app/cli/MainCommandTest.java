@@ -1,12 +1,17 @@
 package jp.cobolinsight.app.cli;
 
 import jp.cobolinsight.app.pipeline.Paths;
+import jp.cobolinsight.core.pipeline.ExitCodes;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import picocli.CommandLine;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -54,6 +59,31 @@ class MainCommandTest {
             assertTrue(info.manualOverride(), "CLIフラグの手動指定が自動判別を上書きすること");
             assertEquals("windows-31j", info.detectedCharset());
         }
+    }
+
+    /**
+     * An uncaught exception must never reach the user as a stack trace: the execution exception
+     * handler wired in {@link Main#commandLine()} turns it into one Japanese line on stderr and
+     * {@link ExitCodes#ERRORS}, instead of picocli's default stack-trace dump.
+     */
+    @Test
+    void uncaughtExceptionPrintsOneJapaneseLineInsteadOfAStackTrace() throws Exception {
+        CommandLine cmd = Main.commandLine();
+        PrintStream original = System.err;
+        ByteArrayOutputStream captured = new ByteArrayOutputStream();
+        int exitCode;
+        try {
+            System.setErr(new PrintStream(captured, true, StandardCharsets.UTF_8));
+            exitCode = cmd.getExecutionExceptionHandler()
+                    .handleExecutionException(new NoSuchFileException("missing.cbl"), cmd, null);
+        } finally {
+            System.setErr(original);
+        }
+
+        assertEquals(ExitCodes.ERRORS, exitCode);
+        String stderr = captured.toString(StandardCharsets.UTF_8);
+        assertEquals("エラー: ファイルが見つかりません: missing.cbl。処理を中止しました。"
+                + System.lineSeparator(), stderr);
     }
 
     @Test

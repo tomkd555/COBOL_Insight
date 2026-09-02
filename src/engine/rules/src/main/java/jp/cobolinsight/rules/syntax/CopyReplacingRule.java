@@ -52,14 +52,16 @@ public final class CopyReplacingRule implements Rule {
      */
     private static final int MAX_STATEMENT_LINES = 20;
 
-    private static final RuleMeta META = RuleMeta.named("R024", "COPY REPLACINGによる置換漏れ", "データ定義")
+    private static final RuleMeta META = RuleMeta.named("R024", "COPY REPLACING による置換漏れ", "データ定義")
             .summary("COPY 文の REPLACING で指定した置換対象が、取り込むコピー句に"
-                    + "一度も現れない箇所を検出する。")
+                    + "一度も現れない箇所を検出します。")
             .rationale("置換が起きないため、取り込んだ項目の名前が意図した名前にならず、"
-                    + "接頭辞の付け替えを前提にした後続の参照が解決できない。")
+                    + "接頭辞の付け替えを前提にした後続の参照が解決できません。")
             .detection("REPLACING の置換対象の文字列を、対象コピー句の内容（注記行を除く）と"
-                    + "突き合わせ、出現が 0 件のものを検出する。")
-            .remedy("置換対象のつづりをコピー句の記述とそろえる。不要になった REPLACING は削る。")
+                    + "突き合わせ、出現が 0 件のものを検出します。"
+                    + "取り込む本文を読めないコピー句は対象外です。")
+            .remedy("置換対象のつづりをコピー句の記述とそろえてください。"
+                    + "不要になった REPLACING は削ってください。")
             .example("""
                     COPY CUSTREC REPLACING ==:PFX:== BY ==CUST==.
                     """, """
@@ -152,8 +154,8 @@ public final class CopyReplacingRule implements Rule {
             }
             if (!occursIn(content, CobolTexts.upper(value.trim()), mode)) {
                 findings.add(Finding.of("R024", Severity.MEDIUM.toLevel(),
-                        "COPY 文の REPLACING 句で指定した置換対象 " + value.trim()
-                                + " が、コピー句 " + copybookName + " の内容に一件も出現しない。",
+                        value.trim() + " がコピー句 " + copybookName
+                                + " に一件も出現しません。REPLACING の置換が起きません。",
                         new SourcePosition(file, line, column,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
             }

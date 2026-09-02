@@ -39,21 +39,21 @@ keeps the rest.
 | `--rules` not given, or the path is not a regular file | Not a failure. The defaults apply. The GUI passes the same path whether or not the file exists yet |
 | The file cannot be read (I/O) | Rejected. Usage error, exit code 2 |
 | The content is not JSON | Rejected. Usage error, exit code 2 |
-| `version` missing, or not exactly the integer `2` | Rejected: `version は 2 のみ扱える(指定値 …)`. Usage error, exit code 2. `2.0` is a JSON fraction, not the integer 2, and is rejected |
-| `rules` is not an object | Rejected: `rules はオブジェクトで書く` |
-| `custom` is not an array | Rejected: `custom は配列で書く` |
-| One override entry is malformed | That entry is dropped; the reason is recorded; the rest of the file applies |
-| One `custom` entry is malformed | That entry is dropped; the reason is recorded; the rest of the file applies |
-| Two `custom` entries share an id | The second is dropped: `ID が重複している: <id>` |
-| A `custom` id collides with a built-in id | The custom rule is dropped: `利用者定義ルールの ID が組み込みルールと重なっている: <id>` |
-| A key in `rules` names an id that is in no catalogue | Recorded as `設定にあるルールIDがカタログに無い: <id>`. Nothing else happens; the run continues |
+| `version` missing, or not exactly the integer `2` | Rejected: `version は 2 のみ扱えます（指定値 …）`. Usage error, exit code 2. `2.0` is a JSON fraction, not the integer 2, and is rejected |
+| `rules` is not an object | Rejected: `rules はオブジェクトで書いてください` |
+| `custom` is not an array | Rejected: `custom は配列で書いてください` |
+| One override entry is malformed | That entry is dropped; the reason is recorded with `この指定は無視します。`; the rest of the file applies |
+| One `custom` entry is malformed | That entry is dropped; the reason is recorded with `このルールは読み込みません。`; the rest of the file applies |
+| Two `custom` entries share an id | The second is dropped: `ID <id> は他の利用者定義ルールと重複しています。このルールは読み込みません。` |
+| A `custom` id collides with a built-in id | The custom rule is dropped: `利用者定義ルール <id> の ID は組み込みルールと重なっています。このルールは読み込みません。` |
+| A key in `rules` names an id that is in no catalogue | Recorded as `ルール <id> はカタログにありません。この指定は無視します。`. Nothing else happens; the run continues |
 
-Recorded per-entry problems stop nothing. Every command except `rules` prints them
-to standard error as `警告: ルール設定: …`; `rules` carries them in its own output
-under `ruleErrors`.
+Recorded per-entry problems stop nothing, and each one is a complete sentence that
+names what was ignored. Every command except `rules` prints them to standard error
+as `警告: …`; `rules` carries them in its own output under `ruleErrors`.
 
-There is a second wording for an unknown id — `rule <id> was removed in V2` — used
-when the id is on the removed list. That list holds `S003`, `S005` and `S006`; see
+There is a second wording for an unknown id — `ルール <id> は V2 で廃止されました。この指定は無視します。` —
+used when the id is on the removed list. That list holds `S003`, `S005` and `S006`; see
 "How the default rules were validated" below for why they went.
 
 ## Per-rule override
@@ -67,9 +67,9 @@ The value of each `rules` entry.
 
 `severity` accepts `HIGH`, `MEDIUM`, `LOW`, `ADVISORY`, case-insensitively and
 with surrounding whitespace trimmed. Anything else drops the entry with
-`severity に扱えない値がある: …`. A non-boolean `enabled` drops it with
-`enabled は true か false で書く`; a non-string `severity` with
-`severity は文字列で書く`.
+`severity に扱えない値があります: …`. A non-boolean `enabled` drops it with
+`enabled は true か false で書いてください`; a non-string `severity` with
+`severity は文字列で書いてください`.
 
 An overridden severity applies to the rule's findings as well as to the catalogue,
 so the setting changes what a run reports and not just what the GUI shows.
@@ -109,9 +109,9 @@ An element of `custom`.
 catalogue description cannot drift from what the rule does.
 
 `id`, `name` and `message` are rejected when absent, non-string or blank
-(`… が無い、または空である`). Optional string fields that are present but blank
+(`… が指定されていないか、空です`). Optional string fields that are present but blank
 fall back to their default; a present non-string value is rejected with
-`… は文字列で書く`.
+`… は文字列で書いてください`.
 
 ### `id` format
 
@@ -119,13 +119,13 @@ fall back to their default; a present non-string value is rejected with
 overall. The `U` prefix keeps custom ids clear of the built-in `R` (syntax,
 control flow, data flow) and `S` (SQL) ranges, so a custom rule can never collide
 with a built-in one. A violation drops the entry with `id は U で始まり、
-英数字・ハイフン・下線が1〜15文字続く形にする(指定値 …)`.
+英数字・ハイフン・下線が1〜15文字続く形で書いてください（指定値 …）`.
 
 ### `severity`
 
 `HIGH`, `MEDIUM`, `LOW`, `ADVISORY` — the same four values as an override, mapping
 to levels and exit codes the same way. Rejected otherwise with
-`severity に扱えない値がある: …(扱えるのは HIGH・MEDIUM・LOW・ADVISORY)`.
+`severity に扱えない値があります: …（扱えるのは HIGH・MEDIUM・LOW・ADVISORY）`.
 
 ### `commands`
 
@@ -141,8 +141,8 @@ matching:
 | `SCAN` | `scan` (and `call-graph`, which runs the same pipeline) |
 
 Absent means `["LINT", "REPORT"]`. An empty array is rejected
-(`commands が空である`); a non-array with `commands は配列で書く`; an unknown value
-with `commands に扱えない値がある: …`.
+(`commands が空です`); a non-array with `commands は配列で書いてください`; an unknown
+value with `commands に扱えない値があります: …`.
 
 Declaring `FIX` does not make a custom rule produce a fix. `fix` asks the rule set
 only for rules that carry a fix producer, and a custom rule has none, so a custom
@@ -152,8 +152,8 @@ rule never fires under `fix`.
 
 Which asset kinds the rule examines. Allowed values, upper-cased and trimmed:
 `COBOL`, `COPYBOOK`, `BMS`, `JCL`. Absent means `["COBOL"]`. An empty array is
-rejected (`targets が空である`); a non-array with `targets は配列で書く`; an
-unknown kind with `targets に扱えない種別がある: …`.
+rejected (`targets が空です`); a non-array with `targets は配列で書いてください`; an
+unknown kind with `targets に扱えない種別があります: …`.
 
 All three `match.kind` values honour `targets`. Each file's kind is resolved from
 its extension, and a file of a kind the rule does not list — or of an extension that

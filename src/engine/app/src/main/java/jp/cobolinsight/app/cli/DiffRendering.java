@@ -72,7 +72,7 @@ final class DiffRendering {
                 .append(".ctx{display:block;}\n")
                 .append("</style>\n</head>\n<body>\n<h1>COBOL Insight 修正案 diff</h1>\n");
         if (diffs.isEmpty()) {
-            sb.append("<p>修正案はない。</p>\n");
+            sb.append("<p>修正案はありません。</p>\n");
         }
         for (FileDiff diff : diffs) {
             sb.append("<h2>").append(escape(diff.label())).append("</h2>\n<pre>");

@@ -14,10 +14,14 @@ export interface RulesProps {
   notify: Notify;
 }
 
-/** The severity as the engine reports it after the configuration was applied. */
-function severityBadge(entry: RuleCatalogEntry): ReactElement {
-  const severity = severityOf(entry.severity);
-  return <span className={`ci-severity ci-severity--${severity}`}>{text.severity[severity]}</span>;
+/**
+ * The label of the severity select's first option. With no override in force it names the severity
+ * the engine is applying, so the effective severity is read off the control that sets it.
+ */
+function defaultSeverityLabel(entry: RuleCatalogEntry, override: string): string {
+  return override === ""
+    ? `${text.rules.severityDefault}（${text.severity[severityOf(entry.severity)]}）`
+    : text.rules.severityDefault;
 }
 
 /**
@@ -38,7 +42,6 @@ export function Rules({ notify }: RulesProps): ReactElement {
     [project.rules.entries, query],
   );
   const groups = useMemo(() => groupByCategory(visible), [visible]);
-  const visibleIds = useMemo(() => visible.map((entry) => entry.id), [visible]);
 
   return (
     <div className="ci-rules">
@@ -52,26 +55,6 @@ export function Rules({ notify }: RulesProps): ReactElement {
           onChange={(event) => setQuery(event.target.value)}
           data-testid="rules-search"
         />
-      </div>
-      <div className="ci-rules__toolbar">
-        <button
-          type="button"
-          className="ci-button"
-          disabled={visibleIds.length === 0}
-          onClick={() => setRulesEnabled(visibleIds, true)}
-          data-testid="rules-enable-all"
-        >
-          {text.rules.enableAll}
-        </button>
-        <button
-          type="button"
-          className="ci-button"
-          disabled={visibleIds.length === 0}
-          onClick={() => setRulesEnabled(visibleIds, false)}
-          data-testid="rules-disable-all"
-        >
-          {text.rules.disableAll}
-        </button>
         <button
           type="button"
           className="ci-button"
@@ -93,7 +76,12 @@ export function Rules({ notify }: RulesProps): ReactElement {
         </div>
       )}
 
-      {project.rules.entries.length === 0 ? (
+      {project.rulesError !== null ? (
+        <div className="ci-strip ci-strip--error" role="alert" data-testid="rules-failed">
+          <p className="ci-strip__title">{text.rules.loadFailed}</p>
+          <p>{project.rulesError}</p>
+        </div>
+      ) : project.rules.entries.length === 0 ? (
         <p className="ci-rules__state">{text.rules.empty}</p>
       ) : groups.length === 0 ? (
         <p className="ci-rules__state" data-testid="rules-no-match">
@@ -130,10 +118,12 @@ export function Rules({ notify }: RulesProps): ReactElement {
                   )
                 }
               >
-                <span className="codicon codicon-close-all" aria-hidden="true" />
+                <span className="codicon codicon-clear-all" aria-hidden="true" />
               </button>
             </header>
-            {group.rules.map((entry) => (
+            {group.rules.map((entry) => {
+              const override = overrideOf(rules.file, entry.id).severity ?? "";
+              return (
               <div className="ci-rules__row" key={entry.id} data-testid={`rule-${entry.id}`}>
                 <input
                   type="checkbox"
@@ -145,30 +135,33 @@ export function Rules({ notify }: RulesProps): ReactElement {
                 <button
                   type="button"
                   className="ci-rules__name"
-                  onClick={() => dispatch({ type: "OPEN_TAB", tab: ruleTab(entry.id) })}
+                  onClick={() =>
+                    dispatch({ type: "OPEN_TAB", tab: ruleTab(entry.id, entry.name) })
+                  }
                   data-testid={`rule-open-${entry.id}`}
                 >
                   <span className="ci-rules__id">{entry.id}</span>
                   {entry.name}
                 </button>
-                {severityBadge(entry)}
                 <div className="ci-rules__meta">
                 {entry.hasFix ? (
                   <span className="ci-badge">{text.rules.hasFix}</span>
                 ) : null}
-                <span className={`ci-badge ci-badge--${entry.source === "user" ? "copybook" : "other"}`}>
-                  {entry.source === "user" ? text.rules.user : text.rules.builtin}
-                </span>
+                {/* Built-in is the norm and needs no mark; only a user-defined rule is called out. */}
+                {entry.source === "user" ? (
+                  <span className="ci-badge ci-badge--copybook">{text.rules.user}</span>
+                ) : null}
                 <select
                   className="ci-select"
                   aria-label={text.rules.severityLabel(entry.id)}
-                  value={overrideOf(rules.file, entry.id).severity ?? ""}
+                  value={override}
+                  disabled={!entry.enabled}
                   onChange={(event) =>
                     setRuleSeverity(entry.id, event.target.value === "" ? null : event.target.value)
                   }
                   data-testid={`rule-severity-${entry.id}`}
                 >
-                  <option value="">{text.rules.severityDefault}</option>
+                  <option value="">{defaultSeverityLabel(entry, override)}</option>
                   {CUSTOM_SEVERITIES.map((severity) => (
                     <option key={severity} value={severity}>
                       {text.severity[severityOf(severity)]}
@@ -177,7 +170,8 @@ export function Rules({ notify }: RulesProps): ReactElement {
                 </select>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </section>
         ))
       )}

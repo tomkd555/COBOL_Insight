@@ -26,13 +26,14 @@ public final class CursorDeclarationRule implements Rule {
     private static final RuleMeta META =
             RuleMeta.named("S004", "読み取り専用指定のないカーソル宣言", "性能")
                     .summary("更新を伴わないのに FOR READ ONLY・FOR FETCH ONLY の"
-                            + "いずれも指定しないカーソル宣言を検出する。")
+                            + "いずれも指定しないカーソル宣言を検出します。")
                     .rationale("更新可能カーソルとして扱われるため、"
-                            + "必要のない行ロックを取ってロック競合を招く。")
+                            + "必要のない行ロックを取ってロック競合を招きます。")
                     .detection("DECLARE CURSOR のうち FOR UPDATE を持たず、"
-                            + "FOR READ ONLY・FOR FETCH ONLY のいずれも持たないものを検出する。"
-                            + "OPEN と CLOSE の突き合わせは R019 が担う。")
-                    .remedy("参照だけのカーソルに FOR READ ONLY を付ける。")
+                            + "FOR READ ONLY・FOR FETCH ONLY のいずれも持たないものを"
+                            + "検出します。OPEN と CLOSE の突き合わせは対象外です"
+                            + "（R019 が担います）。")
+                    .remedy("参照だけのカーソルに FOR READ ONLY を付けてください。")
                     .example("""
                             EXEC SQL DECLARE CUR-CUST CURSOR FOR
                                 SELECT ID, NAME FROM CUSTOMER END-EXEC.
@@ -64,9 +65,8 @@ public final class CursorDeclarationRule implements Rule {
             }
             if (!cursor.forUpdate() && !cursor.forReadOnly() && !cursor.forFetchOnly()) {
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                        "カーソル " + cursor.cursorName()
-                                + " に FOR READ ONLY（または FOR FETCH ONLY）の指定がない。"
-                                + "更新可能カーソルとして扱われ、ロック競合の原因になる。",
+                        cursor.cursorName() + " に FOR READ ONLY がありません。"
+                                + "更新可能カーソルとして行ロックを取ります。",
                         SqlAdviceSupport.location(statement)));
             }
         }

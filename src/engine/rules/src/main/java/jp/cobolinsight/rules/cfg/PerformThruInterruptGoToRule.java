@@ -28,15 +28,17 @@ import java.util.Set;
  */
 public final class PerformThruInterruptGoToRule implements Rule {
 
-    private static final RuleMeta META = RuleMeta.named("R007", "PERFORM THRUの範囲への外からのGO TO", "制御フロー")
+    private static final RuleMeta META = RuleMeta
+            .named("R007", "PERFORM THRU の入口を経由しない GO TO 文", "制御フロー")
             .summary("PERFORM THRU の範囲に、入口の段落を経由せず"
-                    + "範囲外から GO TO 文で入る箇所を検出する。")
+                    + "範囲外から GO TO 文で入る箇所を検出します。")
             .rationale("入口の段落が担う初期化を飛ばして途中から実行するため、"
-                    + "初期化前の値のまま処理が進む。")
+                    + "初期化前の値のまま処理が進みます。")
             .detection("PERFORM ... THRU の範囲に含まれる段落のうち入口の段落以外に、"
-                    + "範囲外の段落から GO TO 文で制御を移すものを検出する。")
+                    + "範囲外の段落から GO TO 文で制御を移すものを検出します。"
+                    + "範囲の内側の段落にある GO TO 文と、入口の段落へ移る GO TO 文は対象外です。")
             .remedy("範囲の入口の段落から入るか、"
-                    + "飛び込み先の処理を別の段落に分けて PERFORM 文で呼び出す。")
+                    + "飛び込み先の処理を別の段落に分けて PERFORM 文で呼び出してください。")
             .example("""
                     GO TO CALC-STEP2.
                     CALC-START.
@@ -109,10 +111,10 @@ public final class PerformThruInterruptGoToRule implements Rule {
                 }
                 if (hit != null) {
                     findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                            "PERFORM " + perform.targetProcedure() + " THRU "
-                                    + perform.thruProcedure().get()
-                                    + " の範囲に、範囲外の段落 " + holder.name()
-                                    + " から GO TO " + hit + " で入口を経由せず制御が移る。",
+                            hit + " に GO TO で直接入っています。PERFORM "
+                                    + perform.targetProcedure() + " THRU "
+                                    + perform.thruProcedure().get() + " の範囲外の段落 "
+                                    + holder.name() + " からで、入口を経由しません。",
                             new SourcePosition(model.sourceFile(),
                                     goTo.range().start().line(), 1,
                                     SourcePosition.UNKNOWN_BYTE_OFFSET)));

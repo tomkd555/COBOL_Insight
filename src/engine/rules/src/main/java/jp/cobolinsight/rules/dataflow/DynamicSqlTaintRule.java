@@ -45,13 +45,13 @@ public final class DynamicSqlTaintRule implements Rule {
     private static final RuleMeta META =
             RuleMeta.named("R020", "動的SQL文への外部入力の未検証組み込み", "SQL")
                     .summary("外部入力に由来する値を、検証も置換もせずに組み立てた文字列として"
-                            + "EXECUTE IMMEDIATE・PREPARE に渡す箇所を検出する。")
+                            + "EXECUTE IMMEDIATE・PREPARE に渡す箇所を検出します。")
                     .rationale("入力に SQL の断片を混ぜられると問い合わせの意味が変わり、"
-                            + "想定していない参照・更新を許す。")
-                    .detection("画面・帳票などの外部入力に由来する値を追跡し、"
-                            + "その値が動的SQL文の文字列に到達するものを検出する。"
-                            + "ACCEPT FROM DATE・TIME などシステムレジスタに由来する値は対象外とする。")
-                    .remedy("値をホスト変数として渡し、SQL 文の組み立てに直接埋め込まない。")
+                            + "想定していない参照・更新を許します。")
+                    .detection("画面・帳票などの外部入力に由来する値が"
+                            + "動的SQL文の文字列に到達するものを検出します。"
+                            + "ACCEPT FROM DATE・TIME などシステムレジスタに由来する値は対象外です。")
+                    .remedy("値をホスト変数として渡し、SQL 文の組み立てに直接埋め込まないでください。")
                     .example("""
                             STRING "SELECT * FROM CUST WHERE ID='" WS-INPUT "'"
                                 DELIMITED BY SIZE INTO WS-SQL.
@@ -111,8 +111,9 @@ public final class DynamicSqlTaintRule implements Rule {
                 SourcePosition position = new SourcePosition(model.sourceFile(),
                         simple.range().start().line(), 1, SourcePosition.UNKNOWN_BYTE_OFFSET);
                 findings.add(new Finding(META.id(), META.defaultSeverity().toLevel(),
-                        "動的SQL文の文字列に外部入力に由来する未検証のデータ項目 " + String.join(", ", flagged)
-                                + " を組み込んでいる。SQL インジェクションになり得る。",
+                        String.join(", ", flagged)
+                                + " を検証せずに動的SQL文へ組み込んでいます。"
+                                + "SQL インジェクションになり得ます。",
                         position,
                         TaintCodeFlows.of(model, df, node, TaintKind.EXTERNAL_INPUT, flagged,
                                 position, "動的SQL文の文字列に組み込む"),

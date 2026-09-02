@@ -9,6 +9,7 @@ import jp.cobolinsight.core.pipeline.ExitCodes;
 import jp.cobolinsight.core.fix.MinimalLineEdit;
 import jp.cobolinsight.core.fix.ReparseResult;
 import jp.cobolinsight.app.EngineWiring;
+import jp.cobolinsight.app.pipeline.Failures;
 import jp.cobolinsight.core.fix.ReparseVerifier;
 import jp.cobolinsight.app.persistence.PersistenceDao;
 import jp.cobolinsight.app.persistence.PersistenceDatabase;
@@ -79,7 +80,7 @@ public class SaveCommand implements Callable<Integer> {
         } catch (IOException | UncheckedIOException | IllegalArgumentException e) {
             // Failure before the write-back. Whether decoding, encoding, or I/O fails, the original file is left unchanged.
             System.out.println(summaryJson(target, false, 0, 0, List.of(), ExitCodes.ERRORS,
-                    e.getMessage()));
+                    Failures.describe(e) + "。原本は書き換えていません。"));
             return ExitCodes.ERRORS;
         }
     }
@@ -113,7 +114,8 @@ public class SaveCommand implements Callable<Integer> {
         } catch (IOException | RuntimeException e) {
             System.out.println(summaryJson(target, true, edit.changedLineFrom(),
                     edit.changedLineTo(), List.of(), ExitCodes.ERRORS,
-                    "書き戻しは済んだが、その後の再パース検証に失敗した: " + e));
+                    "書き戻しは完了しましたが、" + target + " の再パース検証でエラーが発生しました（"
+                            + Failures.describe(e) + "）。scan をやり直して解析結果を最新にしてください。"));
             return ExitCodes.ERRORS;
         }
     }

@@ -13,7 +13,6 @@ import {
 const ENTRIES: readonly { view: SideView; icon: string; label: string }[] = [
   { view: "explorer", icon: "codicon-files", label: text.activity.explorer },
   { view: "rules", icon: "codicon-checklist", label: text.activity.rules },
-  { view: "problems", icon: "codicon-warning", label: text.activity.problems },
 ];
 
 /** The editors the activity bar opens directly, below the side-bar views. */

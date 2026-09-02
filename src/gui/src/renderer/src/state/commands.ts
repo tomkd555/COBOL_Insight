@@ -8,7 +8,8 @@
 
 import type { Dispatch } from "react";
 import { text } from "../i18n/text";
-import type { ProjectState } from "./projectStore";
+import { artifactItems, type ProjectState } from "./projectStore";
+import { assetTypeOf } from "../model/assetTree";
 import {
   CUSTOM_RULES_TAB_ID,
   graphTab,
@@ -36,6 +37,8 @@ export type CommandId =
   | "view.showReport"
   | "view.showSettings"
   | "view.showTranspile"
+  | "editor.reopenWithEncoding"
+  | "editor.discard"
   | "rules.toggleActive"
   | "rules.validateCustom"
   | "rules.saveCustom"
@@ -59,13 +62,15 @@ export interface CommandContext {
   readonly project: ProjectState;
   readonly workbench: WorkbenchState;
   readonly workbenchDispatch: Dispatch<WorkbenchAction>;
-  /** Opens the folder picker and, when a folder is chosen, starts the analysis. */
+  /** Opens the folder picker and, when a folder is chosen, scans it. */
   readonly selectFolder: () => void;
   /** Starts the analysis on the folder already chosen. */
   readonly runAnalysis: () => void;
   readonly cancelAnalysis: () => void;
   /** Closes a tab, asking first when it holds unsaved edits. */
   readonly requestCloseTab: (id: string) => void;
+  /** Throws a tab's unsaved edits away, asking first. */
+  readonly requestDiscardTab: (id: string) => void;
   /** Writing the rule configuration file. */
   readonly rulesActions: RulesActions;
   /** Writes the selected tab's edits back over the original. */
@@ -86,6 +91,13 @@ function activeRuleId(workbench: WorkbenchState): string | null {
 function activeSourcePath(workbench: WorkbenchState): string | null {
   const active = workbench.tabs.find((tab) => tab.id === workbench.activeTabId);
   return active?.kind === "source" ? active.path : null;
+}
+
+/** The asset the active source tab shows, when the scan filed that asset as COBOL. */
+function activeCobolPath(project: ProjectState, workbench: WorkbenchState): string | null {
+  const path = activeSourcePath(workbench);
+  const item = artifactItems(project.inventory).find((each) => each.path === path);
+  return item !== undefined && assetTypeOf(item.type) === "cobol" ? item.path : null;
 }
 
 /**
@@ -194,12 +206,32 @@ export function buildCommands(context: CommandContext): Command[] {
       id: "view.showTranspile",
       title: text.command.showTranspile,
       category: text.command.categoryView,
-      // Only a COBOL source has a translation, so the command applies to a source tab alone.
-      when: () => activeSourcePath(workbench) !== null,
+      // Only COBOL is translated, so the command does not apply to a copybook, JCL or BMS tab.
+      when: () => activeCobolPath(project, workbench) !== null,
       run: () => {
-        const path = activeSourcePath(workbench);
+        const path = activeCobolPath(project, workbench);
         if (path !== null) {
           workbenchDispatch({ type: "OPEN_TAB", tab: transpileTab(path) });
+        }
+      },
+    },
+    {
+      id: "editor.reopenWithEncoding",
+      title: text.command.reopenWithEncoding,
+      category: text.command.categoryFile,
+      when: () => activeSourcePath(workbench) !== null,
+      // The codepage list is the status bar's own control; the command puts the keyboard on it.
+      run: () =>
+        document.querySelector<HTMLSelectElement>('[data-testid="status-codepage"]')?.focus(),
+    },
+    {
+      id: "editor.discard",
+      title: text.command.discard,
+      category: text.command.categoryFile,
+      when: () => activeTabDirty(workbench),
+      run: () => {
+        if (workbench.activeTabId !== null) {
+          context.requestDiscardTab(workbench.activeTabId);
         }
       },
     },

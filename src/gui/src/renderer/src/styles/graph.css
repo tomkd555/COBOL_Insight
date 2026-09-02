@@ -54,7 +54,6 @@
 }
 
 .ci-chip__count {
-  margin-inline-start: var(--ci-space-1);
   font-variant-numeric: tabular-nums;
 }
 
@@ -129,11 +128,6 @@
   cursor: pointer;
 }
 
-.ci-graph .ci-chip:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-
 .ci-graph__table {
   width: 100%;
   border-collapse: collapse;
@@ -157,10 +151,12 @@
   color: var(--color-muted-foreground);
 }
 
+/* One column, node shapes before edge lines: the previous two-column grid put a shape beside a
+   line, as if the two belonged to the same kind of key. */
 .ci-graph__legend-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
-  gap: var(--ci-space-1) var(--ci-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ci-space-1);
   margin: 0;
   padding: 0;
   color: var(--color-muted-foreground);
@@ -168,15 +164,18 @@
   list-style: none;
 }
 
+/* The swatch is a fixed-width column and the label its own block, so a label long enough to wrap
+   hangs its continuation lines under the label rather than back under the swatch. */
 .ci-graph__legend-list li {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--ci-space-1);
 }
 
 .ci-graph__swatch {
   width: 14px;
   height: 14px;
+  margin-top: 2px;
   flex: 0 0 auto;
 }
 

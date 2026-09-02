@@ -97,6 +97,17 @@ export function SplitHandle({
   const stopRef = useRef<(() => void) | null>(null);
   /** Whether a held key changed the size, so the commit fires once on release. */
   const keyChangedRef = useRef(false);
+  /**
+   * The size that was asked for while the container had no room for it, or null when the rendered
+   * size is the one asked for. It is what a container growing back is restored to.
+   */
+  const requestedRef = useRef<number | null>(null);
+
+  /** Reports a size the user chose. It replaces any size remembered from a smaller container. */
+  const request = useCallback((next: number): void => {
+    requestedRef.current = null;
+    changeRef.current(next);
+  }, []);
 
   /** Measures the maximum from the container. The handle's own size comes from the element. */
   const measureMax = useCallback((): number => {
@@ -130,12 +141,17 @@ export function SplitHandle({
     };
   }, [measureMax]);
 
-  // Clamp a size that exceeds the maximum, which happens right after restoring a stored size or
-  // after shrinking the window. No commit follows: shrinking the window must not overwrite the size
-  // the user chose, so restoring it reopens at that size.
+  // Clamp a size that exceeds the maximum, which happens right after restoring a stored size, after
+  // shrinking the window, or on a page zoom. No commit follows: shrinking the window must not
+  // overwrite the size the user chose. That size is kept here rather than in the caller, which is
+  // handed the clamped one to render, so a container that grows again — the zoom going back to
+  // 100%, say — goes back to the size that was asked for instead of staying small for good.
   useEffect(() => {
-    if (size > maxSize) {
-      changeRef.current(maxSize);
+    const requested = requestedRef.current ?? size;
+    const allowed = Math.min(requested, maxSize);
+    requestedRef.current = allowed < requested ? requested : null;
+    if (allowed !== size) {
+      changeRef.current(allowed);
     }
   }, [size, maxSize]);
 
@@ -158,7 +174,7 @@ export function SplitHandle({
     };
     const onMove = (moved: globalThis.MouseEvent): void => {
       const position = orientation === "horizontal" ? moved.clientY : moved.clientX;
-      changeRef.current(nextSplitSize(origin.size, position - origin.position, side, min, max));
+      request(nextSplitSize(origin.size, position - origin.position, side, min, max));
     };
     const stop = (): void => {
       window.removeEventListener("mousemove", onMove);
@@ -196,7 +212,7 @@ export function SplitHandle({
     }
     event.preventDefault();
     keyChangedRef.current = true;
-    changeRef.current(next);
+    request(next);
   }
 
   /** Releasing the key ends the gesture, so a key-repeat still commits only once. */

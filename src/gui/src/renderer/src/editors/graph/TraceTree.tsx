@@ -91,12 +91,10 @@ export function TraceTree({
     focusRow(next);
   }
 
-  const rootCount = rows.filter((row) => row.depth === 0).length;
-
   return (
     <div className="ci-trace">
       <p className="ci-trace__title" id="ci-trace-title">
-        {text.graph.traceRoots(rootCount)}
+        {text.graph.columnSeq}
       </p>
       <div
         ref={treeRef}

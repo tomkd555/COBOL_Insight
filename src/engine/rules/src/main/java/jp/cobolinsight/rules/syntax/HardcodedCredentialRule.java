@@ -32,14 +32,15 @@ public final class HardcodedCredentialRule implements Rule {
                     + "(?![A-Za-z0-9])");
     private static final Pattern STRING_LITERAL = Pattern.compile("'([^']*)'|\"([^\"]*)\"");
 
-    private static final RuleMeta META = RuleMeta.named("R026", "ハードコードされたパスワード・認証情報", "セキュリティ")
+    private static final RuleMeta META = RuleMeta.named("R026", "原始プログラムに直接書かれた資格情報", "セキュリティ")
             .summary("パスワード・API キー・トークンを表す項目と同じ行に、"
-                    + "文字定数が直接書かれている箇所を検出する。")
-            .rationale("原始プログラムを読める者が資格情報をそのまま得られる。"
-                    + "資格情報の変更のたびに再コンパイルと再配布が要る点でも運用を縛る。")
-            .detection("原始プログラムの文字列を走査し、資格情報を表す識別子と空白以外の"
-                    + "文字定数が同じ行にある VALUE 句・MOVE 文を検出する。")
-            .remedy("資格情報を外部の資格情報管理へ移し、実行時に受け取る。")
+                    + "文字定数が直接書かれている箇所を検出します。")
+            .rationale("原始プログラムを読める者が資格情報をそのまま得られます。"
+                    + "資格情報の変更のたびに再コンパイルと再配布が要る点でも運用を縛ります。")
+            .detection("原始プログラムの各行を走査し、資格情報を表す識別子と空白以外の"
+                    + "文字定数が同じ行にある VALUE 句・MOVE 文を検出します。"
+                    + "注記行と 73桁以降の識別領域は対象外です。")
+            .remedy("資格情報を外部の資格情報管理へ移し、実行時に受け取ってください。")
             .example("""
                     01  WS-DB-PASSWORD  PIC X(16) VALUE "P@ssw0rd123".
                     """, """
@@ -72,9 +73,12 @@ public final class HardcodedCredentialRule implements Rule {
 
     private static void scan(String file, String text, List<Finding> findings) {
         for (CobolTexts.LogicalLine line : CobolTexts.logicalLines(text)) {
-            if (!CREDENTIAL_KEYWORD.matcher(CobolTexts.stripLiterals(line.text())).find()) {
+            String stripped = CobolTexts.stripLiterals(line.text());
+            Matcher keyword = CREDENTIAL_KEYWORD.matcher(stripped);
+            if (!keyword.find()) {
                 continue;
             }
+            String identifier = identifierAround(stripped, keyword.start(), keyword.end());
             Matcher literal = STRING_LITERAL.matcher(line.text());
             while (literal.find()) {
                 String value = literal.group(1) != null ? literal.group(1) : literal.group(2);
@@ -82,11 +86,25 @@ public final class HardcodedCredentialRule implements Rule {
                     continue;
                 }
                 findings.add(Finding.of("R026", Severity.HIGH.toLevel(),
-                        "パスワード・API キー・シークレットトークンのいずれかの認証情報が、"
-                                + "文字定数として直接記述されている。",
+                        identifier + " に文字定数で資格情報が書かれています。",
                         new SourcePosition(file, line.lineNumber(), literal.start() + 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
             }
         }
+    }
+
+    /** The whole COBOL identifier around a keyword match: WS-DB-PASSWORD for the match PASSWORD. */
+    private static String identifierAround(String text, int start, int end) {
+        while (start > 0 && isIdentifierChar(text.charAt(start - 1))) {
+            start--;
+        }
+        while (end < text.length() && isIdentifierChar(text.charAt(end))) {
+            end++;
+        }
+        return text.substring(start, end);
+    }
+
+    private static boolean isIdentifierChar(char c) {
+        return Character.isLetterOrDigit(c) || c == '-' || c == '_';
     }
 }

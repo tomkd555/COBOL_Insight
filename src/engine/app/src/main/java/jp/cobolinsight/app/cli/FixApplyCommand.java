@@ -31,7 +31,7 @@ import java.util.concurrent.Callable;
  * programs) is reported alongside it, leaving the decision to the user ({@code copybookFixes}).
  */
 @Command(name = "apply", mixinStandardHelpOptions = true,
-        description = "修正後ソースを出力先へ書き出し、再パース検証する(原本不変)")
+        description = "修正後原始プログラムを出力先へ書き出し、再パース検証する(原本不変)")
 public final class FixApplyCommand implements Callable<Integer> {
 
     @Mixin
@@ -41,7 +41,7 @@ public final class FixApplyCommand implements Callable<Integer> {
     RuleOptions ruleOptions;
 
     @Option(names = "--out", paramLabel = "DIR", defaultValue = "fix",
-            description = "修正後ソースの出力先(元の相対パス構成を保持。既定: ${DEFAULT-VALUE})")
+            description = "修正後原始プログラムの出力先(元の相対パス構成を保持。既定: ${DEFAULT-VALUE})")
     Path outputDir;
 
     /** A fix originating from a copybook. The original is left unmodified; the list of importing programs is reported alongside it. */

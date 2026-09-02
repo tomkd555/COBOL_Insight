@@ -45,7 +45,6 @@ export function CustomRules({ notify }: CustomRulesProps): ReactElement {
   return (
     <div className="ci-custom" data-testid="custom-rules">
       <header className="ci-custom__head">
-        <h2 className="ci-custom__title">{text.customRules.title}</h2>
         <div className="ci-chips" role="radiogroup" aria-label={text.customRules.paneLabel}>
           {(["form", "raw"] as const).map((pane) => (
             <button
@@ -79,7 +78,6 @@ export function CustomRules({ notify }: CustomRulesProps): ReactElement {
         >
           {text.customRules.save}
         </button>
-        {dirty ? <span className="ci-custom__dirty">{text.customRules.dirty}</span> : null}
       </header>
 
       {rules.rawError === null ? null : (

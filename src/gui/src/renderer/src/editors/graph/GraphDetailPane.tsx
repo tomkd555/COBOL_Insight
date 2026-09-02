@@ -114,8 +114,8 @@ function EdgeTable({
       <table className="ci-graph__table">
         <thead>
           <tr>
-            <th scope="col">{text.graph.columnSeq}</th>
             <th scope="col">{text.graph.columnPeer}</th>
+            <th scope="col">{text.graph.columnSeq}</th>
             <th scope="col">{text.graph.columnKind}</th>
             <th scope="col">{text.graph.columnLine}</th>
           </tr>
@@ -123,8 +123,8 @@ function EdgeTable({
         <tbody>
           {edges.map((edge, index) => (
             <tr key={`${edge.peerId}-${edge.kind}-${edge.seq}-${index}`}>
-              <td>{edge.seq === 0 ? "" : edge.seq}</td>
               <td>{edge.peerLabel}</td>
+              <td>{edge.seq === 0 ? "" : edge.seq}</td>
               <td>
                 {edgeKindLabel(edge.kind)}
                 {edge.resolution === null ? null : (
@@ -186,9 +186,7 @@ export function GraphDetailPane({
 }: GraphDetailPaneProps): ReactElement {
   return (
     <aside className="ci-graph__detail" aria-label={text.graph.detail} data-testid="graph-detail">
-      {detail === null ? (
-        <p className="ci-graph__state">{text.graph.detailNone}</p>
-      ) : (
+      {detail === null ? null : (
         <>
           <h3 className="ci-graph__detail-title" data-testid="graph-detail-label">
             {detail.node.label}

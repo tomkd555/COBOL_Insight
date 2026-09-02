@@ -29,16 +29,17 @@ public final class UndefinedBmsMapReferenceRule implements Rule {
 
     private static final Pattern MAP_OPERAND = Pattern.compile("(?i)\\bMAP\\s*\\(");
 
-    private static final RuleMeta META = RuleMeta.named("R031", "存在しないBMSマップの参照", "CICS")
+    private static final RuleMeta META = RuleMeta.named("R031", "存在しない BMS マップの参照", "CICS")
             .summary("BMS のマップ定義にないマップセット・マップを参照する"
-                    + "EXEC CICS SEND MAP・RECEIVE MAP を検出する。")
+                    + "EXEC CICS SEND MAP・RECEIVE MAP を検出します。")
             .rationale("定義のないマップを指す送受信は実行時に失敗し、"
-                    + "画面が表示されないまま異常終了する。")
+                    + "画面が表示されないまま異常終了します。")
             .detection("SEND MAP・RECEIVE MAP の MAP・MAPSET を BMS のマップ定義と"
                     + "突き合わせ、マップセットが存在しない、"
-                    + "またはマップがそのマップセットに定義されていないものを検出する。")
+                    + "またはマップがそのマップセットに定義されていないものを検出します。"
+                    + "MAP の作用対象を持たないコマンドは対象外です。")
             .remedy("マップ名・マップセット名のつづりを BMS 定義とそろえるか、"
-                    + "不足しているマップを BMS に定義する。")
+                    + "不足しているマップを BMS に定義してください。")
             .example("""
                     EXEC CICS SEND MAP('MAPXX') MAPSET('MAPSET1') END-EXEC.
                     """, """
@@ -74,9 +75,8 @@ public final class UndefinedBmsMapReferenceRule implements Rule {
                     continue;
                 }
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                        "参照するマップ " + map
-                                + (mapset == null ? "" : "（マップセット " + mapset + "）")
-                                + " は BMS のマップ定義に存在しない。",
+                        map + " が BMS のマップ定義にありません"
+                                + (mapset == null ? "" : "（マップセット " + mapset + "）") + "。",
                         new SourcePosition(model.sourceFile(), mapOperandLine(block), 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
             }

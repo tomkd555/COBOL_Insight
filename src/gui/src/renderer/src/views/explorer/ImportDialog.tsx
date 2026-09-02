@@ -90,20 +90,20 @@ export function ImportDialog({ inputDir, onClose }: ImportDialogProps): ReactEle
       <>
         <button
           type="button"
-          className="ci-button"
-          onClick={onClose}
-          data-testid="import-cancel"
-        >
-          {text.import.cancel}
-        </button>
-        <button
-          type="button"
           className="ci-button ci-button--primary"
           disabled={!canSave}
           onClick={() => save(false)}
           data-testid="import-save"
         >
           {saving ? text.import.saving : text.import.save}
+        </button>
+        <button
+          type="button"
+          className="ci-button"
+          onClick={onClose}
+          data-testid="import-cancel"
+        >
+          {text.import.cancel}
         </button>
       </>
     );
@@ -159,7 +159,6 @@ export function ImportDialog({ inputDir, onClose }: ImportDialogProps): ReactEle
                 </button>
               ))}
             </div>
-            <span className="ci-form__note">{text.import.copybookNote}</span>
           </div>
 
           <label className="ci-form__field">
@@ -182,9 +181,12 @@ export function ImportDialog({ inputDir, onClose }: ImportDialogProps): ReactEle
               onChange={(event) => setFileName(event.target.value)}
               data-testid="import-filename"
             />
-            <span className={relPath === null ? "ci-form__error" : "ci-form__note"}>
-              {relPath === null ? text.import.fileNameInvalid : text.import.destination(relPath)}
-            </span>
+            {/* The destination is worth stating only where it is not the name just typed. */}
+            {relPath === null ? (
+              <span className="ci-form__error">{text.import.fileNameInvalid}</span>
+            ) : relPath === fileName ? null : (
+              <span className="ci-form__note">{text.import.destination(relPath)}</span>
+            )}
           </label>
 
           <div className="ci-form__field">
@@ -215,11 +217,10 @@ export function ImportDialog({ inputDir, onClose }: ImportDialogProps): ReactEle
                 />
               </label>
             </div>
-            <span className={columnsValid ? "ci-form__note" : "ci-form__error"}>
-              {columnsValid ? text.import.columnsNote : text.import.columnsInvalid}
-            </span>
+            {columnsValid ? null : (
+              <span className="ci-form__error">{text.import.columnsInvalid}</span>
+            )}
           </div>
-          <p className="ci-form__note">{text.import.encodingNote}</p>
         </div>
 
         <div className="ci-import__body">
@@ -234,9 +235,7 @@ export function ImportDialog({ inputDir, onClose }: ImportDialogProps): ReactEle
             />
           </label>
           <span className="ci-form__label">{text.import.preview}</span>
-          {lines.length === 0 ? (
-            <p className="ci-form__note">{text.import.previewEmpty}</p>
-          ) : (
+          {lines.length === 0 ? null : (
             <pre className="ci-import__preview" data-testid="import-preview">
               {`${ruler.tens}\n${ruler.ones}\n${lines.join("\n")}`}
             </pre>

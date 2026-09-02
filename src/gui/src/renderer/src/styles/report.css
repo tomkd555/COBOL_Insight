@@ -24,13 +24,6 @@
   gap: var(--ci-space-2);
 }
 
-.ci-report__title {
-  flex: 1;
-  margin: 0;
-  font-size: var(--ci-size-lg);
-  font-weight: 600;
-}
-
 .ci-report__path,
 .ci-report__state {
   margin: 0;

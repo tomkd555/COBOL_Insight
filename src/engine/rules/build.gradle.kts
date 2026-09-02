@@ -10,3 +10,10 @@ dependencies {
     testImplementation(project(":engine:sql-frontend"))
     testImplementation("com.networknt:json-schema-validator:3.0.6")
 }
+
+tasks.test {
+    // RuleTextGlossaryTest reads these app sources as text, so a wording change there must
+    // re-run it.
+    inputs.dir("../app/src/main/java/jp/cobolinsight/app/cli")
+    inputs.dir("../app/src/main/java/jp/cobolinsight/app/pipeline")
+}

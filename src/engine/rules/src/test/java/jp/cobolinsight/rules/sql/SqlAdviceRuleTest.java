@@ -59,7 +59,7 @@ class SqlAdviceRuleTest {
                 "SELECT SHOHIN_CD FROM SYKDB.ZAIKOM WHERE ZAIKO_SU - 5 = 10", 20));
         List<Finding> findings = new NonSargablePredicateRule().evaluate(ctx);
         assertEquals(1, findings.size(), () -> "算術で列を包む述語を1件指摘すること: " + findings);
-        assertTrue(findings.get(0).message().contains("索引を使えない述語がある"),
+        assertTrue(findings.get(0).message().contains("は索引で絞り込めません。全表走査になります。"),
                 findings.get(0).message());
     }
 
@@ -80,7 +80,7 @@ class SqlAdviceRuleTest {
         assertEquals(1, findings.size(), () -> "列への関数適用を1件指摘すること: " + findings);
         assertEquals("S002", findings.get(0).ruleId());
         assertEquals(30, findings.get(0).location().line());
-        assertTrue(findings.get(0).message().contains("関数・CAST を適用している"),
+        assertTrue(findings.get(0).message().contains("は列を関数・CAST で包んでいます。"),
                 findings.get(0).message());
     }
 

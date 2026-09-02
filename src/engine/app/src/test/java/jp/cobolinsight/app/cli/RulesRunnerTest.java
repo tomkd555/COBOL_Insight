@@ -71,7 +71,7 @@ class RulesRunnerTest {
         RulesRunner.Result result = run(null, "R004");
         assertEquals(1, result.rules().size());
         assertTrue(result.detail());
-        assertTrue(result.toText().contains("ON SIZE ERROR句の欠如"), result.toText());
+        assertTrue(result.toText().contains("ON SIZE ERROR 句の欠如"), result.toText());
         assertTrue(result.toText().contains("修正案: あり"), result.toText());
     }
 
@@ -143,7 +143,7 @@ class RulesRunnerTest {
                 "{\"version\": 2, \"rules\": {\"R999\": {\"enabled\": false}}}"), null);
         assertEquals(1, result.errors().size());
         assertTrue(result.errors().get(0).contains("R999"), result.errors().get(0));
-        assertTrue(result.toText().contains("警告: ルール設定"), result.toText());
+        assertTrue(result.toText().contains("警告: "), result.toText());
     }
 
     @Test

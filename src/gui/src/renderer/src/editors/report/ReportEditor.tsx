@@ -84,7 +84,6 @@ export function ReportEditor({ notify }: ReportEditorProps): ReactElement {
   return (
     <div className="ci-report" data-testid="report-editor">
       <div className="ci-report__toolbar">
-        <h3 className="ci-report__title">{text.report.title}</h3>
         <button
           type="button"
           className="ci-button"
@@ -116,11 +115,11 @@ export function ReportEditor({ notify }: ReportEditorProps): ReactElement {
       </div>
 
       {view.kind === "no-project" ? (
-        <p className="ci-report__state">{text.report.noProject}</p>
+        <p className="ci-report__state">
+          {inputDir === null ? text.empty.noFolder : text.empty.notAnalysed}
+        </p>
       ) : null}
-      {view.kind === "not-generated" ? (
-        <p className="ci-report__state">{text.report.notGenerated}</p>
-      ) : null}
+      {/* Once there is something to report on, the two generate buttons are the whole state. */}
       {view.kind === "generating" ? (
         <p className="ci-report__state" data-testid="report-generating">
           {text.report.generating}
