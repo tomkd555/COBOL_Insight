@@ -41,7 +41,7 @@ GUI development: `cd src/gui; npm ci; npm run dev` (uses `.\gradlew.bat :engine:
 | `samples` | Synthetic assets with a ground truth (`expected-results.md`, `expected-findings.tsv`) used by the acceptance tests |
 | `docs` | `cli.md` (subcommands and JSON), `rules.md` (`rules.json` schema), `vendor-che4z.md` |
 | `tools` | Upgrade and generator scripts |
-| `release` | Output of `gradlew dist` (ignored) |
+| `release` | Output of `gradlew dist` (ignored): the engine app-image under `engine/`, the GUI package `COBOL_Insight_v<version>/` and its zip |
 
 ## Rules
 

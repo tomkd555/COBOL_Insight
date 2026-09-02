@@ -5,10 +5,11 @@ files:
   - package.json
 asarUnpack:
   - node_modules/sql.js/dist/sql-wasm.wasm
-# The jpackage app-image (engine plus its bundled JRE) ships inside the archive.
-# Build it first with `gradlew :engine:app:jpackageAppImage`, otherwise packaging fails here.
+# The jpackage app-image (engine plus its bundled JRE) ships inside the archive. It is read from
+# release/engine, where `gradlew :engine:app:jpackageAppImage` puts it; build it first, otherwise
+# packaging fails here.
 extraResources:
-  - from: ../engine/app/build/jpackage/app-image/COBOLInsight
+  - from: ../../release/engine/COBOLInsight
     to: engine
     filter:
       - "**/*"

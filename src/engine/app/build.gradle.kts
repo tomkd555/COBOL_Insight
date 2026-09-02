@@ -28,8 +28,14 @@ dependencies {
     runtimeOnly("org.graalvm.js:js:24.2.1")
 }
 
-// Windows app-image with an embedded runtime, built from the installDist output. Output is under build/.
-val jpackageAppImageDir = layout.buildDirectory.dir("jpackage/app-image")
+// The zip and tar the application plugin would add to `build` are not shipped: release/ is the one
+// place a deliverable goes, and installDist is what the GUI's development launch and jpackage read.
+tasks.named("distZip") { enabled = false }
+tasks.named("distTar") { enabled = false }
+
+// Windows app-image with an embedded runtime, built from the installDist output. It goes under
+// release/ beside the GUI package that bundles it (see src/gui/electron-builder.yml).
+val jpackageAppImageDir = rootProject.layout.projectDirectory.dir("release/engine")
 
 tasks.register<Exec>("jpackageAppImage") {
     group = "distribution"
@@ -54,7 +60,7 @@ tasks.register<Exec>("jpackageAppImage") {
             "--input", install.resolve("lib").absolutePath,
             "--main-jar", "app-${project.version}.jar",
             "--main-class", "jp.cobolinsight.app.cli.Main",
-            "--dest", outDir.get().asFile.absolutePath,
+            "--dest", outDir.asFile.absolutePath,
             "--java-options", "-Dfile.encoding=UTF-8",
             // jdk.charsets carries x-IBM930/x-IBM939 (EBCDIC); without it the packaged image cannot
             // decode Japanese EBCDIC sources. java.sql is sqlite-jdbc, java.desktop is graphviz-java.
