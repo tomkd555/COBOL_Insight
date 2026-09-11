@@ -44,6 +44,12 @@ tasks.test {
 tasks.named("distZip") { enabled = false }
 tasks.named("distTar") { enabled = false }
 
+// `--version` reads this attribute (Main.Version), so the product version is stamped from
+// gradle.properties rather than kept a second time in the source.
+tasks.named<Jar>("jar") {
+    manifest { attributes("Implementation-Version" to project.version) }
+}
+
 // Windows app-image with an embedded runtime, built from the installDist output. It goes under
 // release/ beside the GUI package that bundles it (see src/gui/electron-builder.yml).
 val jpackageAppImageDir = rootProject.layout.projectDirectory.dir("release/engine")

@@ -1,6 +1,6 @@
 {
   "name": "cobol-insight-gui",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "description": "COBOL Insight V2 desktop GUI (electron-vite + React, offline, every dependency bundled locally)",
   "main": "out/main/index.js",

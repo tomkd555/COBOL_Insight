@@ -11,7 +11,7 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 
 /** The main entry point for the group of picocli subcommands. */
-@Command(name = "cobol-insight", mixinStandardHelpOptions = true, version = "COBOL Insight 0.1.0-m2",
+@Command(name = "cobol-insight", mixinStandardHelpOptions = true, versionProvider = Main.Version.class,
         description = "COBOL資産の統合解析ツール",
         subcommands = {ScanCommand.class, LintCommand.class,
                 ReportCommand.class, TranspileCommand.class,
@@ -22,6 +22,19 @@ public final class Main implements Runnable {
     @Override
     public void run() {
         CommandLine.usage(this, System.out);
+    }
+
+    /**
+     * The version {@code --version} prints: the Implementation-Version the jar task stamps from
+     * gradle.properties. Run from a classes directory (the tests), there is no manifest and the
+     * word "development" stands in.
+     */
+    static final class Version implements CommandLine.IVersionProvider {
+        @Override
+        public String[] getVersion() {
+            String version = Main.class.getPackage().getImplementationVersion();
+            return new String[] {"COBOL Insight " + (version == null ? "development" : version)};
+        }
     }
 
     public static void main(String[] args) {
