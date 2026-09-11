@@ -49,9 +49,8 @@ public final class PerformThruInterruptGoToRule implements Rule {
                     PERFORM CALC-START THRU CALC-EXIT.
                     """)
             .severity(Severity.HIGH)
-            .commands(Command.LINT, Command.REPORT)
+            .commands(Command.LINT)
             .targets(AssetKind.COBOL)
-            .needs(Needs.SEMANTIC)
             .build();
 
     @Override

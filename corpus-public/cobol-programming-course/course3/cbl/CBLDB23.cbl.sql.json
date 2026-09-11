@@ -1,0 +1,329 @@
+[
+  {
+    "kind": "DECLARE_TABLE",
+    "startLine": 67,
+    "endLine": 78,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "declaredTable": "Z#####T",
+    "declaredColumns": [
+      {
+        "name": "ACCTNO",
+        "type": "CHAR(8)",
+        "nullable": false
+      },
+      {
+        "name": "LIMIT",
+        "type": "DECIMAL(9,2)",
+        "nullable": true
+      },
+      {
+        "name": "BALANCE",
+        "type": "DECIMAL(9,2)",
+        "nullable": true
+      },
+      {
+        "name": "SURNAME",
+        "type": "CHAR(20)",
+        "nullable": false
+      },
+      {
+        "name": "FIRSTN",
+        "type": "CHAR(15)",
+        "nullable": false
+      },
+      {
+        "name": "ADDRESS1",
+        "type": "CHAR(25)",
+        "nullable": false
+      },
+      {
+        "name": "ADDRESS2",
+        "type": "CHAR(20)",
+        "nullable": false
+      },
+      {
+        "name": "ADDRESS3",
+        "type": "CHAR(15)",
+        "nullable": false
+      },
+      {
+        "name": "RESERVED",
+        "type": "CHAR(7)",
+        "nullable": false
+      },
+      {
+        "name": "COMMENTS",
+        "type": "CHAR(50)",
+        "nullable": false
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "referencedTables": [
+      "Z#####T"
+    ],
+    "startLine": 82,
+    "endLine": 84,
+    "structureSignals": {
+      "selectStar": true,
+      "cursor": {
+        "cursorName": "CUR1",
+        "forReadOnly": false,
+        "forFetchOnly": false,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CUR1",
+    "tableAccess": {
+      "Z#####T": "R"
+    },
+    "selectList": [
+      "*"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "hostVariables": [
+      {
+        "originalName": "STATE",
+        "mangledName": "HV1"
+      }
+    ],
+    "referencedTables": [
+      "Z#####T"
+    ],
+    "startLine": 85,
+    "endLine": 89,
+    "structureSignals": {
+      "selectStar": true,
+      "cursor": {
+        "cursorName": "CUR2",
+        "forReadOnly": false,
+        "forFetchOnly": false,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CUR2",
+    "tableAccess": {
+      "Z#####T": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "ADDRESS3"
+      }
+    ],
+    "selectList": [
+      "*"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 126,
+    "endLine": 126,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CUR1",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "CUSTOMER-RECORD",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 131,
+    "endLine": 131,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CUR1",
+    "intoTargets": [
+      "CUSTOMER-RECORD"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 138,
+    "endLine": 138,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CUR1",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "CUSTOMER-RECORD",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 146,
+    "endLine": 146,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CUR1",
+    "intoTargets": [
+      "CUSTOMER-RECORD"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 148,
+    "endLine": 148,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CUR2",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "CUSTOMER-RECORD",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 153,
+    "endLine": 153,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CUR2",
+    "intoTargets": [
+      "CUSTOMER-RECORD"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 160,
+    "endLine": 160,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CUR2",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "CUSTOMER-RECORD",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 168,
+    "endLine": 168,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CUR2",
+    "intoTargets": [
+      "CUSTOMER-RECORD"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

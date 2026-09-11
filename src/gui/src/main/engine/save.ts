@@ -52,8 +52,6 @@ export function parseSaveSummary(
   return {
     written: summary["written"] === true,
     path: asText(summary["path"]),
-    changedLineFrom: asInt(summary["changedLineFrom"]),
-    changedLineTo: asInt(summary["changedLineTo"]),
     reparseErrors: asReparseErrors(summary["reparseErrors"]),
     error: asText(summary["error"]),
     // Prefer the summary's exit code; fall back to the process's only when it is absent.

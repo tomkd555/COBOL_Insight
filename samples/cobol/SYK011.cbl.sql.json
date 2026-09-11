@@ -1,0 +1,555 @@
+[
+  {
+    "kind": "BEGIN_DECLARE_SECTION",
+    "startLine": 19,
+    "endLine": 19,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "END_DECLARE_SECTION",
+    "startLine": 24,
+    "endLine": 24,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "referencedTables": [
+      "SYKDB.ZAIKOSHUKEI"
+    ],
+    "startLine": 42,
+    "endLine": 47,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-JUNBI",
+        "forReadOnly": true,
+        "forFetchOnly": false,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-JUNBI",
+    "tableAccess": {
+      "SYKDB.ZAIKOSHUKEI": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "SHOHIN_CD"
+      }
+    ],
+    "selectList": [
+      "SHOHIN_CD"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 49,
+    "endLine": 49,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-JUNBI",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "HOST-商品コード",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 51,
+    "endLine": 53,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-JUNBI",
+    "intoTargets": [
+      "HOST-商品コード"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 57,
+    "endLine": 57,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-JUNBI",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "referencedTables": [
+      "SYKDB.ZAIKOSHUKEI"
+    ],
+    "startLine": 60,
+    "endLine": 65,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-SAIKAI",
+        "forReadOnly": true,
+        "forFetchOnly": false,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-SAIKAI",
+    "tableAccess": {
+      "SYKDB.ZAIKOSHUKEI": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "SOKO_CD"
+      }
+    ],
+    "selectList": [
+      "SOKO_CD"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 66,
+    "endLine": 66,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-SAIKAI",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "HOST-倉庫コード",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 67,
+    "endLine": 69,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-SAIKAI",
+    "intoTargets": [
+      "HOST-倉庫コード"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 73,
+    "endLine": 73,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-SAIKAI",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 74,
+    "endLine": 74,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-SAIKAI",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "referencedTables": [
+      "SYKDB.ZAIKOSHUKEI"
+    ],
+    "startLine": 77,
+    "endLine": 82,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-MEISAI",
+        "forReadOnly": true,
+        "forFetchOnly": false,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-MEISAI",
+    "tableAccess": {
+      "SYKDB.ZAIKOSHUKEI": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "SHOHIN_CD"
+      }
+    ],
+    "selectList": [
+      "SHOHIN_CD"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "referencedTables": [
+      "SYKDB.ZAIKOSHUKEI"
+    ],
+    "startLine": 85,
+    "endLine": 90,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-TORIKESHI",
+        "forReadOnly": true,
+        "forFetchOnly": false,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-TORIKESHI",
+    "tableAccess": {
+      "SYKDB.ZAIKOSHUKEI": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "SHOHIN_CD"
+      }
+    ],
+    "selectList": [
+      "SHOHIN_CD"
+    ],
+    "withHold": true,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 91,
+    "endLine": 91,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-TORIKESHI",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "ROLLBACK",
+    "startLine": 92,
+    "endLine": 92,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "HOST-商品コード",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 93,
+    "endLine": 95,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-TORIKESHI",
+    "intoTargets": [
+      "HOST-商品コード"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 99,
+    "endLine": 99,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-TORIKESHI",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "referencedTables": [
+      "SYKDB.ZAIKOSHUKEI"
+    ],
+    "startLine": 102,
+    "endLine": 107,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-KOSHIN",
+        "forReadOnly": true,
+        "forFetchOnly": false,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-KOSHIN",
+    "tableAccess": {
+      "SYKDB.ZAIKOSHUKEI": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "HIKIATE_SU"
+      }
+    ],
+    "selectList": [
+      "HIKIATE_SU"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 108,
+    "endLine": 108,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-KOSHIN",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "HOST-引当数量",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 109,
+    "endLine": 111,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-KOSHIN",
+    "intoTargets": [
+      "HOST-引当数量"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "UPDATE",
+    "hostVariables": [
+      {
+        "originalName": "HOST-引当数量",
+        "mangledName": "HV1"
+      }
+    ],
+    "referencedTables": [
+      "SYKDB.ZAIKOSHUKEI"
+    ],
+    "startLine": 113,
+    "endLine": 117,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-KOSHIN",
+    "positionedCursor": "CSR-KOSHIN",
+    "tableAccess": {
+      "SYKDB.ZAIKOSHUKEI": "U"
+    },
+    "columnRefs": [
+      {
+        "column": "HIKIATE_SU"
+      }
+    ],
+    "setPairs": [
+      {
+        "column": "HIKIATE_SU",
+        "value": ":HOST-引当数量"
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 122,
+    "endLine": 122,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-KOSHIN",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

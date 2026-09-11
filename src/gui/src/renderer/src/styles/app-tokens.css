@@ -19,6 +19,9 @@
   /* Type. The UI face comes from theme.css; code is the fixed-pitch member of the same family. */
   --ci-font-ui: "BIZ UDPGothic", "Yu Gothic UI", "Meiryo", sans-serif;
   --ci-font-code: "BIZ UDGothic", "MS Gothic", monospace;
+  /* Must match CODE_FONT.fontSize in vendor/monarch.ts: the COPY expansion zone is plain DOM, not
+     Monaco, and its columns line up with the source only if the two agree on the pixel size. */
+  --ci-code-size: 13px;
   --ci-size-sm: 12px;
   --ci-size-md: 14px;
   --ci-size-lg: 16px;

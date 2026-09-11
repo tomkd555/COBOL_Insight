@@ -1,0 +1,110 @@
+[
+  {
+    "kind": "BEGIN_DECLARE_SECTION",
+    "startLine": 16,
+    "endLine": 16,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "END_DECLARE_SECTION",
+    "startLine": 20,
+    "endLine": 20,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "COMMIT",
+    "startLine": 37,
+    "endLine": 37,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-SHOHIN-MEI",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-TANKA",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "WS-SHOHIN-CD",
+        "mangledName": "HV3"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.SHOHIN"
+    ],
+    "file": "corpus-constructs/sql/CSC101.cpy",
+    "startLine": 8,
+    "endLine": 13,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "WS-SHOHIN-MEI",
+      "WS-TANKA"
+    ],
+    "tableAccess": {
+      "CSQDB.SHOHIN": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "SHOHIN_MEI"
+      },
+      {
+        "column": "TANKA"
+      },
+      {
+        "column": "SHOHIN_CD"
+      }
+    ],
+    "selectList": [
+      "SHOHIN_MEI",
+      "TANKA"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

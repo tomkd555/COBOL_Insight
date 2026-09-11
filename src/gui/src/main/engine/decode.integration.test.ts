@@ -117,11 +117,6 @@ describe.skipIf(!ready)("decoding and saving the EBCDIC fixtures, for real", () 
     expect(decoded.get("SYKENC1_SJIS.cbl")?.text).toBe(utf8);
   });
 
-  it("reports the shift bytes only for the EBCDIC pair", () => {
-    expect(decoded.get("SYKENC1_CP930.cbl")?.soSiPresent).toBe(true);
-    expect(decoded.get("SYKENC1_SJIS.cbl")?.soSiPresent).toBe(false);
-  });
-
   it("puts the area boundaries on the right characters of a double-byte line", () => {
     /*
      * Line 3 of the Shift_JIS fixture, byte for byte:

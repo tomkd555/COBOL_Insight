@@ -16,10 +16,6 @@ public sealed interface PExpr permits PExpr.Ref, PExpr.Lit, PExpr.Op, PExpr.Arit
         public Ref {
             subscripts = List.copyOf(subscripts);
         }
-
-        public static Ref scalar(String fieldName, boolean isString) {
-            return new Ref(fieldName, isString, List.of());
-        }
     }
 
     /** A literal. When isString is true this is a string (value holds the content with quotes removed); when false it is numeric (value holds the original notation). */

@@ -15,7 +15,6 @@ import {
   type ReactNode,
 } from "react";
 import type { AppSettings } from "../../../shared/settings";
-import { emptyAppSettings } from "../../../shared/settings";
 import { CODEPAGES } from "../../../shared/codepage";
 import { SEVERITIES, type Severity } from "../model/severity";
 import { isThemeChoice, type ThemeChoice } from "../theme";
@@ -27,8 +26,6 @@ export interface SettingsState {
   readonly copybookPaths: readonly string[];
   /** Where `fix apply` writes the corrected sources. Empty means the engine's own default. */
   readonly fixOutDir: string;
-  readonly lastInputDir: string;
-  readonly paneSizes: Readonly<Record<string, number>>;
   readonly theme: ThemeChoice;
   /** Whether the stored settings have been read yet. Saving before that would erase them. */
   readonly restored: boolean;
@@ -39,8 +36,6 @@ export const initialSettingsState: SettingsState = {
   defaultEncoding: "",
   copybookPaths: [],
   fixOutDir: "",
-  lastInputDir: "",
-  paneSizes: {},
   theme: "system",
   restored: false,
 };
@@ -51,8 +46,6 @@ export type SettingsAction =
   | { type: "SET_ENCODING"; encoding: string }
   | { type: "SET_COPYBOOK_PATHS"; paths: readonly string[] }
   | { type: "SET_FIX_OUT_DIR"; dir: string }
-  | { type: "SET_LAST_INPUT_DIR"; dir: string }
-  | { type: "SET_PANE_SIZE"; key: string; size: number }
   | { type: "SET_THEME"; theme: ThemeChoice };
 
 function isSeverity(value: string): value is Severity {
@@ -75,8 +68,6 @@ export function settingsReducer(state: SettingsState, action: SettingsAction): S
           : "",
         copybookPaths: [...action.settings.copybookPaths],
         fixOutDir: action.settings.fixOutDir,
-        lastInputDir: action.settings.lastInputDir,
-        paneSizes: { ...action.settings.paneSizes },
         theme: isThemeChoice(action.settings.theme) ? action.settings.theme : "system",
         restored: true,
       };
@@ -93,12 +84,6 @@ export function settingsReducer(state: SettingsState, action: SettingsAction): S
     case "SET_FIX_OUT_DIR":
       return { ...state, fixOutDir: action.dir };
 
-    case "SET_LAST_INPUT_DIR":
-      return { ...state, lastInputDir: action.dir };
-
-    case "SET_PANE_SIZE":
-      return { ...state, paneSizes: { ...state.paneSizes, [action.key]: action.size } };
-
     case "SET_THEME":
       return { ...state, theme: action.theme };
 
@@ -109,16 +94,17 @@ export function settingsReducer(state: SettingsState, action: SettingsAction): S
   }
 }
 
-/** The state in the shape the settings file stores. */
-export function toAppSettings(state: SettingsState): AppSettings {
+/**
+ * The fields the settings screen owns, in the shape the settings file stores. `paneSizes` is not
+ * one of them — it is persisted separately by the shell, and a caller that wrote `{}` here would
+ * erase it, since `writeSettings` merges shallowly over the stored file.
+ */
+export function toAppSettings(state: SettingsState): Partial<AppSettings> {
   return {
-    ...emptyAppSettings(),
     severityThreshold: state.severityThreshold,
     defaultEncoding: state.defaultEncoding,
     copybookPaths: [...state.copybookPaths],
     fixOutDir: state.fixOutDir,
-    lastInputDir: state.lastInputDir,
-    paneSizes: { ...state.paneSizes },
     theme: state.theme,
   };
 }

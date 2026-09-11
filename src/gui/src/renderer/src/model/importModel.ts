@@ -130,9 +130,6 @@ export function columnRuler(width: number): ColumnRuler {
   return { tens, ones };
 }
 
-/** The extension a copybook is given, because the engine's COPY search looks for it. */
-const COPYBOOK_EXTENSION = ".cpy";
-
 /** Characters a file name cannot hold: the path separators and what Windows reserves. */
 const FORBIDDEN_IN_NAME = /[\\/:*?"<>|]/;
 
@@ -141,11 +138,7 @@ const FORBIDDEN_IN_NAME = /[\\/:*?"<>|]/;
  * This is the same rule main applies before writing; it is repeated here only to show the
  * destination and to keep the button from offering a save that would be refused.
  */
-export function importRelPath(
-  kind: string,
-  destDir: string,
-  fileName: string,
-): string | null {
+export function importRelPath(destDir: string, fileName: string): string | null {
   const name = fileName.trim();
   if (
     name === "" ||
@@ -163,9 +156,5 @@ export function importRelPath(
   if (segments.some((segment) => segment === "." || segment === "..")) {
     return null;
   }
-  const withExtension =
-    kind === "copybook" && !name.toLowerCase().endsWith(COPYBOOK_EXTENSION)
-      ? `${name}${COPYBOOK_EXTENSION}`
-      : name;
-  return [...segments, withExtension].join("/");
+  return [...segments, name].join("/");
 }

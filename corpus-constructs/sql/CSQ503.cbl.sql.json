@@ -1,0 +1,68 @@
+[
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-CSH-KOKYAKU-NO",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-CSH-ZANDAKA",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "WS-CSH-KOSHIN-YMD",
+        "mangledName": "HV3",
+        "indicatorName": "WS-CSH-KOSHIN-YMD-IND"
+      },
+      {
+        "originalName": "WS-CSH-KOZA-NO",
+        "mangledName": "HV4"
+      }
+    ],
+    "referencedTables": [
+      "CSDB.CSQKOZA"
+    ],
+    "startLine": 34,
+    "endLine": 41,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "WS-CSH-KOKYAKU-NO",
+      "WS-CSH-ZANDAKA",
+      "WS-CSH-KOSHIN-YMD"
+    ],
+    "tableAccess": {
+      "CSDB.CSQKOZA": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "column": "ZANDAKA"
+      },
+      {
+        "column": "KOSHIN_YMD"
+      },
+      {
+        "column": "KOZA_NO"
+      }
+    ],
+    "selectList": [
+      "KOKYAKU_NO",
+      "ZANDAKA",
+      "KOSHIN_YMD"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

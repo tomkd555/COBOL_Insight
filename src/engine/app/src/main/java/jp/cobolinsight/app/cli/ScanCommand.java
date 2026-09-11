@@ -22,6 +22,11 @@ public final class ScanCommand implements Callable<Integer> {
     @Mixin
     CommonScanOptions options;
 
+    /**
+     * No rule runs under {@code scan}, so the file is only read and checked here: a malformed or
+     * wrong-version {@code rules.json} fails this stage instead of the next one. The option stays
+     * because the GUI passes the same options object to both stages.
+     */
     @Mixin
     RuleOptions ruleOptions;
 
@@ -31,13 +36,18 @@ public final class ScanCommand implements Callable<Integer> {
 
     @Override
     public Integer call() {
+        // The copybook paths go in as given: with none, the pipeline's own walk decides them, so
+        // the folder is walked once.
         ScanOutcome result = Pipelines.scan(options.inputDir, options.databaseFile,
-                options.resolvedCopybookPaths(), options.codepageOverrides,
-                ruleOptions.reportingRuleSet());
+                options.copybookPaths, options.codepageOverrides,
+                ruleOptions.reportingRuleSet(), options.procedureLibraryPaths);
         String expansionPath = null;
         if (copyExpansionFile != null) {
             Paths.writeString(copyExpansionFile, result.copyExpansions().toJson());
             expansionPath = copyExpansionFile.toString().replace('\\', '/');
+        }
+        for (String warning : result.warnings()) {
+            System.err.println("警告: " + warning);
         }
         System.out.println(result.summary()
                 .toJson(options.databaseFile.toString(), expansionPath));

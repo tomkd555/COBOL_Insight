@@ -1,0 +1,104 @@
+[
+  {
+    "jobName": "CJ401",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "DSN RUN PROGRAM",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IKJEFT01",
+        "line": 11,
+        "parameters": {
+          "DYNAMNBR": "20"
+        },
+        "utility": {
+          "programRuns": [
+            {
+              "program": "CCP011",
+              "plan": "CCPPLAN1",
+              "parms": "20260101,RERUN",
+              "library": "CCP.PROD.LOADLIB"
+            },
+            {
+              "program": "CCP012",
+              "plan": "CCPPLAN2",
+              "library": "CCP.PROD.LOADLIB"
+            }
+          ],
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "SYSTSPRT": "WRITE",
+            "SYSPRINT": "WRITE",
+            "SYSUDUMP": "WRITE",
+            "SYSTSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 12,
+            "datasetName": "CCP.PROD.LOADLIB",
+            "dataset": {
+              "name": "CCP.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CCP.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSTSPRT",
+            "line": 13,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 14,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSUDUMP",
+            "line": 15,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSTSIN",
+            "line": 16,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  DSN SYSTEM(DB2P)",
+              "  RUN PROGRAM(CCP011) PLAN(CCPPLAN1) LIB('CCP.PROD.LOADLIB')      -",
+              "      PARMS('20260101,RERUN')",
+              "  RUN PROGRAM(CCP012) PLAN(CCPPLAN2) LIB('CCP.PROD.LOADLIB')",
+              "  END"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

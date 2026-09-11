@@ -10,7 +10,7 @@
  */
 
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
-import type { ImportAssetKind, ImportSourceRequest, ImportSourceResult } from "../../shared/ipc";
+import type { ImportSourceRequest, ImportSourceResult } from "../../shared/ipc";
 import { resolveWithinBase } from "./pathGuard";
 
 /** The filesystem the import needs. */
@@ -28,9 +28,6 @@ export interface ImportFileSystem {
  */
 const LINE_SEPARATOR = "\r\n";
 
-/** Only a copybook gets its extension completed; the others are written under the given name. */
-const COPYBOOK_EXTENSION = ".cpy";
-
 /** Path segments that cannot be part of a destination inside the asset folder. */
 const REJECTED_SEGMENTS = new Set(["", ".", ".."]);
 
@@ -38,11 +35,7 @@ const REJECTED_SEGMENTS = new Set(["", ".", ".."]);
  * Builds the relative destination path. Returns null when the destination folder or file name is
  * unusable (empty, a path segment that climbs out, or an absolute path).
  */
-export function importRelPath(
-  kind: ImportAssetKind,
-  destDir: string,
-  fileName: string,
-): string | null {
+export function importRelPath(destDir: string, fileName: string): string | null {
   if (fileName.trim() === "" || isAbsolute(fileName) || /[\\/]/.test(fileName)) {
     return null;
   }
@@ -50,11 +43,7 @@ export function importRelPath(
   if (segments.some((segment) => REJECTED_SEGMENTS.has(segment))) {
     return null;
   }
-  const name =
-    kind === "copybook" && !fileName.toLowerCase().endsWith(COPYBOOK_EXTENSION)
-      ? `${fileName}${COPYBOOK_EXTENSION}`
-      : fileName;
-  return [...segments, name].join("/");
+  return [...segments, fileName].join("/");
 }
 
 /**
@@ -75,9 +64,9 @@ export async function importSource(
   request: ImportSourceRequest,
 ): Promise<ImportSourceResult> {
   if (request.lines.length === 0) {
-    throw new Error("取り込む本文がありません。端末から複写した本文を貼り付けてください。");
+    throw new Error("貼り付けた本文がありません。端末から複写した本文を貼り付けてください。");
   }
-  const relPath = importRelPath(request.kind, request.destDir, request.fileName);
+  const relPath = importRelPath(request.destDir, request.fileName);
   if (relPath === null) {
     throw new Error(
       `保存先「${request.destDir}/${request.fileName}」は使えません。保存先とファイル名を見直してください。`,

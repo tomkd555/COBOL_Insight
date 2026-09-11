@@ -1,0 +1,189 @@
+[
+  {
+    "jobName": "CJ110",
+    "line": 1,
+    "condition": "COND=(0,NE)",
+    "parameters": {
+      "ACCOUNT": "CJ01",
+      "PROGRAMMER": "CJ クロウ",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID",
+      "COND": "(0,NE)"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "CCP006",
+        "line": 10,
+        "utility": {
+          "ddRoles": {
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSOUT",
+            "line": 11,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PGM",
+        "target": "CCP007",
+        "line": 12,
+        "condition": "COND=(4,LT)",
+        "parameters": {
+          "COND": "(4,LT)"
+        },
+        "utility": {
+          "ddRoles": {
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSOUT",
+            "line": 13,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP030",
+        "execKind": "PGM",
+        "target": "CCP008",
+        "line": 14,
+        "condition": "COND=(4,LT,STEP010)",
+        "parameters": {
+          "COND": "(4,LT,STEP010)"
+        },
+        "utility": {
+          "ddRoles": {
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSOUT",
+            "line": 15,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP040",
+        "execKind": "PGM",
+        "target": "CCP009",
+        "line": 16,
+        "condition": "COND=((4,LT),(8,GT,STEP010))",
+        "parameters": {
+          "COND": "((4,LT),(8,GT,STEP010))"
+        },
+        "utility": {
+          "ddRoles": {
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSOUT",
+            "line": 17,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP050",
+        "execKind": "PGM",
+        "target": "CCP010",
+        "line": 18,
+        "condition": "COND=EVEN",
+        "parameters": {
+          "COND": "EVEN"
+        },
+        "utility": {
+          "ddRoles": {
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSOUT",
+            "line": 19,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP060",
+        "execKind": "PGM",
+        "target": "CCP006",
+        "line": 20,
+        "condition": "COND=ONLY",
+        "parameters": {
+          "COND": "ONLY"
+        },
+        "utility": {
+          "ddRoles": {
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSOUT",
+            "line": 21,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP070",
+        "execKind": "PGM",
+        "target": "CCP007",
+        "line": 22,
+        "condition": "COND=(0,NE)",
+        "parameters": {
+          "COND": "(0,NE)"
+        },
+        "utility": {
+          "ddRoles": {
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSOUT",
+            "line": 23,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

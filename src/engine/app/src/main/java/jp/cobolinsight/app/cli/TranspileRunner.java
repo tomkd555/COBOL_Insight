@@ -1,6 +1,7 @@
 package jp.cobolinsight.app.cli;
 
 import jp.cobolinsight.app.pipeline.Paths;
+import jp.cobolinsight.app.pipeline.Persist;
 import jp.cobolinsight.app.pipeline.Pipelines;
 import jp.cobolinsight.app.pipeline.SourceSet;
 import jp.cobolinsight.app.pipeline.SourceUnit;
@@ -20,7 +21,6 @@ import jp.cobolinsight.app.persistence.PersistenceDao;
 import jp.cobolinsight.app.persistence.PersistenceDatabase;
 import jp.cobolinsight.app.persistence.model.LineMapRecord;
 import jp.cobolinsight.app.persistence.model.SourceRecord;
-import jp.cobolinsight.rules.RuleSet;
 import jp.cobolinsight.transpile.emit.Transpiler;
 
 import java.io.IOException;
@@ -105,7 +105,7 @@ public final class TranspileRunner {
 
     public static Result run(Options options) {
         SourceSet s = Pipelines.translate(options.inputDir(), options.copybookSearchPaths(),
-                options.codepageOverrides(), RuleSet.load((Path) null));
+                options.codepageOverrides());
         LintRunner.reportWarnings(s);
 
         // Transpiling and writing the generated files: pure translation plus I/O, no database.
@@ -119,8 +119,9 @@ public final class TranspileRunner {
                 continue;
             }
             analyzed.add(unit.relPath());
+            Transpiler.Ir ir = Transpiler.buildIr(model, decoded.text());
             for (TargetLanguage language : options.languages()) {
-                TranspileResult result = Transpiler.transpile(model, decoded.text(), language);
+                TranspileResult result = Transpiler.transpile(model, ir, language);
                 for (GeneratedFile generated : result.files()) {
                     writeGenerated(options.outputDir(), generated);
                     generatedFiles.add(generated.fileName());
@@ -173,6 +174,13 @@ public final class TranspileRunner {
             existingByPath.put(source.path(), source);
         }
         long maxId = dao.maxSourceId();
+        // Same invariant as Persist: a SOURCE.id at or past this bound would put the line-map rows
+        // (id × LINE_MAP_ID_STRIDE + seq) inside the graph layer, which the next scan wipes.
+        if (maxId >= Persist.GRAPH_ID_BASE / LINE_MAP_ID_STRIDE) {
+            throw new IllegalStateException("プロジェクトファイルに登録できる資産数の上限（"
+                    + Persist.GRAPH_ID_BASE / LINE_MAP_ID_STRIDE + "件）に達しました。"
+                    + "別のプロジェクトファイルへ取り込んでください");
+        }
 
         Map<String, Long> idByFileName = new TreeMap<>();
         for (SourceUnit unit : set.units()) {

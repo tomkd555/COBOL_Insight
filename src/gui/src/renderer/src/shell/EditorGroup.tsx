@@ -15,6 +15,8 @@ import { TranspilePane } from "../editors/transpile/TranspilePane";
 export interface EditorGroupProps {
   onRequestClose: (id: string) => void;
   onSelectFolder: () => void;
+  /** Analyses the whole asset folder. Passed to Welcome, which is shown with nothing selected. */
+  onRunAll: () => void;
   /** How a failed write reaches the user. */
   notify: Notify;
   /** Opens the fix proposal for one asset, from the quick fix on a finding that has one. */
@@ -35,6 +37,7 @@ export interface EditorGroupProps {
 export function EditorGroup({
   onRequestClose,
   onSelectFolder,
+  onRunAll,
   notify,
   onShowFix,
 }: EditorGroupProps): ReactElement {
@@ -72,7 +75,7 @@ export function EditorGroup({
     <section className="ci-editorgroup" data-testid="editorarea">
       <EditorTabs onRequestClose={onRequestClose} />
       {active === null ? (
-        <Welcome onSelectFolder={onSelectFolder} />
+        <Welcome onSelectFolder={onSelectFolder} onRunAll={onRunAll} />
       ) : (
         <div
           className="ci-editorgroup__body"

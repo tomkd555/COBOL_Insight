@@ -11,7 +11,6 @@ import { text } from "../i18n/text";
 import { artifactItems, type ProjectState } from "./projectStore";
 import { assetTypeOf } from "../model/assetTree";
 import {
-  CUSTOM_RULES_TAB_ID,
   graphTab,
   isTabDirty,
   reportTab,
@@ -20,12 +19,12 @@ import {
   type WorkbenchAction,
   type WorkbenchState,
 } from "./workbenchStore";
-import type { RulesActions } from "./useRules";
 
 /** Command ids. The keybinding table maps chords onto these. */
 export type CommandId =
   | "file.selectFolder"
   | "run.analyze"
+  | "run.analyzeAll"
   | "run.cancel"
   | "view.toggleSideBar"
   | "view.togglePanel"
@@ -37,11 +36,6 @@ export type CommandId =
   | "view.showReport"
   | "view.showSettings"
   | "view.showTranspile"
-  | "editor.reopenWithEncoding"
-  | "editor.discard"
-  | "rules.toggleActive"
-  | "rules.validateCustom"
-  | "rules.saveCustom"
   | "editor.closeTab"
   | "editor.nextTab"
   | "editor.previousTab"
@@ -64,15 +58,13 @@ export interface CommandContext {
   readonly workbenchDispatch: Dispatch<WorkbenchAction>;
   /** Opens the folder picker and, when a folder is chosen, scans it. */
   readonly selectFolder: () => void;
-  /** Starts the analysis on the folder already chosen. */
+  /** Analyses what the explorer has selected, and says so when nothing is. */
   readonly runAnalysis: () => void;
+  /** Analyses the whole folder, scan and lint both. */
+  readonly runAnalysisAll: () => void;
   readonly cancelAnalysis: () => void;
   /** Closes a tab, asking first when it holds unsaved edits. */
   readonly requestCloseTab: (id: string) => void;
-  /** Throws a tab's unsaved edits away, asking first. */
-  readonly requestDiscardTab: (id: string) => void;
-  /** Writing the rule configuration file. */
-  readonly rulesActions: RulesActions;
   /** Writes the selected tab's edits back over the original. */
   readonly saveActiveTab: () => void;
   /** Writes every unsaved tab back, one after another. */
@@ -81,20 +73,17 @@ export interface CommandContext {
   readonly hasDirty: boolean;
 }
 
-/** The rule the active tab describes, or null when the active tab describes none. */
-function activeRuleId(workbench: WorkbenchState): string | null {
-  const active = workbench.tabs.find((tab) => tab.id === workbench.activeTabId);
-  return active?.kind === "rules" ? active.path : null;
-}
-
 /** The asset the active tab shows the source of, or null when the active tab shows none. */
 function activeSourcePath(workbench: WorkbenchState): string | null {
   const active = workbench.tabs.find((tab) => tab.id === workbench.activeTabId);
   return active?.kind === "source" ? active.path : null;
 }
 
-/** The asset the active source tab shows, when the scan filed that asset as COBOL. */
-function activeCobolPath(project: ProjectState, workbench: WorkbenchState): string | null {
+/**
+ * The asset the active source tab shows, when the scan filed that asset as COBOL. Exported so the
+ * activity bar can grey out the transpile icon with the same rule the command itself applies.
+ */
+export function activeCobolPath(project: ProjectState, workbench: WorkbenchState): string | null {
   const path = activeSourcePath(workbench);
   const item = artifactItems(project.inventory).find((each) => each.path === path);
   return item !== undefined && assetTypeOf(item.type) === "cobol" ? item.path : null;
@@ -131,6 +120,13 @@ export function buildCommands(context: CommandContext): Command[] {
       category: text.command.categoryRun,
       when: () => hasFolder() && !running(),
       run: context.runAnalysis,
+    },
+    {
+      id: "run.analyzeAll",
+      title: text.command.runAll,
+      category: text.command.categoryRun,
+      when: () => hasFolder() && !running(),
+      run: context.runAnalysisAll,
     },
     {
       id: "run.cancel",
@@ -214,53 +210,6 @@ export function buildCommands(context: CommandContext): Command[] {
           workbenchDispatch({ type: "OPEN_TAB", tab: transpileTab(path) });
         }
       },
-    },
-    {
-      id: "editor.reopenWithEncoding",
-      title: text.command.reopenWithEncoding,
-      category: text.command.categoryFile,
-      when: () => activeSourcePath(workbench) !== null,
-      // The codepage list is the status bar's own control; the command puts the keyboard on it.
-      run: () =>
-        document.querySelector<HTMLSelectElement>('[data-testid="status-codepage"]')?.focus(),
-    },
-    {
-      id: "editor.discard",
-      title: text.command.discard,
-      category: text.command.categoryFile,
-      when: () => activeTabDirty(workbench),
-      run: () => {
-        if (workbench.activeTabId !== null) {
-          context.requestDiscardTab(workbench.activeTabId);
-        }
-      },
-    },
-    {
-      id: "rules.toggleActive",
-      title: text.command.toggleRule,
-      category: text.command.categoryRules,
-      when: () => activeRuleId(workbench) !== null,
-      run: () => {
-        const id = activeRuleId(workbench);
-        const entry = project.rules.entries.find((candidate) => candidate.id === id);
-        if (id !== null && entry !== undefined) {
-          context.rulesActions.setRulesEnabled([id], !entry.enabled);
-        }
-      },
-    },
-    {
-      id: "rules.validateCustom",
-      title: text.command.validateCustomRules,
-      category: text.command.categoryRules,
-      when: () => workbench.activeTabId === CUSTOM_RULES_TAB_ID,
-      run: () => context.rulesActions.validateCustomRules(),
-    },
-    {
-      id: "rules.saveCustom",
-      title: text.command.saveCustomRules,
-      category: text.command.categoryRules,
-      when: () => workbench.activeTabId === CUSTOM_RULES_TAB_ID,
-      run: () => context.rulesActions.saveCustomRules(),
     },
     {
       id: "editor.closeTab",

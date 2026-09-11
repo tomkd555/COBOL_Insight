@@ -1,0 +1,508 @@
+[
+  {
+    "jobName": "CBL0004J",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "1",
+      "NOTIFY": "&SYSUID"
+    },
+    "members": [
+      "IGYWCL.jcl"
+    ],
+    "steps": [
+      {
+        "name": "COBRUN",
+        "execKind": "PROC",
+        "target": "IGYWCL",
+        "line": 6
+      },
+      {
+        "name": "COBRUN.COBOL",
+        "execKind": "PGM",
+        "target": "IGYCRCTL",
+        "line": 6,
+        "file": "IGYWCL.jcl",
+        "procStepName": "COBOL",
+        "parameters": {
+          "REGION": "0M"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "SYSIN": "READ",
+            "SYSPRINT": "WRITE",
+            "SYSLIN": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 7,
+            "file": "IGYWCL.jcl",
+            "datasetName": "IGY630.SIGYCOMP",
+            "dataset": {
+              "name": "IGY630.SIGYCOMP"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSNAME": "IGY630.SIGYCOMP",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "STEPLIB",
+            "line": 8,
+            "file": "IGYWCL.jcl",
+            "concatIndex": 1,
+            "datasetName": "CEE.SCEERUN",
+            "dataset": {
+              "name": "CEE.SCEERUN"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSNAME": "CEE.SCEERUN",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "STEPLIB",
+            "line": 9,
+            "file": "IGYWCL.jcl",
+            "concatIndex": 2,
+            "datasetName": "CEE.SCEERUN2",
+            "dataset": {
+              "name": "CEE.SCEERUN2"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSNAME": "CEE.SCEERUN2",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 7,
+            "datasetName": "&SYSUID..CBL(CBL0004)",
+            "dataset": {
+              "name": "&SYSUID..CBL",
+              "member": "CBL0004"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DISP": "SHR",
+              "DSN": "&SYSUID..CBL(CBL0004)"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 11,
+            "file": "IGYWCL.jcl",
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSLIN",
+            "line": 12,
+            "file": "IGYWCL.jcl",
+            "datasetName": "&&LOADSET",
+            "dataset": {
+              "name": "&&LOADSET",
+              "temporary": true
+            },
+            "dispositionText": "(MOD,PASS)",
+            "disposition": {
+              "status": "MOD",
+              "normal": "PASS",
+              "raw": "(MOD,PASS)"
+            },
+            "parameters": {
+              "DSNAME": "&&LOADSET",
+              "UNIT": "SYSALLDA",
+              "DISP": "(MOD,PASS)",
+              "SPACE": "(CYL,(1,1))",
+              "VOL": "(,,,1)"
+            }
+          },
+          {
+            "ddName": "SYSUT1",
+            "line": 14,
+            "file": "IGYWCL.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(CYL,(1,1))",
+              "VOL": "(,,,1)"
+            }
+          },
+          {
+            "ddName": "SYSUT2",
+            "line": 15,
+            "file": "IGYWCL.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(CYL,(1,1))",
+              "VOL": "(,,,1)"
+            }
+          },
+          {
+            "ddName": "SYSUT3",
+            "line": 16,
+            "file": "IGYWCL.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(CYL,(1,1))",
+              "VOL": "(,,,1)"
+            }
+          },
+          {
+            "ddName": "SYSUT4",
+            "line": 17,
+            "file": "IGYWCL.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(CYL,(1,1))",
+              "VOL": "(,,,1)"
+            }
+          },
+          {
+            "ddName": "SYSUT5",
+            "line": 18,
+            "file": "IGYWCL.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(CYL,(1,1))",
+              "VOL": "(,,,1)"
+            }
+          },
+          {
+            "ddName": "SYSUT6",
+            "line": 19,
+            "file": "IGYWCL.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(CYL,(1,1))",
+              "VOL": "(,,,1)"
+            }
+          },
+          {
+            "ddName": "SYSUT7",
+            "line": 20,
+            "file": "IGYWCL.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(CYL,(1,1))",
+              "VOL": "(,,,1)"
+            }
+          },
+          {
+            "ddName": "SYSUT8",
+            "line": 21,
+            "file": "IGYWCL.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(CYL,(1,1))",
+              "VOL": "(,,,1)"
+            }
+          },
+          {
+            "ddName": "SYSUT9",
+            "line": 22,
+            "file": "IGYWCL.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(CYL,(1,1))",
+              "VOL": "(,,,1)"
+            }
+          },
+          {
+            "ddName": "SYSUT10",
+            "line": 23,
+            "file": "IGYWCL.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(CYL,(1,1))",
+              "VOL": "(,,,1)"
+            }
+          },
+          {
+            "ddName": "SYSUT11",
+            "line": 24,
+            "file": "IGYWCL.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(CYL,(1,1))",
+              "VOL": "(,,,1)"
+            }
+          },
+          {
+            "ddName": "SYSUT12",
+            "line": 25,
+            "file": "IGYWCL.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(CYL,(1,1))",
+              "VOL": "(,,,1)"
+            }
+          },
+          {
+            "ddName": "SYSUT13",
+            "line": 26,
+            "file": "IGYWCL.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(CYL,(1,1))",
+              "VOL": "(,,,1)"
+            }
+          },
+          {
+            "ddName": "SYSUT14",
+            "line": 27,
+            "file": "IGYWCL.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(CYL,(1,1))",
+              "VOL": "(,,,1)"
+            }
+          },
+          {
+            "ddName": "SYSUT15",
+            "line": 28,
+            "file": "IGYWCL.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(CYL,(1,1))",
+              "VOL": "(,,,1)"
+            }
+          },
+          {
+            "ddName": "SYSMDECK",
+            "line": 29,
+            "file": "IGYWCL.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(CYL,(1,1))",
+              "VOL": "(,,,1)"
+            }
+          }
+        ]
+      },
+      {
+        "name": "COBRUN.LKED",
+        "execKind": "PGM",
+        "target": "IEWBLINK",
+        "line": 31,
+        "file": "IGYWCL.jcl",
+        "condition": "IF RC < 8 THEN",
+        "procStepName": "LKED",
+        "parameters": {
+          "REGION": "0M"
+        },
+        "utility": {
+          "ddRoles": {
+            "SYSLIB": "READ",
+            "SYSPRINT": "WRITE",
+            "SYSLIN": "UPDATE",
+            "SYSLMOD": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSLIB",
+            "line": 32,
+            "file": "IGYWCL.jcl",
+            "datasetName": "CEE.SCEELKEX",
+            "dataset": {
+              "name": "CEE.SCEELKEX"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSNAME": "CEE.SCEELKEX",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSLIB",
+            "line": 33,
+            "file": "IGYWCL.jcl",
+            "concatIndex": 1,
+            "datasetName": "CEE.SCEELKED",
+            "dataset": {
+              "name": "CEE.SCEELKED"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSNAME": "CEE.SCEELKED",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 34,
+            "file": "IGYWCL.jcl",
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSLIN",
+            "line": 35,
+            "file": "IGYWCL.jcl",
+            "datasetName": "&&LOADSET",
+            "dataset": {
+              "name": "&&LOADSET",
+              "temporary": true
+            },
+            "dispositionText": "(OLD,DELETE)",
+            "disposition": {
+              "status": "OLD",
+              "normal": "DELETE",
+              "raw": "(OLD,DELETE)"
+            },
+            "parameters": {
+              "DSNAME": "&&LOADSET",
+              "DISP": "(OLD,DELETE)"
+            }
+          },
+          {
+            "ddName": "SYSLIN",
+            "line": 36,
+            "file": "IGYWCL.jcl",
+            "concatIndex": 1,
+            "parameters": {
+              "DDNAME": "SYSIN"
+            }
+          },
+          {
+            "ddName": "SYSLMOD",
+            "line": 8,
+            "datasetName": "&SYSUID..LOAD(CBL0004)",
+            "dataset": {
+              "name": "&SYSUID..LOAD",
+              "member": "CBL0004"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DISP": "SHR",
+              "DSN": "&SYSUID..LOAD(CBL0004)"
+            }
+          }
+        ]
+      },
+      {
+        "name": "RUN",
+        "execKind": "PGM",
+        "target": "CBL0004",
+        "line": 12,
+        "condition": "IF RC = 0 THEN",
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "ACCTREC": "READ",
+            "PRTLINE": "WRITE",
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 13,
+            "datasetName": "&SYSUID..LOAD",
+            "dataset": {
+              "name": "&SYSUID..LOAD"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "&SYSUID..LOAD",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "ACCTREC",
+            "line": 14,
+            "datasetName": "&SYSUID..DATA",
+            "dataset": {
+              "name": "&SYSUID..DATA"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "&SYSUID..DATA",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "PRTLINE",
+            "line": 15,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*",
+              "OUTLIM": "15000"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 16,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*",
+              "OUTLIM": "15000"
+            }
+          },
+          {
+            "ddName": "CEEDUMP",
+            "line": 17,
+            "dummy": true,
+            "parameters": {
+              "DUMMY": ""
+            }
+          },
+          {
+            "ddName": "SYSUDUMP",
+            "line": 18,
+            "dummy": true,
+            "parameters": {
+              "DUMMY": ""
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

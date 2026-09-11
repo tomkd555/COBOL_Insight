@@ -50,9 +50,8 @@ public final class PerformSingleParagraphRule implements Rule {
             // add THRU is a site's own coding convention, not a bug, so a site that follows
             // that convention is expected to turn this on via rules.json.
             .defaultEnabled(false)
-            .commands(Command.LINT, Command.REPORT)
+            .commands(Command.LINT)
             .targets(AssetKind.COBOL)
-            .needs(Needs.SEMANTIC)
             .build();
 
     @Override

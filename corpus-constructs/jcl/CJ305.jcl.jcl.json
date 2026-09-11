@@ -1,0 +1,210 @@
+[
+  {
+    "jobName": "CJ305",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "CJ DD OVERRIDES",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "jcllib": [
+      "CJ.PROD.PROCLIB"
+    ],
+    "members": [
+      "CP304.proc"
+    ],
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PROC",
+        "target": "CP304",
+        "line": 19,
+        "parameters": {
+          "CYCLE": "250901",
+          "HLQ": "CJW",
+          "PARM.STEP1": "'RUN=250901'",
+          "COND.STEP2": "(0,NE,STEP1)",
+          "TIME.STEP1": "5",
+          "REGION.STEP1": "4M"
+        }
+      },
+      {
+        "name": "STEP010.STEP1",
+        "execKind": "PGM",
+        "target": "CCP005",
+        "line": 11,
+        "file": "CP304.proc",
+        "procStepName": "STEP1",
+        "parm": "RUN=250901",
+        "parameters": {
+          "PARM": "'RUN=250901'",
+          "TIME": "5",
+          "REGION": "4M"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "INDD": "WRITE",
+            "OUTDD": "WRITE",
+            "WORKDD": "WRITE",
+            "SYSOUT": "WRITE",
+            "RPTDD": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 12,
+            "file": "CP304.proc",
+            "datasetName": "CJ.PROD.LOADLIB",
+            "dataset": {
+              "name": "CJ.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJ.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "INDD",
+            "line": 23,
+            "datasetName": "CJW.D250901.CJ305.ALTIN",
+            "dataset": {
+              "name": "CJW.D250901.CJ305.ALTIN"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "CJW.D250901.CJ305.ALTIN",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(1,1),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=80,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "OUTDD",
+            "line": 14,
+            "file": "CP304.proc",
+            "datasetName": "CJW.D250901.CP304.OUTDD",
+            "dataset": {
+              "name": "CJW.D250901.CP304.OUTDD"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "CJW.D250901.CP304.OUTDD",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(1,1),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=80,BLKSIZE=27920)"
+            }
+          },
+          {
+            "ddName": "WORKDD",
+            "line": 18,
+            "file": "CP304.proc",
+            "datasetName": "&&CP304WK",
+            "dataset": {
+              "name": "&&CP304WK",
+              "temporary": true
+            },
+            "dispositionText": "(NEW,DELETE,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "DELETE",
+              "abnormal": "DELETE",
+              "raw": "(NEW,DELETE,DELETE)"
+            },
+            "parameters": {
+              "DSN": "&&CP304WK",
+              "UNIT": "SYSDA",
+              "SPACE": "(CYL,(20,10),RLSE)",
+              "DISP": "(NEW,DELETE,DELETE)"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 21,
+            "file": "CP304.proc",
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "RPTDD",
+            "line": 29,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP010.STEP2",
+        "execKind": "PGM",
+        "target": "CCP006",
+        "line": 23,
+        "file": "CP304.proc",
+        "condition": "COND=(0,NE,STEP1)",
+        "procStepName": "STEP2",
+        "parameters": {
+          "COND": "(0,NE,STEP1)"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 24,
+            "file": "CP304.proc",
+            "datasetName": "CJ.PROD.LOADLIB",
+            "dataset": {
+              "name": "CJ.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJ.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 25,
+            "file": "CP304.proc",
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

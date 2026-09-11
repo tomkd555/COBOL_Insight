@@ -55,8 +55,8 @@ class ExpectedFindingsAcceptanceTest {
     }
 
     @Test
-    void eighteenDefectsAreListed() {
-        assertEquals(18, expected.size());
+    void everyListedDefectIsCounted() {
+        assertEquals(36, expected.size());
     }
 
     @Test
@@ -83,5 +83,12 @@ class ExpectedFindingsAcceptanceTest {
                 assertEquals(lines, detected(ruleId), ruleId + " must match the expected set exactly");
             }
         });
+    }
+
+    @Test
+    void exitCodeIsErrorsBecauseSamplesHaveErrorLevelFindings() {
+        assertTrue(result.countByLevel(FindingLevel.ERROR) > 0,
+                "samplesはERRORレベルの検出を含むこと");
+        assertEquals(2, result.exitCode(), "エラーあり=2で分岐すること");
     }
 }

@@ -24,7 +24,7 @@ export const CUSTOM_SEVERITIES: readonly string[] = ["HIGH", "MEDIUM", "LOW", "A
 export const CUSTOM_TARGETS: readonly string[] = ["COBOL", "COPYBOOK", "JCL", "BMS"];
 
 /** The subcommands a custom rule can run under. */
-export const CUSTOM_COMMANDS: readonly string[] = ["LINT", "SQL_LINT", "REPORT", "FIX", "SCAN"];
+export const CUSTOM_COMMANDS: readonly string[] = ["LINT", "SQL_LINT"];
 
 /** How far forward a `checked-after` rule follows the control flow. */
 export const CUSTOM_SCOPES: readonly string[] = [

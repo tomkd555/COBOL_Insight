@@ -1,0 +1,35 @@
+{
+  "statements": [
+    {
+      "kind": "DDL",
+      "startLine": 11,
+      "endLine": 15,
+      "structureSignals": {
+        "selectStar": false,
+        "hasFetchFirst": false,
+        "hasOptimizeFor": false,
+        "hasWithUr": false
+      },
+      "analysis": "FULL",
+      "declaredTable": "CCPDB.CCPTAB",
+      "declaredColumns": [
+        {
+          "name": "CCP_KEY",
+          "type": "CHAR(8)",
+          "nullable": false
+        },
+        {
+          "name": "CCP_VAL",
+          "type": "DECIMAL(9, 0)",
+          "nullable": false
+        }
+      ],
+      "withHold": false,
+      "forUpdate": false,
+      "hasWhere": false,
+      "hasOrderBy": false,
+      "dynamic": false
+    }
+  ],
+  "routines": []
+}

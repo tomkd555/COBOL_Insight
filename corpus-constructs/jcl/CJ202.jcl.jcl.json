@@ -1,0 +1,328 @@
+[
+  {
+    "jobName": "CJ202",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "CJ DISP FORMS",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 11,
+        "utility": {
+          "ddRoles": {
+            "NEWCATLG": "CREATE",
+            "NEWKEEP": "CREATE",
+            "OLDDEL": "DELETE",
+            "OMITSTAT": "CREATE",
+            "MODDD": "CREATE",
+            "MODDD2": "DELETE",
+            "PASSDS": "CREATE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "NEWCATLG",
+            "line": 12,
+            "datasetName": "FLW.CJ202.NEWCATLG",
+            "dataset": {
+              "name": "FLW.CJ202.NEWCATLG"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ202.NEWCATLG",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(5,1),RLSE)"
+            }
+          },
+          {
+            "ddName": "NEWKEEP",
+            "line": 15,
+            "datasetName": "FLW.CJ202.NEWKEEP",
+            "dataset": {
+              "name": "FLW.CJ202.NEWKEEP"
+            },
+            "dispositionText": "(NEW,KEEP,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "KEEP",
+              "abnormal": "DELETE",
+              "raw": "(NEW,KEEP,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ202.NEWKEEP",
+              "DISP": "(NEW,KEEP,DELETE)",
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(5,1),RLSE)"
+            }
+          },
+          {
+            "ddName": "OLDKEEP",
+            "line": 18,
+            "datasetName": "FL.PROD.LOADLIB",
+            "dataset": {
+              "name": "FL.PROD.LOADLIB"
+            },
+            "dispositionText": "(OLD,KEEP,KEEP)",
+            "disposition": {
+              "status": "OLD",
+              "normal": "KEEP",
+              "abnormal": "KEEP",
+              "raw": "(OLD,KEEP,KEEP)"
+            },
+            "parameters": {
+              "DSN": "FL.PROD.LOADLIB",
+              "DISP": "(OLD,KEEP,KEEP)"
+            }
+          },
+          {
+            "ddName": "OLDDEL",
+            "line": 19,
+            "datasetName": "FLW.CJ202.SCRATCH",
+            "dataset": {
+              "name": "FLW.CJ202.SCRATCH"
+            },
+            "dispositionText": "(OLD,DELETE,KEEP)",
+            "disposition": {
+              "status": "OLD",
+              "normal": "DELETE",
+              "abnormal": "KEEP",
+              "raw": "(OLD,DELETE,KEEP)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ202.SCRATCH",
+              "DISP": "(OLD,DELETE,KEEP)"
+            }
+          },
+          {
+            "ddName": "SHRTWO",
+            "line": 20,
+            "datasetName": "FL.PROD.LOADLIB",
+            "dataset": {
+              "name": "FL.PROD.LOADLIB"
+            },
+            "dispositionText": "(SHR,KEEP)",
+            "disposition": {
+              "status": "SHR",
+              "normal": "KEEP",
+              "raw": "(SHR,KEEP)"
+            },
+            "parameters": {
+              "DSN": "FL.PROD.LOADLIB",
+              "DISP": "(SHR,KEEP)"
+            }
+          },
+          {
+            "ddName": "OMITSTAT",
+            "line": 21,
+            "datasetName": "FLW.CJ202.OMITSTAT",
+            "dataset": {
+              "name": "FLW.CJ202.OMITSTAT"
+            },
+            "dispositionText": "(,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ202.OMITSTAT",
+              "DISP": "(,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(5,1),RLSE)"
+            }
+          },
+          {
+            "ddName": "MODDD",
+            "line": 23,
+            "datasetName": "FLW.CJ202.MODFILE",
+            "dataset": {
+              "name": "FLW.CJ202.MODFILE"
+            },
+            "dispositionText": "(MOD,CATLG,DELETE)",
+            "disposition": {
+              "status": "MOD",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(MOD,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ202.MODFILE",
+              "DISP": "(MOD,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(5,1),RLSE)"
+            }
+          },
+          {
+            "ddName": "MODDD2",
+            "line": 26,
+            "datasetName": "FLW.CJ202.MODFIL2",
+            "dataset": {
+              "name": "FLW.CJ202.MODFIL2"
+            },
+            "dispositionText": "(MOD,DELETE,DELETE)",
+            "disposition": {
+              "status": "MOD",
+              "normal": "DELETE",
+              "abnormal": "DELETE",
+              "raw": "(MOD,DELETE,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ202.MODFIL2",
+              "DISP": "(MOD,DELETE,DELETE)",
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(5,1),RLSE)"
+            }
+          },
+          {
+            "ddName": "PASSDS",
+            "line": 29,
+            "datasetName": "&&PASSTEMP",
+            "dataset": {
+              "name": "&&PASSTEMP",
+              "temporary": true
+            },
+            "dispositionText": "(NEW,PASS)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "PASS",
+              "raw": "(NEW,PASS)"
+            },
+            "parameters": {
+              "DSN": "&&PASSTEMP",
+              "DISP": "(NEW,PASS)",
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(5,1))"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 31,
+        "condition": "COND=(4,LT)",
+        "parameters": {
+          "COND": "(4,LT)"
+        },
+        "utility": {
+          "ddRoles": {
+            "PASSCONS": "DELETE",
+            "SGLMOD": "CREATE",
+            "SGLNEW": "CREATE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "PASSCONS",
+            "line": 32,
+            "datasetName": "&&PASSTEMP",
+            "dataset": {
+              "name": "&&PASSTEMP",
+              "temporary": true
+            },
+            "dispositionText": "(OLD,DELETE)",
+            "disposition": {
+              "status": "OLD",
+              "normal": "DELETE",
+              "raw": "(OLD,DELETE)"
+            },
+            "parameters": {
+              "DSN": "&&PASSTEMP",
+              "DISP": "(OLD,DELETE)"
+            }
+          },
+          {
+            "ddName": "SGLSHR",
+            "line": 33,
+            "datasetName": "FL.PROD.LOADLIB",
+            "dataset": {
+              "name": "FL.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FL.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SGLOLD",
+            "line": 34,
+            "datasetName": "FL.PROD.LOADLIB",
+            "dataset": {
+              "name": "FL.PROD.LOADLIB"
+            },
+            "dispositionText": "OLD",
+            "disposition": {
+              "status": "OLD",
+              "raw": "OLD"
+            },
+            "parameters": {
+              "DSN": "FL.PROD.LOADLIB",
+              "DISP": "OLD"
+            }
+          },
+          {
+            "ddName": "SGLMOD",
+            "line": 35,
+            "datasetName": "FLW.CJ202.APPEND",
+            "dataset": {
+              "name": "FLW.CJ202.APPEND"
+            },
+            "dispositionText": "MOD",
+            "disposition": {
+              "status": "MOD",
+              "raw": "MOD"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ202.APPEND",
+              "DISP": "MOD",
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(5,1),RLSE)"
+            }
+          },
+          {
+            "ddName": "SGLNEW",
+            "line": 37,
+            "datasetName": "&&SCRATCH2",
+            "dataset": {
+              "name": "&&SCRATCH2",
+              "temporary": true
+            },
+            "dispositionText": "NEW",
+            "disposition": {
+              "status": "NEW",
+              "raw": "NEW"
+            },
+            "parameters": {
+              "DSN": "&&SCRATCH2",
+              "DISP": "NEW",
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(1,1))"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

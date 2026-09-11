@@ -41,6 +41,8 @@ export function DiffView({ original, modified, languageId, ariaLabel }: DiffView
       readOnly: true,
       originalEditable: false,
       renderSideBySide: true,
+      // The original (left) is what a reader already knows; the fix (right) is what they came for.
+      splitViewDefaultRatio: 0.6,
       minimap: { enabled: false },
       // Five digits so the body's left edge does not move between assets, and the same column rulers
       // as SourceEditor so a diff pane reads against the fixed-format columns it is showing.

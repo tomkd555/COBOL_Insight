@@ -1,0 +1,63 @@
+[
+  {
+    "jobName": "CJ104",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ01",
+      "PROGRAMMER": "CJ シロウ",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID",
+      "TYPRUN": "SCAN"
+    },
+    "steps": [
+      {
+        "name": "STEP1",
+        "execKind": "PGM",
+        "target": "CCP006",
+        "line": 8,
+        "utility": {
+          "ddRoles": {
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSOUT",
+            "line": 9,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP2",
+        "execKind": "PGM",
+        "target": "CCP007",
+        "line": 10,
+        "condition": "COND=(4,LT,STEP1)",
+        "parameters": {
+          "COND": "(4,LT,STEP1)"
+        },
+        "utility": {
+          "ddRoles": {
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSOUT",
+            "line": 11,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

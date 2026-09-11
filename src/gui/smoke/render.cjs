@@ -309,7 +309,9 @@ async function checkCopyExpansion(win) {
   await evaluate(win, `${EDITOR}.trigger('smoke', 'undo', null)`);
   await waitUntil(
     win,
-    `document.querySelector('[data-testid="dirty-source:cobol/SYK001.cbl"]') === null ? 'clean' : null`,
+    // The dot lives in the close button's own slot now (B14) and stays in the DOM, hidden by CSS,
+    // so dirtiness is read off the button's modifier class rather than the dot's presence.
+    `document.querySelector('[data-testid="close-source:cobol/SYK001.cbl"]')?.classList.contains('ci-tab__close--dirty') === false ? 'clean' : null`,
     "the inserted line undone",
   );
 
@@ -328,7 +330,7 @@ async function checkDirtyMark(win) {
   await waitUntil(win, typeAtStart("X"), "typing into the editor");
   const marked = await waitUntil(
     win,
-    `document.querySelector('[data-testid="dirty-source:cobol/SYK001.cbl"]') !== null`,
+    `document.querySelector('[data-testid="close-source:cobol/SYK001.cbl"]')?.classList.contains('ci-tab__close--dirty') === true`,
     "the unsaved mark",
   );
   record("4. typing raises the unsaved mark on the tab", marked === true);
@@ -351,8 +353,8 @@ async function checkEditSurvivesSwitch(win) {
     win,
     `(() => {
       const clean = !${EDITOR}.getValue().startsWith('X');
-      const mark = document.querySelector('[data-testid="dirty-source:cobol/SYK001.cbl"]');
-      return clean && mark === null ? 'undone' : null;
+      const dirty = document.querySelector('[data-testid="close-source:cobol/SYK001.cbl"]')?.classList.contains('ci-tab__close--dirty');
+      return clean && dirty === false ? 'undone' : null;
     })()`,
     "the undo",
   );
@@ -407,7 +409,7 @@ async function checkSaveConflict(win) {
   await waitUntil(win, typeAtStart("Y"), "an unsaved edit");
   await waitUntil(
     win,
-    `document.querySelector('[data-testid="dirty-source:cobol/SYK001.cbl"]') !== null`,
+    `document.querySelector('[data-testid="close-source:cobol/SYK001.cbl"]')?.classList.contains('ci-tab__close--dirty') === true`,
     "the unsaved mark on the asset about to be saved",
   );
   await evaluate(win, `window.cobolInsight.touch('cobol/SYK001.cbl')`);
@@ -628,6 +630,11 @@ async function checkTranspile(win) {
 /** Check 5: the problems table and the route from a row into the source. */
 async function checkFindings(win) {
   // Opening a folder only scans it; the findings arrive with the analysis the run button starts.
+  // That button analyses what the tree has selected, so a row is chosen first. The folder row is
+  // the target: clicking it also collapses the folder, so it is clicked twice to leave the tree as
+  // it was for the checks that open an asset from it.
+  await waitUntil(win, clickTestId("tree-cobol"), "the tree row for the cobol folder");
+  await waitUntil(win, clickTestId("tree-cobol"), "the cobol folder row expanded again");
   await waitUntil(win, clickTestId("run-analysis"), "the run button");
   const rows = await waitUntil(win, countOf('[data-testid^="finding-"]'), "the problems rows");
   await waitUntil(
@@ -654,11 +661,41 @@ async function checkFindings(win) {
     })()`,
     "the finding detail",
   );
+  const scope = await evaluate(
+    win,
+    `(() => { const all = window.cobolInsightSmoke.lintScopes(); return all[all.length - 1]; })()`,
+  );
   await snap(win, "checkFindings-detail");
   record(
     "5. a problems row opens the asset's tab and its detail",
-    rows >= 3 && opened === true && detailed === true,
-    `${rows} rows`,
+    rows >= 3 && opened === true && detailed === true && scope?.[0] === "cobol",
+    `${rows} rows, lint scope ${JSON.stringify(scope)}`,
+  );
+}
+
+/**
+ * Check 18: the whole-folder run. The run button analyses what the tree has selected, so the run
+ * that covers everything is a command of its own, and it has to reach the engine with no scope.
+ */
+async function checkAnalyseAll(win) {
+  const before = await evaluate(win, `window.cobolInsightSmoke.lintScopes().length`);
+  await evaluate(
+    win,
+    `window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true, bubbles: true }))`,
+  );
+  await waitUntil(win, clickTestId("command-run.analyzeAll"), "the whole-folder command");
+  const scopes = await waitUntil(
+    win,
+    `(() => {
+      const all = window.cobolInsightSmoke.lintScopes();
+      return all.length > ${before} ? all : null;
+    })()`,
+    "the lint the command started",
+  );
+  record(
+    "18. the palette's whole-folder command runs lint over everything",
+    scopes[scopes.length - 1] === null,
+    `lint scopes so far: ${JSON.stringify(scopes)}`,
   );
 }
 
@@ -1038,6 +1075,7 @@ async function runSuite(theme) {
       checkShell,
       checkAssetTree,
       checkFindings,
+      checkAnalyseAll,
       checkCallGraph,
       checkEditorLayout,
       checkCopyExpansion,

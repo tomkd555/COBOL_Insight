@@ -70,4 +70,9 @@ public final class Paths {
             throw new UncheckedIOException(e);
         }
     }
+
+    /** A file path as a map key: the same file gives the same string, whatever the spelling. */
+    public static String normalisedKey(String path) {
+        return Path.of(path).toAbsolutePath().normalize().toString();
+    }
 }

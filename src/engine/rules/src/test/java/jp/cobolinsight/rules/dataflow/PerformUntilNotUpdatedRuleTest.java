@@ -84,6 +84,27 @@ class PerformUntilNotUpdatedRuleTest {
         assertEquals("R012", findings.get(0).ruleId());
     }
 
+    /**
+     * The flag is reset just before the inner loop, inside an outer loop. That MOVE runs between
+     * iterations of the outer loop, never between two tests of the inner UNTIL, so it must not
+     * count as an update of the inner loop's condition.
+     */
+    @Test
+    void detectsInnerLoopWhoseFlagIsOnlyResetByTheOuterLoop() {
+        String text = program("F012E",
+                "           PERFORM UNTIL WS-COUNTER > 5",
+                "               ADD 1 TO WS-COUNTER",
+                "               MOVE 'N' TO WS-DONE-FLAG",
+                "               PERFORM SUB-PARA UNTIL WS-DONE-FLAG = 'Y'",
+                "           END-PERFORM",
+                "           STOP RUN.",
+                "       SUB-PARA.",
+                "           DISPLAY WS-COUNTER.");
+        List<Finding> findings = run("F012E", text);
+        assertEquals(1, findings.size(), () -> "内側ループの未更新を検出すること: " + findings);
+        assertTrue(findings.get(0).message().contains("WS-DONE-FLAG"), findings.get(0).message());
+    }
+
     @Test
     void ignoresParagraphPerformWhoseConditionVariableIsUpdatedInCalledParagraph() {
         String text = program("F012D",

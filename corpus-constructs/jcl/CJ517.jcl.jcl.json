@@ -1,0 +1,88 @@
+[
+  {
+    "jobName": "CJ517",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "CONTROL-M AUTOEDIT MARKERS",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "schedulerVariables": [
+      "%%ODATE",
+      "$OJULDAY",
+      "$ODATE"
+    ],
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 16,
+        "ddStatements": [
+          {
+            "ddName": "OUTDS",
+            "line": 17,
+            "datasetName": "PREFIX.D%%ODATE",
+            "dataset": {
+              "name": "PREFIX.D%%ODATE"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "PREFIX.D%%ODATE",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "JULDS",
+            "line": 18,
+            "datasetName": "PREFIX.$OJULDAY.DAILY",
+            "dataset": {
+              "name": "PREFIX.$OJULDAY.DAILY"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "PREFIX.$OJULDAY.DAILY",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "DATEDS",
+            "line": 19,
+            "datasetName": "PREFIX.$ODATE.DAILY",
+            "dataset": {
+              "name": "PREFIX.$ODATE.DAILY"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "PREFIX.$ODATE.DAILY",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 20,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

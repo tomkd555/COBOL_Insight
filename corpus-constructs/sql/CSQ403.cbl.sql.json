@@ -1,0 +1,489 @@
+[
+  {
+    "kind": "DECLARE_TABLE",
+    "file": "corpus-constructs/sql/CSD401.cpy",
+    "startLine": 9,
+    "endLine": 16,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "declaredTable": "FLDB.KOKYAKU",
+    "declaredColumns": [
+      {
+        "name": "KOKYAKU_NO",
+        "type": "CHAR(8)",
+        "nullable": false
+      },
+      {
+        "name": "KOKYAKU_MEI",
+        "type": "CHAR(30)",
+        "nullable": false
+      },
+      {
+        "name": "KEN_CD",
+        "type": "CHAR(2)",
+        "nullable": true
+      },
+      {
+        "name": "SHOKAI_KOKYAKU_NO",
+        "type": "CHAR(8)",
+        "nullable": true
+      },
+      {
+        "name": "TOROKU_YMD",
+        "type": "DATE",
+        "nullable": false
+      },
+      {
+        "name": "SAKUJO_FLG",
+        "type": "CHAR(1)",
+        "nullable": false
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "referencedTables": [
+      "FLDB.KOKYAKU"
+    ],
+    "startLine": 31,
+    "endLine": 38,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-UNION",
+        "forReadOnly": false,
+        "forFetchOnly": true,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-UNION",
+    "tableAccess": {
+      "FLDB.KOKYAKU": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "column": "TOROKU_YMD"
+      },
+      {
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "column": "KEN_CD"
+      }
+    ],
+    "selectList": [
+      "KOKYAKU_NO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "referencedTables": [
+      "FLDB.KOKYAKU"
+    ],
+    "startLine": 42,
+    "endLine": 49,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-UNIONALL",
+        "forReadOnly": false,
+        "forFetchOnly": true,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-UNIONALL",
+    "tableAccess": {
+      "FLDB.KOKYAKU": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "column": "KEN_CD"
+      },
+      {
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "column": "KEN_CD"
+      }
+    ],
+    "selectList": [
+      "KOKYAKU_NO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "referencedTables": [
+      "FLDB.KOKYAKU"
+    ],
+    "startLine": 52,
+    "endLine": 58,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-EXCEPT",
+        "forReadOnly": false,
+        "forFetchOnly": true,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-EXCEPT",
+    "tableAccess": {
+      "FLDB.KOKYAKU": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "column": "SHOKAI_KOKYAKU_NO"
+      },
+      {
+        "column": "SHOKAI_KOKYAKU_NO"
+      }
+    ],
+    "selectList": [
+      "KOKYAKU_NO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "referencedTables": [
+      "FLDB.KOKYAKU",
+      "FLDB.JUCHU"
+    ],
+    "startLine": 62,
+    "endLine": 68,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-INTERSECT",
+        "forReadOnly": false,
+        "forFetchOnly": true,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-INTERSECT",
+    "tableAccess": {
+      "FLDB.KOKYAKU": "R",
+      "FLDB.JUCHU": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "column": "KEN_CD"
+      },
+      {
+        "column": "KOKYAKU_NO"
+      }
+    ],
+    "selectList": [
+      "KOKYAKU_NO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 83,
+    "endLine": 83,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-UNION",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 89,
+    "endLine": 89,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-UNION",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "WS-KOKYAKU-NO",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 96,
+    "endLine": 96,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-UNION",
+    "intoTargets": [
+      "WS-KOKYAKU-NO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 109,
+    "endLine": 109,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-UNIONALL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 116,
+    "endLine": 116,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-UNIONALL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "WS-KOKYAKU-NO",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 124,
+    "endLine": 124,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-UNIONALL",
+    "intoTargets": [
+      "WS-KOKYAKU-NO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 137,
+    "endLine": 137,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-EXCEPT",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 143,
+    "endLine": 143,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-EXCEPT",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "WS-KOKYAKU-NO",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 150,
+    "endLine": 150,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-EXCEPT",
+    "intoTargets": [
+      "WS-KOKYAKU-NO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 163,
+    "endLine": 163,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-INTERSECT",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 170,
+    "endLine": 170,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-INTERSECT",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "WS-KOKYAKU-NO",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 178,
+    "endLine": 178,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-INTERSECT",
+    "intoTargets": [
+      "WS-KOKYAKU-NO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

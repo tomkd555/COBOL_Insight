@@ -1,0 +1,205 @@
+[
+  {
+    "jobName": "CJ205",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "CJ UNIT VOL FORMS",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP1",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 9,
+        "utility": {
+          "ddRoles": {
+            "DD1": "CREATE",
+            "UNITMU": "CREATE",
+            "UNITAF": "CREATE",
+            "UNITDV": "CREATE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "DD1",
+            "line": 10,
+            "datasetName": "FLW.CJ205.BASE",
+            "dataset": {
+              "name": "FLW.CJ205.BASE"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ205.BASE",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "VOL": "SER=WORK01",
+              "SPACE": "(TRK,(5,1),RLSE)"
+            }
+          },
+          {
+            "ddName": "UNITMU",
+            "line": 13,
+            "datasetName": "FLW.CJ205.MULTI",
+            "dataset": {
+              "name": "FLW.CJ205.MULTI"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ205.MULTI",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "(SYSDA,3)",
+              "SPACE": "(CYL,(5,2),RLSE)"
+            }
+          },
+          {
+            "ddName": "UNITAF",
+            "line": 15,
+            "datasetName": "FLW.CJ205.AFFIN",
+            "dataset": {
+              "name": "FLW.CJ205.AFFIN"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ205.AFFIN",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "AFF=DD1",
+              "SPACE": "(TRK,(5,1),RLSE)"
+            },
+            "referbacks": {
+              "UNIT": "DD1"
+            }
+          },
+          {
+            "ddName": "UNITDV",
+            "line": 17,
+            "datasetName": "FLW.CJ205.DEVTYP",
+            "dataset": {
+              "name": "FLW.CJ205.DEVTYP"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ205.DEVTYP",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "3390",
+              "SPACE": "(TRK,(5,1),RLSE)"
+            }
+          },
+          {
+            "ddName": "VOLRET",
+            "line": 20,
+            "datasetName": "FLW.CJ205.RETAIN",
+            "dataset": {
+              "name": "FLW.CJ205.RETAIN"
+            },
+            "dispositionText": "(OLD,KEEP)",
+            "disposition": {
+              "status": "OLD",
+              "normal": "KEEP",
+              "raw": "(OLD,KEEP)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ205.RETAIN",
+              "DISP": "(OLD,KEEP)",
+              "UNIT": "SYSDA",
+              "VOL": "(,RETAIN,,3)"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP2",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 22,
+        "condition": "COND=(4,LT)",
+        "parameters": {
+          "COND": "(4,LT)"
+        },
+        "utility": {
+          "ddRoles": {
+            "VOLREF": "CREATE",
+            "VOLPRV": "CREATE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "VOLREF",
+            "line": 23,
+            "datasetName": "FLW.CJ205.REFVOL",
+            "dataset": {
+              "name": "FLW.CJ205.REFVOL"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ205.REFVOL",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "VOL": "REF=*.STEP1.DD1",
+              "SPACE": "(TRK,(5,1),RLSE)"
+            },
+            "referbacks": {
+              "VOL": "*.STEP1.DD1"
+            }
+          },
+          {
+            "ddName": "VOLPRV",
+            "line": 27,
+            "datasetName": "FLW.CJ205.PRVOL",
+            "dataset": {
+              "name": "FLW.CJ205.PRVOL"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ205.PRVOL",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "VOL": "PRIVATE",
+              "SPACE": "(TRK,(5,1),RLSE)"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

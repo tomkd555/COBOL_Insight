@@ -1,0 +1,69 @@
+[
+  {
+    "jobName": "CJ419",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "DFSMSHSM HSEND",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IKJEFT01",
+        "line": 8,
+        "parameters": {
+          "DYNAMNBR": "20"
+        },
+        "utility": {
+          "ddRoles": {
+            "SYSTSPRT": "WRITE",
+            "SYSPRINT": "WRITE",
+            "SYSUDUMP": "WRITE",
+            "SYSTSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSTSPRT",
+            "line": 9,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 10,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSUDUMP",
+            "line": 11,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSTSIN",
+            "line": 12,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  HSEND MIGRATE DSNAME(CJT.D260901.WORK.OLDFILE)"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

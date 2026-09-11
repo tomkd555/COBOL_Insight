@@ -5,6 +5,7 @@ import { useSettings } from "../../state/settingsStore";
 import {
   graphTab,
   ruleTab,
+  settingsTab,
   useWorkbenchDispatch,
 } from "../../state/workbenchStore";
 import {
@@ -78,8 +79,8 @@ function Detail({ row, onOpenAsset, onShowFix }: DetailProps): ReactElement {
       aria-label={text.problems.title}
       data-testid="problem-detail"
     >
-      {row.hasFix && onShowFix !== undefined ? (
-        <div className="ci-problems__detail-actions">
+      <div className="ci-problems__detail-actions">
+        {row.hasFix && onShowFix !== undefined ? (
           <button
             type="button"
             className="ci-button ci-button--primary"
@@ -88,10 +89,7 @@ function Detail({ row, onOpenAsset, onShowFix }: DetailProps): ReactElement {
           >
             {text.problems.showFix}
           </button>
-        </div>
-      ) : null}
-      <p className="ci-problems__detail-message">{finding.message}</p>
-      <div className="ci-problems__detail-actions ci-problems__detail-section">
+        ) : null}
         <button
           type="button"
           className="ci-button"
@@ -102,6 +100,7 @@ function Detail({ row, onOpenAsset, onShowFix }: DetailProps): ReactElement {
           {text.problems.detailRule}
         </button>
       </div>
+      <p className="ci-problems__detail-message">{finding.message}</p>
       {related.length > 0 ? (
         <section className="ci-problems__detail-section">
           {/* The lines carry their own labels; only a screen reader needs the list named. */}
@@ -226,9 +225,8 @@ export function Problems({ onOpenAsset, onShowFix }: ProblemsProps): ReactElemen
     project.findings.status === "none" &&
     project.sqlFindings.status === "none"
   ) {
-    // With no folder the panel says nothing at all; the welcome view carries that state alone.
     return project.inputDir === null ? (
-      <div className="ci-problems" />
+      <p className="ci-problems__state">{text.empty.noFolder}</p>
     ) : (
       <p className="ci-problems__state">{text.empty.notAnalysed}</p>
     );
@@ -276,8 +274,24 @@ export function Problems({ onOpenAsset, onShowFix }: ProblemsProps): ReactElemen
         </div>
       </div>
 
+      {project.rulesChangedAfterRun ? (
+        <p className="ci-problems__note">
+          <span>{text.problems.staleRules}</span>
+        </p>
+      ) : null}
+
       {hidden > 0 ? (
-        <p className="ci-problems__note">{text.problems.hidden(hidden)}</p>
+        <p className="ci-problems__note">
+          <span>{text.problems.hidden(hidden)}</span>
+          <button
+            type="button"
+            className="ci-button ci-button--quiet"
+            onClick={() => dispatch({ type: "OPEN_TAB", tab: settingsTab(text.settings.title) })}
+            data-testid="problems-hidden-settings"
+          >
+            {text.command.showSettings}
+          </button>
+        </p>
       ) : null}
 
       {rows.length === 0 ? (
@@ -370,7 +384,7 @@ export function Problems({ onOpenAsset, onShowFix }: ProblemsProps): ReactElemen
             </table>
           </div>
           {selected === null ? (
-            <p className="ci-problems__detail ci-problems__state">
+            <p className="ci-problems__detail ci-problems__detail--empty ci-problems__state">
               {text.problems.selectOne}
             </p>
           ) : (

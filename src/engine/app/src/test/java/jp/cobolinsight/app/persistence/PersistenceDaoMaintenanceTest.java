@@ -122,11 +122,11 @@ class PersistenceDaoMaintenanceTest {
         dao.insertSource(new jp.cobolinsight.app.persistence.model.SourceRecord(
                 1, "/assets", "cobol/SYK002.cbl", "UTF-8", "h1", 10));
         dao.insertFinding(new jp.cobolinsight.app.persistence.model.FindingRecord(
-                1_000_001, "parse-failure", "ERROR", 1, 1, 1, -1, "m", "{}"));
+                1_000_001, "parse-failure", "ERROR", 1, 1, 1, "m"));
         dao.insertFinding(new jp.cobolinsight.app.persistence.model.FindingRecord(
-                999_999_999_999L, "parse-failure", "ERROR", 1, 2, 1, -1, "m", "{}"));
+                999_999_999_999L, "parse-failure", "ERROR", 1, 2, 1, "m"));
         dao.insertFinding(new jp.cobolinsight.app.persistence.model.FindingRecord(
-                1_000_000_000_000L, "callgraph-dynamic-call", "NOTE", 1, 113, 1, -1, "m", "{}"));
+                1_000_000_000_000L, "callgraph-dynamic-call", "NOTE", 1, 113, 1, "m"));
 
         dao.deleteFindingsIdAtLeast(1_000_000_000_000L);
 

@@ -74,17 +74,19 @@ class SourceModelTest {
     }
 
     @Test
-    void decodedSourceHasValueEqualityAndDefensiveArrayCopies() {
+    void decodedSourceHasValueEqualityAndDefensiveIntakeCopies() {
         EncodingInfo enc = new EncodingInfo("UTF-8", 0.9, false, false);
-        DecodedSource a = new DecodedSource("A.cbl", "AB", new byte[]{65, 66}, new int[]{0, 1}, enc);
+        byte[] bytes = new byte[]{65, 66};
+        int[] offsets = new int[]{0, 1};
+        DecodedSource a = new DecodedSource("A.cbl", "AB", bytes, offsets, enc);
         DecodedSource b = new DecodedSource("A.cbl", "AB", new byte[]{65, 66}, new int[]{0, 1}, enc);
         assertEquals(a, b);
         assertEquals(a.hashCode(), b.hashCode());
-        byte[] leaked = a.originalBytes();
-        leaked[0] = 0;
+        // Mutating the caller's arrays after construction must not reach into the record: the
+        // constructor copies on intake, even though the accessors return the internal arrays as-is.
+        bytes[0] = 0;
+        offsets[0] = 99;
         assertEquals(a, b);
-        int[] leakedOffsets = a.charByteOffsets();
-        leakedOffsets[0] = 99;
         assertEquals(0, a.byteOffsetAt(0));
     }
 
@@ -115,13 +117,5 @@ class SourceModelTest {
         lines.clear();
         assertEquals(1, expansion.lines().size(), "引数のリストを防御的に複製すること");
         assertEquals(7, expansion.lines().get(0).copybookLine());
-    }
-
-    @Test
-    void positionedTokenHoldsTextAndRange() {
-        SourceRange r = new SourceRange(pos("A.cbl", 3, 8), pos("A.cbl", 3, 12));
-        PositionedToken t = new PositionedToken("MOVE", r);
-        assertEquals("MOVE", t.text());
-        assertEquals(3, t.range().start().line());
     }
 }

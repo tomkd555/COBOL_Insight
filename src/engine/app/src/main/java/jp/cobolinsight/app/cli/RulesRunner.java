@@ -8,20 +8,18 @@ import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.rules.RuleSet;
 
 import java.util.List;
-import java.util.Locale;
 
 /**
- * `rules`. Bundles the builtin rules and user-defined rules and returns a list with descriptions.
+ * `rules`. Bundles the builtin rules and user-defined rules and returns the catalogue as JSON.
  * The GUI treats the JSON emitted here as the source of the rule catalogue and holds no rule names
  * or descriptions on the screen side.
  */
 public final class RulesRunner {
 
-    public record Options(RuleSet ruleSet, String ruleId) {
+    public record Options(RuleSet ruleSet) {
     }
 
-    /** Whether detail was narrowed down to a single entry. Switches the terminal-oriented formatting here. */
-    public record Result(List<RuleSet.RuleEntry> rules, List<String> errors, boolean detail) {
+    public record Result(List<RuleSet.RuleEntry> rules, List<String> errors) {
 
         public Result {
             rules = List.copyOf(rules);
@@ -68,63 +66,6 @@ public final class RulesRunner {
             return writer.toString();
         }
 
-        /** The terminal-oriented listing. Shows the full description text when narrowed to a single entry. */
-        public String toText() {
-            if (detail && rules.size() == 1) {
-                return detailTextOf(rules.get(0));
-            }
-            StringBuilder out = new StringBuilder();
-            out.append(String.format(Locale.ROOT, "%-6s %-4s %-14s %s%n",
-                    "ID", "重大度", "カテゴリ", "名称"));
-            for (RuleSet.RuleEntry entry : rules) {
-                out.append(String.format(Locale.ROOT, "%-6s %-4s %-14s %s%n",
-                        entry.id(), entry.severity().label(), entry.meta().category(),
-                        entry.meta().name()));
-            }
-            long customCount = rules.stream()
-                    .filter(entry -> entry.source() == RuleSet.Source.CUSTOM).count();
-            out.append(String.format(Locale.ROOT, "%n合計 %d 件(組み込み %d・利用者定義 %d)",
-                    rules.size(), rules.size() - customCount, customCount));
-            long disabledCount = rules.stream().filter(entry -> !entry.enabled()).count();
-            if (disabledCount > 0) {
-                out.append(String.format(Locale.ROOT, " うち無効 %d 件", disabledCount));
-            }
-            out.append(System.lineSeparator());
-            for (String error : errors) {
-                out.append("警告: ").append(error).append('\n');
-            }
-            return out.toString();
-        }
-
-        private static String detailTextOf(RuleSet.RuleEntry entry) {
-            RuleMeta meta = entry.meta();
-            StringBuilder out = new StringBuilder();
-            out.append(meta.id()).append(' ').append(meta.name()).append('\n')
-                    .append("カテゴリ: ").append(meta.category())
-                    .append(" / 重大度: ").append(entry.severity().label())
-                    .append(" / 対象コマンド: ").append(meta.commands().stream()
-                            .map(Command::name).sorted().reduce((a, b) -> a + "・" + b).orElse(""))
-                    .append(" / 修正案: ").append(entry.hasFix() ? "あり" : "なし")
-                    .append("\n\n");
-            appendSection(out, "検出する内容", meta.summary());
-            appendSection(out, "なぜ問題か", meta.rationale());
-            appendSection(out, "検出条件", meta.detection());
-            appendSection(out, "直し方", meta.remedy());
-            if (meta.hasExample()) {
-                appendSection(out, "該当する例", meta.badExample());
-                appendSection(out, "直した例", meta.goodExample());
-            }
-            return out.toString();
-        }
-
-        private static void appendSection(StringBuilder out, String title, String body) {
-            out.append(title).append('\n');
-            for (String line : body.split("\n", -1)) {
-                out.append("  ").append(line).append('\n');
-            }
-            out.append('\n');
-        }
-
         private static void writeNames(JsonWriter writer, String name, List<String> values) {
             writer.name(name).beginArray();
             for (String value : values) {
@@ -141,14 +82,7 @@ public final class RulesRunner {
     private RulesRunner() {
     }
 
-    /** When ruleId is specified, returns only that one entry (empty if not found). */
     public static Result run(Options options) {
-        List<RuleSet.RuleEntry> all = options.ruleSet().catalogue();
-        String wanted = options.ruleId();
-        boolean detail = wanted != null && !wanted.isBlank();
-        List<RuleSet.RuleEntry> selected = detail
-                ? all.stream().filter(entry -> entry.id().equalsIgnoreCase(wanted.strip())).toList()
-                : all;
-        return new Result(selected, options.ruleSet().errors(), detail);
+        return new Result(options.ruleSet().catalogue(), options.ruleSet().errors());
     }
 }

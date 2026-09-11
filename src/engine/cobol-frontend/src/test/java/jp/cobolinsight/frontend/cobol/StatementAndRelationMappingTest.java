@@ -11,6 +11,7 @@ import jp.cobolinsight.core.semantic.Procedure;
 import jp.cobolinsight.core.semantic.ProcedureKind;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
+import jp.cobolinsight.core.spi.ParseOutcome;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -161,6 +162,43 @@ class StatementAndRelationMappingTest {
         assertEquals("3030-更新登録処理", thru.fromProcedure());
         assertEquals("4000-マスタ更新処理", thru.targetProcedure());
         assertEquals(Optional.of("4000-マスタ更新処理-EXIT"), thru.thruProcedure());
+    }
+
+    private static final String NO_PARAGRAPH_HEADER = """
+            000100 IDENTIFICATION DIVISION.
+            000200 PROGRAM-ID. NOPARA.
+            000300 DATA DIVISION.
+            000400 WORKING-STORAGE SECTION.
+            000500 01  WS-COUNT  PIC 9(3) VALUE 0.
+            000600 PROCEDURE DIVISION.
+            000700     DISPLAY 'START'.
+            000800     ADD 1 TO WS-COUNT.
+            000900 0000-MAIN.
+            001000     DISPLAY WS-COUNT.
+            001100     STOP RUN.
+            """;
+
+    private static CobolSemanticModel noParagraphHeaderModel() {
+        ParseOutcome<CobolSemanticModel> outcome = new Che4zCobolParser().parse(
+                TestSources.fromText(TestSources.REPO_ROOT.resolve("NOPARA.cbl").toString(),
+                        NO_PARAGRAPH_HEADER),
+                List.of());
+        return outcome.value().orElseThrow(() -> new AssertionError(
+                "NOPARA.cbl のパースが失敗した: " + outcome.failureFinding().orElse(null)));
+    }
+
+    @Test
+    void sentencesWithNoParagraphHeaderAreMappedToAnImplicitProcedure() {
+        CobolSemanticModel model = noParagraphHeaderModel();
+
+        assertEquals(List.of("PROCEDURE DIVISION", "0000-MAIN"),
+                model.procedures().stream().map(Procedure::name).toList());
+        Procedure implicit = model.procedures().get(0);
+        assertEquals(List.of("DISPLAY", "ADD"), verbs(implicit));
+        assertEquals(ProcedureKind.PARAGRAPH, implicit.kind());
+        assertEquals(7, implicit.range().start().line());
+        assertEquals(8, implicit.range().end().line(),
+                "暗黙の段落は先頭の段落見出しの手前で終わること");
     }
 
     @Test

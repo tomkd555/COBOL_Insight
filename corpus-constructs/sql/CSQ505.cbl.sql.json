@@ -1,0 +1,158 @@
+[
+  {
+    "kind": "BEGIN_DECLARE_SECTION",
+    "startLine": 23,
+    "endLine": 23,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "END_DECLARE_SECTION",
+    "startLine": 26,
+    "endLine": 26,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "hostVariables": [
+      {
+        "originalName": "WS-KOZA-NO",
+        "mangledName": "HV1"
+      }
+    ],
+    "referencedTables": [
+      "CSDB.CSQKOZA"
+    ],
+    "startLine": 40,
+    "endLine": 47,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-BROWSE",
+        "forReadOnly": false,
+        "forFetchOnly": true,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-BROWSE",
+    "tableAccess": {
+      "CSDB.CSQKOZA": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "KOZA_NO"
+      },
+      {
+        "column": "ZANDAKA"
+      },
+      {
+        "column": "KOZA_NO"
+      },
+      {
+        "column": "KOZA_NO"
+      }
+    ],
+    "selectList": [
+      "KOZA_NO",
+      "ZANDAKA"
+    ],
+    "withHold": true,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": true,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 94,
+    "endLine": 96,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-BROWSE",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 111,
+    "endLine": 113,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-BROWSE",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "WS-KOZA-NO",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-ZANDAKA",
+        "mangledName": "HV2"
+      }
+    ],
+    "startLine": 128,
+    "endLine": 131,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-BROWSE",
+    "intoTargets": [
+      "WS-KOZA-NO",
+      "WS-ZANDAKA"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

@@ -28,8 +28,6 @@ export type CustomRulePane = "form" | "raw";
 export interface RulesState {
   /** The file as it was last read or written. */
   readonly file: RulesFile;
-  /** Whether the file has been read; before that, nothing may be written over it. */
-  readonly loaded: boolean;
   /** The custom rules being edited. */
   readonly draft: readonly CustomRule[];
   /** The raw pane's text, always the serialisation of `draft` unless the text does not parse. */
@@ -39,17 +37,32 @@ export interface RulesState {
   readonly rawError: string | null;
   /** What the engine made of the candidate file, or null when it has not been asked. */
   readonly validation: RulesValidation | null;
+  /**
+   * Whether the custom rules on screen differ from the ones in the file. Kept on the state rather
+   * than recomputed on every read, since `EditorTabs` calls {@link isCustomDirty} once per tab on
+   * every render.
+   */
+  readonly dirty: boolean;
 }
 
 export const initialRulesState: RulesState = {
   file: emptyRulesFile(),
-  loaded: false,
   draft: [],
   raw: "[]",
   pane: "form",
   rawError: null,
   validation: null,
+  dirty: false,
 };
+
+/** Whether the draft differs from the file's own custom rules, given a possibly unparsed raw pane. */
+function computeDirty(
+  file: RulesFile,
+  draft: readonly CustomRule[],
+  rawError: string | null,
+): boolean {
+  return rawError !== null || serialise(draft) !== serialise(file.custom);
+}
 
 export type RulesAction =
   | { type: "LOAD"; file: RulesFile }
@@ -65,15 +78,15 @@ export function rulesReducer(state: RulesState, action: RulesAction): RulesState
       return {
         ...state,
         file: action.file,
-        loaded: true,
         draft: action.file.custom,
         raw: serialise(action.file.custom),
         rawError: null,
         validation: null,
+        dirty: false,
       };
 
     case "SET_FILE":
-      return { ...state, file: action.file };
+      return { ...state, file: action.file, dirty: computeDirty(action.file, state.draft, state.rawError) };
 
     case "SET_DRAFT":
       return {
@@ -82,18 +95,21 @@ export function rulesReducer(state: RulesState, action: RulesAction): RulesState
         raw: serialise(action.draft),
         rawError: null,
         validation: null,
+        dirty: computeDirty(state.file, action.draft, null),
       };
 
     case "SET_RAW": {
       const parsed = parse(action.raw);
+      // Text that does not parse leaves the definitions as they were, so the form still has a value
+      // to render and nothing is lost while the JSON is halfway through being typed.
+      const draft = parsed.error === null ? parsed.rules : state.draft;
       return {
         ...state,
         raw: action.raw,
-        // Text that does not parse leaves the definitions as they were, so the form still has a
-        // value to render and nothing is lost while the JSON is halfway through being typed.
-        draft: parsed.error === null ? parsed.rules : state.draft,
+        draft,
         rawError: parsed.error,
         validation: null,
+        dirty: computeDirty(state.file, draft, parsed.error),
       };
     }
 
@@ -115,7 +131,7 @@ export function rulesReducer(state: RulesState, action: RulesAction): RulesState
 
 /** Whether the custom rules on screen differ from the ones in the file. */
 export function isCustomDirty(state: RulesState): boolean {
-  return state.rawError !== null || serialise(state.draft) !== serialise(state.file.custom);
+  return state.dirty;
 }
 
 const StateContext = createContext<RulesState | null>(null);

@@ -12,16 +12,13 @@ import type { RulesFile } from "./rulesFile";
 
 /* ------------------------------------------------------------------ engine invocation */
 
-/** The engine subcommands the GUI can launch. `fix` splits into preview and apply. */
+/** The engine subcommands the GUI can launch. */
 export type EngineSubcommand =
   | "scan"
-  | "call-graph"
   | "lint"
-  | "sql-lint"
   | "report"
   | "translate"
-  | "fix-preview"
-  | "fix-apply"
+  | "fix"
   | "rules"
   | "save"
   | "decode";
@@ -49,24 +46,24 @@ export interface ScanRequest extends EngineCommonOptions {
   copyExpansion?: string;
 }
 
-export interface CallgraphRequest extends EngineCommonOptions {
-  db?: string;
-  jsonFile?: string;
-  dotFile?: string;
-  svgFile?: string;
-  pngFile?: string;
-}
-
 export interface LintRequest extends EngineCommonOptions {
-  /** SARIF 2.1.0 output file (--sarif). */
+  /** SARIF 2.1.0 output file for the lint findings (--sarif). */
   sarifFile?: string;
+  /** SARIF 2.1.0 output file for the SQL findings (--sql-sarif). */
+  sqlSarifFile?: string;
+  /**
+   * What to analyse inside the asset folder (repeated --scope), each a path relative to inputDir
+   * naming a file or a directory. The folder stays the root, so the relative paths in the SARIF are
+   * the same as in a whole-folder run. Absent means the whole folder. lint alone accepts this.
+   */
+  scope?: string[];
 }
 
-/** sql-lint runs only the rules that read the SQL model, but takes the same options. */
-export type SqlLintRequest = LintRequest;
-
-export interface ReportRequest extends EngineCommonOptions {
+/** report reads existing artefacts; it takes no asset folder and no parsing options. */
+export interface ReportRequest {
   db?: string;
+  sarifFile?: string;
+  sqlSarifFile?: string;
   htmlFile?: string;
   textFile?: string;
 }
@@ -77,11 +74,7 @@ export interface TranslateRequest extends EngineCommonOptions {
   outDir?: string;
 }
 
-export interface FixPreviewRequest extends EngineCommonOptions {
-  htmlFile?: string;
-}
-
-export interface FixApplyRequest extends EngineCommonOptions {
+export interface FixRequest extends EngineCommonOptions {
   outDir?: string;
 }
 
@@ -126,13 +119,10 @@ export interface DecodeRequest {
 /** Subcommand paired with its typed request. This union is the input to argv assembly. */
 export type EngineInvocation =
   | { subcommand: "scan"; request: ScanRequest }
-  | { subcommand: "call-graph"; request: CallgraphRequest }
   | { subcommand: "lint"; request: LintRequest }
-  | { subcommand: "sql-lint"; request: SqlLintRequest }
   | { subcommand: "report"; request: ReportRequest }
   | { subcommand: "translate"; request: TranslateRequest }
-  | { subcommand: "fix-preview"; request: FixPreviewRequest }
-  | { subcommand: "fix-apply"; request: FixApplyRequest }
+  | { subcommand: "fix"; request: FixRequest }
   | { subcommand: "rules"; request: RulesRequest }
   | { subcommand: "save"; request: SaveRequest }
   | { subcommand: "decode"; request: DecodeRequest };
@@ -141,10 +131,7 @@ export type EngineInvocation =
 export interface EngineOutputs {
   db?: string;
   sarif?: string;
-  json?: string;
-  dot?: string;
-  svg?: string;
-  png?: string;
+  sqlSarif?: string;
   html?: string;
   text?: string;
   outDir?: string;
@@ -203,8 +190,6 @@ export interface DecodeResult {
   codepage: string;
   /** Whether the codepage was detected rather than given. */
   detected: boolean;
-  /** Whether the EBCDIC shift-out/shift-in control bytes appear in the file. */
-  soSiPresent: boolean;
   lines: DecodedLine[];
   stamp: SourceStamp;
   /** Non-empty when the file could not be decoded; `text` is then empty. */
@@ -241,9 +226,6 @@ export interface SaveResult {
   written: boolean;
   /** Absolute path of the original that was written (separators normalised to /). */
   path: string;
-  changedLineFrom: number;
-  /** Last changed line, inclusive. A pure insertion reports changedLineFrom - 1. */
-  changedLineTo: number;
   reparseErrors: SaveReparseError[];
   /** Why the write was refused. Empty when it was not. */
   error: string;
@@ -269,22 +251,16 @@ export interface RuleCatalogEntry {
   category: string;
   /** Engine severity (HIGH/MEDIUM/LOW/ADVISORY). */
   severity: string;
-  /** Analysis phase (SYNTAX/CONTROL_FLOW/DATA_FLOW). */
-  phase: string;
   /** Whether the rule can produce a fix diff. */
   hasFix: boolean;
   /** Built-in or user-defined. */
   source: "builtin" | "user";
   /** Whether the rule is in effect, given the rule configuration file. */
   enabled: boolean;
-  /** Whether the rule is on when the configuration file says nothing about it. */
-  defaultEnabled: boolean;
   /** Which subcommands run this rule (lint, sql-lint, ...). */
   commands: string[];
   /** Which asset kinds the rule inspects (COBOL/COPYBOOK/JCL/BMS). */
   targets: string[];
-  /** Which analyses the rule needs (cfg, dataflow, sql, ...). */
-  needs: string[];
   /** What it detects. */
   summary: string;
   /** Why it matters. */
@@ -323,18 +299,16 @@ export interface AssetInventoryItem {
   path: string;
   /** The last segment of `path`. */
   name: string;
-  /** NODE.type (PROGRAM/JCL/COPYBOOK/BMS). UNKNOWN when no node was registered. */
+  /** NODE.type (PROGRAM/JCL/COPYBOOK/BMS/SQL). UNKNOWN when no node was registered. */
   type: string;
   /** SOURCE.codepage; null when decoding failed. */
   codepage: string | null;
-  byteSize: number;
   findingCount: number;
 }
 
 /** One SARIF 2.1.0 result flattened into what the screens need. */
 export interface SarifFinding {
   ruleId: string;
-  ruleIndex?: number;
   /** SARIF level (error/warning/note/none). */
   level: string;
   message: string;
@@ -373,6 +347,12 @@ export interface GraphEdge {
   seq: number;
   /** The calling line, when known. */
   line: number | null;
+  /**
+   * How the origin uses the target: READ/WRITE/UPDATE/CREATE/DELETE/UNKNOWN for a step and a data
+   * set, the letters R, C, U and D for a program and a Db2 table. Null when the engine recorded
+   * none.
+   */
+  access: string | null;
 }
 
 /** One paragraph of one program (PARAGRAPH joined to the asset through PROGRAM). */
@@ -460,17 +440,11 @@ export interface TranspileGeneratedFile {
 
 /** One LINE_MAP row. Ranges are 1-based and inclusive. */
 export interface LineMapEntry {
-  id: number;
   cobolLineStart: number;
   cobolLineEnd: number;
   genFile: string;
   genLineStart: number;
   genLineEnd: number;
-  /** "1:1", "1:N" or "N:1". */
-  kind: string;
-  /** A note about what could not be translated literally; empty means none. */
-  note: string;
-  anchorId: string;
 }
 
 /** Which translate artefacts to read. */
@@ -506,20 +480,23 @@ export interface ReportArtifactRequest {
 export interface EngineOutputPaths {
   readonly db: string;
   readonly sarif: string;
-  /** Kept apart from `sarif`: sharing one name would make sql-lint overwrite the lint results. */
+  /** Kept apart from `sarif`: lint writes both files in one run and must not have one overwrite the other. */
   readonly sqlSarif: string;
+  /**
+   * Where a scoped lint writes instead of `sarif` and `sqlSarif`. A scoped run reports only the
+   * assets its scope covers, so letting it write the whole-folder pair would leave the report —
+   * which is generated from those two files — covering one asset while naming the whole folder.
+   */
+  readonly scopedSarif: string;
+  readonly scopedSqlSarif: string;
   readonly copyExpansion: string;
   /** The rule configuration file. Not an engine artefact — the GUI writes it, the engine reads it. */
   readonly rules: string;
 }
 
-/** Where an asset kind's imported text should land. */
-export type ImportAssetKind = "cobol" | "copybook" | "jcl" | "bms";
-
 /** Text copied out of a terminal emulator, to be written into the asset folder as a source file. */
 export interface ImportSourceRequest {
   inputDir: string;
-  kind: ImportAssetKind;
   /** Destination folder as a path relative to the asset folder; "" means the asset folder itself. */
   destDir: string;
   /** File name. A copybook that does not already end in .cpy gets the extension added. */
@@ -567,9 +544,11 @@ export interface CobolInsightApi {
   /** Checks candidate rule-file text without committing it. */
   validateRules(raw: string): Promise<RulesValidation>;
 
-  readInventory(dbPath: string): Promise<AssetInventoryItem[]>;
+  /** The assets of one asset folder. A project file can hold several, so the root selects one. */
+  readInventory(dbPath: string, root: string): Promise<AssetInventoryItem[]>;
   readSarif(path: string): Promise<SarifFinding[]>;
-  readGraph(dbPath: string): Promise<GraphData>;
+  /** The call graph of one asset folder, selected by the same root as the inventory. */
+  readGraph(dbPath: string, root: string): Promise<GraphData>;
   readCopyExpansion(path: string): Promise<CopyExpansionData>;
   readFixDiff(request: FixDiffRequest): Promise<FixDiff>;
   readTranspile(request: TranspileRequest): Promise<TranspileArtifacts>;
@@ -584,11 +563,10 @@ export interface CobolInsightApi {
   saveAs(request: SaveAsRequest): Promise<string | null>;
 
   readSettings(): Promise<AppSettings>;
-  writeSettings(settings: AppSettings): Promise<void>;
+  /** Merges shallowly into the stored settings, so a caller need only send the keys it owns. */
+  writeSettings(settings: Partial<AppSettings>): Promise<void>;
   readRules(path: string): Promise<RulesFile>;
   writeRules(path: string, file: RulesFile): Promise<void>;
-
-  versions: { chrome: string; node: string; electron: string };
 }
 
 /** IPC channel names. The preload invokes them and main handles them; nothing else names a channel. */

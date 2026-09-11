@@ -1,0 +1,25 @@
+//CP304    PROC CYCLE=000000,HLQ=CJW
+//*-------------------------------------------------------------*
+//*  CP304 : catalogued PROC written to be overridden from the   *
+//*          calling job: STEP1 carries INDD (overridden,        *
+//*          unqualified, with a new DSN and DISP), OUTDD        *
+//*          (overridden on a single DCB subparameter only) and  *
+//*          WORKDD (overridden on a single parameter, SPACE,    *
+//*          only). STEP2's own COND is meant to be replaced by  *
+//*          the caller's COND.STEP2= override.                  *
+//*-------------------------------------------------------------*
+//STEP1    EXEC PGM=CCP005,PARM='&CYCLE',TIME=2,REGION=2M
+//STEPLIB  DD   DSN=CJ.PROD.LOADLIB,DISP=SHR
+//INDD     DD   DSN=&HLQ..D&CYCLE..CP304.INDD,DISP=SHR
+//OUTDD    DD   DSN=&HLQ..D&CYCLE..CP304.OUTDD,
+//             DISP=(NEW,CATLG,DELETE),
+//             SPACE=(CYL,(1,1),RLSE),
+//             DCB=(RECFM=FB,LRECL=80,BLKSIZE=0)
+//WORKDD   DD   DSN=&&CP304WK,UNIT=SYSDA,
+//             SPACE=(CYL,(1,1),RLSE),
+//             DISP=(NEW,DELETE,DELETE)
+//SYSOUT   DD   SYSOUT=*
+//*
+//STEP2    EXEC PGM=CCP006,COND=(4,LT,STEP1)
+//STEPLIB  DD   DSN=CJ.PROD.LOADLIB,DISP=SHR
+//SYSOUT   DD   SYSOUT=*

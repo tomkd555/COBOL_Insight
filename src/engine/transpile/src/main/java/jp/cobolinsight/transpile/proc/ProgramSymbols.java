@@ -13,7 +13,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeSet;
 
 /**
  * Symbol table for the procedure translation. Assigns each elementary item a flat field on the
@@ -31,10 +30,6 @@ public final class ProgramSymbols {
         public DataSymbol {
             occursCounts = List.copyOf(occursCounts);
         }
-
-        public boolean isArray() {
-            return !occursCounts.isEmpty();
-        }
     }
 
     /** An 88-level condition name. Determined by equality with the parent elementary item's value. */
@@ -47,14 +42,12 @@ public final class ProgramSymbols {
     private final List<DataSymbol> declarations;
     private final Map<String, DataSymbol> byName;
     private final Map<String, ConditionSymbol> conditions;
-    private final Set<String> groupNames;
 
     private ProgramSymbols(List<DataSymbol> declarations, Map<String, DataSymbol> byName,
-            Map<String, ConditionSymbol> conditions, Set<String> groupNames) {
+            Map<String, ConditionSymbol> conditions) {
         this.declarations = declarations;
         this.byName = byName;
         this.conditions = conditions;
-        this.groupNames = groupNames;
     }
 
     public static ProgramSymbols build(List<DataItem> dataItems) {
@@ -63,7 +56,7 @@ public final class ProgramSymbols {
             builder.walk(item, List.of());
         }
         return new ProgramSymbols(List.copyOf(builder.declarations), builder.byName,
-                builder.conditions, builder.groupNames);
+                builder.conditions);
     }
 
     /** Elementary items in declaration order (used for field declarations). */
@@ -79,16 +72,6 @@ public final class ProgramSymbols {
         return Optional.ofNullable(conditions.get(normalize(cobolName)));
     }
 
-    public boolean isGroup(String cobolName) {
-        return groupNames.contains(normalize(cobolName));
-    }
-
-    /** Whether the name is known as an elementary item, a group, or an 88-level condition. */
-    public boolean isKnown(String cobolName) {
-        String n = normalize(cobolName);
-        return byName.containsKey(n) || groupNames.contains(n) || conditions.containsKey(n);
-    }
-
     static String normalize(String cobolName) {
         return cobolName.trim().toUpperCase(Locale.ROOT);
     }
@@ -97,7 +80,6 @@ public final class ProgramSymbols {
         private final List<DataSymbol> declarations = new ArrayList<>();
         private final Map<String, DataSymbol> byName = new LinkedHashMap<>();
         private final Map<String, ConditionSymbol> conditions = new LinkedHashMap<>();
-        private final Set<String> groupNames = new TreeSet<>();
         private final Set<String> usedFieldNames = new java.util.HashSet<>();
 
         void walk(DataItem item, List<Integer> occursStack) {
@@ -115,7 +97,6 @@ public final class ProgramSymbols {
                             new ConditionSymbol(cond.name(), symbol, cond.values()));
                 }
             } else {
-                groupNames.add(normalize(item.name()));
                 for (DataItem child : item.children()) {
                     walk(child, here);
                 }

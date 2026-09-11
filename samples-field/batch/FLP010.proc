@@ -1,0 +1,31 @@
+//FLP010 PROC CYCLE=000000,HLQ=FLW
+//*-------------------------------------------------------------*
+//*  FLP010 : 入金データ編集・督促リスト作成                     *
+//*    STEP1 : 入金データ編集(FLB010)                            *
+//*    STEP2 : 督促リスト作成(FLB040)                            *
+//*  呼び出し側は CYCLE と HLQ を渡します。                      *
+//*-------------------------------------------------------------*
+//*
+//*  日次入金ファイルを編集して出力します。
+//STEP1    EXEC PGM=FLB010
+//STEPLIB  DD DSN=FL.PROD.LOADLIB,DISP=SHR
+//NYUKIN   DD DSN=FLT.D&CYCLE..NYUKIN.DAILY,DISP=SHR
+//NYUOUT   DD DSN=&HLQ..D&CYCLE..NYUKIN.HENSHU,
+//            DISP=(,CATLG,DELETE),
+//            SPACE=(CYL,(10,5),RLSE),
+//            DCB=(RECFM=FB,LRECL=120,BLKSIZE=0)
+//SORTWK01 DD UNIT=SYSDA,SPACE=(CYL,(10,5))
+//SYSOUT   DD SYSOUT=*
+//SYSPRINT DD SYSOUT=*
+//*
+//*  編集が正常に終わったときだけ督促リストを作ります。
+//STEP2    EXEC PGM=FLB040,COND=(0,NE,STEP1)
+//STEPLIB  DD DSN=FL.PROD.LOADLIB,DISP=SHR
+//KEIYAKU  DD DSN=FLM.KEIYAKU.MASTER,DISP=SHR
+//TOKLIST  DD DSN=&HLQ..D&CYCLE..TOKUSOKU.LIST,
+//            DISP=(NEW,CATLG,DELETE),
+//            SPACE=(CYL,(2,1),RLSE),
+//            DCB=(RECFM=FB,LRECL=132,BLKSIZE=0)
+//SYSOUT   DD SYSOUT=*
+//SYSPRINT DD SYSOUT=*
+//         PEND

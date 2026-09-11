@@ -25,13 +25,15 @@ import java.util.regex.Pattern;
 
 /**
  * R002 Unused data item. Detects a data item that is declared in the WORKING-STORAGE
- * SECTION or LOCAL-STORAGE SECTION but is not referenced by any statement in the
- * PROCEDURE DIVISION. Items in the LINKAGE SECTION and FILE SECTION are excluded. An
- * item's owning section is judged from the section-header lines of the original source
- * text (SourceTextIndex); an item that comes from a copybook is judged by the section in
- * which the COPY statement that pulls it in appears. When a group item's name is
- * referenced, its descendants are also treated as used; when a descendant's name is
- * referenced, its ancestors are also treated as used. To suppress false positives, the
+ * SECTION or LOCAL-STORAGE SECTION of the program itself but is not referenced by any
+ * statement in the PROCEDURE DIVISION. Items in the LINKAGE SECTION and FILE SECTION are
+ * excluded, and so are items that come from a copybook: a copybook is a layout shared by
+ * many programs, and a program that uses part of it is the norm (the field measurement in
+ * corpus/rule-hits.md had 35 of 37 hits on copybook items). An item's owning section is
+ * judged from the section-header lines of the original source text (SourceTextIndex). When
+ * a group item's name is referenced, its descendants are also treated as used; when a
+ * descendant's name is referenced, its ancestors are also treated as used; an item that
+ * REDEFINES a used item, or is redefined by one, is used. To suppress false positives, the
  * following two cases are excluded: (1) an item whose name is referenced within the
  * ENVIRONMENT DIVISION (such as a SELECT statement's FILE STATUS clause), and (2) an item
  * that declares an 88-level condition name (since it is customary to declare an item and
@@ -53,8 +55,9 @@ public final class UnusedDataItemRule implements Rule {
             .rationale("使われない宣言は記憶域を占めるだけでなく、"
                     + "読む者に生きている項目と取り違えさせ、改修の判断を誤らせます。")
             .detection("集団項目は子孫の参照を、子孫は祖先の参照をもって使用済みとみなします。"
-                    + "連絡節・ファイル節の項目、環境部に名前が現れる項目、"
-                    + "条件名を宣言する項目は対象外です。")
+                    + "REDEFINES で記憶域を共有する項目は、どちらかが使われていれば両方を"
+                    + "使用済みとみなします。連絡節・ファイル節の項目、コピー句から取り込んだ項目、"
+                    + "環境部に名前が現れる項目、条件名を宣言する項目は対象外です。")
             .remedy("宣言を削ってください。将来の使用を見込んで残すなら、"
                     + "その理由を注記に書いてください。")
             .example("""
@@ -66,9 +69,9 @@ public final class UnusedDataItemRule implements Rule {
                         05  WS-TOTAL      PIC 9(7).
                     """)
             .severity(Severity.LOW)
-            .commands(Command.LINT, Command.REPORT)
-            .targets(AssetKind.COBOL, AssetKind.COPYBOOK)
-            .needs(Needs.SEMANTIC, Needs.SOURCE_TEXT)
+            .commands(Command.LINT)
+            .targets(AssetKind.COBOL)
+            .needs(Needs.SOURCE_TEXT)
             .build();
 
     @Override
@@ -93,11 +96,15 @@ public final class UnusedDataItemRule implements Rule {
             referenced.addAll(environmentDivisionTokens(text));
             propagateRedefines(model.dataItems(), referenced);
             for (DataItem top : model.dataItems()) {
+                // A copybook is a shared layout; the fields one program leaves alone are the norm.
+                if (!top.position().file().equals(model.sourceFile())) {
+                    continue;
+                }
                 String section = sectionOf(top, model, layout);
                 if (!"WORKING-STORAGE".equals(section) && !"LOCAL-STORAGE".equals(section)) {
                     continue;
                 }
-                report(top, section, referenced, findings);
+                report(top, section, referenced, model.sourceFile(), findings);
             }
         }
         return findings;
@@ -138,10 +145,17 @@ public final class UnusedDataItemRule implements Rule {
         return tokens;
     }
 
-    /** A REDEFINES's redefined item and redefining item share storage, so a reference to either marks both as used. */
+    /**
+     * A REDEFINES's redefined item and redefining item share storage, so a reference to either
+     * of them, or to any item inside either, marks both as used.
+     */
     private static void propagateRedefines(List<DataItem> items, Set<String> referenced) {
         List<DataItem> flat = new ArrayList<>();
         flatten(items, flat);
+        Map<String, DataItem> byName = new HashMap<>();
+        for (DataItem item : flat) {
+            byName.putIfAbsent(CobolTexts.upper(item.name()), item);
+        }
         boolean changed = true;
         while (changed) {
             changed = false;
@@ -151,14 +165,19 @@ public final class UnusedDataItemRule implements Rule {
                 }
                 String self = CobolTexts.upper(item.name());
                 String target = CobolTexts.upper(item.redefines().orElseThrow());
-                if (referenced.contains(self) && referenced.add(target)) {
+                if (used(item, referenced) && referenced.add(target)) {
                     changed = true;
                 }
-                if (referenced.contains(target) && referenced.add(self)) {
+                DataItem redefined = byName.get(target);
+                if (redefined != null && used(redefined, referenced) && referenced.add(self)) {
                     changed = true;
                 }
             }
         }
+    }
+
+    private static boolean used(DataItem item, Set<String> referenced) {
+        return selfReferenced(item, referenced) || anyDescendantReferenced(item, referenced);
     }
 
     private static void flatten(List<DataItem> items, List<DataItem> out) {
@@ -195,10 +214,14 @@ public final class UnusedDataItemRule implements Rule {
      * only its children are judged.
      */
     private static void report(DataItem item, String section, Set<String> referenced,
-            List<Finding> findings) {
+            String sourceFile, List<Finding> findings) {
+        // A copybook pulled in below an 01 of the program: its fields are the copybook's business.
+        if (!item.position().file().equals(sourceFile)) {
+            return;
+        }
         if (isFiller(item)) {
             for (DataItem child : item.children()) {
-                report(child, section, referenced, findings);
+                report(child, section, referenced, sourceFile, findings);
             }
             return;
         }
@@ -210,7 +233,7 @@ public final class UnusedDataItemRule implements Rule {
         }
         if (anyDescendantReferenced(item, referenced)) {
             for (DataItem child : item.children()) {
-                report(child, section, referenced, findings);
+                report(child, section, referenced, sourceFile, findings);
             }
             return;
         }

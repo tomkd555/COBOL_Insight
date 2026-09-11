@@ -1,0 +1,57 @@
+[
+  {
+    "jobName": "CJ501",
+    "line": 3,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "JES2 JECL STATEMENTS",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "jes2Cards": [
+      "/*SIGNON       REMOTE3",
+      "/*PRIORITY 8",
+      "/*JOBPARM LINES=999,SYSAFF=(SYSA,SYSB),PROCLIB=PROC01",
+      "/*ROUTE PRINT RMT5",
+      "/*ROUTE XEQ NODE1",
+      "/*OUTPUT OUT1 DEST=RMT3,COPIES=2",
+      "/*XEQ NODE1",
+      "/*SETUP VOL001",
+      "/*MESSAGE MOUNT TAPES",
+      "/*NOTIFY USER01",
+      "/*SIGNOFF"
+    ],
+    "diagnostics": [
+      {
+        "ruleId": "jcl-syntax",
+        "line": 1,
+        "message": "1 行の JCL 文を解析できませんでした（no viable alternative at input '/*SIGNON R'）。"
+      },
+      {
+        "ruleId": "jcl-syntax",
+        "line": 8,
+        "message": "8 行の JCL 文を解析できませんでした（missing EQUAL at 'U'）。"
+      }
+    ],
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 23,
+        "ddStatements": [
+          {
+            "ddName": "SYSPRINT",
+            "line": 24,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

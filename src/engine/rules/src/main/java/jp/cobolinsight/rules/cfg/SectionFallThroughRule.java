@@ -52,10 +52,9 @@ public final class SectionFallThroughRule implements Rule {
                     CALC-EXIT.
                         EXIT.
                     """)
-            .severity(Severity.MEDIUM)
-            .commands(Command.LINT, Command.REPORT)
+            .severity(Severity.LOW)
+            .commands(Command.LINT)
             .targets(AssetKind.COBOL)
-            .needs(Needs.SEMANTIC)
             .build();
 
     @Override

@@ -103,7 +103,7 @@ class ScanReanalysisTriggerTest {
         assertEquals(List.of(), summary.removed(), "別の資産フォルダの行を消さないこと");
         try (PersistenceDatabase database = PersistenceDatabase.open(databaseFile)) {
             PersistenceDao dao = new PersistenceDao(database.connection());
-            assertEquals(16, dao.findSourcesByRoot(Paths.rootOf(first)).size());
+            assertEquals(19, dao.findSourcesByRoot(Paths.rootOf(first)).size());
             assertEquals(1, dao.findSourcesByRoot(Paths.rootOf(second)).size());
         }
     }

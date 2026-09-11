@@ -6,6 +6,7 @@ import jp.cobolinsight.core.finding.Finding;
 import jp.cobolinsight.core.finding.FixSuggestion;
 import jp.cobolinsight.core.finding.TextEdit;
 import jp.cobolinsight.core.rule.Command;
+import jp.cobolinsight.core.rule.Rule;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.source.SourceRange;
 import jp.cobolinsight.rules.sarif.SarifWriter;
@@ -13,7 +14,6 @@ import jp.cobolinsight.rules.sarif.SarifWriter;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -22,25 +22,40 @@ import java.util.Map;
  *
  * <p>Normalising means the output is the same for the same input: every path — the finding's own,
  * each step of a taint path, each edit range of a fix — is rewritten relative to the asset folder,
- * and the findings are ordered by file, line, column, rule and message.
+ * the COPY search paths or the procedure libraries, and the findings are ordered by file, line,
+ * column, rule and message.
  */
 public record Sarif(Command command) implements Step {
 
     @Override
     public void apply(SourceSet s) {
-        Map<Path, String> relByAbs = new HashMap<>();
-        for (SourceUnit unit : s.units()) {
-            relByAbs.put(unit.absPath().toAbsolutePath().normalize(), unit.relPath());
-        }
-        List<Path> searchPaths = s.options().copybookSearchPaths();
-        normalize(s.findings(), relByAbs, searchPaths);
+        // The whole walk names the files, so a finding keeps the path a whole-folder run gives it
+        // even when a scope left its file out of the units.
+        Map<Path, String> relByAbs = s.relPathByAbsPath();
+        List<Path> searchPaths = s.copybookSearchPaths();
         List<Finding> ruleFindings = s.ruleFindings(command);
         normalize(ruleFindings, relByAbs, searchPaths);
 
-        List<Finding> all = new ArrayList<>(s.findings());
-        all.addAll(ruleFindings);
-        all.sort(SarifWriter.findingOrder());
-        s.sarif(command, SarifWriter.toJson(s.rulesFor(command), all));
+        // toJson sorts its own copy, so the merged list needs no sort of its own here; normalize's
+        // sort above stays because s.findings() and s.ruleFindings(command) are read by more than
+        // just this writer (LintRunner exposes ruleFindings(SQL_LINT) without re-sorting it).
+        List<Finding> all = new ArrayList<>(ruleFindings);
+        if (command != Command.SQL_LINT) {
+            // Decode/parse failures are reported once, in the LINT SARIF; SQL_LINT carries only
+            // its own rule findings, so a failure is not counted three times (DB + both files).
+            normalize(s.findings(), relByAbs, searchPaths);
+            all.addAll(s.findings());
+        }
+        // The pipeline's own finding ids are not rules, so the catalogue holds no descriptor for
+        // them; without one a reader of the SARIF has neither a name nor help text for the id.
+        // Only the document that carries those findings lists them.
+        List<Rule> descriptors = new ArrayList<>(s.rulesFor(command));
+        if (command != Command.SQL_LINT) {
+            descriptors.addAll(PipelineDiagnostics.all());
+        }
+        // The scope goes into the file itself: a reader who has only the SARIF would otherwise
+        // take a run over one folder for a run over the whole estate.
+        s.sarif(command, SarifWriter.toJson(descriptors, all, s.options().scope().written()));
     }
 
     private static void normalize(List<Finding> findings, Map<Path, String> relByAbs,
@@ -80,8 +95,10 @@ public record Sarif(Command command) implements Step {
 
     /**
      * Replaces an absolute file with its path relative to the asset folder. A file the folder
-     * cannot account for is tried against each COPY search path; one that matches none stays
-     * absolute.
+     * cannot account for is tried against each COPY search path the caller passed; one that
+     * matches none stays absolute. A PROC or INCLUDE member reached through {@code --proc-path} is
+     * one of those: relative to its library it would read as a file of the asset folder's root,
+     * and the SARIF names no base directory that would say otherwise.
      */
     static SourcePosition relativize(SourcePosition position, Map<Path, String> relByAbs,
             List<Path> searchPaths) {

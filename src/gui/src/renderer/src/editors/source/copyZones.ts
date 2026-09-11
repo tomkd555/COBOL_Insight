@@ -15,11 +15,33 @@
 
 import { useEffect, useState } from "react";
 import type * as monacoApi from "monaco-editor/editor/editor.api";
-import type { CopyExpansion } from "../../../../shared/ipc";
+import type { CopyExpansion, CopyExpansionData } from "../../../../shared/ipc";
 import { api } from "../../api";
 import { text } from "../../i18n/text";
 import { useProject } from "../../state/projectStore";
 import { monacoEditor } from "../../vendor/monacoEditor";
+
+/**
+ * The COPY expansion table, keyed by its file path. Every source tab reads the same table on every
+ * switch, and it changes only when a scan rewrites it, so one read per path is kept until then.
+ */
+const copyExpansionCache = new Map<string, Promise<CopyExpansionData>>();
+
+/** Drops the cached tables. Called once a scan has finished, since only it can have rewritten them. */
+export function clearCopyExpansionCache(): void {
+  copyExpansionCache.clear();
+}
+
+function readCopyExpansionCached(tablePath: string): Promise<CopyExpansionData> {
+  let pending = copyExpansionCache.get(tablePath);
+  if (pending === undefined) {
+    pending = api().readCopyExpansion(tablePath);
+    copyExpansionCache.set(tablePath, pending);
+    // A failed read must not poison the cache: the next tab switch should try again.
+    pending.catch(() => copyExpansionCache.delete(tablePath));
+  }
+  return pending;
+}
 
 /** What the caller holds on to so the zones can be taken down again. */
 export interface CopyZonesHandle {
@@ -144,7 +166,6 @@ export function showCopyZones(
       },
       options: {
         glyphMarginClassName: "ci-copy__glyph",
-        glyphMarginHoverMessage: { value: text.copyExpansion.glyphHint },
       },
     })),
   );
@@ -239,8 +260,7 @@ export function useCopyZones(
       return;
     }
     let cancelled = false;
-    api()
-      .readCopyExpansion(tablePath)
+    readCopyExpansionCached(tablePath)
       .then((table) => {
         if (cancelled) return;
         const program = table.programs.find((candidate) => candidate.path === path);

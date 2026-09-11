@@ -40,7 +40,7 @@ public final class ReturnCodeUncheckedRule implements Rule {
             .rationale("呼び出し先の失敗に気づかないまま後続が進みます。")
             .detection("CALL 文の後、次の CALL 文または終端に達するまでの前方経路で"
                     + "RETURN-CODE を条件で参照しないものを検出します。"
-                    + "同じプログラムの他の箇所に RETURN-CODE の参照があることが前提で、"
+                    + "同じプログラムの他の箇所に RETURN-CODE の参照があることを前提とし、"
                     + "RETURN-CODE をどこでも参照しないプログラムは対象外です。")
             .remedy("CALL 文の直後に RETURN-CODE を検査し、正常値以外を異常として"
                     + "処理してください。")
@@ -54,9 +54,9 @@ public final class ReturnCodeUncheckedRule implements Rule {
                     END-IF.
                     """)
             .severity(Severity.MEDIUM)
-            .commands(Command.LINT, Command.REPORT)
+            .commands(Command.LINT)
             .targets(AssetKind.COBOL)
-            .needs(Needs.SEMANTIC, Needs.CFG)
+            .needs(Needs.CFG)
             .build();
 
     @Override

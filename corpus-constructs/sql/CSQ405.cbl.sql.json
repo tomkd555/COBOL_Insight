@@ -1,0 +1,267 @@
+[
+  {
+    "kind": "DECLARE_TABLE",
+    "file": "corpus-constructs/sql/CSD402.cpy",
+    "startLine": 9,
+    "endLine": 17,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "declaredTable": "FLDB.JUCHU",
+    "declaredColumns": [
+      {
+        "name": "JUCHU_NO",
+        "type": "CHAR(10)",
+        "nullable": false
+      },
+      {
+        "name": "KOKYAKU_NO",
+        "type": "CHAR(8)",
+        "nullable": false
+      },
+      {
+        "name": "JUCHU_YMD",
+        "type": "DATE",
+        "nullable": false
+      },
+      {
+        "name": "SHOHIN_CD",
+        "type": "CHAR(8)",
+        "nullable": false
+      },
+      {
+        "name": "SURYO",
+        "type": "DECIMAL(7, 0)",
+        "nullable": false
+      },
+      {
+        "name": "KINGAKU",
+        "type": "DECIMAL(9, 0)",
+        "nullable": false
+      },
+      {
+        "name": "TANTO_CD",
+        "type": "CHAR(5)",
+        "nullable": true
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "referencedTables": [
+      "FLDB.SHOHIN",
+      "FLDB.JUCHU"
+    ],
+    "startLine": 41,
+    "endLine": 68,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-RANK",
+        "forReadOnly": false,
+        "forFetchOnly": true,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-RANK",
+    "tableAccess": {
+      "FLDB.SHOHIN": "R",
+      "FLDB.JUCHU": "R"
+    },
+    "columnRefs": [
+      {
+        "table": "FLDB.JUCHU",
+        "column": "JUCHU_NO"
+      },
+      {
+        "table": "FLDB.JUCHU",
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "table": "FLDB.JUCHU",
+        "column": "KINGAKU"
+      },
+      {
+        "table": "FLDB.JUCHU",
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "table": "FLDB.JUCHU",
+        "column": "KINGAKU"
+      },
+      {
+        "table": "FLDB.JUCHU",
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "table": "FLDB.JUCHU",
+        "column": "KINGAKU"
+      },
+      {
+        "table": "FLDB.JUCHU",
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "table": "FLDB.JUCHU",
+        "column": "KINGAKU"
+      },
+      {
+        "table": "FLDB.JUCHU",
+        "column": "KINGAKU"
+      },
+      {
+        "table": "FLDB.JUCHU",
+        "column": "KINGAKU"
+      },
+      {
+        "table": "FLDB.JUCHU",
+        "column": "TANTO_CD"
+      },
+      {
+        "table": "FLDB.SHOHIN",
+        "column": "SHOHIN_MEI"
+      },
+      {
+        "table": "FLDB.SHOHIN",
+        "column": "SHOHIN_CD"
+      },
+      {
+        "table": "FLDB.JUCHU",
+        "column": "SHOHIN_CD"
+      }
+    ],
+    "selectList": [
+      "J.JUCHU_NO",
+      "J.KOKYAKU_NO",
+      "J.KINGAKU",
+      "ROW_NUMBER() OVER (PARTITION BY J.KOKYAKU_NO ORDER BY J.KINGAKU DESC) AS JUN_NO",
+      "RANK() OVER (PARTITION BY J.KOKYAKU_NO ORDER BY J.KINGAKU DESC) AS RANK_NO",
+      "DENSE_RANK() OVER (PARTITION BY J.KOKYAKU_NO ORDER BY J.KINGAKU DESC) AS DRANK_NO",
+      "CASE WHEN J.KINGAKU >= 100000 THEN '大口' WHEN J.KINGAKU >= 10000 THEN '中口' ELSE '小口' END AS KUBUN",
+      "CASE J.TANTO_CD WHEN 'T0001' THEN '東京担当' WHEN 'T0002' THEN '大阪担当' ELSE '未定' END AS TANTO_MEI",
+      "( SELECT S.SHOHIN_MEI FROM FLDB.SHOHIN S WHERE S.SHOHIN_CD = J.SHOHIN_CD ) AS SHOHIN_MEI_KEKKA"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 77,
+    "endLine": 77,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-RANK",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 84,
+    "endLine": 84,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-RANK",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "WS-JUCHU-NO",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-KOKYAKU-NO",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "WS-KINGAKU",
+        "mangledName": "HV3"
+      },
+      {
+        "originalName": "WS-JUN-NO",
+        "mangledName": "HV4"
+      },
+      {
+        "originalName": "WS-RANK-NO",
+        "mangledName": "HV5"
+      },
+      {
+        "originalName": "WS-DRANK-NO",
+        "mangledName": "HV6"
+      },
+      {
+        "originalName": "WS-KUBUN",
+        "mangledName": "HV7"
+      },
+      {
+        "originalName": "WS-TANTO-MEI",
+        "mangledName": "HV8"
+      },
+      {
+        "originalName": "WS-SHOHIN-MEI-KEKKA",
+        "mangledName": "HV9",
+        "indicatorName": "WS-SHOHIN-MEI-KEKKA-IND"
+      }
+    ],
+    "startLine": 92,
+    "endLine": 98,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-RANK",
+    "intoTargets": [
+      "WS-JUCHU-NO",
+      "WS-KOKYAKU-NO",
+      "WS-KINGAKU",
+      "WS-JUN-NO",
+      "WS-RANK-NO",
+      "WS-DRANK-NO",
+      "WS-KUBUN",
+      "WS-TANTO-MEI",
+      "WS-SHOHIN-MEI-KEKKA"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

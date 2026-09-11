@@ -1,0 +1,60 @@
+[
+  {
+    "jobName": "CJ108",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ01",
+      "PROGRAMMER": "CJ シチロウ",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "CCP006",
+        "line": 11,
+        "utility": {
+          "ddRoles": {
+            "SYSOUT": "WRITE",
+            "SYSIN": "READ",
+            "SYSIN2": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSOUT",
+            "line": 12,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 13,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "CJ108 SYSIN DATA LINE 1"
+            ]
+          },
+          {
+            "ddName": "SYSIN2",
+            "line": 16,
+            "parameters": {
+              "DATA": "",
+              "DLM": "ZZ"
+            },
+            "inStreamData": [
+              "CJ108 SYSIN2 DATA LINE WITH /* INSIDE IT"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

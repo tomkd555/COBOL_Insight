@@ -1,0 +1,106 @@
+[
+  {
+    "jobName": "CJ425",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "FILE-AID BATCH COPY",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "FILEAID",
+        "line": 7,
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "DD01": "READ",
+            "DD01O": "WRITE",
+            "SYSPRINT": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 8,
+            "datasetName": "BMC.FILEAID.LOADLIB",
+            "dataset": {
+              "name": "BMC.FILEAID.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "BMC.FILEAID.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "DD01",
+            "line": 9,
+            "datasetName": "CJT.D260910.FILEAID.INPUT",
+            "dataset": {
+              "name": "CJT.D260910.FILEAID.INPUT"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.FILEAID.INPUT",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "DD01O",
+            "line": 10,
+            "datasetName": "CJT.D260910.FILEAID.OUTPUT",
+            "dataset": {
+              "name": "CJT.D260910.FILEAID.OUTPUT"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.FILEAID.OUTPUT",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(5,5),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=80,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 14,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 15,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "$$DD01 COPY"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -33,9 +33,11 @@ const api: CobolInsightApi = {
   rules: (request: RulesRequest) => ipcRenderer.invoke(CHANNELS.engineRules, request),
   validateRules: (raw: string) => ipcRenderer.invoke(CHANNELS.engineValidateRules, raw),
 
-  readInventory: (dbPath: string) => ipcRenderer.invoke(CHANNELS.artifactInventory, dbPath),
+  readInventory: (dbPath: string, root: string) =>
+    ipcRenderer.invoke(CHANNELS.artifactInventory, dbPath, root),
   readSarif: (path: string) => ipcRenderer.invoke(CHANNELS.artifactSarif, path),
-  readGraph: (dbPath: string) => ipcRenderer.invoke(CHANNELS.artifactGraph, dbPath),
+  readGraph: (dbPath: string, root: string) =>
+    ipcRenderer.invoke(CHANNELS.artifactGraph, dbPath, root),
   readCopyExpansion: (path: string) => ipcRenderer.invoke(CHANNELS.artifactCopyExpansion, path),
   readFixDiff: (request: FixDiffRequest) => ipcRenderer.invoke(CHANNELS.artifactFixDiff, request),
   readTranspile: (request: TranspileRequest) => ipcRenderer.invoke(CHANNELS.artifactTranspile, request),
@@ -49,16 +51,10 @@ const api: CobolInsightApi = {
   saveAs: (request: SaveAsRequest) => ipcRenderer.invoke(CHANNELS.fsSaveAs, request),
 
   readSettings: () => ipcRenderer.invoke(CHANNELS.settingsRead),
-  writeSettings: (settings: AppSettings) => ipcRenderer.invoke(CHANNELS.settingsWrite, settings),
+  writeSettings: (settings: Partial<AppSettings>) =>
+    ipcRenderer.invoke(CHANNELS.settingsWrite, settings),
   readRules: (path: string) => ipcRenderer.invoke(CHANNELS.rulesRead, path),
   writeRules: (path: string, file: RulesFile) => ipcRenderer.invoke(CHANNELS.rulesWrite, path, file),
-
-  // The renderer has no `process`, so the versions are copied out here at preload time.
-  versions: {
-    chrome: process.versions.chrome,
-    node: process.versions.node,
-    electron: process.versions.electron,
-  },
 };
 
 contextBridge.exposeInMainWorld("cobolInsight", api);

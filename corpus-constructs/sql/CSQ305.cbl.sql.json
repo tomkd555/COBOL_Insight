@@ -1,0 +1,253 @@
+[
+  {
+    "kind": "BEGIN_DECLARE_SECTION",
+    "startLine": 21,
+    "endLine": 21,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "END_DECLARE_SECTION",
+    "startLine": 31,
+    "endLine": 31,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CALL",
+    "hostVariables": [
+      {
+        "originalName": "WS-IN-CD",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-OUT-CNT",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "WS-OUT-RC",
+        "mangledName": "HV3"
+      }
+    ],
+    "startLine": 43,
+    "endLine": 46,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "procedureName": "CSQDB.SHUKEI1",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "ASSOCIATE_LOCATORS",
+    "hostVariables": [
+      {
+        "originalName": "WS-LOC1",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 54,
+    "endLine": 57,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "ALLOCATE_CURSOR",
+    "hostVariables": [
+      {
+        "originalName": "WS-LOC1",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 61,
+    "endLine": 63,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "C1",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DESCRIBE",
+    "hostVariables": [
+      {
+        "originalName": "SQLDA",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 68,
+    "endLine": 70,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "C1",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "GET_DIAGNOSTICS",
+    "hostVariables": [
+      {
+        "originalName": "WS-DIAG-ROWS",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 78,
+    "endLine": 80,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 84,
+    "endLine": 86,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "C1",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "WS-R-CD",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-R-TANKA",
+        "mangledName": "HV2"
+      }
+    ],
+    "startLine": 92,
+    "endLine": 94,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "C1",
+    "intoTargets": [
+      "WS-R-CD",
+      "WS-R-TANKA"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "GET_DIAGNOSTICS",
+    "hostVariables": [
+      {
+        "originalName": "WS-MSG",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 109,
+    "endLine": 111,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "DEGRADED",
+    "diagnostic": "Db2 文法が受け付けませんでした: no viable alternative at input 'GET DIAGNOSTICS EXCEPTION 1'",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "ROLLBACK",
+    "startLine": 114,
+    "endLine": 114,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

@@ -1,25 +1,20 @@
 package jp.cobolinsight.core.cfg;
 
-import jp.cobolinsight.core.semantic.Statement;
-
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
-import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 
 /**
  * The control flow graph of a single program. Nodes are kept in generation order (the definition
  * order in the semantic model), successor lists preserve edge-addition order, and the same input
- * always produces the same graph (determinism). The statement-to-node index is looked up by the
- * identity of the semantic model's statement instances.
+ * always produces the same graph (determinism).
  */
 public final class ControlFlowGraph {
 
@@ -29,10 +24,9 @@ public final class ControlFlowGraph {
     private final CfgNode exit;
     private final Map<CfgNode, List<CfgNode>> successors;
     private final Map<CfgNode, List<CfgNode>> predecessors;
-    private final Map<Statement, CfgNode> nodeByStatement;
 
     public ControlFlowGraph(String programId, List<CfgNode> nodes, CfgNode entry, CfgNode exit,
-            Map<CfgNode, List<CfgNode>> successors, Map<Statement, CfgNode> nodeByStatement) {
+            Map<CfgNode, List<CfgNode>> successors) {
         this.programId = Objects.requireNonNull(programId, "programId");
         this.nodes = List.copyOf(nodes);
         this.entry = Objects.requireNonNull(entry, "entry");
@@ -51,8 +45,6 @@ public final class ControlFlowGraph {
         pred.replaceAll((node, list) -> List.copyOf(list));
         this.successors = Collections.unmodifiableMap(succ);
         this.predecessors = Collections.unmodifiableMap(pred);
-        Map<Statement, CfgNode> byStatement = new IdentityHashMap<>(nodeByStatement);
-        this.nodeByStatement = Collections.unmodifiableMap(byStatement);
     }
 
     public String programId() {
@@ -80,11 +72,6 @@ public final class ControlFlowGraph {
     /** Direct predecessors (node generation order). */
     public List<CfgNode> predecessors(CfgNode node) {
         return predecessors.getOrDefault(node, List.of());
-    }
-
-    /** The node corresponding to a semantic-model statement (same instance). */
-    public Optional<CfgNode> nodeOf(Statement statement) {
-        return Optional.ofNullable(nodeByStatement.get(statement));
     }
 
     /** Total number of edges. */

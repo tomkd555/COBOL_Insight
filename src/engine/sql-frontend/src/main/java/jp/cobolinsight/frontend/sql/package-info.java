@@ -1,7 +1,11 @@
 /**
- * Analyzes embedded SQL using JSqlParser and implements the SqlParser interface.
- * Before analysis it separates out EXEC SQL blocks and reversibly mangles host variables;
- * the host variables in the analysis result are restored to their original data names from
- * the bidirectional correspondence.
+ * Analyzes embedded SQL with the MAPA Db2 for z/OS grammar and implements the SqlParser interface.
+ * Before analysis it strips the EXEC SQL wrapper and reversibly mangles what the grammar's
+ * identifier token will not take — host variables and Japanese names — and every name in the
+ * analysis result is restored from the bidirectional correspondence.
+ *
+ * <p>A statement the grammar will not take in full is analysed in degraded form rather than
+ * thrown away: its kind, its tables and its cursor name come from a keyword scan, and the
+ * diagnostic says what stopped the parse.</p>
  */
 package jp.cobolinsight.frontend.sql;

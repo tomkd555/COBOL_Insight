@@ -7,8 +7,6 @@ function result(overrides: Partial<SaveResult> = {}): SaveResult {
   return {
     written: true,
     path: "C:/assets/cobol/A.cbl",
-    changedLineFrom: 10,
-    changedLineTo: 10,
     reparseErrors: [],
     error: "",
     exitCode: 0,

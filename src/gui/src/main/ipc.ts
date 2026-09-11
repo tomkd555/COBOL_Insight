@@ -68,8 +68,13 @@ function outputPaths(): EngineOutputPaths {
   return {
     db: join(dir, "cobol-insight.db"),
     sarif: join(dir, "cobol-insight.sarif"),
-    // A separate name from `sarif`: sharing one would make sql-lint overwrite the lint results.
+    // A separate name from `sarif`: lint writes both files in one run and must not have one overwrite
+    // the other.
     sqlSarif: join(dir, "cobol-insight-sql.sarif"),
+    // A scoped lint writes here, so the pair above keeps holding the last whole-folder run — which
+    // is what the report is generated from.
+    scopedSarif: join(dir, "cobol-insight-scope.sarif"),
+    scopedSqlSarif: join(dir, "cobol-insight-scope-sql.sarif"),
     copyExpansion: join(dir, COPY_EXPANSION_FILE_NAME),
     // Not an engine artefact but a file the GUI writes; it lives here so its path is decided once.
     rules: join(dir, RULES_FILE_NAME),
@@ -250,13 +255,15 @@ export function registerIpc(): void {
     validateRules(rulesDeps(), raw),
   );
 
-  ipcMain.handle(CHANNELS.artifactInventory, (_event, dbPath: string) =>
-    withDatabase(dbPath, readInventory),
+  ipcMain.handle(CHANNELS.artifactInventory, (_event, dbPath: string, root: string) =>
+    withDatabase(dbPath, (db) => readInventory(db, root)),
   );
   ipcMain.handle(CHANNELS.artifactSarif, async (_event, path: string) =>
     parseSarif(await readFile(path, "utf-8")),
   );
-  ipcMain.handle(CHANNELS.artifactGraph, (_event, dbPath: string) => withDatabase(dbPath, readGraph));
+  ipcMain.handle(CHANNELS.artifactGraph, (_event, dbPath: string, root: string) =>
+    withDatabase(dbPath, (db) => readGraph(db, root)),
+  );
   ipcMain.handle(CHANNELS.artifactCopyExpansion, async (_event, path: string) =>
     parseCopyExpansion(await readFile(path, "utf-8")),
   );
@@ -309,7 +316,7 @@ export function registerIpc(): void {
   );
 
   ipcMain.handle(CHANNELS.settingsRead, () => readSettings(userDataFileSystem, settingsPath()));
-  ipcMain.handle(CHANNELS.settingsWrite, async (_event, settings: AppSettings) => {
+  ipcMain.handle(CHANNELS.settingsWrite, async (_event, settings: Partial<AppSettings>) => {
     await writeSettings(userDataFileSystem, settingsPath(), settings);
   });
   ipcMain.handle(CHANNELS.rulesRead, (_event, path: string) =>

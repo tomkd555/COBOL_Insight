@@ -10,7 +10,7 @@ import type { AssetInventoryItem, SarifFinding } from "../../../shared/ipc";
  * The asset-kind filter value. Held as a code rather than a display name: storing the display name
  * would break the filter the moment the wording changed.
  */
-export type AssetTypeCode = "cobol" | "copybook" | "jcl" | "bms" | "other";
+export type AssetTypeCode = "cobol" | "copybook" | "jcl" | "bms" | "sql" | "other";
 
 /** The filter selection; "all" lets every kind through. */
 export type AssetTypeFilter = "all" | AssetTypeCode;
@@ -22,6 +22,7 @@ export const ASSET_TYPE_FILTERS: readonly AssetTypeFilter[] = [
   "copybook",
   "jcl",
   "bms",
+  "sql",
   "other",
 ];
 
@@ -36,6 +37,8 @@ export function assetTypeOf(nodeType: string): AssetTypeCode {
       return "copybook";
     case "BMS":
       return "bms";
+    case "SQL":
+      return "sql";
     default:
       return "other";
   }

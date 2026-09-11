@@ -1,0 +1,44 @@
+[
+  {
+    "jobName": "CJ521",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "JES3 ROUTE XEQ",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    }
+  },
+  {
+    "jobName": "CJ521R",
+    "line": 13,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "REMOTE EXEC AT SY2",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 15,
+        "ddStatements": [
+          {
+            "ddName": "SYSPRINT",
+            "line": 16,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,241 @@
+[
+  {
+    "kind": "BEGIN_DECLARE_SECTION",
+    "startLine": 22,
+    "endLine": 22,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_TABLE",
+    "file": "corpus-constructs/sql/CSD501.cpy",
+    "startLine": 9,
+    "endLine": 16,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "declaredTable": "CSDB.CSQKOZA",
+    "declaredColumns": [
+      {
+        "name": "KOZA_NO",
+        "type": "CHAR(10)",
+        "nullable": false
+      },
+      {
+        "name": "KOKYAKU_NO",
+        "type": "CHAR(8)",
+        "nullable": false
+      },
+      {
+        "name": "ZANDAKA",
+        "type": "DECIMAL(11, 0)",
+        "nullable": false
+      },
+      {
+        "name": "KOZA_MEI",
+        "type": "VARCHAR(30)",
+        "nullable": false
+      },
+      {
+        "name": "BIKO",
+        "type": "VARCHAR(60)",
+        "nullable": true
+      },
+      {
+        "name": "KOSHIN_YMD",
+        "type": "CHAR(8)",
+        "nullable": true
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "END_DECLARE_SECTION",
+    "startLine": 24,
+    "endLine": 24,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "hostVariables": [
+      {
+        "originalName": "WS-KOKYAKU-NO",
+        "mangledName": "HV1"
+      }
+    ],
+    "referencedTables": [
+      "CSDB.CSQKOZA"
+    ],
+    "startLine": 26,
+    "endLine": 33,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-KOZA",
+        "forReadOnly": false,
+        "forFetchOnly": true,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-KOZA",
+    "tableAccess": {
+      "CSDB.CSQKOZA": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "KOZA_NO"
+      },
+      {
+        "column": "KOZA_MEI"
+      },
+      {
+        "column": "ZANDAKA"
+      },
+      {
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "column": "KOZA_NO"
+      }
+    ],
+    "selectList": [
+      "KOZA_NO",
+      "KOZA_MEI",
+      "ZANDAKA"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": true,
+    "dynamic": false
+  },
+  {
+    "kind": "BEGIN_DECLARE_SECTION",
+    "startLine": 36,
+    "endLine": 36,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "END_DECLARE_SECTION",
+    "startLine": 41,
+    "endLine": 41,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "LK-KENSU",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-KOKYAKU-NO",
+        "mangledName": "HV2"
+      }
+    ],
+    "referencedTables": [
+      "CSDB.CSQKOZA"
+    ],
+    "startLine": 53,
+    "endLine": 58,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "LK-KENSU"
+    ],
+    "tableAccess": {
+      "CSDB.CSQKOZA": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "KOKYAKU_NO"
+      }
+    ],
+    "selectList": [
+      "COUNT(*)"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 64,
+    "endLine": 66,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-KOZA",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

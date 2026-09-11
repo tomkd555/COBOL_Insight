@@ -1,7 +1,6 @@
 package jp.cobolinsight.app.cli;
 
 import jp.cobolinsight.app.pipeline.SourceDiscovery;
-import jp.cobolinsight.core.source.AssetKind;
 
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
@@ -9,14 +8,11 @@ import picocli.CommandLine.Parameters;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
- * The input, output and analysis options `scan` and `call-graph` share (taken in as a picocli
- * {@code @Mixin}).
+ * The input, output and analysis options `scan` takes in (as a picocli {@code @Mixin}).
  */
 final class CommonScanOptions {
 
@@ -31,33 +27,26 @@ final class CommonScanOptions {
             description = "コピー句探索パス(既定: 走査で見つかったコピー句の置き場所)")
     List<Path> copybookPaths = new ArrayList<>();
 
+    @Option(names = "--proc-path", paramLabel = "DIR",
+            description = "PROC・INCLUDEメンバーの探索パス(既定: 資産フォルダ内)")
+    List<Path> procedureLibraryPaths = new ArrayList<>();
+
     @Option(names = "--codepage", paramLabel = "FILE=CHARSET",
             description = "ファイル単位のコードページ手動指定(相対パスまたはファイル名=コードページ)。自動判別に優先する")
     Map<String, String> codepageOverrides = new LinkedHashMap<>();
-
-    List<Path> resolvedCopybookPaths() {
-        return resolveCopybookPaths(inputDir, copybookPaths);
-    }
 
     /**
      * With no explicit setting, wherever the walk found copybooks becomes the COPY search path.
      * Deciding by folder name instead would leave a COPY unresolved as soon as someone put the
      * copybook somewhere else.
+     *
+     * <p>This walks the folder of its own accord, so it is for the callers that have no pipeline
+     * run to take the answer from — {@code save}'s reparse and {@code fix}'s write-back. Whatever
+     * goes through a pipeline passes its {@code --copybook-path} in as given and lets
+     * {@code SourceSet.copybookSearchPaths()} decide from the run's own walk.
      */
     static List<Path> resolveCopybookPaths(Path inputDir, List<Path> specified) {
-        List<Path> searchPaths = new ArrayList<>(specified);
-        if (!searchPaths.isEmpty()) {
-            return searchPaths;
-        }
-        Set<Path> parents = new LinkedHashSet<>();
-        for (SourceDiscovery.DiscoveredFile file
-                : SourceDiscovery.discover(inputDir).filesOf(Set.of(AssetKind.COPYBOOK))) {
-            Path parent = file.absPath().getParent();
-            if (parent != null) {
-                parents.add(parent);
-            }
-        }
-        searchPaths.addAll(parents);
-        return searchPaths;
+        return specified.isEmpty()
+                ? SourceDiscovery.discover(inputDir).copybookDirectories() : List.copyOf(specified);
     }
 }

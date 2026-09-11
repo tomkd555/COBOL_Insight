@@ -75,6 +75,21 @@ function adjacency(data: GraphData, known: ReadonlySet<string>): Map<string, Set
 }
 
 /**
+ * The drawable-id set and the adjacency built from it, computed once per {@link GraphData} rather
+ * than on every filter change. The graph editor memoises this on the data it holds.
+ */
+export interface GraphIndex {
+  readonly data: GraphData;
+  readonly known: ReadonlySet<string>;
+  readonly adjacency: ReadonlyMap<string, ReadonlySet<string>>;
+}
+
+export function indexGraph(data: GraphData): GraphIndex {
+  const known = drawableIds(data);
+  return { data, known, adjacency: adjacency(data, known) };
+}
+
+/**
  * Where the graph starts when nothing is focused: the jobs and the transactions. A folder holding
  * only COBOL has neither, so the nodes nothing points at stand in; a graph that is all cycles falls
  * back to every node, rather than drawing nothing at all.
@@ -82,10 +97,9 @@ function adjacency(data: GraphData, known: ReadonlySet<string>): Map<string, Set
  * Nodes with no edge (an unanalysable asset, say) can never be reached by walking outward, so they
  * are always roots.
  */
-export function graphRootIds(data: GraphData): string[] {
-  const known = drawableIds(data);
-  const index = adjacency(data, known);
-  const isolated = [...known].filter((id) => (index.get(id)?.size ?? 0) === 0);
+export function graphRootIds(index: GraphIndex): string[] {
+  const { data, known, adjacency } = index;
+  const isolated = [...known].filter((id) => (adjacency.get(id)?.size ?? 0) === 0);
   const roots = data.nodes
     .filter((node) => node.type === "JOB" || node.type === "TRANSACTION")
     .map((node) => String(node.id))
@@ -113,30 +127,26 @@ export function searchMatches(data: GraphData, search: string): string[] {
 }
 
 /**
- * The ids to draw: a breadth-first walk of at most `depth` hops from the seeds, then the kind
+ * The ids a breadth-first walk of at most `depth` hops from the seeds reaches, before the kind
  * filters. The seeds are the focus node when one is chosen, the search hits when something is being
  * searched for, and the roots otherwise.
- *
- * The kind filters are applied after the walk, so hiding a kind hides those nodes without cutting
- * the path through them.
  */
-export function visibleNodeIds(data: GraphData, filter: GraphFilter): Set<string> {
-  const known = drawableIds(data);
-  const index = adjacency(data, known);
+function reachedIds(index: GraphIndex, filter: GraphFilter): Set<string> {
+  const { data, known, adjacency } = index;
   const matches = searchMatches(data, filter.search);
   const seeds =
     filter.focusId !== null && known.has(filter.focusId)
       ? [filter.focusId]
       : matches.length > 0
         ? matches
-        : graphRootIds(data);
+        : graphRootIds(index);
 
   const reached = new Set<string>(seeds);
   let frontier = seeds;
   for (let hop = 0; hop < filter.depth && frontier.length > 0; hop += 1) {
     const next: string[] = [];
     for (const id of frontier) {
-      for (const neighbour of index.get(id) ?? []) {
+      for (const neighbour of adjacency.get(id) ?? []) {
         if (!reached.has(neighbour)) {
           reached.add(neighbour);
           next.push(neighbour);
@@ -145,9 +155,17 @@ export function visibleNodeIds(data: GraphData, filter: GraphFilter): Set<string
     }
     frontier = next;
   }
+  return reached;
+}
 
+/**
+ * The ids to draw: the walk, then the kind filters. Hiding a kind hides those nodes without cutting
+ * the path through them.
+ */
+export function visibleNodeIds(index: GraphIndex, filter: GraphFilter): Set<string> {
+  const reached = reachedIds(index, filter);
   const visible = new Set<string>();
-  for (const node of data.nodes) {
+  for (const node of index.data.nodes) {
     const id = String(node.id);
     if (!reached.has(id) || !isGraphNodeKind(node.type) || !filter.kinds[node.type]) {
       continue;
@@ -157,14 +175,19 @@ export function visibleNodeIds(data: GraphData, filter: GraphFilter): Set<string
   return visible;
 }
 
-/** How many nodes of each kind the whole graph holds. The filter chips show these counts. */
-export function nodeKindCounts(data: GraphData): Record<GraphNodeKind, number> {
+/**
+ * How many nodes of each kind the current search/depth/focus reaches, regardless of the kind
+ * filters themselves — a chip's own count does not drop to zero just because it is switched off.
+ * The filter chips show these counts.
+ */
+export function nodeKindCounts(index: GraphIndex, filter: GraphFilter): Record<GraphNodeKind, number> {
+  const reached = reachedIds(index, filter);
   const counts = Object.fromEntries(NODE_KINDS.map((kind) => [kind, 0])) as Record<
     GraphNodeKind,
     number
   >;
-  for (const node of data.nodes) {
-    if (isGraphNodeKind(node.type)) {
+  for (const node of index.data.nodes) {
+    if (isGraphNodeKind(node.type) && reached.has(String(node.id))) {
       counts[node.type] += 1;
     }
   }

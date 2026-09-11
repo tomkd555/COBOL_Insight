@@ -14,8 +14,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Verifies that a manual codepage specification overrides automatic detection. */
 class ScanCodepageOverrideTest {
@@ -39,11 +37,7 @@ class ScanCodepageOverrideTest {
         try (PersistenceDatabase database = PersistenceDatabase.open(databaseFile)) {
             PersistenceDao dao = new PersistenceDao(database.connection());
             var source = dao.findSourceByPath(Paths.rootOf(assets), "cobol/SYKENC1_SJIS.cbl").orElseThrow();
-            var info = dao.findEncodingInfo(source.id()).orElseThrow();
-            assertTrue(info.manualOverride(), "手動指定が記録されること");
-            assertEquals("windows-31j", info.detectedCharset());
-            assertEquals(1.0, info.confidence());
-            assertEquals("windows-31j", source.codepage());
+            assertEquals("windows-31j", source.codepage(), "手動指定が記録されること");
         }
     }
 
@@ -60,9 +54,7 @@ class ScanCodepageOverrideTest {
         try (PersistenceDatabase database = PersistenceDatabase.open(databaseFile)) {
             PersistenceDao dao = new PersistenceDao(database.connection());
             var source = dao.findSourceByPath(Paths.rootOf(assets), "cobol/SYKENC1_SJIS.cbl").orElseThrow();
-            var info = dao.findEncodingInfo(source.id()).orElseThrow();
-            assertFalse(info.manualOverride());
-            assertEquals("windows-31j", info.detectedCharset());
+            assertEquals("windows-31j", source.codepage());
         }
     }
 }

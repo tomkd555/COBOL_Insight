@@ -1,6 +1,7 @@
 package jp.cobolinsight.frontend.sql;
 
 import jp.cobolinsight.core.sql.CursorSignals;
+import jp.cobolinsight.core.sql.SqlAnalysis;
 import jp.cobolinsight.core.sql.SqlStructureSignals;
 import org.junit.jupiter.api.Test;
 
@@ -8,6 +9,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Verifies that the structure signals for SQL findings S001-S006 come up correctly for synthetic SQL. */
@@ -18,12 +20,27 @@ class SqlStructureSignalsTest {
     private SqlStructureSignals signalsOf(String sqlText, SqlBlockKind kind) {
         SqlAnalysisResult result = analyzer.analyze(
                 new SqlBlock(sqlText, kind, new SourcePosition(1, 12), new SourcePosition(1, 20)));
-        assertEquals(AnalysisStatus.ANALYZED, result.status(), "解析対象になること: " + sqlText);
+        assertEquals(SqlAnalysis.FULL, result.analysis(), "解析対象になること: " + sqlText);
         return result.structureSignals();
     }
 
     private SqlStructureSignals select(String sqlText) {
         return signalsOf(sqlText, SqlBlockKind.EXECUTABLE);
+    }
+
+    /**
+     * The isolation reader behind both hasWithUr and the isolation fact. A name followed by AS or
+     * by a column list opens a common table expression, so it is no isolation clause; the grammar
+     * reads UR as a keyword and will not build such a CTE, so the reader is tested on its own.
+     */
+    @Test
+    void anIsolationClauseIsNotAName() {
+        assertEquals("UR", SqlFactExtractor.isolationOf("SELECT A FROM T WITH UR"));
+        assertEquals("CS", SqlFactExtractor.isolationOf("SELECT A FROM T WITH CS SKIP LOCKED DATA"));
+        assertNull(SqlFactExtractor.isolationOf("WITH UR AS (SELECT A FROM T) SELECT A FROM UR"));
+        assertNull(SqlFactExtractor.isolationOf("WITH RS (K) AS (SELECT A FROM T) SELECT K FROM RS"));
+        assertNull(SqlFactExtractor.isolationOf("SELECT A FROM T WHERE MEMO = 'WITH UR'"),
+                "a clause spelled inside a string literal is data");
     }
 
     // ---- S001 SELECT * ----
@@ -43,6 +60,29 @@ class SqlStructureSignalsTest {
         assertFalse(s.selectStar());
         assertTrue(s.nonSargablePredicates().isEmpty());
         assertTrue(s.functionOnColumnPredicates().isEmpty());
+    }
+
+    /** An INSERT ... SELECT owns the query it reads its rows from, star and all. */
+    @Test
+    void insertのselect_starも検出する() {
+        SqlStructureSignals s = select("INSERT INTO FLDB.WORK SELECT * FROM FLDB.KEIYAKU");
+        assertTrue(s.selectStar());
+    }
+
+    /** EXISTS (SELECT *) transfers no column, so the star in it is not the statement's. */
+    @Test
+    void 副照会のselect_starは文のものにならない() {
+        SqlStructureSignals s = select(
+                "SELECT COUNT(*) INTO :WS-CNT FROM FLDB.KOKYAKU K WHERE EXISTS"
+                + " (SELECT * FROM FLDB.JUCHU J WHERE J.KOKYAKU_NO = K.KOKYAKU_NO)");
+        assertFalse(s.selectStar());
+    }
+
+    /** A UNION branch is the statement's own block, so a star in it does fetch every column. */
+    @Test
+    void union分岐のselect_starは文のものになる() {
+        SqlStructureSignals s = select("SELECT A FROM FLDB.KEIYAKU UNION SELECT * FROM FLDB.JUCHU");
+        assertTrue(s.selectStar());
     }
 
     // ---- S002 non-SARGable predicates ----

@@ -72,6 +72,15 @@ const SEQUENCES: readonly { key: string; chord: string; command: CommandId }[] =
   { key: "s", chord: "Ctrl+K S", command: "editor.saveAll" },
 ];
 
+/** The chord a command runs on, as it reads for a person, or null when it has none. */
+export function chordFor(commandId: CommandId): string | null {
+  return (
+    KEYBINDINGS.find((binding) => binding.command === commandId)?.chord ??
+    SEQUENCES.find((sequence) => sequence.command === commandId)?.chord ??
+    null
+  );
+}
+
 /** Whether the event arms a two-key sequence. */
 export function isSequencePrefix(event: ChordEvent): boolean {
   if (!event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {

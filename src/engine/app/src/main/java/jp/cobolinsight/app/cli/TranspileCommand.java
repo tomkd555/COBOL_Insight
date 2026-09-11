@@ -67,7 +67,7 @@ public final class TranspileCommand implements Callable<Integer> {
             case "java" -> List.of(TargetLanguage.JAVA);
             case "both" -> List.of(TargetLanguage.PYTHON, TargetLanguage.JAVA);
             default -> throw new CommandLine.ParameterException(spec.commandLine(),
-                    "--language は python|java|both のいずれかを指定する: " + value);
+                    "--language には python|java|both のいずれかを指定してください: " + value);
         };
     }
 }

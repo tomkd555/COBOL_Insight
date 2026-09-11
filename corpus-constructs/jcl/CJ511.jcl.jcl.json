@@ -1,0 +1,71 @@
+[
+  {
+    "jobName": "CJ511",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "CONTINUATION TRIGGERS",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 12,
+        "parm": "CJ511 CONTINUATION DEMO PARM BROKEN MID LITERAL AND CLOSED HERE",
+        "parameters": {
+          "PARM": "'CJ511 CONTINUATION DEMO PARM BROKEN MID LITERAL AND CLOSED HERE'"
+        },
+        "ddStatements": [
+          {
+            "ddName": "INDD1",
+            "line": 14,
+            "datasetName": "CJT.CJ511.CONTINUATION.DEMO.QUALIFIER.ONE",
+            "dataset": {
+              "name": "CJT.CJ511.CONTINUATION.DEMO.QUALIFIER.ONE"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.CJ511.CONTINUATION.DEMO.QUALIFIER.ONE",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSUT2",
+            "line": 16,
+            "datasetName": "CJT.CJ511.CONTINUATION.TARGET",
+            "dataset": {
+              "name": "CJT.CJ511.CONTINUATION.TARGET"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.CJ511.CONTINUATION.TARGET",
+              "DISP": "SHR",
+              "VOL": "SER=(VOL001,VOL002,VOL003,VOL004)"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 18,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -36,7 +36,8 @@ public final class HardcodedCredentialRule implements Rule {
             .summary("パスワード・API キー・トークンを表す項目と同じ行に、"
                     + "文字定数が直接書かれている箇所を検出します。")
             .rationale("原始プログラムを読める者が資格情報をそのまま得られます。"
-                    + "資格情報の変更のたびに再コンパイルと再配布が要る点でも運用を縛ります。")
+                    + "原始プログラムに直接書く書き方は、資格情報の変更のたびに再コンパイルと"
+                    + "再配布が要る点でも運用を縛ります。")
             .detection("原始プログラムの各行を走査し、資格情報を表す識別子と空白以外の"
                     + "文字定数が同じ行にある VALUE 句・MOVE 文を検出します。"
                     + "注記行と 73桁以降の識別領域は対象外です。")
@@ -48,7 +49,7 @@ public final class HardcodedCredentialRule implements Rule {
                         CALL "GETCRED" USING WS-DB-PASSWORD.
                     """)
             .severity(Severity.HIGH)
-            .commands(Command.LINT, Command.REPORT)
+            .commands(Command.LINT)
             .targets(AssetKind.COBOL, AssetKind.COPYBOOK)
             .needs(Needs.SOURCE_TEXT)
             .build();

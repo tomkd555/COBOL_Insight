@@ -1,0 +1,19 @@
+//CP302    PROC CYCLE=000000,HLQ=CJW2
+//*-------------------------------------------------------------*
+//*  CP302 : second-level catalogued PROC, nested under CP301.   *
+//*          Its own HLQ default (CJW2) stays in effect because  *
+//*          CP301's CALLSTEP passes CYCLE only, not HLQ.        *
+//*          PEND ends the member, though it is not required.    *
+//*-------------------------------------------------------------*
+//INSTEP   EXEC PGM=CCP002,PARM='&CYCLE'
+//STEPLIB  DD   DSN=CJ.PROD.LOADLIB,DISP=SHR
+//WORKDD   DD   DSN=&HLQ..D&CYCLE..CP302.WORKDD,
+//             DISP=(NEW,CATLG,DELETE),
+//             SPACE=(CYL,(2,2),RLSE),
+//             DCB=(RECFM=FB,LRECL=120,BLKSIZE=0)
+//OUTDD    DD   DSN=&HLQ..D&CYCLE..CP302.OUTDD,
+//             DISP=(NEW,CATLG,DELETE),
+//             SPACE=(CYL,(2,2),RLSE),
+//             DCB=(RECFM=FB,LRECL=132,BLKSIZE=0)
+//SYSOUT   DD   SYSOUT=*
+//         PEND

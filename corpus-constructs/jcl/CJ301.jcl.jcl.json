@@ -1,0 +1,171 @@
+[
+  {
+    "jobName": "CJ301",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "CJ IN-STREAM PROC",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PROC",
+        "target": "CJPRC01",
+        "line": 22,
+        "parameters": {
+          "CYCLE": "250901"
+        }
+      },
+      {
+        "name": "STEP010.STEP1",
+        "execKind": "PGM",
+        "target": "CCP007",
+        "line": 12,
+        "procStepName": "STEP1",
+        "parm": "250901",
+        "parameters": {
+          "PARM": "'250901'"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "OUT1": "WRITE",
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 13,
+            "datasetName": "CJ.PROD.LOADLIB",
+            "dataset": {
+              "name": "CJ.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJ.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "OUT1",
+            "line": 14,
+            "datasetName": "CJW.D250901.CJPRC01.OUT1",
+            "dataset": {
+              "name": "CJW.D250901.CJPRC01.OUT1"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "CJW.D250901.CJPRC01.OUT1",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(2,2),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=100,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 18,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PROC",
+        "target": "CJPRC01",
+        "line": 26,
+        "condition": "COND=(0,NE,STEP010)",
+        "parameters": {
+          "CYCLE": "250901",
+          "HLQ": "CJW2",
+          "COND": "(0,NE,STEP010)"
+        }
+      },
+      {
+        "name": "STEP020.STEP1",
+        "execKind": "PGM",
+        "target": "CCP007",
+        "line": 12,
+        "condition": "COND=(0,NE,STEP010)",
+        "procStepName": "STEP1",
+        "parm": "250901",
+        "parameters": {
+          "PARM": "'250901'",
+          "COND": "(0,NE,STEP010)"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "OUT1": "WRITE",
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 13,
+            "datasetName": "CJ.PROD.LOADLIB",
+            "dataset": {
+              "name": "CJ.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJ.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "OUT1",
+            "line": 14,
+            "datasetName": "CJW2.D250901.CJPRC01.OUT1",
+            "dataset": {
+              "name": "CJW2.D250901.CJPRC01.OUT1"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "CJW2.D250901.CJPRC01.OUT1",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(2,2),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=100,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 18,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

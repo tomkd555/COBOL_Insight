@@ -49,9 +49,8 @@ public final class GoToStructureDeviationRule implements Rule {
                                 END-IF.
                             """)
                     .severity(Severity.ADVISORY)
-                    .commands(Command.LINT, Command.REPORT)
+                    .commands(Command.LINT)
                     .targets(AssetKind.COBOL)
-                    .needs(Needs.SEMANTIC)
                     .build();
 
     @Override

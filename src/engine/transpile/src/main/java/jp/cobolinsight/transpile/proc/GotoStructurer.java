@@ -192,12 +192,7 @@ final class GotoStructurer {
             }
         }
 
-        Map<Statement, CfgNode> byStatement = new IdentityHashMap<>();
-        for (CfgNode node : nodes) {
-            node.statement().ifPresent(statement -> byStatement.put(statement, node));
-        }
-        ControlFlowGraph cfg = new ControlFlowGraph(start.name(), nodes, entry, exit, successors,
-                byStatement);
+        ControlFlowGraph cfg = new ControlFlowGraph(start.name(), nodes, entry, exit, successors);
         return new RegionCfg(cfg, condJumps);
     }
 

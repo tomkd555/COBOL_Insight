@@ -1,0 +1,646 @@
+[
+  {
+    "kind": "DECLARE_TABLE",
+    "file": "samples-field/batch/FLD010.cpy",
+    "startLine": 9,
+    "endLine": 17,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "declaredTable": "FLDB.KEIYAKU",
+    "declaredColumns": [
+      {
+        "name": "KEIYAKU_NO",
+        "type": "CHAR(10)",
+        "nullable": false
+      },
+      {
+        "name": "KOKYAKU_NO",
+        "type": "CHAR(8)",
+        "nullable": false
+      },
+      {
+        "name": "HANBAITEN_CD",
+        "type": "CHAR(5)",
+        "nullable": false
+      },
+      {
+        "name": "ZANDAKA",
+        "type": "DECIMAL(11, 0)",
+        "nullable": false
+      },
+      {
+        "name": "SEIKYU_GAKU",
+        "type": "DECIMAL(11, 0)",
+        "nullable": false
+      },
+      {
+        "name": "SHORI_KBN",
+        "type": "CHAR(1)",
+        "nullable": true
+      },
+      {
+        "name": "KOSHIN_YMD",
+        "type": "CHAR(8)",
+        "nullable": true
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "hostVariables": [
+      {
+        "originalName": "WS-BRANCH-CD",
+        "mangledName": "HV1"
+      }
+    ],
+    "referencedTables": [
+      "FLDB.KEIYAKU"
+    ],
+    "startLine": 70,
+    "endLine": 75,
+    "structureSignals": {
+      "selectStar": true,
+      "nonSargablePredicates": [
+        "SUBSTR(KEIYAKU_NO, 1, 3) = :WS-BRANCH-CD"
+      ],
+      "functionOnColumnPredicates": [
+        "SUBSTR(KEIYAKU_NO, 1, 3) = :WS-BRANCH-CD"
+      ],
+      "cursor": {
+        "cursorName": "CSR-KEIYAKU",
+        "forReadOnly": false,
+        "forFetchOnly": false,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-KEIYAKU",
+    "tableAccess": {
+      "FLDB.KEIYAKU": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "KEIYAKU_NO"
+      },
+      {
+        "column": "SHORI_KBN"
+      }
+    ],
+    "selectList": [
+      "*"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "hostVariables": [
+      {
+        "originalName": "WS-HANBAITEN-CD",
+        "mangledName": "HV1"
+      }
+    ],
+    "referencedTables": [
+      "FLDB.KEIYAKU"
+    ],
+    "startLine": 78,
+    "endLine": 83,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-UPD",
+        "forReadOnly": false,
+        "forFetchOnly": false,
+        "forUpdate": true,
+        "forUpdateColumns": [
+          "ZANDAKA",
+          "KOSHIN_YMD"
+        ]
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-UPD",
+    "tableAccess": {
+      "FLDB.KEIYAKU": "RU"
+    },
+    "columnRefs": [
+      {
+        "column": "KEIYAKU_NO"
+      },
+      {
+        "column": "ZANDAKA"
+      },
+      {
+        "column": "HANBAITEN_CD"
+      }
+    ],
+    "selectList": [
+      "KEIYAKU_NO",
+      "ZANDAKA"
+    ],
+    "withHold": false,
+    "forUpdate": true,
+    "forUpdateColumns": [
+      "ZANDAKA",
+      "KOSHIN_YMD"
+    ],
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "WHENEVER",
+    "startLine": 89,
+    "endLine": 89,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "whenever": {
+      "condition": "SQLERROR",
+      "target": "9900-SQL-ERROR"
+    },
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 110,
+    "endLine": 110,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-KEIYAKU",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 116,
+    "endLine": 116,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-KEIYAKU",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "DCLKEIYAKU",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 119,
+    "endLine": 121,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-KEIYAKU",
+    "intoTargets": [
+      "DCLKEIYAKU"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-HANBAITEN-MEI",
+        "mangledName": "HV1",
+        "indicatorName": "WS-HANBAITEN-MEI-IND"
+      },
+      {
+        "originalName": "WS-KOSHIN-YMD",
+        "mangledName": "HV2",
+        "indicatorName": "WS-KOSHIN-YMD-IND"
+      },
+      {
+        "originalName": "HANBAITEN-CD",
+        "mangledName": "HV3"
+      }
+    ],
+    "referencedTables": [
+      "FLDB.HANBAITEN"
+    ],
+    "startLine": 134,
+    "endLine": 140,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "WS-HANBAITEN-MEI",
+      "WS-KOSHIN-YMD"
+    ],
+    "tableAccess": {
+      "FLDB.HANBAITEN": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "HANBAITEN_MEI"
+      },
+      {
+        "column": "KOSHIN_YMD"
+      },
+      {
+        "column": "HANBAITEN_CD"
+      }
+    ],
+    "selectList": [
+      "HANBAITEN_MEI",
+      "KOSHIN_YMD"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-NYUKIN-CNT",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "KEIYAKU-NO",
+        "mangledName": "HV2"
+      }
+    ],
+    "referencedTables": [
+      "FLDB.NYUKIN"
+    ],
+    "startLine": 143,
+    "endLine": 149,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "WS-NYUKIN-CNT"
+    ],
+    "tableAccess": {
+      "FLDB.NYUKIN": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "KEIYAKU_NO"
+      },
+      {
+        "column": "SHORI_KBN"
+      }
+    ],
+    "selectList": [
+      "COUNT(*)"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "UPDATE",
+    "hostVariables": [
+      {
+        "originalName": "WS-DATE",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "KEIYAKU-NO",
+        "mangledName": "HV2"
+      }
+    ],
+    "referencedTables": [
+      "FLDB.NYUKIN"
+    ],
+    "startLine": 167,
+    "endLine": 172,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "tableAccess": {
+      "FLDB.NYUKIN": "U"
+    },
+    "columnRefs": [
+      {
+        "column": "SHORI_KBN"
+      },
+      {
+        "column": "KOSHIN_YMD"
+      },
+      {
+        "column": "KEIYAKU_NO"
+      }
+    ],
+    "setPairs": [
+      {
+        "column": "SHORI_KBN",
+        "value": "'1'"
+      },
+      {
+        "column": "KOSHIN_YMD",
+        "value": ":WS-DATE"
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "INSERT",
+    "hostVariables": [
+      {
+        "originalName": "KEIYAKU-NO",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-DATE",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "WS-NYUKIN-GAKU",
+        "mangledName": "HV3"
+      }
+    ],
+    "referencedTables": [
+      "FLDB.KESHIKOMI"
+    ],
+    "startLine": 176,
+    "endLine": 180,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "tableAccess": {
+      "FLDB.KESHIKOMI": "C"
+    },
+    "columnRefs": [
+      {
+        "column": "KEIYAKU_NO"
+      },
+      {
+        "column": "KESHIKOMI_YMD"
+      },
+      {
+        "column": "KESHIKOMI_GAKU"
+      }
+    ],
+    "insertColumns": [
+      "KEIYAKU_NO",
+      "KESHIKOMI_YMD",
+      "KESHIKOMI_GAKU"
+    ],
+    "insertValues": [
+      ":KEIYAKU-NO",
+      ":WS-DATE",
+      ":WS-NYUKIN-GAKU"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "COMMIT",
+    "startLine": 196,
+    "endLine": 196,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 202,
+    "endLine": 202,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-UPD",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 208,
+    "endLine": 208,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-UPD",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "WS-UPD-KEIYAKU-NO",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-UPD-ZANDAKA",
+        "mangledName": "HV2"
+      }
+    ],
+    "startLine": 211,
+    "endLine": 214,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-UPD",
+    "intoTargets": [
+      "WS-UPD-KEIYAKU-NO",
+      "WS-UPD-ZANDAKA"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "UPDATE",
+    "hostVariables": [
+      {
+        "originalName": "WS-NYUKIN-GAKU",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-DATE",
+        "mangledName": "HV2"
+      }
+    ],
+    "referencedTables": [
+      "FLDB.KEIYAKU"
+    ],
+    "startLine": 225,
+    "endLine": 230,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-UPD",
+    "positionedCursor": "CSR-UPD",
+    "tableAccess": {
+      "FLDB.KEIYAKU": "U"
+    },
+    "columnRefs": [
+      {
+        "column": "ZANDAKA"
+      },
+      {
+        "column": "ZANDAKA"
+      },
+      {
+        "column": "KOSHIN_YMD"
+      }
+    ],
+    "setPairs": [
+      {
+        "column": "ZANDAKA",
+        "value": "ZANDAKA - :WS-NYUKIN-GAKU"
+      },
+      {
+        "column": "KOSHIN_YMD",
+        "value": ":WS-DATE"
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "COMMIT",
+    "startLine": 250,
+    "endLine": 250,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "ROLLBACK",
+    "startLine": 263,
+    "endLine": 263,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

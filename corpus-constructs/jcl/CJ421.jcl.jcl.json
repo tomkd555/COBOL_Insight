@@ -1,0 +1,85 @@
+[
+  {
+    "jobName": "CJ421",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "DFHCSDUP CSD MAINT",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "DFHCSDUP",
+        "line": 8,
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "DFHCSD": "UPDATE",
+            "SYSPRINT": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 9,
+            "datasetName": "CICSTS.CICS.SDFHLOAD",
+            "dataset": {
+              "name": "CICSTS.CICS.SDFHLOAD"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CICSTS.CICS.SDFHLOAD",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "DFHCSD",
+            "line": 10,
+            "datasetName": "CICSTS.PROD.DFHCSD",
+            "dataset": {
+              "name": "CICSTS.PROD.DFHCSD"
+            },
+            "dispositionText": "OLD",
+            "disposition": {
+              "status": "OLD",
+              "raw": "OLD"
+            },
+            "parameters": {
+              "DSN": "CICSTS.PROD.DFHCSD",
+              "DISP": "OLD"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 11,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 12,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  DEFINE PROGRAM(CCP007) GROUP(G1)",
+              "  DEFINE TRANSACTION(TRN1) PROGRAM(CCP007) GROUP(G1)"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

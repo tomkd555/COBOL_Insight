@@ -1,0 +1,157 @@
+[
+  {
+    "jobName": "CJ414",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "IEBCOPY PDS COPY",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IEBCOPY",
+        "line": 9,
+        "utility": {
+          "ddRoles": {
+            "IN": "READ",
+            "OUT": "WRITE",
+            "SYSPRINT": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSPRINT",
+            "line": 10,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "IN",
+            "line": 11,
+            "datasetName": "CJT.PROD.SRCLIB",
+            "dataset": {
+              "name": "CJT.PROD.SRCLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.PROD.SRCLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "OUT",
+            "line": 12,
+            "datasetName": "CJT.TEST.SRCLIB",
+            "dataset": {
+              "name": "CJT.TEST.SRCLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.TEST.SRCLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 13,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  COPY INDD=IN,OUTDD=OUT",
+              "  SELECT MEMBER=(MEMBA,MEMBB,(MEMBC,MEMBD,R))"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PGM",
+        "target": "IEBCOPY",
+        "line": 18,
+        "condition": "COND=(4,LT,STEP010)",
+        "parameters": {
+          "COND": "(4,LT,STEP010)"
+        },
+        "utility": {
+          "ddRoles": {
+            "IN2": "READ",
+            "OUT2": "WRITE",
+            "SYSPRINT": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSPRINT",
+            "line": 19,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "IN2",
+            "line": 20,
+            "datasetName": "CJT.PROD.LOADLIB2",
+            "dataset": {
+              "name": "CJT.PROD.LOADLIB2"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.PROD.LOADLIB2",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "OUT2",
+            "line": 21,
+            "datasetName": "CJT.TEST.LOADLIB2",
+            "dataset": {
+              "name": "CJT.TEST.LOADLIB2"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.TEST.LOADLIB2",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 22,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  COPYMOD INDD=IN2,OUTDD=OUT2"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

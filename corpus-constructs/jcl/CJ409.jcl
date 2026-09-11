@@ -1,0 +1,59 @@
+//CJ409    JOB  (CJ0001),'ICETOOL JOINKEYS',CLASS=A,MSGCLASS=X,
+//             MSGLEVEL=(1,1),NOTIFY=&SYSUID
+//*-------------------------------------------------------------*
+//*  CJ409 : constructs exercised                                *
+//*    - ICETOOL TOOLIN operators: SELECT, COPY, COUNT, STATS    *
+//*    - CTL1CNTL/CTL2CNTL DDs feeding USING(ctl) on COPY         *
+//*    - DFSORT JOINKEYS with JNF1CNTL/JNF2CNTL and REFORMAT      *
+//*-------------------------------------------------------------*
+//STEP010  EXEC PGM=ICETOOL
+//TOOLMSG  DD   SYSOUT=*
+//DFSMSG   DD   SYSOUT=*
+//IN       DD   DSN=CJT.D260910.ICETOOL.INPUT,DISP=SHR
+//OUT      DD   DSN=CJT.D260910.ICETOOL.SELECT,
+//             DISP=(NEW,CATLG,DELETE),
+//             SPACE=(CYL,(5,5),RLSE),
+//             DCB=(RECFM=FB,LRECL=80,BLKSIZE=0)
+//COPYOUT  DD   DSN=CJT.D260910.ICETOOL.COPY1,
+//             DISP=(NEW,CATLG,DELETE),
+//             SPACE=(CYL,(5,5),RLSE),
+//             DCB=(RECFM=FB,LRECL=80,BLKSIZE=0)
+//COPYOU2  DD   DSN=CJT.D260910.ICETOOL.COPY2,
+//             DISP=(NEW,CATLG,DELETE),
+//             SPACE=(CYL,(5,5),RLSE),
+//             DCB=(RECFM=FB,LRECL=80,BLKSIZE=0)
+//CTL1CNTL DD   *
+  INCLUDE COND=(9,2,CH,EQ,C'AB')
+/*
+//CTL2CNTL DD   *
+  OMIT COND=(1,1,CH,EQ,C'X')
+/*
+//TOOLIN   DD   *
+  SELECT FROM(IN) TO(OUT) ON(1,8,CH) FIRST
+  COPY FROM(IN) TO(COPYOUT) USING(CTL1)
+  COPY FROM(IN) TO(COPYOU2) USING(CTL2)
+  COUNT FROM(IN)
+  STATS FROM(IN) ON(20,3,ZD)
+/*
+//*
+//STEP020  EXEC PGM=SORT,COND=(4,LT,STEP010)
+//SYSOUT   DD   SYSOUT=*
+//F1       DD   DSN=CJT.D260910.JOIN.FILE1,DISP=SHR
+//F2       DD   DSN=CJT.D260910.JOIN.FILE2,DISP=SHR
+//JNF1CNTL DD   *
+  INCLUDE COND=(9,2,CH,EQ,C'AB')
+/*
+//JNF2CNTL DD   *
+  OMIT COND=(1,1,CH,EQ,C'X')
+/*
+//SORTOUT  DD   DSN=CJT.D260910.JOIN.OUTPUT,
+//             DISP=(NEW,CATLG,DELETE),
+//             SPACE=(CYL,(5,5),RLSE),
+//             DCB=(RECFM=FB,LRECL=100,BLKSIZE=0)
+//SYSIN    DD   *
+  JOINKEYS FILE=F1,FIELDS=(1,8,A)
+  JOINKEYS FILE=F2,FIELDS=(1,8,A)
+  JOIN UNPAIRED,F1
+  REFORMAT FIELDS=(F1:1,80,F2:9,20)
+  OPTION COPY
+/*

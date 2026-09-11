@@ -1,0 +1,158 @@
+[
+  {
+    "kind": "BEGIN_DECLARE_SECTION",
+    "startLine": 15,
+    "endLine": 15,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "END_DECLARE_SECTION",
+    "startLine": 21,
+    "endLine": 21,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "COMMIT",
+    "startLine": 29,
+    "endLine": 29,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "INSERT",
+    "hostVariables": [
+      {
+        "originalName": "WS-SETSUMEI-NO",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-SETSUMEI-BUN",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "WS-KOSHIN-YMD",
+        "mangledName": "HV3"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.SETSUMEI"
+    ],
+    "startLine": 39,
+    "endLine": 44,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "tableAccess": {
+      "CSQDB.SETSUMEI": "C"
+    },
+    "columnRefs": [
+      {
+        "column": "SETSUMEI_NO"
+      },
+      {
+        "column": "SETSUMEI_BUN"
+      },
+      {
+        "column": "KOSHIN_YMD"
+      }
+    ],
+    "insertColumns": [
+      "SETSUMEI_NO",
+      "SETSUMEI_BUN",
+      "KOSHIN_YMD"
+    ],
+    "insertValues": [
+      ":WS-SETSUMEI-NO",
+      ":WS-SETSUMEI-BUN",
+      ":WS-KOSHIN-YMD"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-SETSUMEI-BUN",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-SETSUMEI-NO",
+        "mangledName": "HV2"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.SETSUMEI"
+    ],
+    "startLine": 50,
+    "endLine": 55,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "WS-SETSUMEI-BUN"
+    ],
+    "tableAccess": {
+      "CSQDB.SETSUMEI": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "SETSUMEI_BUN"
+      },
+      {
+        "column": "SETSUMEI_NO"
+      }
+    ],
+    "selectList": [
+      "SETSUMEI_BUN"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

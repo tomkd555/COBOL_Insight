@@ -1,0 +1,14 @@
+[
+  {
+    "jobName": "CJ503",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "XMIT STATEMENT",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    }
+  }
+]

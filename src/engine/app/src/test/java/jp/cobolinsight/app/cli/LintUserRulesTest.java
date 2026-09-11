@@ -152,6 +152,61 @@ class LintUserRulesTest {
                 """.formatted(target);
     }
 
+    /**
+     * A rule may target an SQL script, and only a rule that says so judges one. The same line
+     * pattern is run targeting SQL and targeting COBOL over a folder holding a script and a
+     * program, and only the former reports. The built-in SQL advice is held to the same rule: the
+     * script's statements reach every rule that reads SQL, and only the advice that declares
+     * {@code AssetKind.SQL} may report on them.
+     */
+    @Test
+    void lineRuleObeysTheSqlTarget(@TempDir Path dir) throws IOException {
+        Files.createDirectories(dir.resolve("cobol"));
+        Files.writeString(dir.resolve("cobol").resolve("USERRULE.cbl"), PROGRAM,
+                StandardCharsets.UTF_8);
+        Files.writeString(dir.resolve("CSQKOZA.sql"), String.join("\n",
+                "-- 口座マスタを全件読む確認用の問い合わせ。",
+                "SELECT * FROM CSDB.CSQKOZA;",
+                ""), StandardCharsets.UTF_8);
+        Path rules = dir.resolve("rules.json");
+
+        Files.writeString(rules, sqlRuleFile("SQL"), StandardCharsets.UTF_8);
+        LintRunner.Result onSql = lint(dir, rules);
+        List<Finding> found = userFindings(onSql);
+        assertEquals(1, found.size(), () -> "SQL を対象にすれば出ること: " + found);
+        assertEquals("CSQKOZA.sql", found.get(0).location().file().replace('\\', '/'));
+        // S001 declares AssetKind.SQL and judges the script; S004, which stays COBOL-only, is
+        // handed the script's statements in the same list and still has to be kept off it, which
+        // is what the guard in Rules.apply does.
+        assertEquals(List.of("S001"), onSql.sqlFindings().stream()
+                        .filter(f -> f.location().file().endsWith(".sql"))
+                        .map(Finding::ruleId).distinct().sorted().toList(),
+                "SQL スクリプトを見る組み込みの助言は AssetKind.SQL を宣言したものだけであること");
+
+        Files.writeString(rules, sqlRuleFile("COBOL"), StandardCharsets.UTF_8);
+        assertEquals(List.of(), userFindings(lint(dir, rules)),
+                "COBOL だけを対象にすれば SQL スクリプトの行は見ないこと");
+    }
+
+    private static String sqlRuleFile(String target) {
+        return """
+                {
+                  "version": 2,
+                  "custom": [
+                    {
+                      "id": "U003",
+                      "name": "列を明示しない問い合わせ",
+                      "commands": ["LINT"],
+                      "targets": ["%s"],
+                      "match": { "kind": "line", "regex": "SELECT\\\\s+\\\\*",
+                                 "area": "wholeLine" },
+                      "message": "列を明示してください"
+                    }
+                  ]
+                }
+                """.formatted(target);
+    }
+
     /** A user-defined rule's description also lands in SARIF's rules, so a reader can follow the finding's meaning. */
     @Test
     void userRuleAppearsInSarifRules(@TempDir Path dir) throws IOException {

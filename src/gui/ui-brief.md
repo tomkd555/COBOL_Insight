@@ -4,18 +4,34 @@ Written by product-ui Step 5. This is the plan the design reviewers conform the 
 
 ## Screen
 
-- Purpose, one sentence: a desktop workbench in which an engineer opens a folder of Japanese mainframe assets (COBOL, copybooks, JCL, BMS, embedded SQL), reads the findings the engine raised, edits and saves the sources in their original encoding, and follows the call graph between them.
+- Purpose, one sentence: a VS Code-shaped desktop workbench in which a mainframe engineer opens a folder of COBOL, copybook, JCL and BMS assets, runs the static analysis, reads the findings beside the source, and applies or exports the fixes.
 - Surface: saas (application)
-- Tokens: `src/gui/tokens.json`
-- Theme: `src/gui/theme.css` (generated) plus `src/gui/src/renderer/src/styles/app-tokens.css`
-- Built files: `src/gui/src/renderer/src/styles/*.css`, `src/gui/src/renderer/src/**/*.tsx`, strings in `src/gui/src/renderer/src/i18n/text.ts`
-- Rendered evidence: `src/gui/out/screenshots/<dark|light>/<check>.png`, one capture after each smoke check, both themes, 1440×900; `checkZoomReflow.png` is the 200 % zoom.
+- Tokens: C:\Mycode\ClaudeCode\COBOL_Insight\src\gui\tokens.json
+- Theme: C:\Mycode\ClaudeCode\COBOL_Insight\src\gui\theme.css
+- Built files: C:\Mycode\ClaudeCode\COBOL_Insight\src\gui\src\renderer\src (TSX; strings in i18n\text.ts); screenshots of every screen in both themes under C:\Mycode\ClaudeCode\COBOL_Insight\src\gui\out\screenshots\{light,dark}
+
+## Screens in the screenshots
+
+| File | Screen |
+|---|---|
+| checkShell | Empty shell: title bar, activity bar (エクスプローラー, ルール; bottom group 呼び出し関係図, レポート, 変換, 設定), welcome screen, panel |
+| checkAssetTree | Explorer tree after a folder open |
+| checkEditorLayout, checkEbcdicColumns, checkCopyExpansion, checkDirtyMark, checkEditSurvivesSwitch | Source editor: fixed-format columns, COPY expansion zones, dirty dot on the tab |
+| checkFindings, checkFindings-detail | 指摘 panel: table, filter, detail pane |
+| checkQuickFix | Monaco lightbulb → fix tab |
+| checkCallGraph | 呼び出し関係図 editor: canvas, execution-order tree, detail pane |
+| checkRules, checkRules-view, checkRuleAndSettingsEditors, checkRuleAndSettingsEditors-customRules | ルール side view, rule detail tab, 利用者定義ルール editor, 設定 tab |
+| checkTranspile, checkTranspile-panes | 変換 tab (COBOL beside Python/Java) |
+| checkImportDialog, checkImportDialog-open | 端末からの貼り付け dialog |
+| checkSaveConflict, checkSaveConflict-dialog | 原本が書き換わっています dialog |
+| checkCommandPalette, checkCommandPalette-open | Command palette with chords |
+| checkZoomReflow | Shell at 200 % zoom |
 
 ## What the reviewer judges
 
-Everything the four scripts cannot: contrast as rendered, whether anything guides the eye, whether interactive elements do what they look like they do, whether the two themes read as one product, and reflow at 200 % zoom (a 720 px viewport).
+Everything the four scripts cannot: contrast as rendered, whether anything guides the eye, whether interactive elements do what they look like they do, reflow at 200 % zoom. The window is a desktop application with a 1024 px minimum width; there is no 375 px layout.
 
-## Copy questions, answered against the running page
+## Copy questions, answered against the screenshots
 
 1. Does each button label name what the button actually does? 「保存」 on a control that publishes passes every script.
 2. Does each error state a cause the reader can act on, rather than a plausible one?

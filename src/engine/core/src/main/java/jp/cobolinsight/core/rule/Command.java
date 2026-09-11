@@ -7,12 +7,8 @@ package jp.cobolinsight.core.rule;
 public enum Command {
     /** {@code lint}: bug detection over COBOL, copybooks and BMS. */
     LINT,
-    /** {@code sql-lint}: advice on embedded SQL. */
+    /** {@code lint}'s SQL advice side: advice on embedded SQL. */
     SQL_LINT,
-    /** {@code report}: the combined report. */
-    REPORT,
-    /** {@code fix preview} and {@code fix apply}: rules whose findings carry a fix. */
-    FIX,
-    /** {@code scan}: rules evaluated while the asset folder is persisted. */
-    SCAN
+    /** {@code fix}: rules whose findings carry a fix. */
+    FIX
 }

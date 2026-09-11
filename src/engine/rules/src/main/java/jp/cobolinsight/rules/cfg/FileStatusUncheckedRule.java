@@ -79,9 +79,9 @@ public final class FileStatusUncheckedRule implements Rule {
                     END-IF.
                     """)
             .severity(Severity.HIGH)
-            .commands(Command.LINT, Command.REPORT, Command.FIX)
+            .commands(Command.LINT, Command.FIX)
             .targets(AssetKind.COBOL)
-            .needs(Needs.SEMANTIC, Needs.CFG, Needs.SOURCE_TEXT)
+            .needs(Needs.CFG, Needs.SOURCE_TEXT)
             .build();
 
     @Override

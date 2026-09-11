@@ -18,30 +18,29 @@ function memory(existing: string[] = []): ImportFileSystem & { written: Map<stri
 
 describe("importRelPath", () => {
   it("joins the destination folder and the file name with forward slashes", () => {
-    expect(importRelPath("cobol", "cobol/new", "A.cbl")).toBe("cobol/new/A.cbl");
+    expect(importRelPath("cobol/new", "A.cbl")).toBe("cobol/new/A.cbl");
   });
 
   it("puts a file straight into the asset folder when no destination is given", () => {
-    expect(importRelPath("cobol", "", "A.cbl")).toBe("A.cbl");
+    expect(importRelPath("", "A.cbl")).toBe("A.cbl");
   });
 
-  it("adds .cpy to a copybook that lacks it, and only to a copybook", () => {
-    expect(importRelPath("copybook", "", "SYKCPY1")).toBe("SYKCPY1.cpy");
-    expect(importRelPath("copybook", "", "SYKCPY1.CPY")).toBe("SYKCPY1.CPY");
-    expect(importRelPath("cobol", "", "SYK001")).toBe("SYK001");
+  it("uses the typed file name as-is", () => {
+    expect(importRelPath("", "SYKCPY1")).toBe("SYKCPY1");
+    expect(importRelPath("", "SYKCPY1.CPY")).toBe("SYKCPY1.CPY");
   });
 
   it("rejects a destination that climbs out, an absolute name, or a name with separators", () => {
-    expect(importRelPath("cobol", "..", "A.cbl")).toBeNull();
-    expect(importRelPath("cobol", "a/../..", "A.cbl")).toBeNull();
-    expect(importRelPath("cobol", "", "C:/A.cbl")).toBeNull();
-    expect(importRelPath("cobol", "", "sub/A.cbl")).toBeNull();
-    expect(importRelPath("cobol", "", "  ")).toBeNull();
+    expect(importRelPath("..", "A.cbl")).toBeNull();
+    expect(importRelPath("a/../..", "A.cbl")).toBeNull();
+    expect(importRelPath("", "C:/A.cbl")).toBeNull();
+    expect(importRelPath("", "sub/A.cbl")).toBeNull();
+    expect(importRelPath("", "  ")).toBeNull();
   });
 });
 
 describe("importSource", () => {
-  const base = { inputDir: "C:/assets", kind: "cobol" as const, destDir: "cobol", overwrite: false };
+  const base = { inputDir: "C:/assets", destDir: "cobol", overwrite: false };
 
   it("writes the lines with CRLF endings and a trailing newline", async () => {
     const fs = memory();
@@ -94,6 +93,6 @@ describe("importSource", () => {
   it("refuses an import with no lines", async () => {
     await expect(
       importSource(memory(), { ...base, fileName: "A.cbl", lines: [] }),
-    ).rejects.toThrow(/取り込む本文がありません/);
+    ).rejects.toThrow(/貼り付けた本文がありません/);
   });
 });

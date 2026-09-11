@@ -141,16 +141,26 @@ public final class RuleSet {
      * default severity, so the override has to be applied to the findings as well as to the
      * catalogue; otherwise the setting would show in the GUI and do nothing.
      */
-    private record Releveled(Rule delegate, Severity severity) implements Rule {
+    private static final class Releveled implements Rule {
 
-        @Override
-        public RuleMeta meta() {
+        private final Rule delegate;
+        private final Severity severity;
+        private final RuleMeta meta;
+
+        Releveled(Rule delegate, Severity severity) {
+            this.delegate = delegate;
+            this.severity = severity;
             RuleMeta original = delegate.meta();
-            return new RuleMeta(original.id(), original.name(), original.category(),
+            this.meta = new RuleMeta(original.id(), original.name(), original.category(),
                     original.summary(), original.rationale(), original.detection(),
                     original.remedy(), original.badExample(), original.goodExample(), severity,
                     original.defaultEnabled(), original.commands(), original.targets(),
                     original.needs());
+        }
+
+        @Override
+        public RuleMeta meta() {
+            return meta;
         }
 
         @Override

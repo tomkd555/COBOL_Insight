@@ -1,0 +1,167 @@
+[
+  {
+    "jobName": "CRPD020",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CRP1234",
+      "PROGRAMMER": "CRP02 在庫更新",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "CRP005",
+        "line": 22,
+        "parm": "250901",
+        "parameters": {
+          "PARM": "'250901'"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "CRPIN2": "READ",
+            "CRPEXTR": "WRITE",
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 23,
+            "datasetName": "CRP.PROD.LOADLIB",
+            "dataset": {
+              "name": "CRP.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CRP.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "CRPIN2",
+            "line": 24,
+            "datasetName": "CRPT.D250901.ZAIKO.TRAN",
+            "dataset": {
+              "name": "CRPT.D250901.ZAIKO.TRAN"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CRPT.D250901.ZAIKO.TRAN",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "CRPEXTR",
+            "line": 25,
+            "datasetName": "CRPW.D250901.ZAIKO.EXTRACT",
+            "dataset": {
+              "name": "CRPW.D250901.ZAIKO.EXTRACT"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "CRPW.D250901.ZAIKO.EXTRACT",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(3,3),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=029,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 29,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PROC",
+        "target": "CRPPRC01",
+        "line": 32,
+        "condition": "IF (STEP010.RC = 0) THEN",
+        "parameters": {
+          "CYCLE": "250901"
+        }
+      },
+      {
+        "name": "STEP020.STEP020",
+        "execKind": "PGM",
+        "target": "CRP008",
+        "line": 16,
+        "procStepName": "STEP020",
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "CRPCODE": "READ",
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 17,
+            "datasetName": "CRP.PROD.LOADLIB",
+            "dataset": {
+              "name": "CRP.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CRP.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "CRPCODE",
+            "line": 18,
+            "datasetName": "CRPT.D250901.SHOCD.DAILY",
+            "dataset": {
+              "name": "CRPT.D250901.SHOCD.DAILY"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CRPT.D250901.SHOCD.DAILY",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 19,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

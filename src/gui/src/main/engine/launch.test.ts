@@ -28,10 +28,16 @@ describe("resolveEngineLaunch", () => {
       javaHome: "C:/tools/jdk-21",
     });
     expect(launch.command).toBe("C:\\tools\\jdk-21\\bin\\java.exe");
-    expect(launch.prefixArgs[0]).toBe("-classpath");
+    // The same JVM options the jpackage image is built with, so dev and the shipped app agree.
+    expect(launch.prefixArgs.slice(0, 3)).toEqual([
+      "-Dfile.encoding=UTF-8",
+      "-XX:MaxRAMPercentage=50",
+      "-Xss4m",
+    ]);
+    expect(launch.prefixArgs[3]).toBe("-classpath");
     // The trailing lib/* is expanded by java itself, so it must survive verbatim.
-    expect(launch.prefixArgs[1]).toBe("C:\\repo\\src\\engine\\app\\build\\install\\app\\lib\\*");
-    expect(launch.prefixArgs[2]).toBe("jp.cobolinsight.app.cli.Main");
+    expect(launch.prefixArgs[4]).toBe("C:\\repo\\src\\engine\\app\\build\\install\\app\\lib\\*");
+    expect(launch.prefixArgs[5]).toBe("jp.cobolinsight.app.cli.Main");
   });
 
   it("falls back to the java on PATH when JAVA_HOME is unset or empty", () => {

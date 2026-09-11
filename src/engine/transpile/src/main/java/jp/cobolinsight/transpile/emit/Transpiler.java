@@ -40,11 +40,45 @@ public final class Transpiler {
     private Transpiler() {
     }
 
+    /**
+     * The parts of translation that do not depend on the target language: the procedure IR (GO TO
+     * already reduced to structured control) and the data-division SQL directives. Built once by
+     * {@link #buildIr} so translating one program into several target languages does not rebuild
+     * them per language; {@code symbols} is {@code null} and {@code procedures}/{@code dataSql}
+     * empty when the program has no procedure division.
+     */
+    public record Ir(ProgramSymbols symbols, List<ProcedureIr> procedures,
+            List<DataDivisionSql.Directive> dataSql) {
+    }
+
     public static TranspileResult transpile(CobolSemanticModel model, TargetLanguage language) {
-        return transpile(model, null, language);
+        return transpile(model, (String) null, language);
     }
 
     public static TranspileResult transpile(CobolSemanticModel model, String sourceText,
+            TargetLanguage language) {
+        return transpile(model, buildIr(model, sourceText), language);
+    }
+
+    /** Builds the language-independent IR once, to be passed to {@link #transpile(CobolSemanticModel, Ir, TargetLanguage)} for each target language. */
+    public static Ir buildIr(CobolSemanticModel model, String sourceText) {
+        if (model.procedures().isEmpty()) {
+            return new Ir(null, List.of(), List.of());
+        }
+        ProgramSymbols symbols = ProgramSymbols.build(model.dataItems());
+        SourceSlicer slicer = sourceText == null ? null : new SourceSlicer(sourceText);
+        Map<SourceRange, EmbeddedBlock> embeddedByRange = new LinkedHashMap<>();
+        for (EmbeddedBlock block : model.embeddedBlocks()) {
+            embeddedByRange.putIfAbsent(block.range(), block);
+        }
+        List<ProcedureIr> procedures = new ProcedureModelBuilder(symbols, embeddedByRange, slicer)
+                .build(model.procedures());
+        List<DataDivisionSql.Directive> dataSql = DataDivisionSql.extract(sourceText);
+        return new Ir(symbols, procedures, dataSql);
+    }
+
+    /** Renders one target language from a precomputed {@link Ir}. */
+    public static TranspileResult transpile(CobolSemanticModel model, Ir ir,
             TargetLanguage language) {
         LanguageEmitter emitter = LanguageEmitter.of(language);
         String programId = model.programId();
@@ -66,22 +100,12 @@ public final class Transpiler {
         }
 
         if (!model.procedures().isEmpty()) {
-            ProgramSymbols symbols = ProgramSymbols.build(model.dataItems());
-            SourceSlicer slicer = sourceText == null ? null : new SourceSlicer(sourceText);
-            Map<SourceRange, EmbeddedBlock> embeddedByRange = new LinkedHashMap<>();
-            for (EmbeddedBlock block : model.embeddedBlocks()) {
-                embeddedByRange.putIfAbsent(block.range(), block);
-            }
-            List<ProcedureIr> procedures =
-                    new ProcedureModelBuilder(symbols, embeddedByRange, slicer)
-                            .build(model.procedures());
-            List<DataDivisionSql.Directive> dataSql = DataDivisionSql.extract(sourceText);
             ProcedureDialect dialect = ProcedureDialect.of(language);
             String programFile = dialect.programFileName(programId);
             String programSourceId = sourceId(model.sourceFile());
             LineTrackingEmitter out = new LineTrackingEmitter(dialect.indentUnit());
-            ProcedureRenderer.render(out, programFile, programId, programSourceId, symbols,
-                    procedures, dataSql, dialect);
+            ProcedureRenderer.render(out, programFile, programId, programSourceId, ir.symbols(),
+                    ir.procedures(), ir.dataSql(), dialect);
             files.add(new GeneratedFile(programFile, out.render()));
             pending.addAll(out.mappings());
         }

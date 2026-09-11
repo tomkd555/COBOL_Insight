@@ -1,0 +1,79 @@
+[
+  {
+    "jobName": "J1",
+    "line": 12,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "GROUP MEMBER JOB 1",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "diagnostics": [
+      {
+        "ruleId": "jcl-syntax",
+        "line": 1,
+        "message": "1 行の JCL 文を解析できませんでした（mismatched input '//' expecting GJOB_PARM_FLUSHTYP）。"
+      },
+      {
+        "ruleId": "jcl-syntax",
+        "line": 14,
+        "message": "14 行の JCL 文を解析できませんでした（no viable alternative at input '// SCHEDULE'）。"
+      },
+      {
+        "ruleId": "jcl-syntax",
+        "line": 20,
+        "message": "20 行の JCL 文を解析できませんでした（no viable alternative at input '// SCHEDULE'）。"
+      }
+    ],
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 15,
+        "ddStatements": [
+          {
+            "ddName": "SYSPRINT",
+            "line": 16,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "jobName": "J2",
+    "line": 18,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "GROUP MEMBER JOB 2",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 21,
+        "ddStatements": [
+          {
+            "ddName": "SYSPRINT",
+            "line": 22,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

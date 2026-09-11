@@ -1,0 +1,102 @@
+[
+  {
+    "kind": "BEGIN_DECLARE_SECTION",
+    "startLine": 19,
+    "endLine": 19,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "END_DECLARE_SECTION",
+    "startLine": 25,
+    "endLine": 25,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "KOKYAKU-NO",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "ZANDAKA",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "KOSHIN-YMD",
+        "mangledName": "HV3",
+        "indicatorName": "WS-KOSHIN-YMD-IND"
+      },
+      {
+        "originalName": "KOZA-NO",
+        "mangledName": "HV4"
+      }
+    ],
+    "referencedTables": [
+      "CSDB.CSQKOZA"
+    ],
+    "startLine": 89,
+    "endLine": 95,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "KOKYAKU-NO",
+      "ZANDAKA",
+      "KOSHIN-YMD"
+    ],
+    "tableAccess": {
+      "CSDB.CSQKOZA": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "column": "ZANDAKA"
+      },
+      {
+        "column": "KOSHIN_YMD"
+      },
+      {
+        "column": "KOZA_NO"
+      }
+    ],
+    "selectList": [
+      "KOKYAKU_NO",
+      "ZANDAKA",
+      "KOSHIN_YMD"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

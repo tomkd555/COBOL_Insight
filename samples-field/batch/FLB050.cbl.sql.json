@@ -1,0 +1,413 @@
+[
+  {
+    "kind": "DECLARE_TABLE",
+    "file": "samples-field/batch/FLD010.cpy",
+    "startLine": 9,
+    "endLine": 17,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "declaredTable": "FLDB.KEIYAKU",
+    "declaredColumns": [
+      {
+        "name": "KEIYAKU_NO",
+        "type": "CHAR(10)",
+        "nullable": false
+      },
+      {
+        "name": "KOKYAKU_NO",
+        "type": "CHAR(8)",
+        "nullable": false
+      },
+      {
+        "name": "HANBAITEN_CD",
+        "type": "CHAR(5)",
+        "nullable": false
+      },
+      {
+        "name": "ZANDAKA",
+        "type": "DECIMAL(11, 0)",
+        "nullable": false
+      },
+      {
+        "name": "SEIKYU_GAKU",
+        "type": "DECIMAL(11, 0)",
+        "nullable": false
+      },
+      {
+        "name": "SHORI_KBN",
+        "type": "CHAR(1)",
+        "nullable": true
+      },
+      {
+        "name": "KOSHIN_YMD",
+        "type": "CHAR(8)",
+        "nullable": true
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "hostVariables": [
+      {
+        "originalName": "WS-HANBAITEN-CD",
+        "mangledName": "HV1"
+      }
+    ],
+    "referencedTables": [
+      "FLDB.KEIYAKU"
+    ],
+    "startLine": 49,
+    "endLine": 54,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-MEISAI",
+        "forReadOnly": false,
+        "forFetchOnly": true,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-MEISAI",
+    "tableAccess": {
+      "FLDB.KEIYAKU": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "KEIYAKU_NO"
+      },
+      {
+        "column": "SHORI_KBN"
+      },
+      {
+        "column": "KOSHIN_YMD"
+      },
+      {
+        "column": "HANBAITEN_CD"
+      }
+    ],
+    "selectList": [
+      "KEIYAKU_NO",
+      "SHORI_KBN",
+      "KOSHIN_YMD"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "hostVariables": [
+      {
+        "originalName": "WS-HANBAITEN-CD",
+        "mangledName": "HV1"
+      }
+    ],
+    "referencedTables": [
+      "FLDB.KEIYAKU"
+    ],
+    "startLine": 57,
+    "endLine": 62,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-KOKYAKU",
+        "forReadOnly": false,
+        "forFetchOnly": true,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-KOKYAKU",
+    "tableAccess": {
+      "FLDB.KEIYAKU": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "KEIYAKU_NO"
+      },
+      {
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "column": "HANBAITEN_CD"
+      }
+    ],
+    "selectList": [
+      "KEIYAKU_NO",
+      "KOKYAKU_NO"
+    ],
+    "withHold": true,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 83,
+    "endLine": 83,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-MEISAI",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 89,
+    "endLine": 89,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-MEISAI",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "WS-KEIYAKU-NO-OK",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-SHORI-KBN",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "WS-KOSHIN-YMD",
+        "mangledName": "HV3",
+        "indicatorName": "WS-KOSHIN-YMD-IND"
+      }
+    ],
+    "startLine": 92,
+    "endLine": 97,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-MEISAI",
+    "intoTargets": [
+      "WS-KEIYAKU-NO-OK",
+      "WS-SHORI-KBN",
+      "WS-KOSHIN-YMD"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-KOKYAKU-NO",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-KEIYAKU-NO",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "WS-KEIYAKU-NO-OK",
+        "mangledName": "HV3"
+      }
+    ],
+    "referencedTables": [
+      "FLDB.KEIYAKU"
+    ],
+    "startLine": 109,
+    "endLine": 115,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "WS-KOKYAKU-NO",
+      "WS-KEIYAKU-NO"
+    ],
+    "tableAccess": {
+      "FLDB.KEIYAKU": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "column": "KEIYAKU_NO"
+      },
+      {
+        "column": "KEIYAKU_NO"
+      }
+    ],
+    "selectList": [
+      "KOKYAKU_NO",
+      "KEIYAKU_NO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "COMMIT",
+    "startLine": 124,
+    "endLine": 124,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 130,
+    "endLine": 130,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-KOKYAKU",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 136,
+    "endLine": 136,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-KOKYAKU",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "WS-KEIYAKU-NO-OK",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-KOKYAKU-NO",
+        "mangledName": "HV2"
+      }
+    ],
+    "startLine": 139,
+    "endLine": 142,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-KOKYAKU",
+    "intoTargets": [
+      "WS-KEIYAKU-NO-OK",
+      "WS-KOKYAKU-NO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "COMMIT",
+    "startLine": 150,
+    "endLine": 150,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "ROLLBACK",
+    "startLine": 165,
+    "endLine": 165,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

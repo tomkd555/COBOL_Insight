@@ -59,6 +59,8 @@ final class IntervalAnalysis {
 
     private final Map<String, ValueInterval> picBounds = new LinkedHashMap<>();
     private final Map<String, ValueInterval> valueSeeds = new LinkedHashMap<>();
+    /** Numeric items whose PICTURE has no S: they hold the magnitude of whatever is stored. */
+    private final Set<String> unsignedItems = new LinkedHashSet<>();
 
     private IntervalAnalysis(CobolSemanticModel model) {
         for (DataItem item : model.dataItems()) {
@@ -76,7 +78,11 @@ final class IntervalAnalysis {
 
     private void collect(DataItem item) {
         String name = item.name().toUpperCase(Locale.ROOT);
-        picBound(item).ifPresent(interval -> picBounds.putIfAbsent(name, interval));
+        picBound(item).ifPresent(interval -> {
+            if (picBounds.putIfAbsent(name, interval) == null && interval.lo() == 0) {
+                unsignedItems.add(name);
+            }
+        });
         valueSeed(item).ifPresent(interval -> valueSeeds.putIfAbsent(name, interval));
         for (DataItem child : item.children()) {
             collect(child);
@@ -316,8 +322,19 @@ final class IntervalAnalysis {
 
     // ---- Transfer function ----
 
-    private Map<String, ValueInterval> transfer(CfgNode node, Map<String, ValueInterval> in,
+    /**
+     * The entry state of a node keeps a computed value as computed, so a rule that looks at the
+     * statement after an arithmetic statement can see a result that went negative (R028). What
+     * the statement itself reads is what the items hold: an unsigned item stores the magnitude.
+     */
+    private Map<String, ValueInterval> transfer(CfgNode node, Map<String, ValueInterval> entry,
             LoopClause clause) {
+        Map<String, ValueInterval> in = new LinkedHashMap<>(entry);
+        for (Map.Entry<String, ValueInterval> e : in.entrySet()) {
+            if (unsignedItems.contains(e.getKey())) {
+                e.setValue(Intervals.magnitude(e.getValue()));
+            }
+        }
         Map<String, ValueInterval> out = new LinkedHashMap<>(in);
         if (node.kind() != CfgNodeKind.STATEMENT) {
             return out;
@@ -563,6 +580,11 @@ final class IntervalAnalysis {
         if (literal != null) {
             return ValueInterval.point(literal);
         }
+        if (isDecimalLiteral(token)) {
+            // The intervals count integer digits, and a decimal literal's integer part is not
+            // what its digits say, so the value is unknown to this analysis.
+            return Intervals.UNBOUNDED;
+        }
         String name = token.toUpperCase(Locale.ROOT);
         int paren = name.indexOf('(');
         if (paren >= 0) {
@@ -592,6 +614,11 @@ final class IntervalAnalysis {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    /** True for a numeric literal carrying a decimal point, such as ".25" or "23.50". */
+    private static boolean isDecimalLiteral(String token) {
+        return token.trim().matches("[+-]?(?:\\d+\\.\\d+|\\.\\d+)");
     }
 
     // ---- Pre-parsing loop clauses and detecting back edges (widening points) ----
@@ -755,12 +782,8 @@ final class IntervalAnalysis {
                     depth--;
                 }
                 i++;
-            } else if (depth == 0 && Character.isDigit(c)) {
-                int j = i;
-                while (j < n && Character.isDigit(region.charAt(j))) {
-                    j++;
-                }
-                return region.substring(i, j);
+            } else if (depth == 0 && startsNumber(region, i)) {
+                return numberToken(region, i);
             } else if (depth == 0 && Character.isLetter(c)) {
                 int j = i;
                 while (j < n && isNameChar(region.charAt(j))) {
@@ -776,6 +799,37 @@ final class IntervalAnalysis {
             }
         }
         return null;
+    }
+
+    /** True where a numeric literal starts, a literal written with a leading point (".25") included. */
+    private static boolean startsNumber(String region, int i) {
+        return Character.isDigit(region.charAt(i)) || pointBeforeDigit(region, i);
+    }
+
+    /** The numeric literal starting at i, its decimal point and fraction digits included. */
+    private static String numberToken(String region, int i) {
+        int j = i;
+        boolean point = false;
+        while (j < region.length()) {
+            if (Character.isDigit(region.charAt(j))) {
+                j++;
+            } else if (!point && pointBeforeDigit(region, j)) {
+                point = true;
+                j++;
+            } else {
+                break;
+            }
+        }
+        return region.substring(i, j);
+    }
+
+    /**
+     * True for a '.' with a digit right after it. Together with digits before it, that is the
+     * point of a decimal literal rather than the period that ends a sentence.
+     */
+    private static boolean pointBeforeDigit(String region, int i) {
+        return region.charAt(i) == '.' && i + 1 < region.length()
+                && Character.isDigit(region.charAt(i + 1));
     }
 
     /** The first data name outside parentheses (numbers and reserved words are excluded). null if absent. */
@@ -850,7 +904,8 @@ final class IntervalAnalysis {
                 if (depth > 0) {
                     depth--;
                 }
-            } else if (depth == 0 && isNameChar(c)) {
+            } else if (depth == 0
+                    && (isNameChar(c) || (pointBeforeDigit(region, i) && digitsOnly(cur)))) {
                 cur.append(c);
             } else {
                 flushOperand(cur, out);
@@ -858,6 +913,16 @@ final class IntervalAnalysis {
         }
         flushOperand(cur, out);
         return out;
+    }
+
+    /** True when the token built so far is a digit run, so a '.' continues it instead of ending it. */
+    private static boolean digitsOnly(StringBuilder cur) {
+        for (int i = 0; i < cur.length(); i++) {
+            if (!Character.isDigit(cur.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static void flushName(StringBuilder cur, Set<String> out) {
@@ -874,7 +939,7 @@ final class IntervalAnalysis {
         if (tok.isEmpty()) {
             return;
         }
-        if (parseLiteral(tok) != null) {
+        if (parseLiteral(tok) != null || isDecimalLiteral(tok)) {
             out.add(tok);
         } else if (isDataName(tok)) {
             out.add(tok.toUpperCase(Locale.ROOT));

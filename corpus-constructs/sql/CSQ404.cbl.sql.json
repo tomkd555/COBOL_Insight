@@ -1,0 +1,292 @@
+[
+  {
+    "kind": "DECLARE_TABLE",
+    "file": "corpus-constructs/sql/CSD401.cpy",
+    "startLine": 9,
+    "endLine": 16,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "declaredTable": "FLDB.KOKYAKU",
+    "declaredColumns": [
+      {
+        "name": "KOKYAKU_NO",
+        "type": "CHAR(8)",
+        "nullable": false
+      },
+      {
+        "name": "KOKYAKU_MEI",
+        "type": "CHAR(30)",
+        "nullable": false
+      },
+      {
+        "name": "KEN_CD",
+        "type": "CHAR(2)",
+        "nullable": true
+      },
+      {
+        "name": "SHOKAI_KOKYAKU_NO",
+        "type": "CHAR(8)",
+        "nullable": true
+      },
+      {
+        "name": "TOROKU_YMD",
+        "type": "DATE",
+        "nullable": false
+      },
+      {
+        "name": "SAKUJO_FLG",
+        "type": "CHAR(1)",
+        "nullable": false
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "hostVariables": [
+      {
+        "originalName": "WS-KISO-KOKYAKU-NO",
+        "mangledName": "HV1"
+      }
+    ],
+    "referencedTables": [
+      "FLDB.KOKYAKU"
+    ],
+    "startLine": 34,
+    "endLine": 49,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-KEIRO",
+        "forReadOnly": false,
+        "forFetchOnly": true,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-KEIRO",
+    "tableAccess": {
+      "FLDB.KOKYAKU": "R"
+    },
+    "cteNames": [
+      "SHOKAI_KEIRO"
+    ],
+    "columnRefs": [
+      {
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "column": "KOKYAKU_MEI"
+      },
+      {
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "table": "FLDB.KOKYAKU",
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "table": "FLDB.KOKYAKU",
+        "column": "KOKYAKU_MEI"
+      },
+      {
+        "table": "SHOKAI_KEIRO",
+        "column": "KAISO"
+      },
+      {
+        "table": "FLDB.KOKYAKU",
+        "column": "SHOKAI_KOKYAKU_NO"
+      },
+      {
+        "table": "SHOKAI_KEIRO",
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "table": "SHOKAI_KEIRO",
+        "column": "KAISO"
+      },
+      {
+        "table": "SHOKAI_KEIRO",
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "table": "SHOKAI_KEIRO",
+        "column": "KOKYAKU_MEI"
+      },
+      {
+        "table": "SHOKAI_KEIRO",
+        "column": "KAISO"
+      },
+      {
+        "table": "SHOKAI_KEIRO",
+        "column": "KAISO"
+      }
+    ],
+    "selectList": [
+      "KOKYAKU_NO",
+      "KOKYAKU_MEI",
+      "KAISO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": true,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-KOKYAKU-NO",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-GOKEI-KINGAKU",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "WS-KOKYAKU-NO-IN",
+        "mangledName": "HV3"
+      }
+    ],
+    "referencedTables": [
+      "FLDB.JUCHU"
+    ],
+    "startLine": 61,
+    "endLine": 70,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "WS-KOKYAKU-NO",
+      "WS-GOKEI-KINGAKU"
+    ],
+    "tableAccess": {
+      "FLDB.JUCHU": "R"
+    },
+    "cteNames": [
+      "KOKYAKU_GOKEI"
+    ],
+    "columnRefs": [
+      {
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "column": "KINGAKU"
+      },
+      {
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "table": "KOKYAKU_GOKEI",
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "table": "KOKYAKU_GOKEI",
+        "column": "GOKEI_KINGAKU"
+      },
+      {
+        "table": "KOKYAKU_GOKEI",
+        "column": "KOKYAKU_NO"
+      }
+    ],
+    "selectList": [
+      "KOKYAKU_NO",
+      "GOKEI_KINGAKU"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 82,
+    "endLine": 82,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-KEIRO",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 89,
+    "endLine": 89,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-KEIRO",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "WS-KOKYAKU-NO",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-KOKYAKU-MEI",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "WS-KAISO",
+        "mangledName": "HV3"
+      }
+    ],
+    "startLine": 97,
+    "endLine": 100,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-KEIRO",
+    "intoTargets": [
+      "WS-KOKYAKU-NO",
+      "WS-KOKYAKU-MEI",
+      "WS-KAISO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

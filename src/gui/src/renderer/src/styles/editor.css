@@ -48,6 +48,12 @@
   flex: 1 1 auto;
 }
 
+.ci-source__note {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .ci-source__state {
   margin: 0;
   padding: var(--ci-space-4);
@@ -157,7 +163,7 @@
      per theme and the two land within a hundredth of 1.3:1 against the code around them. */
   background: color-mix(in oklch, var(--color-foreground) 14%, var(--color-surface));
   font-family: var(--ci-font-code);
-  font-size: var(--ci-size-sm);
+  font-size: var(--ci-code-size);
 }
 
 .dark .ci-copy {
@@ -247,7 +253,7 @@
 .ci-sidebyside {
   display: grid;
   flex: 1 1 auto;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
   gap: 1px;
   min-height: 0;
   background: var(--color-border);

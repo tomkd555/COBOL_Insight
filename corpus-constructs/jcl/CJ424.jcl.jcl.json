@@ -1,0 +1,119 @@
+[
+  {
+    "jobName": "CJ424",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "SAS VIA CATLGD PROC",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "jcllib": [
+      "CJT.PROD.PROCLIB"
+    ],
+    "members": [
+      "CPSAS.proc"
+    ],
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PROC",
+        "target": "CPSAS",
+        "line": 9,
+        "parameters": {
+          "LIB": "CJT.PROD.SASLIB"
+        }
+      },
+      {
+        "name": "STEP010.SASSTEP",
+        "execKind": "PGM",
+        "target": "SAS",
+        "line": 7,
+        "file": "CPSAS.proc",
+        "procStepName": "SASSTEP",
+        "parameters": {
+          "REGION": "4096K"
+        },
+        "utility": {
+          "ddRoles": {
+            "SASLIB": "READ",
+            "KEIYAKU": "READ",
+            "SYSPRINT": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SASLIB",
+            "line": 8,
+            "file": "CPSAS.proc",
+            "datasetName": "SAS.V9.SASLIB",
+            "dataset": {
+              "name": "SAS.V9.SASLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "SAS.V9.SASLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "WORK",
+            "line": 9,
+            "file": "CPSAS.proc",
+            "parameters": {
+              "UNIT": "SYSDA",
+              "SPACE": "(CYL,(5,5))"
+            }
+          },
+          {
+            "ddName": "KEIYAKU",
+            "line": 10,
+            "file": "CPSAS.proc",
+            "datasetName": "CJT.PROD.SASLIB.KEIYAKU.MASTER",
+            "dataset": {
+              "name": "CJT.PROD.SASLIB.KEIYAKU.MASTER"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.PROD.SASLIB.KEIYAKU.MASTER",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 11,
+            "file": "CPSAS.proc",
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 10,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "DATA WORK.KEIYAKU;",
+              "   SET KEIYAKU(KEEP=KEIYAKU_NO ZANDAKA);",
+              "   IF ZANDAKA > 100000;",
+              "RUN;"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -1,8 +1,7 @@
 import { useReducer, type ReactElement } from "react";
-import { api, errorMessage } from "../../api";
+import { api, engineFailure, errorMessage } from "../../api";
 import { text } from "../../i18n/text";
 import { useProject } from "../../state/projectStore";
-import { useSettings } from "../../state/settingsStore";
 import type { Notify } from "../../state/useShellStartup";
 import {
   INITIAL_REPORT_STATE,
@@ -30,32 +29,43 @@ export interface ReportEditorProps {
  */
 export function ReportEditor({ notify }: ReportEditorProps): ReactElement {
   const project = useProject();
-  const settings = useSettings();
   const [state, dispatch] = useReducer(reportReducer, INITIAL_REPORT_STATE);
 
-  const { inputDir, dbPath } = project;
-  const view = deriveReportView(project.mode, inputDir, dbPath, state);
+  const { inputDir, dbPath, outputPaths } = project;
+  // report is generated from the SARIF pair the whole-folder lint writes, so it needs one of those
+  // to have finished for this folder — findings on screen can have come from a scoped run, whose
+  // pair is another one. With dbPath forced to null the state machine already renders notAnalysed.
+  const analysed = project.lastWholeFolderRunId > 0;
+  const view = deriveReportView(project.mode, inputDir, analysed ? dbPath : null, state);
+  // The report is generated from the SARIF pair the whole-folder lint writes. A scoped run since
+  // then is on screen but not in that pair, so the difference is named rather than hidden.
+  const scopedSinceWholeRun = project.lastScopedRunId > project.lastWholeFolderRunId;
 
   async function generate(format: ReportFormat): Promise<void> {
-    if (inputDir === null || dbPath === null) {
+    if (dbPath === null || outputPaths === null) {
       return;
     }
     const paths = reportArtifactPaths(dbPath);
     dispatch({ type: "GENERATE", format });
     try {
-      const outputs = await api().outputPaths();
-      await api().run({
+      const finished = await api().run({
         subcommand: "report",
         request: {
-          inputDir,
-          copybookPaths: [...settings.copybookPaths],
-          codepageOverrides: project.codepageOverrides,
-          rulesFile: outputs.rules,
           db: paths.db,
+          // The whole-folder pair. A scoped run writes its own, so what is generated here always
+          // covers the same ground as the last analysis of the whole folder.
+          sarifFile: outputPaths.sarif,
+          sqlSarifFile: outputPaths.sqlSarif,
           htmlFile: paths.html,
           textFile: paths.text,
         },
       });
+      const crashed = engineFailure(finished);
+      if (crashed !== null) {
+        // The report files beside the project file are the previous run's; showing them would
+        // present an older report as the one just asked for.
+        throw new Error(crashed);
+      }
       const path = reportPathOf(format, paths);
       const content = await api().readReport({ path, kind: format });
       dispatch({ type: "READY", format, content, path });
@@ -79,7 +89,7 @@ export function ReportEditor({ notify }: ReportEditorProps): ReactElement {
   }
 
   const busy = view.kind === "generating";
-  const disabled = busy || inputDir === null || dbPath === null;
+  const disabled = busy || dbPath === null || outputPaths === null || !analysed;
 
   return (
     <div className="ci-report" data-testid="report-editor">
@@ -113,6 +123,13 @@ export function ReportEditor({ notify }: ReportEditorProps): ReactElement {
           {text.report.export}
         </button>
       </div>
+
+      {view.kind === "no-project" ? null : (
+        <p className="ci-report__note" data-testid="report-note">
+          {text.report.wholeProject}
+          {scopedSinceWholeRun ? ` ${text.report.scopedSinceWholeRun}` : ""}
+        </p>
+      )}
 
       {view.kind === "no-project" ? (
         <p className="ci-report__state">

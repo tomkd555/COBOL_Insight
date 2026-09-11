@@ -1,0 +1,24 @@
+//CP301    PROC CYCLE=000000,HLQ=CJW,NESTDSN=CJW.CP301.NESTDFLT
+//*-------------------------------------------------------------*
+//*  CP301 : catalogued PROC, PROC statement named on the        *
+//*          member itself; CALLSTEP nests a second-level        *
+//*          catalogued PROC (CP302), passing CYCLE through      *
+//*          while leaving HLQ to CP302's own default.           *
+//*          A caller reaches CP302's INSTEP.WORKDD by coding    *
+//*          NESTDSN= on the EXEC CP301 call; the override just  *
+//*          below CALLSTEP carries the value one level down.    *
+//*          No PEND: the last statement of the member ends it.  *
+//*-------------------------------------------------------------*
+//OUTSTEP  EXEC PGM=CCP001,PARM='&CYCLE'
+//STEPLIB  DD   DSN=CJ.PROD.LOADLIB,DISP=SHR
+//WORK1    DD   DSN=&HLQ..D&CYCLE..CP301.WORK1,
+//             DISP=(NEW,CATLG,DELETE),
+//             SPACE=(CYL,(2,2),RLSE),
+//             DCB=(RECFM=FB,LRECL=120,BLKSIZE=0)
+//SYSOUT   DD   SYSOUT=*
+//*
+//*  Nested call: CALLSTEP invokes the second-level PROC CP302;
+//*  the override below reaches one level down, into CP302's
+//*  own INSTEP step.
+//CALLSTEP EXEC CP302,CYCLE=&CYCLE,COND=(0,NE,OUTSTEP)
+//INSTEP.WORKDD DD DSN=&NESTDSN,DISP=SHR

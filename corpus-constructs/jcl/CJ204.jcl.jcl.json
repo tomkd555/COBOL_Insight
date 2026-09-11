@@ -1,0 +1,184 @@
+[
+  {
+    "jobName": "CJ204",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "CJ SPACE FORMS",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 9,
+        "utility": {
+          "ddRoles": {
+            "TRKSP": "CREATE",
+            "CYLSP": "CREATE",
+            "BLKSP": "CREATE",
+            "DIRSP": "CREATE",
+            "CTGSP": "CREATE",
+            "RNDSP": "CREATE",
+            "AVGSP": "CREATE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "TRKSP",
+            "line": 10,
+            "datasetName": "FLW.CJ204.TRK",
+            "dataset": {
+              "name": "FLW.CJ204.TRK"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ204.TRK",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(10,5),RLSE)"
+            }
+          },
+          {
+            "ddName": "CYLSP",
+            "line": 12,
+            "datasetName": "FLW.CJ204.CYL",
+            "dataset": {
+              "name": "FLW.CJ204.CYL"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ204.CYL",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "SPACE": "(CYL,(5,2),RLSE)"
+            }
+          },
+          {
+            "ddName": "BLKSP",
+            "line": 14,
+            "datasetName": "FLW.CJ204.BLK",
+            "dataset": {
+              "name": "FLW.CJ204.BLK"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ204.BLK",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "SPACE": "(800,(100,50))"
+            }
+          },
+          {
+            "ddName": "DIRSP",
+            "line": 16,
+            "datasetName": "FLW.CJ204.PDS",
+            "dataset": {
+              "name": "FLW.CJ204.PDS"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ204.PDS",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(10,5,20),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=80,BLKSIZE=0,DSORG=PO)"
+            }
+          },
+          {
+            "ddName": "CTGSP",
+            "line": 19,
+            "datasetName": "FLW.CJ204.CONTIG",
+            "dataset": {
+              "name": "FLW.CJ204.CONTIG"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ204.CONTIG",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "SPACE": "(CYL,(5,2),,CONTIG)"
+            }
+          },
+          {
+            "ddName": "RNDSP",
+            "line": 22,
+            "datasetName": "FLW.CJ204.ROUND",
+            "dataset": {
+              "name": "FLW.CJ204.ROUND"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ204.ROUND",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "SPACE": "(800,(100,50),,,ROUND)"
+            }
+          },
+          {
+            "ddName": "AVGSP",
+            "line": 24,
+            "datasetName": "FLW.CJ204.AVGREC",
+            "dataset": {
+              "name": "FLW.CJ204.AVGREC"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ204.AVGREC",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "AVGREC": "K",
+              "SPACE": "(80,(500,100))"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

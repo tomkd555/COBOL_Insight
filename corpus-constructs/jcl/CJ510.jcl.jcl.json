@@ -1,0 +1,44 @@
+[
+  {
+    "jobName": "CJ510",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "lowercase jcl demo",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "CCP001",
+        "line": 9,
+        "parm": "Mixed Case Parm",
+        "parameters": {
+          "PARM": "'Mixed Case Parm'"
+        },
+        "ddStatements": [
+          {
+            "ddName": "INFILE",
+            "line": 10,
+            "dummy": true,
+            "parameters": {
+              "DUMMY": ""
+            }
+          },
+          {
+            "ddName": "OUTFILE",
+            "line": 11,
+            "dummy": true,
+            "parameters": {
+              "DUMMY": ""
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

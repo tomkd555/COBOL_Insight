@@ -1,0 +1,183 @@
+[
+  {
+    "kind": "BEGIN_DECLARE_SECTION",
+    "startLine": 17,
+    "endLine": 17,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "END_DECLARE_SECTION",
+    "startLine": 24,
+    "endLine": 24,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "hostVariables": [
+      {
+        "originalName": "WS-JUCHU-KBN",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-FROM-YMD",
+        "mangledName": "HV2"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.JUCHU"
+    ],
+    "startLine": 40,
+    "endLine": 50,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-JUCHU",
+        "forReadOnly": false,
+        "forFetchOnly": true,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-JUCHU",
+    "tableAccess": {
+      "CSQDB.JUCHU": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "JUCHU_NO"
+      },
+      {
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "column": "JUCHU_YMD"
+      },
+      {
+        "column": "GOKEI_GAKU"
+      },
+      {
+        "column": "JUCHU_KBN"
+      },
+      {
+        "column": "JUCHU_YMD"
+      },
+      {
+        "column": "JUCHU_NO"
+      }
+    ],
+    "selectList": [
+      "JUCHU_NO",
+      "KOKYAKU_NO",
+      "JUCHU_YMD",
+      "GOKEI_GAKU"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": true,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 53,
+    "endLine": 53,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-JUCHU",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 58,
+    "endLine": 58,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-JUCHU",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "WS-JUCHU-NO",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-KOKYAKU-NO",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "WS-JUCHU-YMD",
+        "mangledName": "HV3"
+      },
+      {
+        "originalName": "WS-GOKEI-GAKU",
+        "mangledName": "HV4"
+      }
+    ],
+    "startLine": 64,
+    "endLine": 68,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-JUCHU",
+    "intoTargets": [
+      "WS-JUCHU-NO",
+      "WS-KOKYAKU-NO",
+      "WS-JUCHU-YMD",
+      "WS-GOKEI-GAKU"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

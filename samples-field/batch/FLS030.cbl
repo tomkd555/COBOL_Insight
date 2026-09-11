@@ -1,0 +1,28 @@
+000100*=================================================================
+000200* PROGRAM-ID : FLS030
+000300* 機能       : ルール確認用ダミーサブプログラム
+000400* 処理概要   : 呼び出し元から受け取った領域をログへ表示する。
+000500* 起動元     : FLB060
+000600* 呼び出し先 : なし
+000700*=================================================================
+000800 IDENTIFICATION DIVISION.
+000900 PROGRAM-ID.    FLS030.
+001000 AUTHOR.        FL-BATCH-TEAM.
+001100 DATE-WRITTEN.  2026-09-04.
+001200*
+001300 ENVIRONMENT DIVISION.
+001400 CONFIGURATION SECTION.
+001500 SOURCE-COMPUTER. IBM-370.
+001600 OBJECT-COMPUTER. IBM-370.
+001700*
+001800 DATA DIVISION.
+001900 LINKAGE SECTION.
+002000 01  LK-DATA-AREA                   PIC X(20).
+002100*
+002200 PROCEDURE DIVISION USING LK-DATA-AREA.
+002300*
+002400*----- 主処理 ----------------------------------------------------
+002500 0000-MAIN.
+002600     DISPLAY 'FLS030 データ = ' LK-DATA-AREA
+002700     MOVE ZERO TO RETURN-CODE
+002800     GOBACK.

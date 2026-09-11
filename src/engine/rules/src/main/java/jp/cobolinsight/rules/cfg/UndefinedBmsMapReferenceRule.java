@@ -33,7 +33,7 @@ public final class UndefinedBmsMapReferenceRule implements Rule {
             .summary("BMS のマップ定義にないマップセット・マップを参照する"
                     + "EXEC CICS SEND MAP・RECEIVE MAP を検出します。")
             .rationale("定義のないマップを指す送受信は実行時に失敗し、"
-                    + "画面が表示されないまま異常終了します。")
+                    + "画面が表示されないままプログラムが異常終了します。")
             .detection("SEND MAP・RECEIVE MAP の MAP・MAPSET を BMS のマップ定義と"
                     + "突き合わせ、マップセットが存在しない、"
                     + "またはマップがそのマップセットに定義されていないものを検出します。"
@@ -46,9 +46,8 @@ public final class UndefinedBmsMapReferenceRule implements Rule {
                     EXEC CICS SEND MAP('MAP01') MAPSET('MAPSET1') END-EXEC.
                     """)
             .severity(Severity.HIGH)
-            .commands(Command.LINT, Command.REPORT)
+            .commands(Command.LINT)
             .targets(AssetKind.COBOL, AssetKind.BMS)
-            .needs(Needs.SEMANTIC, Needs.BMS)
             .build();
 
     @Override

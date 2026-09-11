@@ -1,0 +1,44 @@
+[
+  {
+    "jobName": "CJ504",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "JCL COMMAND STATEMENTS",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "diagnostics": [
+      {
+        "ruleId": "jcl-syntax",
+        "line": 8,
+        "message": "8 行の JCL 文を解析できませんでした（no viable alternative at input '// COMMAND'）。"
+      },
+      {
+        "ruleId": "jcl-syntax",
+        "line": 9,
+        "message": "9 行の JCL 文を解析できませんでした（no viable alternative at input '// $S'）。"
+      }
+    ],
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 10,
+        "ddStatements": [
+          {
+            "ddName": "SYSPRINT",
+            "line": 11,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

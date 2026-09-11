@@ -1,10 +1,10 @@
 package jp.cobolinsight.app.persistence;
 
-/** The DDL for the 13 tables that hold analysis results. */
+/** The DDL for the tables that hold analysis results. */
 final class Schema {
 
     /** The schema version recorded in the database file's user_version. */
-    static final int VERSION = 3;
+    static final int VERSION = 5;
 
     static final String[] CREATE_STATEMENTS = {
             """
@@ -18,45 +18,6 @@ final class Schema {
             )
             """,
             "CREATE INDEX idx_source_root_path ON SOURCE(root, path)",
-            """
-            CREATE TABLE ENCODING_INFO (
-                source_id INTEGER PRIMARY KEY REFERENCES SOURCE(id) ON DELETE CASCADE,
-                detected_charset TEXT NOT NULL,
-                confidence REAL NOT NULL,
-                manual_override INTEGER NOT NULL,
-                so_si_present INTEGER NOT NULL
-            )
-            """,
-            """
-            CREATE TABLE BMS_MAPSET (
-                id INTEGER PRIMARY KEY,
-                source_id INTEGER NOT NULL REFERENCES SOURCE(id) ON DELETE CASCADE,
-                name TEXT NOT NULL
-            )
-            """,
-            "CREATE INDEX idx_bms_mapset_source ON BMS_MAPSET(source_id)",
-            """
-            CREATE TABLE BMS_MAP (
-                id INTEGER PRIMARY KEY,
-                mapset_id INTEGER NOT NULL REFERENCES BMS_MAPSET(id) ON DELETE CASCADE,
-                name TEXT NOT NULL,
-                size_rows INTEGER NOT NULL,
-                size_cols INTEGER NOT NULL
-            )
-            """,
-            "CREATE INDEX idx_bms_map_mapset ON BMS_MAP(mapset_id)",
-            """
-            CREATE TABLE BMS_FIELD (
-                id INTEGER PRIMARY KEY,
-                map_id INTEGER NOT NULL REFERENCES BMS_MAP(id) ON DELETE CASCADE,
-                name TEXT NOT NULL,
-                pos_row INTEGER NOT NULL,
-                pos_col INTEGER NOT NULL,
-                length INTEGER NOT NULL,
-                attrb TEXT
-            )
-            """,
-            "CREATE INDEX idx_bms_field_map ON BMS_FIELD(map_id)",
             """
             CREATE TABLE PROGRAM (
                 id INTEGER PRIMARY KEY,
@@ -105,7 +66,9 @@ final class Schema {
                 resolution TEXT,
                 host_var TEXT,
                 seq INTEGER NOT NULL DEFAULT 0,
-                line INTEGER
+                line INTEGER,
+                access TEXT,
+                attrs_json TEXT
             )
             """,
             "CREATE INDEX idx_call_edge_from ON CALL_EDGE(from_node)",
@@ -118,22 +81,10 @@ final class Schema {
                 source_id INTEGER NOT NULL REFERENCES SOURCE(id) ON DELETE CASCADE,
                 start_line INTEGER NOT NULL,
                 start_col INTEGER NOT NULL,
-                byte_offset INTEGER NOT NULL,
-                message TEXT NOT NULL,
-                sarif_json TEXT NOT NULL
+                message TEXT NOT NULL
             )
             """,
             "CREATE INDEX idx_finding_source ON FINDING(source_id)",
-            """
-            CREATE TABLE SQL_STMT (
-                id INTEGER PRIMARY KEY,
-                source_id INTEGER NOT NULL REFERENCES SOURCE(id) ON DELETE CASCADE,
-                stmt_type TEXT NOT NULL,
-                mangled_text TEXT NOT NULL,
-                original_text TEXT NOT NULL
-            )
-            """,
-            "CREATE INDEX idx_sql_stmt_source ON SQL_STMT(source_id)",
             """
             CREATE TABLE LINE_MAP (
                 id INTEGER PRIMARY KEY,
@@ -148,27 +99,97 @@ final class Schema {
                 anchor_id TEXT NOT NULL
             )
             """,
-            "CREATE INDEX idx_line_map_source ON LINE_MAP(cobol_source_id)"
+            "CREATE INDEX idx_line_map_source ON LINE_MAP(cobol_source_id)",
+            """
+            CREATE TABLE JCL_STEP (
+                id INTEGER PRIMARY KEY,
+                source_id INTEGER NOT NULL REFERENCES SOURCE(id) ON DELETE CASCADE,
+                job_name TEXT NOT NULL,
+                seq INTEGER NOT NULL,
+                step_name TEXT NOT NULL,
+                exec_kind TEXT NOT NULL,
+                target TEXT NOT NULL,
+                proc_step TEXT,
+                line INTEGER,
+                file TEXT NOT NULL,
+                detail_json TEXT NOT NULL
+            )
+            """,
+            "CREATE INDEX idx_jcl_step_source ON JCL_STEP(source_id)",
+            """
+            CREATE TABLE JCL_DD (
+                id INTEGER PRIMARY KEY,
+                step_id INTEGER NOT NULL REFERENCES JCL_STEP(id) ON DELETE CASCADE,
+                seq INTEGER NOT NULL,
+                dd_name TEXT NOT NULL,
+                dsn TEXT,
+                access TEXT,
+                line INTEGER,
+                file TEXT NOT NULL,
+                detail_json TEXT NOT NULL
+            )
+            """,
+            "CREATE INDEX idx_jcl_dd_step ON JCL_DD(step_id)",
+            """
+            CREATE TABLE SQL_STMT (
+                id INTEGER PRIMARY KEY,
+                source_id INTEGER NOT NULL REFERENCES SOURCE(id) ON DELETE CASCADE,
+                program_id INTEGER REFERENCES PROGRAM(id) ON DELETE CASCADE,
+                seq INTEGER NOT NULL,
+                kind TEXT NOT NULL,
+                cursor_name TEXT,
+                line INTEGER NOT NULL,
+                end_line INTEGER NOT NULL,
+                analysis TEXT NOT NULL,
+                text TEXT NOT NULL,
+                file TEXT NOT NULL,
+                detail_json TEXT NOT NULL
+            )
+            """,
+            "CREATE INDEX idx_sql_stmt_source ON SQL_STMT(source_id)",
+            """
+            CREATE TABLE SQL_TABLE_USE (
+                id INTEGER PRIMARY KEY,
+                stmt_id INTEGER NOT NULL REFERENCES SQL_STMT(id) ON DELETE CASCADE,
+                table_name TEXT NOT NULL,
+                access TEXT NOT NULL
+            )
+            """,
+            "CREATE INDEX idx_sql_table_use_stmt ON SQL_TABLE_USE(stmt_id)",
+            """
+            CREATE TABLE SQL_COLUMN_USE (
+                id INTEGER PRIMARY KEY,
+                stmt_id INTEGER NOT NULL REFERENCES SQL_STMT(id) ON DELETE CASCADE,
+                table_name TEXT,
+                column_name TEXT NOT NULL
+            )
+            """,
+            "CREATE INDEX idx_sql_column_use_stmt ON SQL_COLUMN_USE(stmt_id)"
     };
 
     /**
      * The drop statements used to rebuild a file with an old schema version. Ordered from child
      * tables first, since a foreign key's referent must be dropped later. Indexes are dropped
-     * along with their table, so they are not listed separately.
+     * along with their table, so they are not listed separately. Tables the schema no longer
+     * creates are listed too, so that rebuilding an old file leaves exactly the current schema.
      */
     static final String[] DROP_STATEMENTS = {
-            "DROP TABLE IF EXISTS LINE_MAP",
+            "DROP TABLE IF EXISTS BMS_FIELD",
+            "DROP TABLE IF EXISTS BMS_MAP",
+            "DROP TABLE IF EXISTS BMS_MAPSET",
+            "DROP TABLE IF EXISTS ENCODING_INFO",
+            "DROP TABLE IF EXISTS SQL_COLUMN_USE",
+            "DROP TABLE IF EXISTS SQL_TABLE_USE",
             "DROP TABLE IF EXISTS SQL_STMT",
+            "DROP TABLE IF EXISTS JCL_DD",
+            "DROP TABLE IF EXISTS JCL_STEP",
+            "DROP TABLE IF EXISTS LINE_MAP",
             "DROP TABLE IF EXISTS FINDING",
             "DROP TABLE IF EXISTS CALL_EDGE",
             "DROP TABLE IF EXISTS NODE",
             "DROP TABLE IF EXISTS PARAGRAPH_EDGE",
             "DROP TABLE IF EXISTS PARAGRAPH",
             "DROP TABLE IF EXISTS PROGRAM",
-            "DROP TABLE IF EXISTS BMS_FIELD",
-            "DROP TABLE IF EXISTS BMS_MAP",
-            "DROP TABLE IF EXISTS BMS_MAPSET",
-            "DROP TABLE IF EXISTS ENCODING_INFO",
             "DROP TABLE IF EXISTS SOURCE"
     };
 

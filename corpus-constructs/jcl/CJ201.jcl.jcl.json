@@ -1,0 +1,198 @@
+[
+  {
+    "jobName": "CJ201",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "CJ DSN FORMS",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 12,
+        "utility": {
+          "ddRoles": {
+            "NEWGEN": "CREATE",
+            "WORKDS": "DELETE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "NEWGEN",
+            "line": 13,
+            "datasetName": "FLT.NYUKIN.GDG(+1)",
+            "dataset": {
+              "name": "FLT.NYUKIN.GDG",
+              "gdgRelative": 1
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLT.NYUKIN.GDG(+1)",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "SPACE": "(CYL,(5,2),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=200,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "CURGEN",
+            "line": 18,
+            "datasetName": "FLT.NYUKIN.GDG(0)",
+            "dataset": {
+              "name": "FLT.NYUKIN.GDG",
+              "gdgRelative": 0
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FLT.NYUKIN.GDG(0)",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "PRVGEN",
+            "line": 19,
+            "datasetName": "FLT.NYUKIN.GDG(-1)",
+            "dataset": {
+              "name": "FLT.NYUKIN.GDG",
+              "gdgRelative": -1
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FLT.NYUKIN.GDG(-1)",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "WORKDS",
+            "line": 20,
+            "datasetName": "&&TEMP",
+            "dataset": {
+              "name": "&&TEMP",
+              "temporary": true
+            },
+            "dispositionText": "(NEW,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "DELETE",
+              "raw": "(NEW,DELETE)"
+            },
+            "parameters": {
+              "DSN": "&&TEMP",
+              "DISP": "(NEW,DELETE)",
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(5,5))"
+            }
+          },
+          {
+            "ddName": "MEMBER",
+            "line": 22,
+            "datasetName": "FL.PROD.PROCLIB(MEMBER1)",
+            "dataset": {
+              "name": "FL.PROD.PROCLIB",
+              "member": "MEMBER1"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FL.PROD.PROCLIB(MEMBER1)",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "GDGLIKE",
+            "line": 23,
+            "datasetName": "FLT.HANBAI.JISSEKI(G0001V00)",
+            "dataset": {
+              "name": "FLT.HANBAI.JISSEKI",
+              "member": "G0001V00"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FLT.HANBAI.JISSEKI(G0001V00)",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SPCCHAR",
+            "line": 24,
+            "datasetName": "FLW.WORK#01.DATA-A",
+            "dataset": {
+              "name": "FLW.WORK#01.DATA-A"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FLW.WORK#01.DATA-A",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "QUOTDSN",
+            "line": 25,
+            "datasetName": "FLW.CJ201.A/B",
+            "dataset": {
+              "name": "FLW.CJ201.A/B"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "'FLW.CJ201.A/B'",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "DSNLONG",
+            "line": 26,
+            "datasetName": "FLW00001.NYUKIN01.SHORUI01.MEISAI01.DAILY01(MEMBER1)",
+            "dataset": {
+              "name": "FLW00001.NYUKIN01.SHORUI01.MEISAI01.DAILY01",
+              "member": "MEMBER1"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FLW00001.NYUKIN01.SHORUI01.MEISAI01.DAILY01(MEMBER1)",
+              "DISP": "SHR"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

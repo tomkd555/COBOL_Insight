@@ -15,7 +15,6 @@ function item(path: string, type = "PROGRAM", codepage: string | null = "Shift_J
     name: path.split("/").pop() ?? path,
     type,
     codepage,
-    byteSize: 100,
     findingCount: 0,
   };
 }
@@ -27,6 +26,7 @@ const ITEMS: AssetInventoryItem[] = [
   item("copybook/SYKCPY1.cpy", "COPYBOOK"),
   item("jcl/SYKD010.jcl", "JCL"),
   item("bms/SYKMAP1.bms", "BMS"),
+  item("ddl/CSL501.sql", "SQL"),
   item("misc/notes.txt", "UNKNOWN", null),
 ];
 
@@ -43,6 +43,7 @@ describe("assetTypeOf", () => {
     expect(assetTypeOf("COPYBOOK")).toBe("copybook");
     expect(assetTypeOf("JCL")).toBe("jcl");
     expect(assetTypeOf("BMS")).toBe("bms");
+    expect(assetTypeOf("SQL")).toBe("sql");
     expect(assetTypeOf("DATASET")).toBe("other");
     expect(assetTypeOf("UNKNOWN")).toBe("other");
   });
@@ -74,6 +75,10 @@ describe("buildTreeRows", () => {
   it("filters by kind and leaves out the folders that empty", () => {
     const rows = buildTreeRows(ITEMS, { ...OPTIONS, type: "jcl" });
     expect(rows.map((row) => row.name)).toEqual(["jcl", "SYKD010.jcl"]);
+    expect(buildTreeRows(ITEMS, { ...OPTIONS, type: "sql" }).map((row) => row.name)).toEqual([
+      "ddl",
+      "CSL501.sql",
+    ]);
   });
 
   it("matches the search against the whole path, ignoring case", () => {

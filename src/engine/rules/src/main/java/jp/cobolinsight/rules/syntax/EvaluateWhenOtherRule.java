@@ -28,7 +28,7 @@ public final class EvaluateWhenOtherRule implements Rule {
     private static final RuleMeta META = RuleMeta.named("R013", "EVALUATE 文の WHEN OTHER 句欠如", "制御フロー")
             .summary("WHEN OTHER 句を持たない EVALUATE 文を検出します。")
             .rationale("どの WHEN 句にも一致しない値は処理を受けずに通り抜け、"
-                    + "想定外の入力が記録も通知もないまま無視されます。")
+                    + "想定外の入力は記録も通知もないまま無視されます。")
             .detection("EVALUATE 文のうち WHEN OTHER 句を持たないものを検出します。"
                     + "IF 文は対象外です。")
             .remedy("WHEN OTHER 句を置き、想定外の値に対する処理（異常扱い・既定値の設定）を"
@@ -46,9 +46,8 @@ public final class EvaluateWhenOtherRule implements Rule {
                     END-EVALUATE.
                     """)
             .severity(Severity.MEDIUM)
-            .commands(Command.LINT, Command.REPORT)
+            .commands(Command.LINT)
             .targets(AssetKind.COBOL)
-            .needs(Needs.SEMANTIC)
             .build();
 
     @Override

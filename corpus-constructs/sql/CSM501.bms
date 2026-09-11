@@ -1,0 +1,47 @@
+*----------------------------------------------------------------*
+* MAPSET CSM501 ／ MAP CSM01                                       *
+* 口座残高更新(CSQ501)・口座一覧照会(CSQ505)の疑似会話で使用する   *
+* マップ。フィールド: KOZANO(口座番号入力)、GAKU(金額入力)、       *
+* KUBUN(増減区分入力)、MSG(メッセージ表示)                         *
+*----------------------------------------------------------------*
+         PRINT NOGEN
+CSM501   DFHMSD TYPE=&SYSPARM,                                         X
+               MODE=INOUT,                                             X
+               LANG=COBOL,                                             X
+               TIOAPFX=YES,                                            X
+               STORAGE=AUTO
+
+CSM01    DFHMDI SIZE=(24,80)
+         DFHMDF POS=(1,26),                                            X
+               LENGTH=20,                                              X
+               ATTRB=(PROT,BRT),                                       X
+               INITIAL='口座残高更新'
+         DFHMDF POS=(3,10),                                            X
+               LENGTH=8,                                               X
+               ATTRB=(PROT,NORM),                                      X
+               INITIAL='口座番号'
+KOZANO   DFHMDF POS=(3,20),                                            X
+               LENGTH=10,                                              X
+               ATTRB=(UNPROT,IC),                                      X
+               PICIN='X(10)'
+         DFHMDF POS=(5,10),                                            X
+               LENGTH=8,                                               X
+               ATTRB=(PROT,NORM),                                      X
+               INITIAL='更新金額'
+GAKU     DFHMDF POS=(5,20),                                            X
+               LENGTH=9,                                               X
+               ATTRB=(UNPROT,NUM),                                     X
+               PICIN='9(09)'
+         DFHMDF POS=(5,45),                                            X
+               LENGTH=8,                                               X
+               ATTRB=(PROT,NORM),                                      X
+               INITIAL='区分1/2'
+KUBUN    DFHMDF POS=(5,55),                                            X
+               LENGTH=1,                                               X
+               ATTRB=(UNPROT,NUM),                                     X
+               PICIN='9(01)'
+MSG      DFHMDF POS=(22,5),                                            X
+               LENGTH=60,                                              X
+               ATTRB=(PROT,BRT)
+         DFHMSD TYPE=FINAL
+         END

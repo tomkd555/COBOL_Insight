@@ -35,12 +35,11 @@ describe("readSettings", () => {
   it("reads the settings out of the versioned wrapper", async () => {
     const stored = JSON.stringify({
       version: 2,
-      settings: { severityThreshold: "medium", copybookPaths: ["C:/cpy"], lastInputDir: "C:/a" },
+      settings: { severityThreshold: "medium", copybookPaths: ["C:/cpy"] },
     });
     const settings = await readSettings(memory({ [PATH]: stored }), PATH);
     expect(settings.severityThreshold).toBe("medium");
     expect(settings.copybookPaths).toEqual(["C:/cpy"]);
-    expect(settings.lastInputDir).toBe("C:/a");
   });
 
   it("drops fields whose type is not what the shape expects", async () => {
@@ -62,7 +61,6 @@ describe("writeSettings", () => {
       defaultEncoding: "Shift_JIS",
       copybookPaths: ["C:/cpy"],
       fixOutDir: "C:/out",
-      lastInputDir: "C:/assets",
       paneSizes: { side: 320, panel: 240 },
       theme: "dark",
     };
@@ -76,5 +74,14 @@ describe("writeSettings", () => {
     const text = fs.files.get(PATH) ?? "";
     expect(JSON.parse(text).version).toBe(APP_SETTINGS_VERSION);
     expect(text.endsWith("\n")).toBe(true);
+  });
+
+  it("merges a partial write over what is already stored, leaving the rest untouched", async () => {
+    const fs = memory();
+    await writeSettings(fs, PATH, { paneSizes: { side: 320, panel: 240 } });
+    await writeSettings(fs, PATH, { severityThreshold: "high" });
+    const settings = await readSettings(fs, PATH);
+    expect(settings.severityThreshold).toBe("high");
+    expect(settings.paneSizes).toEqual({ side: 320, panel: 240 });
   });
 });

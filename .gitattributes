@@ -7,3 +7,7 @@
 *.woff2 -text
 *.wasm -text
 samples/encoding/*_CP93?.cbl -text
+samples-field/encoding/*_CP930.cbl -text
+corpus-constructs/**/*_CP930.cbl -text
+corpus-constructs/**/*_CP930.jcl -text
+corpus-constructs/jcl/CJ513.jcl -text

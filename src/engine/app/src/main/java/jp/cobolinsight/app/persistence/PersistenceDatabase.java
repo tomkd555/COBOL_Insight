@@ -1,5 +1,7 @@
 package jp.cobolinsight.app.persistence;
 
+import org.sqlite.SQLiteConfig;
+
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -54,6 +56,24 @@ public final class PersistenceDatabase implements AutoCloseable {
                 }
                 st.execute("PRAGMA user_version = " + Schema.VERSION);
             }
+        }
+    }
+
+    /**
+     * Opens the database strictly for reading: the file is opened with SQLite's read-only open
+     * flag, so {@link #initializeSchema} never runs and {@code user_version} and every table are
+     * left exactly as they are. A lookup that finds no matching row in a database at an older
+     * schema version simply reports none, the same as an empty database would.
+     */
+    public static PersistenceDatabase openReadOnly(Path databaseFile) {
+        try {
+            SQLiteConfig config = new SQLiteConfig();
+            config.setReadOnly(true);
+            Connection connection = DriverManager.getConnection("jdbc:sqlite:" + databaseFile,
+                    config.toProperties());
+            return new PersistenceDatabase(connection);
+        } catch (SQLException e) {
+            throw new PersistenceException("failed to open database read-only: " + databaseFile, e);
         }
     }
 

@@ -1,0 +1,234 @@
+[
+  {
+    "kind": "BEGIN_DECLARE_SECTION",
+    "startLine": 23,
+    "endLine": 23,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "END_DECLARE_SECTION",
+    "startLine": 33,
+    "endLine": 33,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-SHAIN-REC",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "SHAIN-NO",
+        "mangledName": "HV2"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.SHAIN"
+    ],
+    "startLine": 53,
+    "endLine": 58,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "WS-SHAIN-REC"
+    ],
+    "tableAccess": {
+      "CSQDB.SHAIN": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "SHAIN_NO"
+      },
+      {
+        "column": "SHAIN_MEI"
+      },
+      {
+        "column": "BUSHO_CD"
+      },
+      {
+        "column": "NYUSHA_YMD"
+      },
+      {
+        "column": "SHAIN_NO"
+      }
+    ],
+    "selectList": [
+      "SHAIN_NO",
+      "SHAIN_MEI",
+      "BUSHO_CD",
+      "NYUSHA_YMD"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-KENSU-1",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-SHAIN-REC.BUSHO-CD",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "WS-SHAIN-REC.SHAIN-NO",
+        "mangledName": "HV3"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.SHAIN"
+    ],
+    "startLine": 66,
+    "endLine": 72,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "WS-KENSU-1"
+    ],
+    "tableAccess": {
+      "CSQDB.SHAIN": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "BUSHO_CD"
+      },
+      {
+        "column": "SHAIN_NO"
+      }
+    ],
+    "selectList": [
+      "COUNT(*)"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-KENSU-2",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-BUSHO-CD",
+        "mangledName": "HV2"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.SHAIN"
+    ],
+    "startLine": 83,
+    "endLine": 88,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "WS-KENSU-2"
+    ],
+    "tableAccess": {
+      "CSQDB.SHAIN": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "BUSHO_CD"
+      }
+    ],
+    "selectList": [
+      "COUNT(*)"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-KENSU-3",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-BUSHO-CD",
+        "mangledName": "HV2"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.SHAIN"
+    ],
+    "startLine": 93,
+    "endLine": 98,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "WS-KENSU-3"
+    ],
+    "tableAccess": {
+      "CSQDB.SHAIN": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "BUSHO_CD"
+      }
+    ],
+    "selectList": [
+      "COUNT(*)"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

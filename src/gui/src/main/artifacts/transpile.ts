@@ -17,15 +17,11 @@ export interface GeneratedFileSystem {
 }
 
 const LINE_MAP_QUERY = `
-  SELECT m.id AS id,
-         m.cobol_line_start AS cobolLineStart,
+  SELECT m.cobol_line_start AS cobolLineStart,
          m.cobol_line_end AS cobolLineEnd,
          m.gen_file AS genFile,
          m.gen_line_start AS genLineStart,
-         m.gen_line_end AS genLineEnd,
-         m.kind AS kind,
-         m.note AS note,
-         m.anchor_id AS anchorId
+         m.gen_line_end AS genLineEnd
     FROM LINE_MAP m
     JOIN SOURCE s ON s.id = m.cobol_source_id
    WHERE s.path = $path
@@ -34,20 +30,15 @@ const LINE_MAP_QUERY = `
 
 /**
  * Returns the line correspondence for one COBOL source (SOURCE.path form), ordered by generated file
- * and generated start line. An empty note means nothing was lost; a non-empty one records what could
- * not be translated literally.
+ * and generated start line.
  */
 export function readLineMap(db: QueryableDatabase, cobolRelPath: string): LineMapEntry[] {
   return mapRows(db.exec(LINE_MAP_QUERY, { $path: cobolRelPath }), (row) => ({
-    id: row.int("id", 0),
     cobolLineStart: row.int("cobolLineStart", 0),
     cobolLineEnd: row.int("cobolLineEnd", 0),
     genFile: row.text("genFile", ""),
     genLineStart: row.int("genLineStart", 0),
     genLineEnd: row.int("genLineEnd", 0),
-    kind: row.text("kind", ""),
-    note: row.text("note", ""),
-    anchorId: row.text("anchorId", ""),
   }));
 }
 

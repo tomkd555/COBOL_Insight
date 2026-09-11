@@ -3,7 +3,6 @@ import { text } from "../../i18n/text";
 import type { GraphEdgeDetail, GraphNodeDetail } from "../../model/graphDetail";
 import {
   edgeKindStyles,
-  nodeKindStyles,
   isGraphNodeKind,
   type GraphNodeKind,
   type NodeKindStyle,
@@ -15,8 +14,6 @@ export interface GraphDetailPaneProps {
   theme: ThemeName;
   /** The selected node, or null when nothing is selected. */
   detail: GraphNodeDetail | null;
-  /** How many nodes of each kind the project has; the legend hides a kind with none. */
-  counts: Readonly<Record<GraphNodeKind, number>>;
   /** Opens the asset the node stands for. */
   onOpenAsset: (path: string, line: number | null) => void;
 }
@@ -54,7 +51,7 @@ function shapeMark(shape: NodeKindStyle["shape"]): ReactElement {
 }
 
 /** One node kind's swatch: the cytoscape shape it is drawn with, not a generic square. */
-function NodeSwatch({ style }: { style: NodeKindStyle }): ReactElement {
+export function NodeSwatch({ style }: { style: NodeKindStyle }): ReactElement {
   return (
     <svg
       className="ci-graph__swatch"
@@ -140,28 +137,12 @@ function EdgeTable({
   );
 }
 
-/** The legend: every node kind present in the project, its shape and colour, and every edge kind. */
-function Legend({
-  theme,
-  counts,
-  open,
-}: {
-  theme: ThemeName;
-  counts: Readonly<Record<GraphNodeKind, number>>;
-  open: boolean;
-}): ReactElement {
+/** The legend: every edge kind's colour. Node kinds show their swatch on their own toolbar chip. */
+function Legend({ theme, open }: { theme: ThemeName; open: boolean }): ReactElement {
   return (
     <details key={String(open)} className="ci-graph__legend" open={open} data-testid="graph-legend">
       <summary className="ci-graph__subtitle">{text.graph.legend}</summary>
       <ul className="ci-graph__legend-list">
-        {nodeKindStyles(theme)
-          .filter((style) => counts[style.kind] > 0)
-          .map((style) => (
-            <li key={style.kind}>
-              <NodeSwatch style={style} />
-              {text.graph.nodeKind[style.kind]}
-            </li>
-          ))}
         {edgeKindStyles(theme).map((style) => (
           <li key={style.kind}>
             <span
@@ -181,11 +162,14 @@ function Legend({
 export function GraphDetailPane({
   detail,
   theme,
-  counts,
   onOpenAsset,
 }: GraphDetailPaneProps): ReactElement {
   return (
-    <aside className="ci-graph__detail" aria-label={text.graph.detail} data-testid="graph-detail">
+    <aside
+      className={`ci-graph__detail${detail === null ? " ci-graph__detail--unselected" : ""}`}
+      aria-label={text.graph.detail}
+      data-testid="graph-detail"
+    >
       {detail === null ? null : (
         <>
           <h3 className="ci-graph__detail-title" data-testid="graph-detail-label">
@@ -206,7 +190,7 @@ export function GraphDetailPane({
           <EdgeTable caption={text.graph.outgoing} edges={detail.outgoing} />
         </>
       )}
-      <Legend theme={theme} counts={counts} open={detail === null} />
+      <Legend theme={theme} open={detail === null} />
     </aside>
   );
 }

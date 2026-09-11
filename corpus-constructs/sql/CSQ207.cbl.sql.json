@@ -1,0 +1,335 @@
+[
+  {
+    "kind": "DECLARE_TABLE",
+    "file": "corpus-constructs/sql/CSD201.cpy",
+    "startLine": 9,
+    "endLine": 16,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "declaredTable": "CSQDB.SHOHIN",
+    "declaredColumns": [
+      {
+        "name": "SHOHIN_CD",
+        "type": "CHAR(8)",
+        "nullable": false
+      },
+      {
+        "name": "SHOHIN_MEI",
+        "type": "CHAR(40)",
+        "nullable": false
+      },
+      {
+        "name": "TANKA",
+        "type": "DECIMAL(9, 2)",
+        "nullable": false
+      },
+      {
+        "name": "ZAIKO_SU",
+        "type": "INTEGER",
+        "nullable": false
+      },
+      {
+        "name": "TORIATSUKAI_KBN",
+        "type": "CHAR(1)",
+        "nullable": true
+      },
+      {
+        "name": "KOSHIN_YMD",
+        "type": "CHAR(8)",
+        "nullable": true
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "referencedTables": [
+      "CSQDB.SHOHIN"
+    ],
+    "startLine": 35,
+    "endLine": 43,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-RSV",
+        "forReadOnly": false,
+        "forFetchOnly": true,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": true,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-RSV",
+    "tableAccess": {
+      "CSQDB.SHOHIN": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "SHOHIN_CD"
+      },
+      {
+        "column": "SHOHIN_MEI"
+      },
+      {
+        "column": "ZAIKO_SU"
+      },
+      {
+        "column": "ZAIKO_SU"
+      }
+    ],
+    "selectList": [
+      "SHOHIN_CD",
+      "SHOHIN_MEI",
+      "ZAIKO_SU"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false,
+    "isolation": "RS"
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 44,
+    "endLine": 44,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-RSV",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 49,
+    "endLine": 49,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-RSV",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "SHOHIN-CD",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "SHOHIN-MEI",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "ZAIKO-SU",
+        "mangledName": "HV3"
+      }
+    ],
+    "startLine": 52,
+    "endLine": 55,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-RSV",
+    "intoTargets": [
+      "SHOHIN-CD",
+      "SHOHIN-MEI",
+      "ZAIKO-SU"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "referencedTables": [
+      "CSQDB.SHOHIN"
+    ],
+    "startLine": 67,
+    "endLine": 76,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-RR",
+        "forReadOnly": true,
+        "forFetchOnly": false,
+        "forUpdate": false
+      },
+      "hasFetchFirst": true,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-RR",
+    "tableAccess": {
+      "CSQDB.SHOHIN": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "SHOHIN_CD"
+      },
+      {
+        "column": "SHOHIN_MEI"
+      },
+      {
+        "column": "TANKA"
+      },
+      {
+        "column": "TANKA"
+      }
+    ],
+    "selectList": [
+      "SHOHIN_CD",
+      "SHOHIN_MEI",
+      "TANKA"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": true,
+    "dynamic": false,
+    "isolation": "RR"
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 77,
+    "endLine": 77,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-RR",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 82,
+    "endLine": 82,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-RR",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "SHOHIN-CD",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "SHOHIN-MEI",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "TANKA",
+        "mangledName": "HV3"
+      }
+    ],
+    "startLine": 85,
+    "endLine": 88,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-RR",
+    "intoTargets": [
+      "SHOHIN-CD",
+      "SHOHIN-MEI",
+      "TANKA"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 105,
+    "endLine": 105,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-RSV",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 106,
+    "endLine": 106,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-RR",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

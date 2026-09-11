@@ -1,0 +1,87 @@
+[
+  {
+    "kind": "BEGIN_DECLARE_SECTION",
+    "startLine": 18,
+    "endLine": 18,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "END_DECLARE_SECTION",
+    "startLine": 21,
+    "endLine": 21,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "INSERT",
+    "hostVariables": [
+      {
+        "originalName": "WS-HANBAI-NO",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-HANBAI-MEI",
+        "mangledName": "HV2"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.HANBAI"
+    ],
+    "startLine": 27,
+    "endLine": 33,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "DEGRADED",
+    "diagnostic": "Db2 文法が受け付けませんでした: no viable alternative at input 'INSERT INTO CSQDB.HANBAI (HANBAI_NO, HANBAI_MEI, SEIGYO_BYTE, KANJI_BIKO, UNICODE_BIKO) VALUES (:WS-HANBAI-NO, :WS-HANBAI-MEI, X'0A', G'漢字''",
+    "tableAccess": {
+      "CSQDB.HANBAI": "C"
+    },
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "COMMIT",
+    "startLine": 37,
+    "endLine": 37,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

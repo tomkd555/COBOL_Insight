@@ -50,10 +50,10 @@ export function quickFixActions(
     }
     seen.add(ruleId);
     actions.push({
-      title: text.quickFix.showFix,
+      title: text.problems.showFix,
       kind: "quickfix",
       diagnostics: [marker],
-      command: { id: COMMAND_ID, title: text.quickFix.showFix, arguments: [ruleId] },
+      command: { id: COMMAND_ID, title: text.problems.showFix, arguments: [ruleId] },
     });
   }
   return actions;

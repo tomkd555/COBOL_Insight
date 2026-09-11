@@ -1,0 +1,303 @@
+[
+  {
+    "kind": "BEGIN_DECLARE_SECTION",
+    "startLine": 21,
+    "endLine": 21,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "END_DECLARE_SECTION",
+    "startLine": 30,
+    "endLine": 30,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "EXECUTE_IMMEDIATE",
+    "hostVariables": [
+      {
+        "originalName": "WS-STMT-TEXT",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 51,
+    "endLine": 53,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "tableAccess": {
+      "?": "?"
+    },
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": true
+  },
+  {
+    "kind": "PREPARE",
+    "hostVariables": [
+      {
+        "originalName": "WS-STMT-TEXT",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 69,
+    "endLine": 71,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "tableAccess": {
+      "?": "?"
+    },
+    "statementName": "S1",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": true
+  },
+  {
+    "kind": "EXECUTE",
+    "hostVariables": [
+      {
+        "originalName": "WS-HINMOKU-CD",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 76,
+    "endLine": 78,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "tableAccess": {
+      "?": "?"
+    },
+    "statementName": "S1",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": true
+  },
+  {
+    "kind": "PREPARE",
+    "hostVariables": [
+      {
+        "originalName": "SQLDA",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-SEL-TEXT",
+        "mangledName": "HV2"
+      }
+    ],
+    "startLine": 96,
+    "endLine": 98,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "tableAccess": {
+      "?": "?"
+    },
+    "statementName": "S2",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": true
+  },
+  {
+    "kind": "DESCRIBE",
+    "hostVariables": [
+      {
+        "originalName": "SQLDA",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 102,
+    "endLine": 104,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "statementName": "S2",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "startLine": 108,
+    "endLine": 110,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "C2",
+        "forReadOnly": false,
+        "forFetchOnly": false,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "C2",
+    "statementName": "S2",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "hostVariables": [
+      {
+        "originalName": "WS-ZAIKO-LIMIT",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 112,
+    "endLine": 114,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "C2",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DESCRIBE",
+    "hostVariables": [
+      {
+        "originalName": "SQLDA",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 123,
+    "endLine": 125,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "statementName": "S2",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 133,
+    "endLine": 135,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "C2",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "SQLDA",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 141,
+    "endLine": 143,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "C2",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "ROLLBACK",
+    "startLine": 155,
+    "endLine": 155,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

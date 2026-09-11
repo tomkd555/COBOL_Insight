@@ -13,7 +13,6 @@ import jp.cobolinsight.app.pipeline.Failures;
 import jp.cobolinsight.core.fix.ReparseVerifier;
 import jp.cobolinsight.app.persistence.PersistenceDao;
 import jp.cobolinsight.app.persistence.PersistenceDatabase;
-import jp.cobolinsight.app.persistence.model.EncodingInfoRecord;
 import jp.cobolinsight.app.persistence.model.SourceRecord;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -71,6 +70,9 @@ public class SaveCommand implements Callable<Integer> {
     @Option(names = "--db", paramLabel = "FILE",
             description = "プロジェクトファイル。走査時に記録したコードページを引く")
     Path databaseFile;
+
+    /** The project file's row for the file being saved, once read; empty when there is none. */
+    private Optional<SourceRecord> source;
 
     @Override
     public Integer call() {
@@ -168,19 +170,15 @@ public class SaveCommand implements Callable<Integer> {
     }
 
     /**
-     * The starting point for locating copybooks. If a project file exists, this is the asset
-     * folder recorded at scan time (SOURCE.root); otherwise it is the original file's location.
+     * The starting point for locating copybooks: the asset folder the project file recorded at
+     * scan time (SOURCE.root) for the file being saved. One project file may hold more than one
+     * asset folder, so the row is the one whose root and path name this file — the first row of
+     * the table would send the search to another estate's copybooks. With no project file, or no
+     * row for this file, the file's own folder is the starting point.
      */
     private Path scanRoot(Path target) {
-        if (databaseFile != null && Files.isRegularFile(databaseFile)) {
-            try (PersistenceDatabase database = PersistenceDatabase.open(databaseFile)) {
-                PersistenceDao dao = new PersistenceDao(database.connection());
-                for (SourceRecord source : dao.findAllSources()) {
-                    return Path.of(source.root());
-                }
-            }
-        }
-        return target.getParent();
+        SourceRecord source = sourceOf(target);
+        return source == null ? target.getParent() : Path.of(source.root());
     }
 
     /**
@@ -192,17 +190,32 @@ public class SaveCommand implements Callable<Integer> {
         if (codepage != null) {
             return codepage;
         }
+        SourceRecord source = sourceOf(target);
+        return source == null ? null : source.codepage();
+    }
+
+    /**
+     * The project file's row for the file being saved, read once: the code page and the copybook
+     * search path both come from it, and the file being saved does not change during the run.
+     */
+    private SourceRecord sourceOf(Path target) {
+        if (source == null) {
+            source = Optional.ofNullable(readSource(target));
+        }
+        return source.orElse(null);
+    }
+
+    /** The row matched on root and path; null when there is no project file or no row for it. */
+    private SourceRecord readSource(Path target) {
         if (databaseFile == null || !Files.isRegularFile(databaseFile)) {
             return null;
         }
-        try (PersistenceDatabase database = PersistenceDatabase.open(databaseFile)) {
+        try (PersistenceDatabase database = PersistenceDatabase.openReadOnly(databaseFile)) {
             PersistenceDao dao = new PersistenceDao(database.connection());
             for (SourceRecord source : dao.findAllSources()) {
-                if (!Path.of(source.root()).resolve(source.path()).normalize().equals(target)) {
-                    continue;
+                if (Path.of(source.root()).resolve(source.path()).normalize().equals(target)) {
+                    return source;
                 }
-                Optional<EncodingInfoRecord> encoding = dao.findEncodingInfo(source.id());
-                return encoding.map(EncodingInfoRecord::detectedCharset).orElse(source.codepage());
             }
         }
         return null;

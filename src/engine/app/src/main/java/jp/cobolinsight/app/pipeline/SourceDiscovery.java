@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -80,17 +81,35 @@ public final class SourceDiscovery {
         }
 
         /**
-         * Messages that convey dropped files and reinterpretations to the user. scan writes them into
-         * the summary JSON; lint, sql-lint, translate, and fix write them to standard error. Messages
-         * are gathered here because there is only one entry point for scanning, so there should also
-         * be only one entry point for reporting it.
+         * The directories the walk found copybooks in, in walk order. This is the COPY search path
+         * when the user named none, so that it is the walk, not a folder name, that decides where a
+         * copybook may sit.
+         */
+        public List<Path> copybookDirectories() {
+            Set<Path> parents = new LinkedHashSet<>();
+            for (DiscoveredFile file : filesOf(Set.of(AssetKind.COPYBOOK))) {
+                Path parent = file.absPath().getParent();
+                if (parent != null) {
+                    parents.add(parent);
+                }
+            }
+            return List.copyOf(parents);
+        }
+
+        /**
+         * Messages that convey dropped files and reinterpretations to the user. Every subcommand
+         * writes them to standard error; scan also writes the underlying lists into its summary
+         * JSON. Messages are gathered here because there is only one entry point for scanning, so
+         * there should also be only one entry point for reporting it.
          */
         public List<String> warnings() {
             List<String> messages = new ArrayList<>();
             if (!undecided.isEmpty()) {
                 messages.add(undecided.size() + "件は種別を判別できなかったため対象から外しました。"
                         + "COBOL 本体なら IDENTIFICATION DIVISION、コピー句ならレベル番号で始まる"
-                        + "項目定義、JCL なら // で始まる行、BMS なら DFHMSD を含むか確認してください: "
+                        + "項目定義、JCL なら // で始まる行、BMS なら DFHMSD を含むか確認してください。"
+                        + "SQL スクリプトなら、最初の注記でない行を CREATE や SELECT で始めて、"
+                        + "文の終わりに ; を置いてください: "
                         + String.join(", ", undecided));
             }
             if (!mismatches.isEmpty()) {
@@ -120,6 +139,7 @@ public final class SourceDiscovery {
                 case COBOL -> "COBOL本体";
                 case COPYBOOK -> "コピー句";
                 case JCL -> "JCL";
+                case SQL -> "SQL スクリプト";
             };
         }
     }
@@ -168,8 +188,18 @@ public final class SourceDiscovery {
     private SourceDiscovery() {
     }
 
-    /** Scans the asset folder. Returns an empty result if a nonexistent folder is passed. */
+    /**
+     * Scans the asset folder. Returns an empty result if a nonexistent folder is passed.
+     *
+     * <p>Every call walks the folder again. A walk is not cached across calls: the folder is what
+     * the user is editing, and a scan that answered from a walk taken before their last save would
+     * report the estate they no longer have.
+     */
     public static Result discover(Path inputDir) {
+        return walk(inputDir.toAbsolutePath().normalize());
+    }
+
+    private static Result walk(Path inputDir) {
         Walk walk = new Walk(inputDir);
         walk.walk(inputDir);
         walk.files.sort(Comparator.comparing(DiscoveredFile::relPath));

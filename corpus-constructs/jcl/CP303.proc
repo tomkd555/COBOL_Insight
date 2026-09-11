@@ -1,0 +1,19 @@
+//        PROC PFX=CJ,CYCLE=000000
+//*-------------------------------------------------------------*
+//*  CP303 : catalogued PROC whose PROC statement carries no     *
+//*          name; the effective PROC name is the member name,   *
+//*          CP303, so callers still code EXEC CP303.            *
+//*-------------------------------------------------------------*
+//STEP1    EXEC PGM=CCP003,PARM='&PFX'
+//STEPLIB  DD   DSN=CJ.PROD.LOADLIB,DISP=SHR
+//IN1      DD   DSN=CJT.D&CYCLE..CP303.IN1,DISP=SHR
+//SYSOUT   DD   SYSOUT=*
+//*
+//STEP2    EXEC PGM=CCP004,COND=(0,NE,STEP1)
+//STEPLIB  DD   DSN=CJ.PROD.LOADLIB,DISP=SHR
+//OUT1     DD   DSN=CJW.D&CYCLE..CP303.OUT1,
+//             DISP=(NEW,CATLG,DELETE),
+//             SPACE=(CYL,(2,2),RLSE),
+//             DCB=(RECFM=FB,LRECL=100,BLKSIZE=0)
+//SYSOUT   DD   SYSOUT=*
+//         PEND

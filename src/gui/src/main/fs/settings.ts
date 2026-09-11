@@ -19,15 +19,19 @@ export async function readSettings(fs: SettingsFileSystem, path: string): Promis
   return readJsonFile(fs, path, normalizeAppSettings, emptyAppSettings);
 }
 
-/** Writes the settings. */
+/**
+ * Writes the settings, merged shallowly over what is already stored: a caller sends only the keys
+ * it owns, and every other key (another screen's, or a key it does not know about) survives.
+ */
 export async function writeSettings(
   fs: SettingsFileSystem,
   path: string,
-  settings: AppSettings,
+  settings: Partial<AppSettings>,
 ): Promise<void> {
+  const existing = await readSettings(fs, path);
   const file: AppSettingsFile = {
     version: APP_SETTINGS_VERSION,
-    settings: normalizeAppSettings(settings),
+    settings: normalizeAppSettings({ ...existing, ...settings }),
   };
   await writeJsonFile(fs, path, file);
 }

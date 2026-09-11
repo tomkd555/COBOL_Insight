@@ -9,9 +9,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Renders the combined report's HTML and text formatting. Assembles the combined results of
- * scan/lint/sql-lint/call-graph into four sections: "asset inventory", "finding list (scan+lint)",
- * "call-graph summary" and "SQL findings".
+ * Renders the combined report's HTML and text formatting. Assembles the combined results of scan
+ * and lint into four sections: "asset inventory", "finding list (scan+lint)", "call-graph summary"
+ * and "SQL findings".
  */
 final class ReportRenderer {
 
@@ -22,10 +22,13 @@ final class ReportRenderer {
 
     static String toText(List<AssetEntry> inventory, List<Finding> scanFindings,
             List<Finding> lintFindings, List<Finding> sqlAdvice, CallGraphSummary callGraph,
-            int exitCode) {
+            int exitCode, List<String> scope) {
         StringBuilder sb = new StringBuilder();
         sb.append(TITLE).append('\n');
         sb.append("=".repeat(40)).append("\n\n");
+        if (!scope.isEmpty()) {
+            sb.append(scopeNote(scope)).append("\n\n");
+        }
 
         sb.append("1. 資産インベントリ (").append(inventory.size()).append("件)\n");
         for (AssetEntry asset : inventory) {
@@ -86,8 +89,19 @@ final class ReportRenderer {
         return sb.toString();
     }
 
+    /**
+     * What the lint behind this report covered. A scoped lint writes its scopes into the SARIF, and
+     * without this line the reader takes the findings of one folder for those of the whole estate —
+     * the asset inventory beside them is the whole folder either way.
+     */
+    private static String scopeNote(List<String> scope) {
+        return "この結果の指摘は " + String.join("、", scope)
+                + " の範囲だけを解析したものです。資産フォルダ全体の指摘ではありません。";
+    }
+
     static String toHtml(List<AssetEntry> inventory, List<Finding> scanFindings,
-            List<Finding> lintFindings, List<Finding> sqlAdvice, CallGraphSummary callGraph) {
+            List<Finding> lintFindings, List<Finding> sqlAdvice, CallGraphSummary callGraph,
+            List<String> scope) {
         StringBuilder sb = new StringBuilder();
         sb.append("<!DOCTYPE html>\n");
         sb.append("<html lang=\"ja\">\n<head>\n<meta charset=\"UTF-8\">\n");
@@ -95,6 +109,9 @@ final class ReportRenderer {
         sb.append("<style>\n").append(css()).append("</style>\n");
         sb.append("</head>\n<body>\n");
         sb.append("<h1>").append(escape(TITLE)).append("</h1>\n");
+        if (!scope.isEmpty()) {
+            sb.append("<p class=\"scope\">").append(escape(scopeNote(scope))).append("</p>\n");
+        }
 
         sb.append("<h2>1. 資産インベントリ (").append(inventory.size()).append("件)</h2>\n");
         sb.append("<table>\n<thead><tr><th>パス</th><th>種別</th><th>コードページ</th>"
@@ -167,6 +184,7 @@ final class ReportRenderer {
                 td.lv-warning { color: #a15c00; font-weight: bold; }
                 td.lv-note { color: #555; }
                 p.none { color: #777; }
+                p.scope { color: #a15c00; }
                 """;
     }
 

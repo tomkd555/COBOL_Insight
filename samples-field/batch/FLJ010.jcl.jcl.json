@@ -1,0 +1,579 @@
+[
+  {
+    "jobName": "FLJ010",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "FL0001",
+      "PROGRAMMER": "FL 日次入金消込",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID",
+      "REGION": "0M"
+    },
+    "jcllib": [
+      "FL.PROD.PROCLIB"
+    ],
+    "joblib": [
+      {
+        "ddName": "JOBLIB",
+        "line": 15,
+        "datasetName": "FL.PROD.LOADLIB",
+        "dataset": {
+          "name": "FL.PROD.LOADLIB"
+        },
+        "dispositionText": "SHR",
+        "disposition": {
+          "status": "SHR",
+          "raw": "SHR"
+        },
+        "parameters": {
+          "DSN": "FL.PROD.LOADLIB",
+          "DISP": "SHR"
+        }
+      }
+    ],
+    "jes2Cards": [
+      "/*JOBPARM LINES=9999"
+    ],
+    "members": [
+      "FLP010.proc"
+    ],
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IDCAMS",
+        "line": 19,
+        "utility": {
+          "datasetUses": [
+            {
+              "dataset": "FLW.D250901.NYUKIN.SORTED",
+              "access": "DELETE"
+            }
+          ],
+          "ddRoles": {
+            "SYSPRINT": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSPRINT",
+            "line": 20,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 21,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  DELETE FLW.D250901.NYUKIN.SORTED",
+              "  SET MAXCC=0"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PGM",
+        "target": "SORT",
+        "line": 27,
+        "condition": "COND=(4,LT)",
+        "parameters": {
+          "COND": "(4,LT)"
+        },
+        "utility": {
+          "ddRoles": {
+            "SORTIN": "READ",
+            "SORTOUT": "WRITE",
+            "SYSOUT": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SORTIN",
+            "line": 28,
+            "datasetName": "FLT.D250901.NYUKIN.DAILY",
+            "dataset": {
+              "name": "FLT.D250901.NYUKIN.DAILY"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FLT.D250901.NYUKIN.DAILY",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SORTOUT",
+            "line": 29,
+            "datasetName": "FLW.D250901.NYUKIN.SORTED",
+            "dataset": {
+              "name": "FLW.D250901.NYUKIN.SORTED"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.D250901.NYUKIN.SORTED",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(10,5),RLSE)",
+              "DCB": "(RECFM=VB,LRECL=266,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "SORTWK01",
+            "line": 33,
+            "parameters": {
+              "UNIT": "SYSDA",
+              "SPACE": "(CYL,(10,5))"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 34,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 35,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  SORT FIELDS=(1,10,CH,A)"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "STEP030",
+        "execKind": "PROC",
+        "target": "FLP010",
+        "line": 40,
+        "condition": "COND=(4,LT)",
+        "parameters": {
+          "CYCLE": "250901",
+          "HLQ": "FLW",
+          "COND": "(4,LT)"
+        }
+      },
+      {
+        "name": "STEP030.STEP1",
+        "execKind": "PGM",
+        "target": "FLB010",
+        "line": 10,
+        "file": "FLP010.proc",
+        "condition": "COND=(4,LT)",
+        "procStepName": "STEP1",
+        "parameters": {
+          "COND": "(4,LT)"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "NYUKIN": "READ",
+            "NYUOUT": "WRITE",
+            "SYSOUT": "WRITE",
+            "SYSPRINT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 11,
+            "file": "FLP010.proc",
+            "datasetName": "FL.PROD.LOADLIB",
+            "dataset": {
+              "name": "FL.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FL.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "NYUKIN",
+            "line": 41,
+            "datasetName": "FLW.D250901.NYUKIN.SORTED",
+            "dataset": {
+              "name": "FLW.D250901.NYUKIN.SORTED"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FLW.D250901.NYUKIN.SORTED",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "NYUOUT",
+            "line": 13,
+            "file": "FLP010.proc",
+            "datasetName": "FLW.D250901.NYUKIN.HENSHU",
+            "dataset": {
+              "name": "FLW.D250901.NYUKIN.HENSHU"
+            },
+            "dispositionText": "(,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.D250901.NYUKIN.HENSHU",
+              "DISP": "(,CATLG,DELETE)",
+              "SPACE": "(CYL,(10,5),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=120,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "SORTWK01",
+            "line": 17,
+            "file": "FLP010.proc",
+            "parameters": {
+              "UNIT": "SYSDA",
+              "SPACE": "(CYL,(10,5))"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 18,
+            "file": "FLP010.proc",
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 19,
+            "file": "FLP010.proc",
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP030.STEP2",
+        "execKind": "PGM",
+        "target": "FLB040",
+        "line": 22,
+        "file": "FLP010.proc",
+        "condition": "COND=(4,LT)",
+        "procStepName": "STEP2",
+        "parameters": {
+          "COND": "(4,LT)"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "KEIYAKU": "READ",
+            "TOKLIST": "WRITE",
+            "SYSOUT": "WRITE",
+            "SYSPRINT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 23,
+            "file": "FLP010.proc",
+            "datasetName": "FL.PROD.LOADLIB",
+            "dataset": {
+              "name": "FL.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FL.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "KEIYAKU",
+            "line": 24,
+            "file": "FLP010.proc",
+            "datasetName": "FLM.KEIYAKU.MASTER",
+            "dataset": {
+              "name": "FLM.KEIYAKU.MASTER"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FLM.KEIYAKU.MASTER",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "TOKLIST",
+            "line": 25,
+            "file": "FLP010.proc",
+            "datasetName": "FLW.D250901.TOKUSOKU.LIST",
+            "dataset": {
+              "name": "FLW.D250901.TOKUSOKU.LIST"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.D250901.TOKUSOKU.LIST",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(2,1),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=132,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 29,
+            "file": "FLP010.proc",
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 30,
+            "file": "FLP010.proc",
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP035",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 45,
+        "condition": "IF (STEP030.RC > 4) THEN",
+        "utility": {
+          "ddRoles": {
+            "ERRFLAG": "CREATE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "ERRFLAG",
+            "line": 46,
+            "datasetName": "FLW.D250901.NYUKIN.ERRFLAG",
+            "dataset": {
+              "name": "FLW.D250901.NYUKIN.ERRFLAG"
+            },
+            "dispositionText": "(NEW,CATLG)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "raw": "(NEW,CATLG)"
+            },
+            "parameters": {
+              "DSN": "FLW.D250901.NYUKIN.ERRFLAG",
+              "DISP": "(NEW,CATLG)",
+              "SPACE": "(TRK,(1,1))",
+              "DCB": "(RECFM=FB,LRECL=80,BLKSIZE=0)"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP040",
+        "execKind": "PGM",
+        "target": "IKJEFT01",
+        "line": 52,
+        "condition": "IF (STEP030.RC > 4) ELSE",
+        "parameters": {
+          "DYNAMNBR": "20"
+        },
+        "utility": {
+          "programRuns": [
+            {
+              "program": "FLB020",
+              "plan": "FLPLAN1",
+              "library": "FL.PROD.LOADLIB"
+            }
+          ],
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "SYSTSPRT": "WRITE",
+            "SYSPRINT": "WRITE",
+            "SYSUDUMP": "WRITE",
+            "SYSTSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 53,
+            "datasetName": "FL.PROD.LOADLIB",
+            "dataset": {
+              "name": "FL.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FL.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSTSPRT",
+            "line": 54,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 55,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSUDUMP",
+            "line": 56,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSTSIN",
+            "line": 57,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  DSN SYSTEM(DB2P)",
+              "  RUN PROGRAM(FLB020) PLAN(FLPLAN1) LIB('FL.PROD.LOADLIB')",
+              "  END"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "STEP050",
+        "execKind": "PGM",
+        "target": "IEBGENER",
+        "line": 65,
+        "utility": {
+          "ddRoles": {
+            "SYSPRINT": "WRITE",
+            "SYSUT1": "READ",
+            "SYSUT2": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSPRINT",
+            "line": 66,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSUT1",
+            "line": 67,
+            "datasetName": "FLW.D250901.NYUKIN.SORTED",
+            "dataset": {
+              "name": "FLW.D250901.NYUKIN.SORTED"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FLW.D250901.NYUKIN.SORTED",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSUT2",
+            "line": 68,
+            "datasetName": "FLT.NYUKIN.HISTORY(+1)",
+            "dataset": {
+              "name": "FLT.NYUKIN.HISTORY",
+              "gdgRelative": 1
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLT.NYUKIN.HISTORY(+1)",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(10,5),RLSE)",
+              "DCB": "(RECFM=VB,LRECL=266,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "SYSUT3",
+            "line": 72,
+            "parameters": {
+              "UNIT": "SYSDA",
+              "SPACE": "(CYL,(1,1))"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 73,
+            "dummy": true,
+            "parameters": {
+              "DUMMY": ""
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

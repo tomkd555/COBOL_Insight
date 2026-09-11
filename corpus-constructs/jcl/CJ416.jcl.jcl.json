@@ -1,0 +1,70 @@
+[
+  {
+    "jobName": "CJ416",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "IEFBR14 DD LIFECYCLE",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 8,
+        "utility": {
+          "ddRoles": {
+            "NEWDS": "CREATE",
+            "OLDDS": "DELETE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "NEWDS",
+            "line": 9,
+            "datasetName": "CJT.D260910.WORK.NEWFILE",
+            "dataset": {
+              "name": "CJT.D260910.WORK.NEWFILE"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.WORK.NEWFILE",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(1,1),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=80,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "OLDDS",
+            "line": 13,
+            "datasetName": "CJT.D260909.WORK.OLDFILE",
+            "dataset": {
+              "name": "CJT.D260909.WORK.OLDFILE"
+            },
+            "dispositionText": "(MOD,DELETE,DELETE)",
+            "disposition": {
+              "status": "MOD",
+              "normal": "DELETE",
+              "abnormal": "DELETE",
+              "raw": "(MOD,DELETE,DELETE)"
+            },
+            "parameters": {
+              "DSN": "CJT.D260909.WORK.OLDFILE",
+              "DISP": "(MOD,DELETE,DELETE)"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

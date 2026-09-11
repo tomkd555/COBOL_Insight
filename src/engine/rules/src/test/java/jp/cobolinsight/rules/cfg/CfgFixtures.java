@@ -36,7 +36,7 @@ import java.util.stream.Stream;
  * and bundling the results with {@link ControlFlowGraphs}
  * (a pre-normalization CFG; GotoNormalizer is not applied).
  */
-final class CfgFixtures {
+public final class CfgFixtures {
 
     static final Path SAMPLES = Path.of("..", "..", "..", "samples").toAbsolutePath().normalize();
 
@@ -46,7 +46,8 @@ final class CfgFixtures {
     }
 
     /** Writes a synthetic fixture text to a file and parses it with the real parser. */
-    static CobolSemanticModel parse(Path dir, String fileName, String text, Path... copybookDirs) {
+    public static CobolSemanticModel parse(Path dir, String fileName, String text,
+            Path... copybookDirs) {
         Path file = dir.resolve(fileName);
         try {
             Files.writeString(file, text, StandardCharsets.UTF_8);
@@ -60,7 +61,8 @@ final class CfgFixtures {
     }
 
     /** Builds a CONTROL_FLOW-stage AnalysisContext from models and texts, with the CFG built and attached. */
-    static AnalysisContext context(List<CobolSemanticModel> models, Map<String, String> texts) {
+    public static AnalysisContext context(List<CobolSemanticModel> models,
+            Map<String, String> texts) {
         return context(models, texts, List.of(), List.of());
     }
 

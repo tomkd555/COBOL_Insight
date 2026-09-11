@@ -321,7 +321,7 @@ export function SourceEditor({ path, line, onShowFix }: SourceEditorProps): Reac
       findings
         .filter((finding) => finding.file === path)
         .map((finding) => {
-          const severity = ruleOf(project.rules, finding.ruleId).severity;
+          const severity = ruleOf(project.rules, finding.ruleId, finding.level).severity;
           return {
             range: new monaco.Range(finding.startLine, 1, finding.startLine, 1),
             options: {

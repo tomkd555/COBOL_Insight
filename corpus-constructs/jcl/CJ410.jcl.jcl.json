@@ -1,0 +1,99 @@
+[
+  {
+    "jobName": "CJ410",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "IDCAMS DEFINE CLUSTER",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IDCAMS",
+        "line": 11,
+        "utility": {
+          "datasetUses": [
+            {
+              "dataset": "CJV.KEIYAKU.CLUSTER",
+              "access": "CREATE"
+            },
+            {
+              "dataset": "CJV.KEIYAKU.DATA",
+              "access": "CREATE"
+            },
+            {
+              "dataset": "CJV.KEIYAKU.INDEX",
+              "access": "CREATE"
+            },
+            {
+              "dataset": "CJV.KEIYAKU.AIX",
+              "access": "CREATE"
+            },
+            {
+              "dataset": "CJV.KEIYAKU.AIX.DATA",
+              "access": "CREATE"
+            },
+            {
+              "dataset": "CJV.KEIYAKU.AIX.INDEX",
+              "access": "CREATE"
+            },
+            {
+              "dataset": "CJV.KEIYAKU.PATH",
+              "access": "CREATE"
+            }
+          ],
+          "ddRoles": {
+            "SYSPRINT": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSPRINT",
+            "line": 12,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 13,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  DEFINE CLUSTER (NAME(CJV.KEIYAKU.CLUSTER)                  -",
+              "                  INDEXED                                    -",
+              "                  KEYS(8 0)                                  -",
+              "                  RECORDSIZE(100 100)                        -",
+              "                  SHAREOPTIONS(2 3)                           -",
+              "                  VOLUMES(SYSDA1))                            -",
+              "         DATA (NAME(CJV.KEIYAKU.DATA)                        -",
+              "               CYLINDERS(10 5))                               -",
+              "         INDEX (NAME(CJV.KEIYAKU.INDEX)                      -",
+              "                CYLINDERS(1 1))",
+              "  DEFINE AIX (NAME(CJV.KEIYAKU.AIX)                           -",
+              "              RELATE(CJV.KEIYAKU.CLUSTER)                     -",
+              "              KEYS(5 8)                                       -",
+              "              NONUNIQUEKEY                                    -",
+              "              UPGRADE                                         -",
+              "              RECORDSIZE(20 20)                               -",
+              "              CYLINDERS(3 2))                                 -",
+              "         DATA (NAME(CJV.KEIYAKU.AIX.DATA))                    -",
+              "         INDEX (NAME(CJV.KEIYAKU.AIX.INDEX))",
+              "  DEFINE PATH (NAME(CJV.KEIYAKU.PATH)                          -",
+              "               PATHENTRY(CJV.KEIYAKU.AIX)                      -",
+              "               UPDATE)"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

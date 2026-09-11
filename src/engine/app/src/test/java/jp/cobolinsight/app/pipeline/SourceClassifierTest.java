@@ -143,6 +143,169 @@ class SourceClassifierTest {
         assertFalse(verdict.binary(), "テキストである以上バイナリ判定にはしないこと");
     }
 
+    /**
+     * A DDL member. The banner above the first statement is written with {@code --}, which is a
+     * comment and must not be read as the first significant line.
+     */
+    @Test
+    void ddlIsRecognizedAfterDashComments() {
+        byte[] content = utf8("""
+                -- 口座マスタ。
+                CREATE TABLE CSDB.CSQKOZA
+                    ( KOZA_NO   CHAR(10) NOT NULL,
+                      PRIMARY KEY (KOZA_NO)
+                    );
+                """);
+        assertEquals(AssetKind.SQL, kindOf(content));
+    }
+
+    /**
+     * The same member with a {@code /* *}{@code /} banner. The continuation lines of the banner are
+     * comment too, so the first significant line is the statement under it.
+     */
+    @Test
+    void ddlIsRecognizedAfterAMultiLineBlockComment() {
+        byte[] content = utf8("""
+                /* 口座マスタを作る
+                   2026-09 改訂 */
+                CREATE TABLE CSDB.CSQKOZA
+                    ( KOZA_NO   CHAR(10) NOT NULL,
+                      PRIMARY KEY (KOZA_NO)
+                    );
+                """);
+        assertEquals(AssetKind.SQL, kindOf(content));
+    }
+
+    /** A SPUFI member: DML in a card image, its sequence number in columns 73-80. */
+    @Test
+    void spufiInputIsRecognized() {
+        byte[] content = utf8(String.join("\n",
+                padded("-- 件数を数える", "00000100"),
+                padded("SELECT COUNT(*)", "00000200"),
+                padded("  FROM CSDB.CSQKOZA;", "00000300"),
+                ""));
+        assertEquals(AssetKind.SQL, kindOf(content));
+    }
+
+    /** One card image: the text in columns 1-72 and the sequence number in 73-80. */
+    private static String padded(String code, String sequence) {
+        return code + " ".repeat(72 - code.length()) + sequence;
+    }
+
+    /**
+     * Content decides, so a file carrying a COBOL main body is COBOL however its name ends. The
+     * extension only names the candidate; {@link SourceDiscovery} reports the disagreement.
+     */
+    @Test
+    void cobolInsideAnSqlFileStaysCobol() {
+        byte[] content = utf8("""
+                       IDENTIFICATION DIVISION.
+                       PROGRAM-ID.  SYKSQL1.
+                       PROCEDURE DIVISION.
+                       MAIN-RTN.
+                           GOBACK.
+                """);
+        assertEquals(AssetKind.COBOL, kindOf(content));
+    }
+
+    /** The same for JCL: its // statement decides before the end of the file is reached. */
+    @Test
+    void jclInsideAnSqlFileStaysJcl() {
+        byte[] content = utf8("""
+                //CSLD010 JOB (ACCT),'DDL',CLASS=A
+                //STEP010  EXEC PGM=IKJEFT01
+                //SYSTSIN  DD *
+                  DSN SYSTEM(DB2P)
+                  RUN PROGRAM(DSNTEP2)
+                /*
+                """);
+        assertEquals(AssetKind.JCL, kindOf(content));
+    }
+
+    /**
+     * A COBOL procedure fragment whose first statement is a verb that is an SQL keyword too must
+     * not pass as an SQL script. SET, CALL, DELETE and MERGE are verbs of both languages.
+     */
+    @Test
+    void cobolVerbSharedWithSqlDoesNotMakeAScript() {
+        byte[] content = utf8("""
+                           SET WS-FLAG TO TRUE
+                           CALL 'SYK002' USING WS-AREA
+                """);
+        SourceClassifier.Verdict verdict = SourceClassifier.classify(content);
+        assertFalse(verdict.decided(), "COBOL の手続き部の断片を SQL と読まないこと");
+    }
+
+    /**
+     * The same fragment written from column 1, where a script writes its statements. The keyword
+     * alone does not decide it: the file also has to end a statement somewhere, and this one never
+     * does.
+     */
+    @Test
+    void cobolFragmentInColumnOneDoesNotMakeAScript() {
+        byte[] content = utf8("""
+                SET WS-FLAG TO TRUE
+                CALL 'SYK002' USING WS-AREA
+                """);
+        assertFalse(SourceClassifier.classify(content).decided(),
+                "終端子のない断片を SQL と読まないこと");
+    }
+
+    /** An IDCAMS control card member opens with DELETE or SET and ends no statement. */
+    @Test
+    void idcamsControlCardsAreNotAScript() {
+        byte[] content = utf8("""
+                 DELETE FLW.SYKT.ORDER.DAILY
+                 SET MAXCC = 0
+                 DEFINE CLUSTER (NAME(FLW.SYKT.ORDER.DAILY) -
+                        INDEXED KEYS(8 0))
+                """);
+        assertFalse(SourceClassifier.classify(content).decided(),
+                "IDCAMS の制御文を SQL と読まないこと");
+    }
+
+    /** A batch script opens with SET as well, and its extension names no kind either. */
+    @Test
+    void aBatchScriptIsNotAScript() {
+        byte[] content = utf8("""
+                SET DSN=SYKT.ORDER.DAILY
+                ECHO %DSN%
+                """);
+        assertFalse(SourceClassifier.classify(content).decided(),
+                "バッチファイルを SQL と読まないこと");
+    }
+
+    /** A query opening with a common table expression is a script like any other. */
+    @Test
+    void aScriptOpeningWithWithIsRecognized() {
+        byte[] content = utf8("""
+                WITH KOZA (KOZA_NO, ZANDAKA) AS
+                  ( SELECT KOZA_NO, ZANDAKA FROM CSDB.CSQKOZA )
+                SELECT KOZA_NO FROM KOZA;
+                """);
+        assertEquals(AssetKind.SQL, kindOf(content));
+    }
+
+    /** A byte order mark stands in front of the first keyword and must not hide it. */
+    @Test
+    void aByteOrderMarkDoesNotHideTheFirstStatement() {
+        byte[] marked = utf8("﻿CREATE TABLE CSDB.CSQKOZA ( KOZA_NO CHAR(10) NOT NULL );\n");
+        assertEquals(AssetKind.SQL, kindOf(marked));
+    }
+
+    /** A script that names another terminator ends its statements with that one, not with a ;. */
+    @Test
+    void aTerminatorDirectiveCountsAsEndingAStatement() {
+        byte[] content = utf8("""
+                --#SET TERMINATOR @
+                CREATE PROCEDURE CSDB.P LANGUAGE SQL
+                    BEGIN
+                        UPDATE CSDB.CSQKOZA SET ZANDAKA = 0;
+                    END@
+                """);
+        assertEquals(AssetKind.SQL, kindOf(content));
+    }
+
     @Test
     void nulByteMarksTheFileAsBinary() {
         byte[] content = new byte[] {'I', 'D', ' ', 'D', 'I', 'V', 0, 'X'};

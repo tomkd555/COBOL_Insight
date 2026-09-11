@@ -4,8 +4,8 @@ import type { EngineOutputs } from "../../shared/ipc";
  * Extracts the summary JSON from the engine's stdout.
  *
  * The Che4z LSP writes logback status lines to stdout, so the summary is defined as the last line
- * that parses as a JSON object. With `call-graph` and no output file, the graph JSON itself occupies
- * that position. When the result went to a file instead, there is no JSON line and this returns null.
+ * that parses as a JSON object. A subcommand whose result went to a file instead writes no JSON
+ * line, and this returns null.
  */
 export function extractSummaryJson(stdout: string): Record<string, unknown> | null {
   const lines = stdout.split(/\r?\n/);

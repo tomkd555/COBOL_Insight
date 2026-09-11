@@ -1,0 +1,11 @@
+//CPSAS    PROC LIB=CJT.PROD.SASLIB
+//*-------------------------------------------------------------*
+//*  CPSAS : catalogued PROC that runs a SAS batch step.         *
+//*          The caller supplies the DATA/PROC source by         *
+//*          overriding SASSTEP.SYSIN.                           *
+//*-------------------------------------------------------------*
+//SASSTEP  EXEC PGM=SAS,REGION=4096K
+//SASLIB   DD   DSN=SAS.V9.SASLIB,DISP=SHR
+//WORK     DD   UNIT=SYSDA,SPACE=(CYL,(5,5))
+//KEIYAKU  DD   DSN=&LIB..KEIYAKU.MASTER,DISP=SHR
+//SYSPRINT DD   SYSOUT=*

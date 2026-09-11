@@ -1,0 +1,471 @@
+[
+  {
+    "kind": "DECLARE_TABLE",
+    "startLine": 18,
+    "endLine": 24,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "declaredTable": "CSQDB.HINMOKU_LOG",
+    "declaredColumns": [
+      {
+        "name": "HINMOKU_CD",
+        "type": "CHAR(8)",
+        "nullable": false
+      },
+      {
+        "name": "HINMOKU_MEI",
+        "type": "VARCHAR(40)",
+        "nullable": false
+      },
+      {
+        "name": "TANKA",
+        "type": "DECIMAL(9, 2)",
+        "nullable": false
+      },
+      {
+        "name": "KOSHIN_YMD",
+        "type": "CHAR(8)",
+        "nullable": true
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_TABLE",
+    "startLine": 26,
+    "endLine": 31,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "declaredTable": "CSQDB.HINMOKU_BULK",
+    "declaredColumns": [
+      {
+        "name": "HINMOKU_CD",
+        "type": "CHAR(8)",
+        "nullable": false
+      },
+      {
+        "name": "TANKA",
+        "type": "DECIMAL(9, 2)",
+        "nullable": false
+      },
+      {
+        "name": "ZAIKO_SU",
+        "type": "INTEGER",
+        "nullable": false
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "BEGIN_DECLARE_SECTION",
+    "startLine": 33,
+    "endLine": 33,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "END_DECLARE_SECTION",
+    "startLine": 43,
+    "endLine": 43,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_TABLE",
+    "file": "corpus-constructs/sql/CSD301.cpy",
+    "startLine": 16,
+    "endLine": 23,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "declaredTable": "CSQDB.HINMOKU",
+    "declaredColumns": [
+      {
+        "name": "HINMOKU_CD",
+        "type": "CHAR(8)",
+        "nullable": false
+      },
+      {
+        "name": "HINMOKU_MEI",
+        "type": "VARCHAR(40)",
+        "nullable": false
+      },
+      {
+        "name": "TANKA",
+        "type": "DECIMAL(9, 2)",
+        "nullable": false
+      },
+      {
+        "name": "ZAIKO_SU",
+        "type": "INTEGER",
+        "nullable": false
+      },
+      {
+        "name": "BIKO",
+        "type": "VARCHAR(100)",
+        "nullable": true
+      },
+      {
+        "name": "KOSHIN_YMD",
+        "type": "CHAR(8)",
+        "nullable": true
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "HINMOKU-CD",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "HINMOKU-MEI",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "TANKA",
+        "mangledName": "HV3"
+      },
+      {
+        "originalName": "ZAIKO-SU",
+        "mangledName": "HV4"
+      },
+      {
+        "originalName": "BIKO",
+        "mangledName": "HV5",
+        "indicatorName": "WS-BIKO-IND"
+      },
+      {
+        "originalName": "KOSHIN-YMD",
+        "mangledName": "HV6",
+        "indicatorName": "WS-KOSHIN-YMD-IND"
+      },
+      {
+        "originalName": "WS-HINMOKU-CD",
+        "mangledName": "HV7"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.HINMOKU"
+    ],
+    "startLine": 58,
+    "endLine": 67,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": true,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "HINMOKU-CD",
+      "HINMOKU-MEI",
+      "TANKA",
+      "ZAIKO-SU",
+      "BIKO",
+      "KOSHIN-YMD"
+    ],
+    "tableAccess": {
+      "CSQDB.HINMOKU": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "HINMOKU_CD"
+      },
+      {
+        "column": "HINMOKU_MEI"
+      },
+      {
+        "column": "TANKA"
+      },
+      {
+        "column": "ZAIKO_SU"
+      },
+      {
+        "column": "BIKO"
+      },
+      {
+        "column": "KOSHIN_YMD"
+      },
+      {
+        "column": "HINMOKU_CD"
+      }
+    ],
+    "selectList": [
+      "HINMOKU_CD",
+      "HINMOKU_MEI",
+      "TANKA",
+      "ZAIKO_SU",
+      "BIKO",
+      "KOSHIN_YMD"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "INSERT",
+    "hostVariables": [
+      {
+        "originalName": "HINMOKU-CD",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "HINMOKU-MEI",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "TANKA",
+        "mangledName": "HV3"
+      },
+      {
+        "originalName": "ZAIKO-SU",
+        "mangledName": "HV4"
+      },
+      {
+        "originalName": "BIKO",
+        "mangledName": "HV5",
+        "indicatorName": "WS-BIKO-IND"
+      },
+      {
+        "originalName": "KOSHIN-YMD",
+        "mangledName": "HV6",
+        "indicatorName": "WS-KOSHIN-YMD-IND"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.HINMOKU"
+    ],
+    "startLine": 83,
+    "endLine": 90,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "tableAccess": {
+      "CSQDB.HINMOKU": "C"
+    },
+    "columnRefs": [
+      {
+        "column": "HINMOKU_CD"
+      },
+      {
+        "column": "HINMOKU_MEI"
+      },
+      {
+        "column": "TANKA"
+      },
+      {
+        "column": "ZAIKO_SU"
+      },
+      {
+        "column": "BIKO"
+      },
+      {
+        "column": "KOSHIN_YMD"
+      }
+    ],
+    "insertColumns": [
+      "HINMOKU_CD",
+      "HINMOKU_MEI",
+      "TANKA",
+      "ZAIKO_SU",
+      "BIKO",
+      "KOSHIN_YMD"
+    ],
+    "insertValues": [
+      ":HINMOKU-CD",
+      ":HINMOKU-MEI",
+      ":TANKA",
+      ":ZAIKO-SU",
+      ":BIKO :WS-BIKO-IND",
+      ":KOSHIN-YMD :WS-KOSHIN-YMD-IND"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "INSERT",
+    "hostVariables": [
+      {
+        "originalName": "WS-HINMOKU-CD",
+        "mangledName": "HV1"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.HINMOKU_LOG",
+      "CSQDB.HINMOKU"
+    ],
+    "startLine": 97,
+    "endLine": 103,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "tableAccess": {
+      "CSQDB.HINMOKU_LOG": "C",
+      "CSQDB.HINMOKU": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "HINMOKU_CD"
+      },
+      {
+        "column": "HINMOKU_MEI"
+      },
+      {
+        "column": "TANKA"
+      },
+      {
+        "column": "KOSHIN_YMD"
+      },
+      {
+        "column": "HINMOKU_CD"
+      },
+      {
+        "column": "HINMOKU_MEI"
+      },
+      {
+        "column": "TANKA"
+      },
+      {
+        "column": "KOSHIN_YMD"
+      },
+      {
+        "column": "HINMOKU_CD"
+      }
+    ],
+    "selectList": [
+      "HINMOKU_CD",
+      "HINMOKU_MEI",
+      "TANKA",
+      "KOSHIN_YMD"
+    ],
+    "insertColumns": [
+      "HINMOKU_CD",
+      "HINMOKU_MEI",
+      "TANKA",
+      "KOSHIN_YMD"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "INSERT",
+    "hostVariables": [
+      {
+        "originalName": "WS-BULK-CD",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-BULK-TANKA",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "WS-BULK-ZAIKO",
+        "mangledName": "HV3"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.HINMOKU_BULK"
+    ],
+    "startLine": 119,
+    "endLine": 124,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "DEGRADED",
+    "diagnostic": "Db2 文法が受け付けませんでした: no viable alternative at input 'INSERT INTO CSQDB.HINMOKU_BULK (HINMOKU_CD, TANKA, ZAIKO_SU) VALUES (:WS-BULK-CD, :WS-BULK-TANKA, :WS-BULK-ZAIKO) FOR 3 ROWS'",
+    "tableAccess": {
+      "CSQDB.HINMOKU_BULK": "C"
+    },
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false,
+    "rowsetSize": 3
+  },
+  {
+    "kind": "ROLLBACK",
+    "startLine": 133,
+    "endLine": 133,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

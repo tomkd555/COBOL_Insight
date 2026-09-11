@@ -14,13 +14,23 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /** The entry point for parsing BMS map definition source. Syntax errors are collected into {@link BmsParseResult#errors()} rather than thrown as exceptions. */
 public final class BmsSourceParser {
 
+    /**
+     * An assembler listing instruction on a line of its own: PRINT NOGEN, TITLE '...', SPACE 2,
+     * EJECT. A map source puts them before and between the macros; they carry no map content.
+     * Blanked before lexing so line numbers stay intact.
+     */
+    private static final Pattern ASSEMBLER_INSTRUCTION =
+            Pattern.compile("(?m)^[ \\t]+(?:PRINT|TITLE|SPACE|EJECT)(?:[ \\t][^\\r\\n]*)?$");
+
     public BmsParseResult parse(String sourceText) {
         List<BmsParseError> errors = new ArrayList<>();
-        BmsMapLexer lexer = new BmsMapLexer(CharStreams.fromString(sourceText));
+        String lexable = ASSEMBLER_INSTRUCTION.matcher(sourceText).replaceAll("");
+        BmsMapLexer lexer = new BmsMapLexer(CharStreams.fromString(lexable));
         lexer.removeErrorListeners();
         lexer.addErrorListener(collectingListener(errors));
 

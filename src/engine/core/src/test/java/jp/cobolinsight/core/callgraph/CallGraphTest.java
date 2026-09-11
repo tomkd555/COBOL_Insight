@@ -93,6 +93,24 @@ class CallGraphTest {
         assertEquals(expected, sampleGraph().toDot());
     }
 
+    /** An edge's attributes reach both renderings, in key order, and are omitted when empty. */
+    @Test
+    void edgeAttributesAreSerializedWhenPresent() {
+        CallGraphNode step = new CallGraphNode("step:JOB1.STEP010", NodeKind.STEP, "STEP010");
+        CallGraphNode dataset = new CallGraphNode("dataset:A.B.C", NodeKind.DATASET, "A.B.C");
+        CallGraphEdge edge = new CallGraphEdge("step:JOB1.STEP010", "dataset:A.B.C",
+                EdgeKind.REFERENCE, Resolution.CONSTANT, 1, 16, Map.of("access", "READ"));
+        CallGraph g = new CallGraph(List.of(step, dataset), List.of(edge));
+
+        assertEquals("{\"from\":\"step:JOB1.STEP010\",\"to\":\"dataset:A.B.C\","
+                        + "\"kind\":\"REFERENCE\",\"resolution\":\"CONSTANT\","
+                        + "\"seq\":1,\"line\":16,\"attributes\":{\"access\":\"READ\"}}",
+                g.toJson().split("\"edges\":\\[")[1].replaceAll("\\]\\}$", ""));
+        assertEquals("  \"step:JOB1.STEP010\" -> \"dataset:A.B.C\" "
+                        + "[kind=\"REFERENCE\" resolution=\"CONSTANT\" access=\"READ\"];",
+                g.toDot().lines().filter(line -> line.contains("->")).findFirst().orElseThrow());
+    }
+
     @Test
     void dotEscapesQuotesAndBackslashesInLabels() {
         CallGraphNode n = new CallGraphNode("N", NodeKind.DATASET, "A\"B\\C");

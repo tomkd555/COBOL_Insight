@@ -1,0 +1,224 @@
+[
+  {
+    "jobName": "CJ406",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "DSNTIAUL DSNTIAD",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IKJEFT01",
+        "line": 9,
+        "parameters": {
+          "DYNAMNBR": "20"
+        },
+        "utility": {
+          "programRuns": [
+            {
+              "program": "DSNTIAUL",
+              "plan": "DSNTIAUL",
+              "parms": "SQL",
+              "library": "DB2P.RUNLIB.LOAD"
+            }
+          ],
+          "tableUses": [
+            {
+              "table": "SCHEMA.TBL",
+              "access": "READ"
+            }
+          ],
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "SYSTSPRT": "WRITE",
+            "SYSPRINT": "WRITE",
+            "SYSTSIN": "READ",
+            "SYSREC00": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 10,
+            "datasetName": "DB2P.SDSNLOAD",
+            "dataset": {
+              "name": "DB2P.SDSNLOAD"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "DB2P.SDSNLOAD",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSTSPRT",
+            "line": 11,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 12,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSTSIN",
+            "line": 13,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  DSN SYSTEM(DB2P)",
+              "  RUN PROGRAM(DSNTIAUL) PLAN(DSNTIAUL)                            -",
+              "      LIB('DB2P.RUNLIB.LOAD') PARMS('SQL')",
+              "  END"
+            ]
+          },
+          {
+            "ddName": "SYSREC00",
+            "line": 19,
+            "datasetName": "CJT.D260910.SCHEMA.TBL.TIAUL",
+            "dataset": {
+              "name": "CJT.D260910.SCHEMA.TBL.TIAUL"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.SCHEMA.TBL.TIAUL",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(5,5),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=100,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 23,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  SELECT KEIYAKU_NO, HANBAITEN_CD, ZANDAKA",
+              "    FROM SCHEMA.TBL",
+              "   WHERE SHORI_KBN = '0';"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PGM",
+        "target": "IKJEFT01",
+        "line": 29,
+        "condition": "COND=(4,LT,STEP010)",
+        "parameters": {
+          "DYNAMNBR": "20",
+          "COND": "(4,LT,STEP010)"
+        },
+        "utility": {
+          "programRuns": [
+            {
+              "program": "DSNTIAD",
+              "plan": "DSNTIA13",
+              "library": "DB2P.RUNLIB.LOAD"
+            }
+          ],
+          "tableUses": [
+            {
+              "table": "SCHEMA.TBL",
+              "access": "UPDATE"
+            }
+          ],
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "SYSTSPRT": "WRITE",
+            "SYSPRINT": "WRITE",
+            "SYSTSIN": "READ",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 30,
+            "datasetName": "DB2P.SDSNLOAD",
+            "dataset": {
+              "name": "DB2P.SDSNLOAD"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "DB2P.SDSNLOAD",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSTSPRT",
+            "line": 31,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 32,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSTSIN",
+            "line": 33,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  DSN SYSTEM(DB2P)",
+              "  RUN PROGRAM(DSNTIAD) PLAN(DSNTIA13)                              -",
+              "      LIB('DB2P.RUNLIB.LOAD')",
+              "  END"
+            ]
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 39,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  UPDATE SCHEMA.TBL",
+              "     SET SHORI_KBN = '1'",
+              "   WHERE SHORI_KBN = '0'",
+              "     AND HANBAITEN_CD = 'H0001';"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

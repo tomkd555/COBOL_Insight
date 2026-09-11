@@ -1,0 +1,87 @@
+[
+  {
+    "jobName": "CJ107",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ01",
+      "PROGRAMMER": "CJ ロクロウ",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "outputStatements": {
+      "OUT1": {
+        "DEST": "RMT3",
+        "COPIES": "2"
+      }
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "CCP006",
+        "line": 9,
+        "utility": {
+          "ddRoles": {
+            "SYSPRINT": "WRITE",
+            "PRTOUT": "WRITE",
+            "RDROUT": "WRITE",
+            "RPTOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSPRINT",
+            "line": 10,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "PRTOUT",
+            "line": 11,
+            "sysout": "(A,,STD)",
+            "parameters": {
+              "SYSOUT": "(A,,STD)"
+            }
+          },
+          {
+            "ddName": "RDROUT",
+            "line": 12,
+            "sysout": "(,INTRDR)",
+            "parameters": {
+              "SYSOUT": "(,INTRDR)"
+            }
+          },
+          {
+            "ddName": "DUMMYIN",
+            "line": 13,
+            "dummy": true,
+            "parameters": {
+              "DUMMY": ""
+            }
+          },
+          {
+            "ddName": "NULLOUT",
+            "line": 14,
+            "dummy": true,
+            "parameters": {
+              "DSN": "NULLFILE"
+            }
+          },
+          {
+            "ddName": "RPTOUT",
+            "line": 16,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*",
+              "OUTPUT": "*.OUT1"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

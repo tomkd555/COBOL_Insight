@@ -278,4 +278,29 @@ class SaveCommandTest {
         assertArrayEquals(editedText.getBytes(SJIS), Files.readAllBytes(file),
                 "記録されたコードページ(windows-31j)で書き戻すこと");
     }
+
+    /**
+     * One project file may hold more than one asset folder. The copybooks of the file being saved
+     * sit under its own folder, so the row that names it is the one to read the folder from; the
+     * first row of the table would send the search to the other folder and the COPY would fail.
+     */
+    @Test
+    void copybooksComeFromTheAssetFolderOfTheFileBeingSaved() throws IOException {
+        Path first = tempDir.resolve("estateA");
+        Path second = tempDir.resolve("estateB");
+        writeCopyUsingSource(first, "SVCPBC");
+        Path file = writeCopyUsingSource(second, "SVCPBD");
+        Path db = tempDir.resolve("two-roots.db");
+        execute("scan", first.toString(), "--db", db.toString());
+        execute("scan", second.toString(), "--db", db.toString());
+
+        Path edited = writeEdited(Files.readString(file, StandardCharsets.UTF_8)
+                .replace("DISPLAY WS-NAME", "DISPLAY WS-REC"));
+        Run run = execute("save", "--file", file.toString(), "--edited", edited.toString(),
+                "--db", db.toString());
+
+        assertEquals(0, run.exitCode(),
+                "保存する原本の資産フォルダーから COPY を探すこと。stdout=" + run.stdout());
+        assertTrue(run.stdout().contains("\"reparseErrors\":[]"), run.stdout());
+    }
 }

@@ -4,29 +4,25 @@ import { cobolLineFor, entriesOf, fileOf, generatedLineFor, languagesOf } from "
 
 function entry(overrides: Partial<LineMapEntry>): LineMapEntry {
   return {
-    id: 1,
     cobolLineStart: 1,
     cobolLineEnd: 1,
     genFile: "syk001.py",
     genLineStart: 1,
     genLineEnd: 1,
-    kind: "1:1",
-    note: "",
-    anchorId: "",
     ...overrides,
   };
 }
 
 const MAP: LineMapEntry[] = [
-  entry({ id: 1, cobolLineStart: 7, cobolLineEnd: 7, genLineStart: 3, genLineEnd: 3 }),
-  entry({ id: 2, cobolLineStart: 9, cobolLineEnd: 11, genLineStart: 5, genLineEnd: 8, kind: "N:1" }),
-  entry({ id: 3, genFile: "SYK001.java", cobolLineStart: 7, cobolLineEnd: 7, genLineStart: 12, genLineEnd: 12 }),
+  entry({ cobolLineStart: 7, cobolLineEnd: 7, genLineStart: 3, genLineEnd: 3 }),
+  entry({ cobolLineStart: 9, cobolLineEnd: 11, genLineStart: 5, genLineEnd: 8 }),
+  entry({ genFile: "SYK001.java", cobolLineStart: 7, cobolLineEnd: 7, genLineStart: 12, genLineEnd: 12 }),
 ];
 
 describe("entriesOf", () => {
   it("keeps only the rows of one generated file", () => {
-    expect(entriesOf(MAP, "syk001.py").map((row) => row.id)).toEqual([1, 2]);
-    expect(entriesOf(MAP, "SYK001.java").map((row) => row.id)).toEqual([3]);
+    expect(entriesOf(MAP, "syk001.py").map((row) => row.genLineStart)).toEqual([3, 5]);
+    expect(entriesOf(MAP, "SYK001.java").map((row) => row.genLineStart)).toEqual([12]);
     expect(entriesOf(MAP, "absent.py")).toEqual([]);
   });
 });

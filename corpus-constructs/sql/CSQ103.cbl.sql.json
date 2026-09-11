@@ -1,0 +1,208 @@
+[
+  {
+    "kind": "BEGIN_DECLARE_SECTION",
+    "startLine": 18,
+    "endLine": 18,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "END_DECLARE_SECTION",
+    "startLine": 26,
+    "endLine": 26,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "COMMIT",
+    "startLine": 36,
+    "endLine": 36,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-A-B",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-SEISAN-NO",
+        "mangledName": "HV2"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.SEISAN"
+    ],
+    "startLine": 45,
+    "endLine": 50,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "WS-A-B"
+    ],
+    "tableAccess": {
+      "CSQDB.SEISAN": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "ZAN_GAKU"
+      },
+      {
+        "column": "SEISAN_NO"
+      }
+    ],
+    "selectList": [
+      "ZAN_GAKU"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "UPDATE",
+    "hostVariables": [
+      {
+        "originalName": "WS-A",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-B",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "WS-SEISAN-NO",
+        "mangledName": "HV3"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.SEISAN"
+    ],
+    "startLine": 58,
+    "endLine": 62,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "tableAccess": {
+      "CSQDB.SEISAN": "U"
+    },
+    "columnRefs": [
+      {
+        "column": "ZAN_GAKU"
+      },
+      {
+        "column": "ZAN_GAKU"
+      },
+      {
+        "column": "SEISAN_NO"
+      }
+    ],
+    "setPairs": [
+      {
+        "column": "ZAN_GAKU",
+        "value": "ZAN_GAKU - (:WS-A - :WS-B)"
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "INSERT",
+    "hostVariables": [
+      {
+        "originalName": "WS-SEISAN-NO",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-A-B",
+        "mangledName": "HV2"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.SEISAN"
+    ],
+    "startLine": 70,
+    "endLine": 75,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "tableAccess": {
+      "CSQDB.SEISAN": "C"
+    },
+    "columnRefs": [
+      {
+        "column": "SEISAN_NO"
+      },
+      {
+        "column": "ZAN_GAKU"
+      },
+      {
+        "column": "BIKO"
+      }
+    ],
+    "insertColumns": [
+      "SEISAN_NO",
+      "ZAN_GAKU",
+      "BIKO"
+    ],
+    "insertValues": [
+      ":WS-SEISAN-NO",
+      ":WS-A-B",
+      "'受付時間 09:00-10:00 --要確認--'"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

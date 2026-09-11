@@ -62,9 +62,9 @@ public final class StringOverflowRule implements Rule {
                                 END-STRING.
                             """)
                     .severity(Severity.HIGH)
-                    .commands(Command.LINT, Command.REPORT)
+                    .commands(Command.LINT)
                     .targets(AssetKind.COBOL)
-                    .needs(Needs.SEMANTIC, Needs.CFG, Needs.SOURCE_TEXT)
+                    .needs(Needs.CFG, Needs.SOURCE_TEXT)
                     .build();
 
     @Override
@@ -83,7 +83,7 @@ public final class StringOverflowRule implements Rule {
         for (CobolSemanticModel model : context.cobolPrograms()) {
             ControlFlowGraph cfg = cfgs.of(model).orElse(null);
             if (cfg != null) {
-                evaluate(model, cfg, new DataFlowSupport(model, texts), findings);
+                evaluate(model, cfg, DataFlowSupport.of(model, texts), findings);
             }
         }
         return findings;

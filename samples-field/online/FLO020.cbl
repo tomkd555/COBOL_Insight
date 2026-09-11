@@ -1,0 +1,152 @@
+000100*----------------------------------------------------------------*
+000200* PROGRAM-ID : FLO020
+000300* 機能       : 契約照会（Db2 読取）
+000400* 処理概要   : 連絡域で受け取った契約番号で契約表を読み、入金
+000500*              明細を 10 件まで取り出して連絡域に詰める。
+000600* 起動元     : FLO010（EXEC CICS LINK）
+000700* 呼び出し先 : なし
+000800*----------------------------------------------------------------*
+000900 IDENTIFICATION DIVISION.
+001000 PROGRAM-ID.  FLO020.
+001100 AUTHOR.      FL-ONLINE-DEV.
+001200*
+001300 ENVIRONMENT DIVISION.
+001400*
+001500 DATA DIVISION.
+001600 WORKING-STORAGE SECTION.
+001700     EXEC SQL INCLUDE SQLCA END-EXEC.
+001800     EXEC SQL INCLUDE FLD010 END-EXEC.
+001900*
+002000     EXEC SQL BEGIN DECLARE SECTION END-EXEC.
+002100 01  WS-KEIYAKU-NO             PIC X(10).
+002200 01  WS-NYUKIN-YMD             PIC X(08).
+002300 01  WS-NYUKIN-GAKU            PIC S9(11) COMP-3.
+002400     EXEC SQL END DECLARE SECTION END-EXEC.
+002500*
+002600 01  WS-IDX                    PIC S9(04) COMP VALUE ZERO.
+002700 01  WS-MEI-MAX                PIC S9(04) COMP VALUE 10.
+002800 01  WS-FETCH-END              PIC X(01) VALUE 'N'.
+002900*
+003000* 明細 1 行の編集域
+003100 01  WS-MEISAI-GYO.
+003200     05  FILLER                PIC X(02) VALUE SPACES.
+003300     05  WS-MG-YMD             PIC X(08).
+003400     05  FILLER                PIC X(02) VALUE SPACES.
+003500     05  WS-MG-GAKU            PIC ZZZ,ZZZ,ZZZ,ZZ9-.
+003600     05  FILLER                PIC X(42) VALUE SPACES.
+003700*
+003800 LINKAGE SECTION.
+003900*
+004000* FLO010 の WS-COMMAREA と同じ並び
+004100 01  DFHCOMMAREA.
+004200     05  LK-CA-KEIYAKU-NO      PIC X(10).
+004300     05  LK-CA-KOKYAKU-NM      PIC X(30).
+004400     05  LK-CA-ZANDAKA         PIC S9(11) COMP-3.
+004500     05  LK-CA-SEIKYU-GAKU     PIC S9(11) COMP-3.                 CHG25002
+004600     05  LK-CA-MEISAI.
+004700         10  LK-CA-MEI         PIC X(70) OCCURS 10 TIMES.
+004800     05  LK-CA-STATUS          PIC X(01).
+004900*
+005000 PROCEDURE DIVISION.
+005100*----------------------------------------------------------------*
+005200* 0000-MAIN  契約の読取と入金明細の取り出し
+005300*----------------------------------------------------------------*
+005400 0000-MAIN.
+005500     MOVE LK-CA-KEIYAKU-NO TO WS-KEIYAKU-NO
+005600     MOVE SPACE TO LK-CA-STATUS
+005700     PERFORM 0500-SHOKICHI
+005800     PERFORM 1000-KEIYAKU-YOMI
+005900     IF LK-CA-STATUS = SPACE
+006000         PERFORM 2000-MEISAI-YOMI
+006100     END-IF
+006200     PERFORM 9000-END.
+006300*----------------------------------------------------------------*
+006400* 0500-SHOKICHI  連絡域の返却部分を初期化する
+006500*----------------------------------------------------------------*
+006600 0500-SHOKICHI.
+006700     MOVE SPACES TO LK-CA-KOKYAKU-NM
+006800     MOVE ZERO TO LK-CA-ZANDAKA
+006900     MOVE ZERO TO LK-CA-SEIKYU-GAKU
+007000     PERFORM VARYING WS-IDX FROM 1 BY 1
+007100             UNTIL WS-IDX > WS-MEI-MAX
+007200         MOVE SPACES TO LK-CA-MEI(WS-IDX)
+007300     END-PERFORM.
+007400*----------------------------------------------------------------*
+007500* 1000-KEIYAKU-YOMI  契約表を 1 行読む
+007600*----------------------------------------------------------------*
+007700 1000-KEIYAKU-YOMI.
+007800     EXEC SQL
+007900         SELECT KEIYAKU_NO, KOKYAKU_NO, ZANDAKA, SEIKYU_GAKU      CHG25002
+008000           INTO :KEIYAKU-NO, :KOKYAKU-NO,
+008100                :ZANDAKA, :SEIKYU-GAKU
+008200           FROM FLDB.KEIYAKU
+008300          WHERE KEIYAKU_NO = :WS-KEIYAKU-NO
+008400     END-EXEC
+008500     EVALUATE SQLCODE
+008600         WHEN 0
+008700             MOVE KEIYAKU-NO TO LK-CA-KEIYAKU-NO
+008800             MOVE KOKYAKU-NO TO LK-CA-KOKYAKU-NM
+008900             MOVE ZANDAKA TO LK-CA-ZANDAKA
+009000             MOVE SEIKYU-GAKU TO LK-CA-SEIKYU-GAKU                CHG25002
+009100         WHEN +100
+009200             MOVE 'N' TO LK-CA-STATUS
+009300         WHEN OTHER
+009400             MOVE 'E' TO LK-CA-STATUS
+009500     END-EVALUATE.
+009600*----------------------------------------------------------------*
+009700* 2000-MEISAI-YOMI  入金明細をカーソルで 10 件まで取り出す
+009800*----------------------------------------------------------------*
+009900 2000-MEISAI-YOMI.
+010000     EXEC SQL
+010100         DECLARE FLNYUKINCUR CURSOR FOR
+010200             SELECT NYUKIN_YMD, NYUKIN_GAKU
+010300               FROM FLDB.NYUKIN
+010400              WHERE KEIYAKU_NO = :WS-KEIYAKU-NO
+010500              ORDER BY NYUKIN_YMD DESC
+010600              FOR FETCH ONLY
+010700     END-EXEC
+010800     EXEC SQL
+010900         OPEN FLNYUKINCUR
+011000     END-EXEC
+011100     IF SQLCODE NOT = 0
+011200         MOVE 'E' TO LK-CA-STATUS
+011300     ELSE
+011400         MOVE 'N' TO WS-FETCH-END
+011500         PERFORM 2100-MEISAI-FETCH
+011600                 VARYING WS-IDX FROM 1 BY 1
+011700                 UNTIL WS-IDX > WS-MEI-MAX
+011800                    OR WS-FETCH-END = 'Y'
+011900         EXEC SQL
+012000             CLOSE FLNYUKINCUR
+012100         END-EXEC
+012200         IF SQLCODE NOT = 0
+012300             MOVE 'E' TO LK-CA-STATUS
+012400         END-IF
+012500     END-IF.
+012600*----------------------------------------------------------------*
+012700* 2100-MEISAI-FETCH  カーソルから 1 件取り出して編集する
+012800*----------------------------------------------------------------*
+012900 2100-MEISAI-FETCH.
+013000     EXEC SQL
+013100         FETCH FLNYUKINCUR
+013200             INTO :WS-NYUKIN-YMD, :WS-NYUKIN-GAKU
+013300     END-EXEC
+013400     EVALUATE SQLCODE
+013500         WHEN 0
+013600             MOVE WS-NYUKIN-YMD TO WS-MG-YMD
+013700             MOVE WS-NYUKIN-GAKU TO WS-MG-GAKU
+013800             MOVE WS-MEISAI-GYO TO LK-CA-MEI(WS-IDX)
+013900         WHEN +100
+014000             MOVE 'Y' TO WS-FETCH-END
+014100         WHEN OTHER
+014200             MOVE 'Y' TO WS-FETCH-END
+014300             MOVE 'E' TO LK-CA-STATUS
+014400     END-EVALUATE.
+014500*----------------------------------------------------------------*
+014600* 9000-END  呼び出し元 FLO010 に戻る
+014700*----------------------------------------------------------------*
+014800 9000-END.
+014900     EXEC CICS
+015000         RETURN
+015100     END-EXEC
+015200     GOBACK.

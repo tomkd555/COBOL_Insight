@@ -1,0 +1,161 @@
+[
+  {
+    "jobName": "CJ402",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "DSN BIND PLAN PACKAGE",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IKJEFT1B",
+        "line": 13,
+        "parameters": {
+          "DYNAMNBR": "20"
+        },
+        "utility": {
+          "binds": [
+            {
+              "kind": "PACKAGE",
+              "name": "CCPCOLL1",
+              "members": [
+                "CCP011"
+              ],
+              "options": {
+                "ACTION": "REPLACE",
+                "ISOLATION": "CS",
+                "VALIDATE": "BIND"
+              }
+            },
+            {
+              "kind": "PACKAGE",
+              "name": "CCPCOLL1",
+              "members": [
+                "CCP012"
+              ],
+              "options": {
+                "ACTION": "REPLACE",
+                "ISOLATION": "CS",
+                "VALIDATE": "BIND"
+              }
+            },
+            {
+              "kind": "PLAN",
+              "name": "CCPPLAN1",
+              "options": {
+                "PKLIST": "CCPCOLL1.*",
+                "ACTION": "REPLACE",
+                "ISOLATION": "CS"
+              }
+            },
+            {
+              "kind": "PLAN",
+              "name": "CCPPLAN9",
+              "members": [
+                "CCP011"
+              ],
+              "options": {
+                "ACTION": "REPLACE",
+                "ISOLATION": "CS"
+              }
+            }
+          ],
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "SYSTSPRT": "WRITE",
+            "SYSPRINT": "WRITE",
+            "SYSUDUMP": "WRITE",
+            "DBRMLIB": "READ",
+            "SYSTSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 14,
+            "datasetName": "CCP.PROD.LOADLIB",
+            "dataset": {
+              "name": "CCP.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CCP.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSTSPRT",
+            "line": 15,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 16,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSUDUMP",
+            "line": 17,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "DBRMLIB",
+            "line": 18,
+            "datasetName": "CCP.PROD.DBRMLIB",
+            "dataset": {
+              "name": "CCP.PROD.DBRMLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CCP.PROD.DBRMLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSTSIN",
+            "line": 19,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  DSN SYSTEM(DB2P)",
+              "  BIND PACKAGE(CCPCOLL1) MEMBER(CCP011) ACTION(REPLACE)            -",
+              "      ISOLATION(CS) VALIDATE(BIND)",
+              "  BIND PACKAGE(CCPCOLL1) MEMBER(CCP012) ACTION(REPLACE)            -",
+              "      ISOLATION(CS) VALIDATE(BIND)",
+              "  BIND PLAN(CCPPLAN1) PKLIST(CCPCOLL1.*) ACTION(REPLACE)           -",
+              "      ISOLATION(CS)",
+              "  BIND PLAN(CCPPLAN9) MEMBER(CCP011) ACTION(REPLACE)                -",
+              "      ISOLATION(CS)",
+              "  FREE PACKAGE(CCPCOLL1.CCP012)",
+              "  END"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

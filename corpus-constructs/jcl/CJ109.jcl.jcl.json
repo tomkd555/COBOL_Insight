@@ -1,0 +1,134 @@
+[
+  {
+    "jobName": "CJ109",
+    "line": 1,
+    "condition": "COND=(0,NE)",
+    "parameters": {
+      "ACCOUNT": "CJ01",
+      "PROGRAMMER": "CJ ハチロウ",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID",
+      "COND": "(0,NE)"
+    },
+    "diagnostics": [
+      {
+        "ruleId": "jcl-syntax",
+        "line": 17,
+        "message": "17 行の JCL 文を解析できませんでした（extraneous input 'NOT' expecting {ABEND, ABENDCC, RC, RUN, LPAREN, IF_STEP}）。"
+      }
+    ],
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PROC",
+        "target": "CJPR01",
+        "line": 15
+      },
+      {
+        "name": "STEP010.STEP1",
+        "execKind": "PGM",
+        "target": "CCP006",
+        "line": 11,
+        "procStepName": "STEP1",
+        "utility": {
+          "ddRoles": {
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSOUT",
+            "line": 12,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PGM",
+        "target": "CCP007",
+        "line": 21,
+        "condition": "IF(?)THEN IF (STEP010.STEP1.RC <= 4) THEN IF (STEP010.RUN AND (STEP010.STEP1.RC = 0 OR STEP010.STEP1.RC = 4)) THEN"
+      },
+      {
+        "name": "STEP021",
+        "execKind": "PGM",
+        "target": "CCP008",
+        "line": 23,
+        "condition": "IF(?)THEN IF (STEP010.STEP1.RC <= 4) THEN IF (STEP010.RUN AND (STEP010.STEP1.RC = 0 OR STEP010.STEP1.RC = 4)) ELSE"
+      },
+      {
+        "name": "STEP024",
+        "execKind": "PGM",
+        "target": "CCP006",
+        "line": 26,
+        "condition": "IF(?)THEN IF (STEP010.STEP1.RC <= 4) ELSE"
+      },
+      {
+        "name": "STEP022",
+        "execKind": "PGM",
+        "target": "CCP009",
+        "line": 30,
+        "condition": "IF(?)ELSE IF (STEP010.STEP1.ABENDCC = S0C7) THEN"
+      },
+      {
+        "name": "STEP023",
+        "execKind": "PGM",
+        "target": "CCP010",
+        "line": 32,
+        "condition": "IF(?)ELSE IF (STEP010.STEP1.ABENDCC = S0C7) ELSE"
+      },
+      {
+        "name": "STEP050",
+        "execKind": "PGM",
+        "target": "CCP007",
+        "line": 36,
+        "condition": "COND=(4,LT,STEP010.STEP1)",
+        "parameters": {
+          "COND": "(4,LT,STEP010.STEP1)"
+        },
+        "utility": {
+          "ddRoles": {
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSOUT",
+            "line": 37,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP060",
+        "execKind": "PGM",
+        "target": "CCP008",
+        "line": 39,
+        "utility": {
+          "ddRoles": {
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSOUT",
+            "line": 40,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

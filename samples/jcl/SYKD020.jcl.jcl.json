@@ -1,0 +1,166 @@
+[
+  {
+    "jobName": "SYKD020",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "SYK1234",
+      "PROGRAMMER": "SYK02 在庫更新",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "SYK006",
+        "line": 22,
+        "parm": "250718",
+        "parameters": {
+          "PARM": "'250718'"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "STKIN": "READ",
+            "STKEXTR": "WRITE",
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 23,
+            "datasetName": "SYK.PROD.LOADLIB",
+            "dataset": {
+              "name": "SYK.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "SYK.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "STKIN",
+            "line": 24,
+            "datasetName": "SYKT.D250718.STOCK.DAILY",
+            "dataset": {
+              "name": "SYKT.D250718.STOCK.DAILY"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "SYKT.D250718.STOCK.DAILY",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "STKEXTR",
+            "line": 25,
+            "datasetName": "SYKW.D250718.STOCK.EXTRACT",
+            "dataset": {
+              "name": "SYKW.D250718.STOCK.EXTRACT"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "SYKW.D250718.STOCK.EXTRACT",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(3,3),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=029,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 29,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PROC",
+        "target": "SYKPRC01",
+        "line": 31,
+        "parameters": {
+          "CYCLE": "250718"
+        }
+      },
+      {
+        "name": "STEP020.STEP020",
+        "execKind": "PGM",
+        "target": "SYK007",
+        "line": 16,
+        "procStepName": "STEP020",
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "STKEXTR": "READ",
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 17,
+            "datasetName": "SYK.PROD.LOADLIB",
+            "dataset": {
+              "name": "SYK.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "SYK.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "STKEXTR",
+            "line": 18,
+            "datasetName": "SYKW.D250718.STOCK.EXTRACT",
+            "dataset": {
+              "name": "SYKW.D250718.STOCK.EXTRACT"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "SYKW.D250718.STOCK.EXTRACT",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 19,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

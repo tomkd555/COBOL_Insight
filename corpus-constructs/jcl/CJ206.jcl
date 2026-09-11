@@ -1,0 +1,39 @@
+//CJ206    JOB  (CJ0001),'CJ DSATTR FORMS',CLASS=A,
+//             MSGCLASS=X,MSGLEVEL=(1,1),NOTIFY=&SYSUID
+//*-----------------------------------------------------------------
+//* CJ206 : dataset-attribute DD parameters
+//*   LABEL=(seq,type,EXPDT=), RETPD=, EXPDT=, DATACLAS=,
+//*   STORCLAS=, MGMTCLAS=, DSNTYPE=LIBRARY, DSNTYPE=LARGE,
+//*   LIKE=, and REFDD=*.ddname.
+//*-----------------------------------------------------------------
+//STEP010  EXEC PGM=IEFBR14
+//DD1      DD DSN=FLW.CJ206.BASE,DISP=(NEW,CATLG,DELETE),
+//            UNIT=SYSDA,SPACE=(TRK,(5,1),RLSE),
+//            DCB=(RECFM=FB,LRECL=80,BLKSIZE=0)
+//TAPELBL  DD DSN=FLT.CJ206.TAPE,DISP=(NEW,CATLG,DELETE),
+//            UNIT=TAPE,VOL=SER=TAP001,
+//            LABEL=(2,SL,EXPDT=99000)
+//RETPDDS  DD DSN=FLW.CJ206.RETPD,DISP=(NEW,CATLG,DELETE),
+//            UNIT=SYSDA,SPACE=(TRK,(5,1),RLSE),
+//            RETPD=3650
+//EXPDTDS  DD DSN=FLW.CJ206.EXPDT,DISP=(NEW,CATLG,DELETE),
+//            UNIT=SYSDA,SPACE=(TRK,(5,1),RLSE),
+//            EXPDT=2099/365
+//SMSDS    DD DSN=FLW.CJ206.SMS,DISP=(NEW,CATLG,DELETE),
+//            DATACLAS=STD80,STORCLAS=STAND01,
+//            MGMTCLAS=MCPRD01
+//LIBTYP   DD DSN=FLW.CJ206.LIBRARY,
+//            DISP=(NEW,CATLG,DELETE),
+//            UNIT=SYSDA,SPACE=(TRK,(5,1),RLSE),
+//            DSNTYPE=LIBRARY
+//LARGTYP  DD DSN=FLW.CJ206.LARGEDS,
+//            DISP=(NEW,CATLG,DELETE),
+//            UNIT=SYSDA,SPACE=(CYL,(50,20),RLSE),
+//            DSNTYPE=LARGE
+//LIKEDS   DD DSN=FLW.CJ206.LIKEDS,
+//            DISP=(NEW,CATLG,DELETE),
+//            LIKE=FL.PROD.MODEL.DSN
+//REFDDS   DD DSN=FLW.CJ206.REFDD,
+//            DISP=(NEW,CATLG,DELETE),
+//            REFDD=*.DD1
+//

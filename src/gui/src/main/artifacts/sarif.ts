@@ -29,10 +29,6 @@ function toFinding(result: unknown): SarifFinding {
     startColumn: asNumber(prop(region, "startColumn")) ?? 0,
     related: relatedOf(result),
   };
-  const ruleIndex = asNumber(prop(result, "ruleIndex"));
-  if (ruleIndex !== undefined) {
-    finding.ruleIndex = ruleIndex;
-  }
   return finding;
 }
 

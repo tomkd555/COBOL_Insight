@@ -104,6 +104,13 @@
   opacity: 0.8;
 }
 
+.ci-palette__chord {
+  margin-left: auto;
+  color: var(--color-muted-foreground);
+  font-family: var(--ci-font-code);
+  font-size: var(--ci-size-sm);
+}
+
 .ci-palette__empty {
   margin: 0;
   padding: var(--ci-space-3);

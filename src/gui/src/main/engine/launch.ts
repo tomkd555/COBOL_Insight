@@ -23,6 +23,13 @@ export interface EngineLaunch {
 const MAIN_CLASS = "jp.cobolinsight.app.cli.Main";
 
 /**
+ * The JVM options the jpackage image is built with (src/engine/app/build.gradle.kts). A development
+ * launch repeats them, so the heap ceiling, the stack size and the encoding are the ones the shipped
+ * app runs with: a large folder or a deeply nested statement must not crash in only one of the two.
+ */
+const JAVA_OPTIONS = ["-Dfile.encoding=UTF-8", "-XX:MaxRAMPercentage=50", "-Xss4m"];
+
+/**
  * Resolves how to start the engine CLI. Only a local child process is ever launched; there is no
  * network and no socket.
  *
@@ -47,5 +54,5 @@ export function resolveEngineLaunch(input: EngineLaunchInput): EngineLaunch {
     input.javaHome !== undefined && input.javaHome !== ""
       ? join(input.javaHome, "bin", javaName)
       : javaName;
-  return { command, prefixArgs: ["-classpath", classpath, MAIN_CLASS] };
+  return { command, prefixArgs: [...JAVA_OPTIONS, "-classpath", classpath, MAIN_CLASS] };
 }

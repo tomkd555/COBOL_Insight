@@ -1,5 +1,7 @@
 package jp.cobolinsight.frontend.sql;
 
+import jp.cobolinsight.core.sql.SqlAnalysis;
+import jp.cobolinsight.core.sql.SqlStatementKind;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -40,7 +42,7 @@ class SqlStatementAnalyzerTest {
                 "SELECT ZAIKO_SU INTO :HOST-在庫数量\nFROM SYKDB.ZAIKOM\n"
                 + "WHERE SHOHIN_CD = :HOST-商品コード\nAND SOKO_CD = :HOST-倉庫コード",
                 SqlBlockKind.EXECUTABLE));
-        assertEquals(AnalysisStatus.ANALYZED, result.status());
+        assertEquals(SqlAnalysis.FULL, result.analysis());
         assertEquals(SqlStatementKind.SELECT_INTO, result.statementKind());
         assertEquals(Set.of("SYKDB.ZAIKOM"), Set.copyOf(result.tableNames()));
         assertEquals(List.of("HOST-在庫数量"), result.intoTargets());
@@ -54,7 +56,7 @@ class SqlStatementAnalyzerTest {
                 "UPDATE SYKDB.ZAIKOM\nSET ZAIKO_SU = ZAIKO_SU + :HOST-増減数量\n"
                 + "WHERE SHOHIN_CD = :HOST-商品コード\nAND SOKO_CD = :HOST-倉庫コード",
                 SqlBlockKind.EXECUTABLE));
-        assertEquals(AnalysisStatus.ANALYZED, result.status());
+        assertEquals(SqlAnalysis.FULL, result.analysis());
         assertEquals(SqlStatementKind.UPDATE, result.statementKind());
         assertEquals(Set.of("SYKDB.ZAIKOM"), Set.copyOf(result.tableNames()));
         assertEquals(Set.of("HOST-増減数量", "HOST-商品コード", "HOST-倉庫コード"), dataNames(result));
@@ -66,7 +68,7 @@ class SqlStatementAnalyzerTest {
                 "INSERT INTO SYKDB.ZAIKOM\n(SHOHIN_CD, SOKO_CD, ZAIKO_SU,\nHIKIATE_SU, KOSHIN_BI)\n"
                 + "VALUES (:HOST-商品コード, :HOST-倉庫コード,\n:HOST-増減数量, 0, '00000000')",
                 SqlBlockKind.EXECUTABLE));
-        assertEquals(AnalysisStatus.ANALYZED, result.status());
+        assertEquals(SqlAnalysis.FULL, result.analysis());
         assertEquals(SqlStatementKind.INSERT, result.statementKind());
         assertEquals(Set.of("SYKDB.ZAIKOM"), Set.copyOf(result.tableNames()));
         assertEquals(Set.of("HOST-増減数量", "HOST-商品コード", "HOST-倉庫コード"), dataNames(result));
@@ -78,7 +80,7 @@ class SqlStatementAnalyzerTest {
                 "DECLARE SYKZAIKOCUR CURSOR FOR\n"
                 + "SELECT SHOHIN_CD, SOKO_CD, ZAIKO_SU, HIKIATE_SU\nFROM SYKDB.ZAIKOM",
                 SqlBlockKind.DECLARE_CURSOR));
-        assertEquals(AnalysisStatus.ANALYZED, result.status());
+        assertEquals(SqlAnalysis.FULL, result.analysis());
         assertEquals(SqlStatementKind.DECLARE_CURSOR, result.statementKind());
         assertEquals("SYKZAIKOCUR", result.cursorName());
         assertEquals(Set.of("SYKDB.ZAIKOM"), Set.copyOf(result.tableNames()));
@@ -87,13 +89,13 @@ class SqlStatementAnalyzerTest {
     @Test
     void open文とclose文のカーソル名を得る() {
         SqlAnalysisResult open = analyzer.analyze(block("OPEN SYKZAIKOCUR", SqlBlockKind.EXECUTABLE));
-        assertEquals(AnalysisStatus.ANALYZED, open.status());
-        assertEquals(SqlStatementKind.OPEN_CURSOR, open.statementKind());
+        assertEquals(SqlAnalysis.FULL, open.analysis());
+        assertEquals(SqlStatementKind.OPEN, open.statementKind());
         assertEquals("SYKZAIKOCUR", open.cursorName());
 
         SqlAnalysisResult close = analyzer.analyze(block("CLOSE SYKZAIKOCUR", SqlBlockKind.EXECUTABLE));
-        assertEquals(AnalysisStatus.ANALYZED, close.status());
-        assertEquals(SqlStatementKind.CLOSE_CURSOR, close.statementKind());
+        assertEquals(SqlAnalysis.FULL, close.analysis());
+        assertEquals(SqlStatementKind.CLOSE, close.statementKind());
         assertEquals("SYKZAIKOCUR", close.cursorName());
     }
 
@@ -103,7 +105,7 @@ class SqlStatementAnalyzerTest {
                 "FETCH SYKZAIKOCUR\nINTO :HOST-商品コード, :HOST-倉庫コード,\n"
                 + ":HOST-在庫数量, :HOST-引当数量",
                 SqlBlockKind.EXECUTABLE));
-        assertEquals(AnalysisStatus.ANALYZED, result.status());
+        assertEquals(SqlAnalysis.FULL, result.analysis());
         assertEquals(SqlStatementKind.FETCH, result.statementKind());
         assertEquals("SYKZAIKOCUR", result.cursorName());
         assertEquals(List.of("HOST-商品コード", "HOST-倉庫コード", "HOST-在庫数量", "HOST-引当数量"),
@@ -111,19 +113,22 @@ class SqlStatementAnalyzerTest {
     }
 
     @Test
-    void マングリング不能な文は解析対象外として報告する() {
+    void マングリング不能な文は劣化解析として報告する() {
         SqlAnalysisResult result = analyzer.analyze(block(
                 "SELECT A FROM T WHERE B = :WS-CUST-", SqlBlockKind.EXECUTABLE));
-        assertEquals(AnalysisStatus.NOT_ANALYZABLE, result.status());
-        assertNotNull(result.statusReason());
+        assertEquals(SqlAnalysis.DEGRADED, result.analysis());
+        assertNotNull(result.diagnostic());
+        assertEquals(SqlStatementKind.SELECT, result.statementKind());
+        assertEquals(List.of("T"), result.tableNames());
     }
 
     @Test
-    void 文法が構文エラーとする文は解析対象外として報告する() {
+    void 文法が構文エラーとする文は劣化解析として報告する() {
         SqlAnalysisResult result = analyzer.analyze(block(
                 "SELECT * FROM", SqlBlockKind.EXECUTABLE));
-        assertEquals(AnalysisStatus.NOT_ANALYZABLE, result.status());
-        assertNotNull(result.statusReason());
+        assertEquals(SqlAnalysis.DEGRADED, result.analysis());
+        assertNotNull(result.diagnostic());
+        assertEquals(SqlStatementKind.SELECT, result.statementKind());
     }
 
     @Test
@@ -132,7 +137,7 @@ class SqlStatementAnalyzerTest {
         Set<String> tables = new TreeSet<>();
         for (SqlBlock b : blocks) {
             SqlAnalysisResult result = analyzer.analyze(b);
-            assertEquals(AnalysisStatus.ANALYZED, result.status(),
+            assertEquals(SqlAnalysis.FULL, result.analysis(),
                     "解析対象外にならない: " + b.sqlText());
             tables.addAll(result.tableNames());
             if (result.statementKind() == SqlStatementKind.DECLARE_CURSOR) {
@@ -148,7 +153,7 @@ class SqlStatementAnalyzerTest {
         Set<String> tables = new TreeSet<>();
         for (SqlBlock b : blocks) {
             SqlAnalysisResult result = analyzer.analyze(b);
-            assertEquals(AnalysisStatus.ANALYZED, result.status());
+            assertEquals(SqlAnalysis.FULL, result.analysis());
             tables.addAll(result.tableNames());
         }
         assertEquals(Set.of("SYKDB.SOKOM", "SYKDB.ZAIKOM"), tables);
@@ -160,7 +165,7 @@ class SqlStatementAnalyzerTest {
                 "SELECT A INTO :WK-A FROM T -- don't touch\n"
                 + "WHERE UPPER(K) = :WK-K",
                 SqlBlockKind.EXECUTABLE));
-        assertEquals(AnalysisStatus.ANALYZED, result.status());
+        assertEquals(SqlAnalysis.FULL, result.analysis());
         assertEquals(SqlStatementKind.SELECT_INTO, result.statementKind());
         assertEquals(Set.of("WK-A", "WK-K"), dataNames(result),
                 "コメント内のアポストロフィを文字列リテラルの開始とみなさないこと");

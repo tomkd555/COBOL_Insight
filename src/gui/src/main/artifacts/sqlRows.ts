@@ -4,6 +4,12 @@
  * TypeScript values. Each reader module owns its own SQL and result interface.
  */
 
+/**
+ * The lower bound of the graph layer's ids (nodes with no source, graph edges, linker findings).
+ * Below it an id is a SOURCE.id. Keep in step with Persist.GRAPH_ID_BASE.
+ */
+export const GRAPH_ID_BASE = 1_000_000_000_000;
+
 /** The value domain of one sql.js cell. */
 export type SqlCellValue = string | number | Uint8Array | null;
 

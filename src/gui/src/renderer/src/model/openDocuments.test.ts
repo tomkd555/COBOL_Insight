@@ -14,7 +14,6 @@ function decoded(text: string, mtimeMs = 1000): DecodeResult {
     text,
     codepage: "Shift_JIS",
     detected: true,
-    soSiPresent: false,
     lines: [],
     stamp: { mtimeMs, byteSize: text.length },
     error: "",

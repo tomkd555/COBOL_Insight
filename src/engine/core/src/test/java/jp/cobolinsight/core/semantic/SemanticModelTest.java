@@ -128,9 +128,10 @@ class SemanticModelTest {
     }
 
     @Test
-    void embeddedBlockKindsCoverSqlAndSixCicsCommands() {
-        assertEquals(7, EmbeddedBlockKind.values().length);
+    void embeddedBlockKindsCoverSqlAndEveryCicsCommand() {
+        assertEquals(10, EmbeddedBlockKind.values().length);
         assertTrue(EmbeddedBlockKind.CICS_SEND_MAP.isCics());
+        assertTrue(EmbeddedBlockKind.CICS_OTHER.isCics());
         assertTrue(!EmbeddedBlockKind.SQL.isCics());
     }
 

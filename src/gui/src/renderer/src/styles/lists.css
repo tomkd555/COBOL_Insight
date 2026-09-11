@@ -18,6 +18,8 @@
 .ci-explorer__filters {
   display: flex;
   gap: var(--ci-space-2);
+  /* The same inset the tree's root rows and the sidebar title start from (12px), so the paste
+     button, the filter input and the kind select line up with the tree beneath them. */
   padding: var(--ci-space-2) var(--ci-space-3);
 }
 
@@ -53,6 +55,8 @@
   margin-top: var(--ci-space-1);
   color: var(--color-muted-foreground);
   font-size: var(--ci-size-sm);
+  /* The engine's own lines, as it wrote them: a stack trace is unreadable run together. */
+  white-space: pre-wrap;
 }
 
 .ci-tree {
@@ -105,11 +109,10 @@
   font-size: var(--ci-size-sm);
 }
 
-/* Its own ground rather than the shared muted one: the accent alone is what carries the warning, and
-   the dark accent was lowered so MEDIUM would stop out-shouting HIGH. */
+/* An unresolved codepage is informational, not a warning, so it reads in the muted tone. */
 .ci-badge--warn {
-  background: color-mix(in oklch, var(--color-accent) 18%, var(--color-background));
-  color: var(--color-accent);
+  background: var(--color-muted);
+  color: var(--color-muted-foreground);
 }
 
 .ci-badge--count {
@@ -201,9 +204,15 @@
   margin-top: var(--ci-space-1);
   color: var(--color-muted-foreground);
   font-size: var(--ci-size-sm);
+  /* The engine's own lines, as it wrote them: a stack trace is unreadable run together. */
+  white-space: pre-wrap;
 }
 
 .ci-problems__note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ci-space-3);
   margin: 0;
   padding: var(--ci-space-1) var(--ci-space-3);
   color: var(--color-muted-foreground);
@@ -215,6 +224,7 @@
   table-layout: fixed;
   border-collapse: collapse;
   text-align: left;
+  padding-inline: var(--ci-space-3);
 }
 
 /* The message is the cell the engineer reads, and under table-layout: fixed it takes whatever the
@@ -230,7 +240,7 @@
 
 .ci-problems__table th:nth-child(4) {
   min-width: 8em;
-  max-width: 13em;
+  max-width: 10em;
 }
 
 .ci-problems__table th:nth-child(5) {
@@ -276,10 +286,6 @@
   white-space: nowrap;
 }
 
-.ci-problems__table th:first-child {
-  text-align: center;
-}
-
 .ci-problems__table th:last-child {
   text-align: right;
 }
@@ -299,12 +305,12 @@
   text-align: inherit;
 }
 
-.ci-problems__table th:first-child .ci-problems__sort {
-  justify-content: center;
-}
-
 .ci-problems__table th[aria-sort] .ci-problems__sort {
   color: var(--color-foreground);
+}
+
+.ci-problems__sort:hover {
+  text-decoration: underline;
 }
 
 .ci-problems__table th[aria-sort="ascending"] .ci-problems__sort::after {
@@ -409,10 +415,15 @@
 }
 
 .ci-problems__detail {
-  flex: 0 0 min(40%, 480px);
+  flex: 0 1 min(36%, 440px);
   overflow: auto;
   padding: var(--ci-space-3) var(--ci-space-4);
   border-inline-start: 1px solid var(--color-border);
+}
+
+.ci-problems__detail--empty {
+  flex: 0 1 auto;
+  width: max-content;
 }
 
 .ci-problems__detail-message {
@@ -479,7 +490,7 @@
    the table four characters' width instead of a header that wraps to 重大/度. */
 .ci-severity {
   display: block;
-  text-align: center;
+  text-align: left;
   font-size: var(--ci-size-md);
 }
 
@@ -496,6 +507,23 @@
 }
 
 .ci-severity--warning {
+  color: var(--color-muted-foreground);
+}
+
+/* The severity filter chips: the icon takes the same colour as the table row's severity badge. */
+.ci-chip--high .codicon {
+  color: var(--color-destructive);
+}
+
+.ci-chip--medium .codicon {
+  color: var(--color-accent);
+}
+
+.ci-chip--low .codicon {
+  color: var(--color-primary);
+}
+
+.ci-chip--warning .codicon {
   color: var(--color-muted-foreground);
 }
 

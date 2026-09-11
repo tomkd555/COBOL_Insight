@@ -10,14 +10,11 @@ describe("parseRuleCatalog", () => {
           name: "reference to an uninitialised item",
           category: "data flow",
           severity: "HIGH",
-          phase: "DATA_FLOW",
           hasFix: true,
           source: "builtin",
           enabled: false,
-          defaultEnabled: true,
           commands: ["lint"],
           targets: ["COBOL"],
-          needs: ["dataflow"],
           summary: "s",
           rationale: "r",
           detection: "d",
@@ -31,19 +28,16 @@ describe("parseRuleCatalog", () => {
     expect(catalog.rules[0]).toMatchObject({
       id: "R001",
       enabled: false,
-      defaultEnabled: true,
       commands: ["lint"],
       targets: ["COBOL"],
-      needs: ["dataflow"],
       hasFix: true,
     });
     expect(catalog.ruleErrors).toEqual(["U002: the pattern does not compile"]);
   });
 
-  it("treats a rule as enabled when an older engine reports neither flag", () => {
+  it("treats a rule as enabled when an older engine reports no flag", () => {
     const catalog = parseRuleCatalog({ rules: [{ id: "R001" }] });
     expect(catalog.rules[0].enabled).toBe(true);
-    expect(catalog.rules[0].defaultEnabled).toBe(true);
   });
 
   it("marks a user-defined rule as such and everything else as built-in", () => {

@@ -59,9 +59,8 @@ public final class BinarySubscriptRule implements Rule {
                         MOVE WS-TBL(WS-IDX) TO WS-OUT.
                     """)
             .severity(Severity.LOW)
-            .commands(Command.LINT, Command.REPORT)
+            .commands(Command.LINT)
             .targets(AssetKind.COBOL)
-            .needs(Needs.SEMANTIC)
             .build();
 
     @Override

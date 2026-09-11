@@ -26,8 +26,18 @@ import java.util.regex.Pattern;
  * control flow has to reference a data item before it leaves the declared scope. This is the shape
  * of the built-in "status not checked" rules (R017, R018, R029) expressed declaratively, and it
  * walks the same control flow graph they do.
+ *
+ * <p>A rule whose subject is an {@code EXEC SQL} statement counts a {@code GET DIAGNOSTICS} on the
+ * way as the check, and does not stop at it, exactly as R018 does: that statement reads the
+ * diagnostics of the statement before it. The recognition is tied to the subject verb because the
+ * diagnostics area says nothing about a READ or a CALL — after those, a GET DIAGNOSTICS is neither
+ * a check nor a boundary. Whether a GET DIAGNOSTICS is itself a subject is the author's business,
+ * through {@code after.textRegex}.
  */
 final class CheckedAfterRule implements Rule {
+
+    /** The verb the COBOL frontend gives an embedded SQL statement. */
+    private static final String EXEC_SQL = "EXEC SQL";
 
     /** How far forward the check is looked for. */
     enum Scope {
@@ -46,11 +56,14 @@ final class CheckedAfterRule implements Rule {
     private final Scope scope;
     private final boolean onEveryPath;
     private final String message;
+    /** Whether the subject is an embedded SQL statement, whose diagnostics GET DIAGNOSTICS reads. */
+    private final boolean sqlSubject;
 
     CheckedAfterRule(RuleMeta meta, String afterVerb, Pattern afterText, List<String> dataItems,
             Scope scope, boolean onEveryPath, String message) {
         this.meta = meta;
         this.afterVerb = StatementRule.normalize(afterVerb);
+        this.sqlSubject = StatementRule.normalize(EXEC_SQL).equals(this.afterVerb);
         this.afterText = afterText;
         this.dataItems = dataItems.stream().map(item -> item.toUpperCase(Locale.ROOT)).toList();
         this.scope = scope;
@@ -100,7 +113,8 @@ final class CheckedAfterRule implements Rule {
         return switch (scope) {
             case UNTIL_NEXT_MATCHING_STATEMENT -> node -> {
                 SimpleStatement statement = statementOf(node);
-                return node != start && statement != null && hasSubjectVerb(statement);
+                return node != start && statement != null && hasSubjectVerb(statement)
+                        && !readsTheDiagnostics(node);
             };
             case UNTIL_PARAGRAPH_END -> node -> !node.procedureName().equals(start.procedureName());
             case UNTIL_PROGRAM_END -> node -> false;
@@ -158,12 +172,23 @@ final class CheckedAfterRule implements Rule {
         return node.statement().orElse(null) instanceof SimpleStatement simple ? simple : null;
     }
 
-    /** A node checks when it branches on a condition that names one of the data items. */
+    /**
+     * A node checks when it branches on a condition that names one of the data items, and — for a
+     * rule whose subject is an embedded SQL statement — when it reads the diagnostics area.
+     */
     private boolean isCheck(CfgNode node) {
+        if (readsTheDiagnostics(node)) {
+            return true;
+        }
         if (!(node.statement().orElse(null) instanceof CompoundStatement compound)) {
             return false;
         }
         String condition = compound.conditionText().toUpperCase(Locale.ROOT);
         return dataItems.stream().anyMatch(condition::contains);
+    }
+
+    /** A GET DIAGNOSTICS, and only where the subject of the rule is an embedded SQL statement. */
+    private boolean readsTheDiagnostics(CfgNode node) {
+        return sqlSubject && CfgSupport.isGetDiagnostics(node);
     }
 }

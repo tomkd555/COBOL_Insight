@@ -1,0 +1,438 @@
+[
+  {
+    "jobName": "FLJ020",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "FL0001",
+      "PROGRAMMER": "FL 月次請求",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID",
+      "RESTART": "STEP010"
+    },
+    "jcllib": [
+      "FL.PROD.PROCLIB"
+    ],
+    "joblib": [
+      {
+        "ddName": "JOBLIB",
+        "line": 12,
+        "datasetName": "FL.PROD.LOADLIB",
+        "dataset": {
+          "name": "FL.PROD.LOADLIB"
+        },
+        "dispositionText": "SHR",
+        "disposition": {
+          "status": "SHR",
+          "raw": "SHR"
+        },
+        "parameters": {
+          "DSN": "FL.PROD.LOADLIB",
+          "DISP": "SHR"
+        }
+      }
+    ],
+    "jes2Cards": [
+      "/*JOBPARM LINES=9999"
+    ],
+    "members": [
+      "FLP010.proc"
+    ],
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "FLB030",
+        "line": 16,
+        "parm": "250901",
+        "parameters": {
+          "PARM": "'250901'"
+        },
+        "utility": {
+          "ddRoles": {
+            "KEIMST": "READ",
+            "SEIKYU": "WRITE",
+            "KEIUPD": "WRITE",
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "KEIMST",
+            "line": 17,
+            "datasetName": "FLM.KEIYAKU.MASTER",
+            "dataset": {
+              "name": "FLM.KEIYAKU.MASTER"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FLM.KEIYAKU.MASTER",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SEIKYU",
+            "line": 18,
+            "datasetName": "FLM.D250901.SEIKYU.PRINT",
+            "dataset": {
+              "name": "FLM.D250901.SEIKYU.PRINT"
+            },
+            "dispositionText": "(,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLM.D250901.SEIKYU.PRINT",
+              "DISP": "(,CATLG,DELETE)",
+              "SPACE": "(CYL,(5,5),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=132,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "KEIUPD",
+            "line": 22,
+            "datasetName": "FLM.D250901.SEIKYU.JISSEKI",
+            "dataset": {
+              "name": "FLM.D250901.SEIKYU.JISSEKI"
+            },
+            "dispositionText": "(,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLM.D250901.SEIKYU.JISSEKI",
+              "DISP": "(,CATLG,DELETE)",
+              "SPACE": "(CYL,(2,1),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=100,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 26,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PGM",
+        "target": "FLB0301",
+        "line": 29,
+        "condition": "COND=(0,NE)",
+        "parameters": {
+          "COND": "(0,NE)"
+        },
+        "utility": {
+          "ddRoles": {
+            "KEIMST": "READ",
+            "SEIKYU": "WRITE",
+            "KEIUPD": "WRITE",
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "KEIMST",
+            "line": 30,
+            "datasetName": "FLM.KEIYAKU.MASTER",
+            "dataset": {
+              "name": "FLM.KEIYAKU.MASTER"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FLM.KEIYAKU.MASTER",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SEIKYU",
+            "line": 31,
+            "datasetName": "FLM.D250901.SEIKYU.SAIHAKKO",
+            "dataset": {
+              "name": "FLM.D250901.SEIKYU.SAIHAKKO"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLM.D250901.SEIKYU.SAIHAKKO",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(5,5),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=132,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "KEIUPD",
+            "line": 35,
+            "datasetName": "FLM.D250901.SEIKYU.SAIJISSEKI",
+            "dataset": {
+              "name": "FLM.D250901.SEIKYU.SAIJISSEKI"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLM.D250901.SEIKYU.SAIJISSEKI",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(2,1),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=100,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 39,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP030",
+        "execKind": "PROC",
+        "target": "FLP010",
+        "line": 42,
+        "condition": "COND=(4,LT)",
+        "parameters": {
+          "CYCLE": "250901",
+          "HLQ": "FLM",
+          "COND": "(4,LT)"
+        }
+      },
+      {
+        "name": "STEP030.STEP1",
+        "execKind": "PGM",
+        "target": "FLB010",
+        "line": 10,
+        "file": "FLP010.proc",
+        "condition": "COND=(4,LT)",
+        "procStepName": "STEP1",
+        "parameters": {
+          "COND": "(4,LT)"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "NYUKIN": "READ",
+            "NYUOUT": "WRITE",
+            "SYSOUT": "WRITE",
+            "SYSPRINT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 11,
+            "file": "FLP010.proc",
+            "datasetName": "FL.PROD.LOADLIB",
+            "dataset": {
+              "name": "FL.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FL.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "NYUKIN",
+            "line": 12,
+            "file": "FLP010.proc",
+            "datasetName": "FLT.D250901.NYUKIN.DAILY",
+            "dataset": {
+              "name": "FLT.D250901.NYUKIN.DAILY"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FLT.D250901.NYUKIN.DAILY",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "NYUOUT",
+            "line": 13,
+            "file": "FLP010.proc",
+            "datasetName": "FLM.D250901.NYUKIN.HENSHU",
+            "dataset": {
+              "name": "FLM.D250901.NYUKIN.HENSHU"
+            },
+            "dispositionText": "(,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLM.D250901.NYUKIN.HENSHU",
+              "DISP": "(,CATLG,DELETE)",
+              "SPACE": "(CYL,(10,5),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=120,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "SORTWK01",
+            "line": 17,
+            "file": "FLP010.proc",
+            "parameters": {
+              "UNIT": "SYSDA",
+              "SPACE": "(CYL,(10,5))"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 18,
+            "file": "FLP010.proc",
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 19,
+            "file": "FLP010.proc",
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP030.STEP2",
+        "execKind": "PGM",
+        "target": "FLB040",
+        "line": 22,
+        "file": "FLP010.proc",
+        "condition": "COND=(4,LT)",
+        "procStepName": "STEP2",
+        "parameters": {
+          "COND": "(4,LT)"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "KEIYAKU": "READ",
+            "TOKLIST": "WRITE",
+            "SYSOUT": "WRITE",
+            "SYSPRINT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 23,
+            "file": "FLP010.proc",
+            "datasetName": "FL.PROD.LOADLIB",
+            "dataset": {
+              "name": "FL.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FL.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "KEIYAKU",
+            "line": 24,
+            "file": "FLP010.proc",
+            "datasetName": "FLM.KEIYAKU.MASTER",
+            "dataset": {
+              "name": "FLM.KEIYAKU.MASTER"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FLM.KEIYAKU.MASTER",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "TOKLIST",
+            "line": 25,
+            "file": "FLP010.proc",
+            "datasetName": "FLM.D250901.TOKUSOKU.LIST",
+            "dataset": {
+              "name": "FLM.D250901.TOKUSOKU.LIST"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLM.D250901.TOKUSOKU.LIST",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(2,1),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=132,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 29,
+            "file": "FLP010.proc",
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 30,
+            "file": "FLP010.proc",
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

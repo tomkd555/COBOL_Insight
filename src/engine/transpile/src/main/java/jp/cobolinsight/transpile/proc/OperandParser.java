@@ -84,7 +84,7 @@ public final class OperandParser {
         String command;
         String note;
         if (block != null && block.kind().isCics()) {
-            command = "EXEC CICS " + cicsCommand(block.kind());
+            command = "EXEC CICS " + cicsCommand(block);
             note = command + " は直訳不能" + operandSuffix(block.operands());
         } else if (block != null) {
             command = "EXEC SQL " + sqlCommand(block.text());
@@ -97,16 +97,31 @@ public final class OperandParser {
         return one(new ProcStmt.EmbeddedStub(command, cobolLines, s.range(), note));
     }
 
-    private static String cicsCommand(EmbeddedBlockKind kind) {
-        return switch (kind) {
+    private static String cicsCommand(EmbeddedBlock block) {
+        return switch (block.kind()) {
             case CICS_SEND_MAP -> "SEND MAP";
             case CICS_RECEIVE_MAP -> "RECEIVE MAP";
             case CICS_XCTL -> "XCTL";
             case CICS_LINK -> "LINK";
             case CICS_START -> "START";
-            case CICS_RETURN_TRANSID -> "RETURN";
+            case CICS_RETURN_TRANSID, CICS_RETURN -> "RETURN";
+            case CICS_HANDLE_CONDITION -> "HANDLE CONDITION";
+            case CICS_OTHER -> otherCicsCommand(block.text());
             case SQL -> "";
         };
+    }
+
+    /** The first word after EXEC CICS, in uppercase: READ, WRITEQ, ASSIGN, ... */
+    private static String otherCicsCommand(String text) {
+        List<String> toks = splitTokens(text.trim());
+        int i = 0;
+        if (i < toks.size() && toks.get(i).equalsIgnoreCase("EXEC")) {
+            i++;
+        }
+        if (i < toks.size() && toks.get(i).equalsIgnoreCase("CICS")) {
+            i++;
+        }
+        return i < toks.size() ? toks.get(i).toUpperCase(Locale.ROOT) : "";
     }
 
     /** Returns the leading verb of an EXEC SQL body in uppercase (DECLARE ... CURSOR becomes "DECLARE CURSOR"). */

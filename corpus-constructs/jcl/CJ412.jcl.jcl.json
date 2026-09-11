@@ -1,0 +1,85 @@
+[
+  {
+    "jobName": "CJ412",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "IDCAMS LISTCAT ALTER IF",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IDCAMS",
+        "line": 11,
+        "utility": {
+          "datasetUses": [
+            {
+              "dataset": "CJT.D260909.WORK.OLD",
+              "access": "UPDATE"
+            },
+            {
+              "dataset": "CJT.D260909.WORK.RENAMED",
+              "access": "CREATE"
+            }
+          ],
+          "ddRoles": {
+            "IN": "READ",
+            "SYSPRINT": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSPRINT",
+            "line": 12,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "IN",
+            "line": 13,
+            "datasetName": "CJT.D260910.PRINT.INPUT",
+            "dataset": {
+              "name": "CJT.D260910.PRINT.INPUT"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.PRINT.INPUT",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 14,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  LISTCAT ENTRIES(CJV.KEIYAKU.CLUSTER) ALL",
+              "  IF LASTCC > 0 THEN SET MAXCC = 0 ELSE -",
+              "      LISTCAT ENTRIES(CJV.KEIYAKU.AIX) ALL",
+              "  ALTER CJT.D260909.WORK.OLD -",
+              "        NEWNAME(CJT.D260909.WORK.RENAMED)",
+              "  PRINT INFILE(IN) COUNT(10)",
+              "  IF MAXCC = 0 THEN DO",
+              "      PRINT INFILE(IN) COUNT(5)",
+              "      SET MAXCC = 0",
+              "  END"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

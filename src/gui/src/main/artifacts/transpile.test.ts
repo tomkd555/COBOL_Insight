@@ -37,14 +37,6 @@ describe("readLineMap", () => {
     }
   });
 
-  it("keeps the note that says what could not be translated literally", async () => {
-    const db = await openDatabaseWith(LINE_MAP_DB);
-    try {
-      expect(readLineMap(db, "cobol/SYK001.cbl")[0].note).toContain("cannot be translated");
-    } finally {
-      db.close();
-    }
-  });
 
   it("returns nothing for a source with no translation", async () => {
     const db = await openDatabaseWith(LINE_MAP_DB);

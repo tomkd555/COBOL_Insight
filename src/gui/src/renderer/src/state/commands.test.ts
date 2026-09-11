@@ -17,15 +17,9 @@ function context(overrides: Partial<CommandContext> = {}): CommandContext {
     workbenchDispatch: vi.fn(),
     selectFolder: vi.fn(),
     runAnalysis: vi.fn(),
+    runAnalysisAll: vi.fn(),
     cancelAnalysis: vi.fn(),
     requestCloseTab: vi.fn(),
-    requestDiscardTab: vi.fn(),
-    rulesActions: {
-      setRulesEnabled: vi.fn(),
-      setRuleSeverity: vi.fn(),
-      saveCustomRules: vi.fn(),
-      validateCustomRules: vi.fn(),
-    },
     saveActiveTab: vi.fn(),
     saveAllTabs: vi.fn(),
     hasDirty: false,
@@ -41,8 +35,8 @@ const scanned: ProjectState = {
   inventory: {
     status: "ready",
     items: [
-      { id: 1, path: "a.cbl", name: "a.cbl", type: "PROGRAM", codepage: null, byteSize: 1, findingCount: 0 },
-      { id: 2, path: "b.cpy", name: "b.cpy", type: "COPYBOOK", codepage: null, byteSize: 1, findingCount: 0 },
+      { id: 1, path: "a.cbl", name: "a.cbl", type: "PROGRAM", codepage: null, findingCount: 0 },
+      { id: 2, path: "b.cpy", name: "b.cpy", type: "COPYBOOK", codepage: null, findingCount: 0 },
     ],
   },
 };
@@ -93,6 +87,16 @@ describe("when", () => {
     expect(offered(running)).toBe(false);
   });
 
+  it("offers analysing the whole folder under the same condition as analysing the selection", () => {
+    const offered = (project: ProjectState): boolean =>
+      availableCommands(buildCommands(context({ project }))).some(
+        (command) => command.id === "run.analyzeAll",
+      );
+    expect(offered(initialProjectState)).toBe(false);
+    expect(offered(withFolder)).toBe(true);
+    expect(offered(running)).toBe(false);
+  });
+
   it("offers cancelling only while a run is in progress", () => {
     const offered = (project: ProjectState): boolean =>
       availableCommands(buildCommands(context({ project }))).some(
@@ -118,15 +122,6 @@ describe("when", () => {
     expect(offered({ ...initialWorkbenchState, tabs: [settings], activeTabId: settings.id })).toBe(
       false,
     );
-  });
-
-  it("offers the discard only on a tab that holds unsaved edits", () => {
-    const offered = (workbench: WorkbenchState): boolean =>
-      availableCommands(buildCommands(context({ workbench }))).some(
-        (command) => command.id === "editor.discard",
-      );
-    expect(offered(withTab)).toBe(false);
-    expect(offered({ ...withTab, drafts: { [sourceTab("a.cbl").id]: "EDITED" } })).toBe(true);
   });
 
   it("offers the save only on a source tab that holds unsaved edits", () => {
@@ -156,6 +151,21 @@ describe("when", () => {
 });
 
 describe("run", () => {
+  it("keeps the selected run and the whole-folder run apart", () => {
+    const runAnalysis = vi.fn();
+    const runAnalysisAll = vi.fn();
+    const commands = buildCommands(
+      context({ project: withFolder, runAnalysis, runAnalysisAll }),
+    );
+    commands.find((command) => command.id === "run.analyze")?.run();
+    expect(runAnalysis).toHaveBeenCalledTimes(1);
+    expect(runAnalysisAll).not.toHaveBeenCalled();
+
+    commands.find((command) => command.id === "run.analyzeAll")?.run();
+    expect(runAnalysisAll).toHaveBeenCalledTimes(1);
+    expect(runAnalysis).toHaveBeenCalledTimes(1);
+  });
+
   it("routes closing through the guard rather than closing outright", () => {
     const requestCloseTab = vi.fn();
     const commands = buildCommands(context({ workbench: withTab, requestCloseTab }));

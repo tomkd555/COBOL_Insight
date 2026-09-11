@@ -1,0 +1,143 @@
+[
+  {
+    "jobName": "CJ415",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "IEBPTPCH IEBUPDTE",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IEBPTPCH",
+        "line": 9,
+        "utility": {
+          "ddRoles": {
+            "SYSPRINT": "WRITE",
+            "SYSUT1": "READ",
+            "SYSUT2": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSPRINT",
+            "line": 10,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSUT1",
+            "line": 11,
+            "datasetName": "CJT.PROD.SRCLIB",
+            "dataset": {
+              "name": "CJT.PROD.SRCLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.PROD.SRCLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSUT2",
+            "line": 12,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 13,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  PRINT TYPORG=PO"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PGM",
+        "target": "IEBUPDTE",
+        "line": 17,
+        "condition": "COND=(4,LT,STEP010)",
+        "parm": "NEW",
+        "parameters": {
+          "PARM": "NEW",
+          "COND": "(4,LT,STEP010)"
+        },
+        "utility": {
+          "ddRoles": {
+            "SYSPRINT": "WRITE",
+            "SYSUT2": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSPRINT",
+            "line": 18,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSUT1",
+            "line": 19,
+            "dummy": true,
+            "parameters": {
+              "DUMMY": ""
+            }
+          },
+          {
+            "ddName": "SYSUT2",
+            "line": 20,
+            "datasetName": "CJT.TEST.SRCLIB",
+            "dataset": {
+              "name": "CJT.TEST.SRCLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.TEST.SRCLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 21,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "./ ADD NAME=NEWMEM",
+              "./ NUMBER NEW1=10,INCR=10",
+              "       IDENTIFICATION DIVISION.",
+              "       PROGRAM-ID. NEWMEM.",
+              "./ ENDUP"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

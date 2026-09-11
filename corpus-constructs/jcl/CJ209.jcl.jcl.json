@@ -1,0 +1,87 @@
+[
+  {
+    "jobName": "CJ209",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "CJ DD CONCAT",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 9,
+        "ddStatements": [
+          {
+            "ddName": "CONCATIN",
+            "line": 10,
+            "datasetName": "FLW.CJ209.PART1",
+            "dataset": {
+              "name": "FLW.CJ209.PART1"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ209.PART1",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "CONCATIN",
+            "line": 11,
+            "concatIndex": 1,
+            "datasetName": "FLW.CJ209.PART2",
+            "dataset": {
+              "name": "FLW.CJ209.PART2"
+            },
+            "dispositionText": "OLD",
+            "disposition": {
+              "status": "OLD",
+              "raw": "OLD"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ209.PART2",
+              "DISP": "OLD"
+            }
+          },
+          {
+            "ddName": "CONCATIN",
+            "line": 12,
+            "concatIndex": 2,
+            "dummy": true,
+            "parameters": {
+              "DUMMY": ""
+            }
+          },
+          {
+            "ddName": "CONCATIN",
+            "line": 13,
+            "concatIndex": 3,
+            "datasetName": "FLW.CJ209.PART4",
+            "dataset": {
+              "name": "FLW.CJ209.PART4"
+            },
+            "dispositionText": "(OLD,KEEP)",
+            "disposition": {
+              "status": "OLD",
+              "normal": "KEEP",
+              "raw": "(OLD,KEEP)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ209.PART4",
+              "DISP": "(OLD,KEEP)"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -46,11 +46,11 @@ public record Decode(Set<AssetKind> reportFailuresFor) implements Step {
                 if (unit.kind() != AssetKind.COPYBOOK) {
                     // A copybook has no node of its own in the call graph; it is reached through
                     // the programs that copy it, and those report their own failure to parse.
-                    s.unanalyzable().put(unit.relPath(), "復号に失敗した: " + e.getMessage());
+                    s.unanalyzable().put(unit.relPath(), "復号に失敗しました: " + e.getMessage());
                 }
                 if (reportFailuresFor.contains(unit.kind())) {
                     s.addFinding(unit.relPath(), Finding.of(DECODE_FAILURE_RULE_ID,
-                            FindingLevel.ERROR, "復号に失敗した: " + e.getMessage(),
+                            FindingLevel.ERROR, "復号に失敗しました: " + e.getMessage(),
                             SourcePosition.fileStart(unit.relPath())));
                 }
             }

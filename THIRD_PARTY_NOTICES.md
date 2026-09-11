@@ -12,10 +12,7 @@ shipped inside the engine jar under `licenses/` and are reproduced in the linked
 | ANTLR 4 runtime and tool | 4.13.2 | BSD-3-Clause | https://www.antlr.org/ |
 | ICU4J | 78.3 | Unicode License v3 (ICU) | https://icu.unicode.org/ |
 | SQLite JDBC (includes SQLite) | 3.53.2.0 | Apache-2.0 (SQLite: public domain) | https://github.com/xerial/sqlite-jdbc |
-| java-diff-utils | 4.15 | Apache-2.0 | https://github.com/java-diff-utils/java-diff-utils |
 | picocli | 4.7.7 | Apache-2.0 | https://picocli.info/ |
-| graphviz-java (with viz.js) | 0.18.1 | Apache-2.0 (viz.js: MIT) | https://github.com/nidi3/graphviz-java |
-| GraalJS | 24.2.1 | UPL-1.0 | https://github.com/oracle/graaljs |
 | Eclipse LSP4J | 0.14.0 | EPL-2.0 | https://github.com/eclipse-lsp4j/lsp4j |
 | Google Guice (no_aop) and guice-assistedinject | 4.2.3 | Apache-2.0 | https://github.com/google/guice |
 | Google Guava | 33.2.1-jre | Apache-2.0 | https://github.com/google/guava |

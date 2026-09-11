@@ -30,11 +30,11 @@ export const GRAPH: GraphData = {
     { id: DATASET_ID, type: "DATASET", label: "SYKT.ORDER.DAILY" },
   ],
   edges: [
-    { from: JOB_ID, to: STEP020_ID, kind: "EXECUTION", resolution: "CONSTANT", seq: 2, line: 27 },
-    { from: JOB_ID, to: STEP010_ID, kind: "EXECUTION", resolution: "CONSTANT", seq: 1, line: 14 },
-    { from: STEP010_ID, to: SYK001_ID, kind: "EXECUTION", resolution: "CONSTANT", seq: 1, line: 14 },
-    { from: STEP010_ID, to: DATASET_ID, kind: "REFERENCE", resolution: "CONSTANT", seq: 0, line: 16 },
-    { from: SYK001_ID, to: SYK002_ID, kind: "CALL", resolution: "DATAFLOW", seq: 1, line: 110 },
+    { from: JOB_ID, to: STEP020_ID, kind: "EXECUTION", resolution: "CONSTANT", seq: 2, line: 27, access: null },
+    { from: JOB_ID, to: STEP010_ID, kind: "EXECUTION", resolution: "CONSTANT", seq: 1, line: 14, access: null },
+    { from: STEP010_ID, to: SYK001_ID, kind: "EXECUTION", resolution: "CONSTANT", seq: 1, line: 14, access: null },
+    { from: STEP010_ID, to: DATASET_ID, kind: "REFERENCE", resolution: "CONSTANT", seq: 0, line: 16, access: "READ" },
+    { from: SYK001_ID, to: SYK002_ID, kind: "CALL", resolution: "DATAFLOW", seq: 1, line: 110, access: null },
   ],
   paragraphs: [
     { id: 21, programSourceId: SYK001_ID, name: "MAIN-PROC", startLine: 80, endLine: 90 },

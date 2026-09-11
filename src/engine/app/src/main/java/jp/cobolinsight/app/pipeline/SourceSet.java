@@ -11,6 +11,7 @@ import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.DecodedSource;
+import jp.cobolinsight.core.sql.SqlRoutineDefinition;
 import jp.cobolinsight.core.sql.SqlStatementModel;
 import jp.cobolinsight.rules.RuleSet;
 
@@ -38,12 +39,28 @@ public final class SourceSet {
      */
     public record Options(Path inputDir, Path databaseFile, List<Path> copybookSearchPaths,
             Map<String, String> codepageOverrides, RuleSet ruleSet, Set<Needs> needs,
-            Path singleFile) {
+            List<Path> procedureLibraryPaths, Scope scope) {
 
         public Options {
             copybookSearchPaths = List.copyOf(copybookSearchPaths);
             codepageOverrides = Map.copyOf(codepageOverrides);
             needs = Set.copyOf(needs);
+            procedureLibraryPaths = List.copyOf(procedureLibraryPaths);
+        }
+
+        /** A run over the whole asset folder, which is every subcommand but a scoped {@code lint}. */
+        public Options(Path inputDir, Path databaseFile, List<Path> copybookSearchPaths,
+                Map<String, String> codepageOverrides, RuleSet ruleSet, Set<Needs> needs,
+                List<Path> procedureLibraryPaths) {
+            this(inputDir, databaseFile, copybookSearchPaths, codepageOverrides, ruleSet, needs,
+                    procedureLibraryPaths, Scope.ALL);
+        }
+
+        /** A run with no PROC library of its own: the walk is the whole search space. */
+        public Options(Path inputDir, Path databaseFile, List<Path> copybookSearchPaths,
+                Map<String, String> codepageOverrides, RuleSet ruleSet, Set<Needs> needs) {
+            this(inputDir, databaseFile, copybookSearchPaths, codepageOverrides, ruleSet, needs,
+                    List.of());
         }
 
         public boolean requires(Needs need) {
@@ -58,15 +75,17 @@ public final class SourceSet {
                     List.of());
     /** Files that discovery accepted but that could not be read afterwards. */
     private final List<String> unreadable = new ArrayList<>();
+    /** Held once decided, because {@link Parse} asks for it per file. */
+    private List<Path> copybookSearchPaths;
     private final List<SourceUnit> units = new ArrayList<>();
     private final Map<String, byte[]> bytes = new LinkedHashMap<>();
     private final Map<String, DecodedSource> decoded = new LinkedHashMap<>();
     private final Map<String, CobolSemanticModel> programsByPath = new TreeMap<>();
-    private final Map<String, JclJobModel> jobsByPath = new TreeMap<>();
+    private final Map<String, List<JclJobModel>> jobsByPath = new TreeMap<>();
     private final Map<String, List<BmsMapset>> mapsetsByPath = new TreeMap<>();
     private final Map<String, List<SqlStatementModel>> sqlByPath = new TreeMap<>();
-    /** SQL blocks that would not parse, by relative path. Only persistence reports these. */
-    private final Map<String, List<Finding>> sqlParseFailuresByPath = new TreeMap<>();
+    /** The routines the SQL scripts of the walk define, in the order the scripts write them. */
+    private final List<SqlRoutineDefinition> sqlRoutines = new ArrayList<>();
     /** Assets whose bytes could not be decoded or parsed, and why. Isolated nodes in the graph. */
     private final Map<String, String> unanalyzable = new TreeMap<>();
     private ControlFlowGraphs cfgs = new ControlFlowGraphs(List.of());
@@ -106,6 +125,20 @@ public final class SourceSet {
         this.discovery = report;
     }
 
+    /**
+     * Where COPY looks. {@code --copybook-path} wins; with none given, wherever this run's own walk
+     * found copybooks becomes the search path — the whole walk, so a copybook left out of a scope
+     * still resolves. Deciding by folder name instead would leave a COPY unresolved as soon as
+     * someone put the copybook somewhere else.
+     */
+    public List<Path> copybookSearchPaths() {
+        if (copybookSearchPaths == null) {
+            copybookSearchPaths = options.copybookSearchPaths().isEmpty()
+                    ? discovery.copybookDirectories() : options.copybookSearchPaths();
+        }
+        return copybookSearchPaths;
+    }
+
     public List<String> unreadable() {
         return unreadable;
     }
@@ -121,7 +154,7 @@ public final class SourceSet {
     public List<String> discoveryWarnings() {
         List<String> messages = new ArrayList<>(discovery.warnings());
         if (!unreadable.isEmpty()) {
-            messages.add(unreadable.size() + "件は読み取れなかったため対象から外した: "
+            messages.add(unreadable.size() + "件は読み取れなかったため対象から外しました: "
                     + String.join(", ", unreadable));
         }
         return messages;
@@ -133,6 +166,23 @@ public final class SourceSet {
 
     public List<SourceUnit> unitsOf(AssetKind kind) {
         return units.stream().filter(unit -> unit.kind() == kind).toList();
+    }
+
+    /**
+     * What the asset folder calls each file, by absolute path. The whole walk answers, not just the
+     * units: a scope narrows what is analysed, never what a finding may be named after. The units
+     * are added on top of it for the copybooks {@code fix} and {@code translate} reach through a
+     * search path, which the walk of the asset folder never saw.
+     */
+    public Map<Path, String> relPathByAbsPath() {
+        Map<Path, String> byAbsPath = new LinkedHashMap<>();
+        for (SourceDiscovery.DiscoveredFile file : discovery.files()) {
+            byAbsPath.put(file.absPath().toAbsolutePath().normalize(), file.relPath());
+        }
+        for (SourceUnit unit : units) {
+            byAbsPath.putIfAbsent(unit.absPath().toAbsolutePath().normalize(), unit.relPath());
+        }
+        return byAbsPath;
     }
 
     public Map<String, byte[]> bytes() {
@@ -152,12 +202,15 @@ public final class SourceSet {
         return List.copyOf(programsByPath.values());
     }
 
-    public Map<String, JclJobModel> jobsByPath() {
+    /** The jobs of each JCL file, in the order their JOB cards stand in it. */
+    public Map<String, List<JclJobModel>> jobsByPath() {
         return jobsByPath;
     }
 
     public List<JclJobModel> jobs() {
-        return List.copyOf(jobsByPath.values());
+        List<JclJobModel> all = new ArrayList<>();
+        jobsByPath.values().forEach(all::addAll);
+        return all;
     }
 
     public Map<String, List<BmsMapset>> mapsetsByPath() {
@@ -172,10 +225,6 @@ public final class SourceSet {
 
     public Map<String, List<SqlStatementModel>> sqlByPath() {
         return sqlByPath;
-    }
-
-    public Map<String, List<Finding>> sqlParseFailuresByPath() {
-        return sqlParseFailuresByPath;
     }
 
     /** SQL statements grouped by PROGRAM-ID, which is how the linker asks for them. */
@@ -195,6 +244,22 @@ public final class SourceSet {
         List<SqlStatementModel> all = new ArrayList<>();
         sqlByPath.values().forEach(all::addAll);
         return all;
+    }
+
+    public List<SqlRoutineDefinition> sqlRoutines() {
+        return sqlRoutines;
+    }
+
+    /** The statements of the SQL scripts alone, keyed by path: what no PROGRAM-ID owns. */
+    public Map<String, List<SqlStatementModel>> sqlByScript() {
+        Map<String, List<SqlStatementModel>> byScript = new TreeMap<>();
+        for (SourceUnit unit : unitsOf(AssetKind.SQL)) {
+            List<SqlStatementModel> statements = sqlByPath.get(unit.relPath());
+            if (statements != null && !statements.isEmpty()) {
+                byScript.put(unit.relPath(), statements);
+            }
+        }
+        return byScript;
     }
 
     public Map<String, String> unanalyzable() {

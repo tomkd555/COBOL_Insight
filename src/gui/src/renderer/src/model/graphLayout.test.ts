@@ -3,7 +3,6 @@ import {
   DASHED_EDGE_CLASS,
   NODE_KINDS,
   buildGraphElements,
-  edgeKindStyle,
   graphLayoutOptions,
   graphStylesheet,
   isDashedEdge,
@@ -56,11 +55,6 @@ describe("kind lookups", () => {
     expect(NODE_KINDS).toHaveLength(11);
     expect(isGraphNodeKind("PROGRAM")).toBe(true);
     expect(isGraphNodeKind("COPYBOOK")).toBe(false);
-  });
-
-  it("falls back to grey for an edge kind this build does not know", () => {
-    expect(edgeKindStyle("CALL", "dark").arrowShape).toBe("vee");
-    expect(edgeKindStyle("SOMETHING_NEW", "light").arrowShape).toBe("tee");
   });
 
   it("dashes dataflow-derived and unresolved edges only", () => {

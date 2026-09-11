@@ -1,0 +1,12 @@
+-- CSQKOZAの件数を数える                                                       00000100
+SELECT COUNT(*)                                                         00000200
+  FROM CSDB.CSQKOZA;                                                    00000300
+-- 残高が100万円を超える口座を残高の大きい順に表示する                                          00000400
+SELECT KOZA_NO, KOKYAKU_NO, ZANDAKA                                     00000500
+  FROM CSDB.CSQKOZA                                                     00000600
+ WHERE ZANDAKA > 1000000                                                00000700
+ ORDER BY ZANDAKA DESC;                                                 00000800
+-- 更新日だけを本日付に補正する                                                       00000900
+UPDATE CSDB.CSQKOZA                                                     00001000
+   SET KOSHIN_YMD = REPLACE(CHAR(CURRENT DATE, ISO), '-', '')           00001100
+ WHERE KOZA_NO = 'A000000001';                                          00001200

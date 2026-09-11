@@ -61,9 +61,9 @@ public final class CallGraph {
     }
 
     /**
-     * JSON representation. For a node with empty attributes, the attributes key itself is omitted.
-     * An edge's seq and line are likewise emitted only when known (an edge with unknown order omits
-     * seq, and one with an unknown line omits line).
+     * JSON representation. For a node or an edge with empty attributes, the attributes key itself
+     * is omitted. An edge's seq and line are likewise emitted only when known (an edge with unknown
+     * order omits seq, and one with an unknown line omits line).
      */
     public String toJson() {
         JsonWriter w = new JsonWriter();
@@ -95,6 +95,13 @@ public final class CallGraph {
             if (edge.line() != null) {
                 w.name("line").value(edge.line());
             }
+            if (!edge.attributes().isEmpty()) {
+                w.name("attributes").beginObject();
+                for (Map.Entry<String, String> entry : edge.attributes().entrySet()) {
+                    w.name(entry.getKey()).value(entry.getValue());
+                }
+                w.endObject();
+            }
             w.endObject();
         }
         w.endArray().endObject();
@@ -118,7 +125,12 @@ public final class CallGraph {
                     .append("\" -> \"").append(dotEscape(edge.toId()))
                     .append("\" [kind=\"").append(edge.kind().name())
                     .append("\" resolution=\"").append(edge.resolution().name())
-                    .append("\"];\n");
+                    .append('"');
+            for (Map.Entry<String, String> entry : edge.attributes().entrySet()) {
+                sb.append(' ').append(entry.getKey())
+                        .append("=\"").append(dotEscape(entry.getValue())).append('"');
+            }
+            sb.append("];\n");
         }
         sb.append('}');
         return sb.toString();

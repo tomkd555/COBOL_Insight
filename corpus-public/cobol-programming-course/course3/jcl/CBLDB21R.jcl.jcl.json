@@ -1,0 +1,115 @@
+[
+  {
+    "jobName": "CBLDB21R",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "1",
+      "NOTIFY": "&SYSUID",
+      "REGION": "0M"
+    },
+    "steps": [
+      {
+        "name": "RUN",
+        "execKind": "PGM",
+        "target": "IKJEFT01",
+        "line": 8,
+        "utility": {
+          "programRuns": [
+            {
+              "program": "CBLDB21",
+              "plan": "&SYSUID",
+              "library": "&SYSUID..LOAD"
+            }
+          ],
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "REPORT": "WRITE",
+            "SYSTSIN": "READ",
+            "SYSTSPRT": "WRITE",
+            "SYSPRINT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 9,
+            "datasetName": "DSNC10.SDSNLOAD",
+            "dataset": {
+              "name": "DSNC10.SDSNLOAD"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "DSNC10.SDSNLOAD",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "REPORT",
+            "line": 10,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSTSIN",
+            "line": 11,
+            "parameters": {
+              "*": "",
+              "SYMBOLS": "CNVTSYS"
+            },
+            "inStreamData": [
+              " DSN SYSTEM(DBCG)",
+              " RUN PROGRAM(CBLDB21) PLAN(&SYSUID) LIB('&SYSUID..LOAD')",
+              " END"
+            ]
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 16,
+            "dummy": true,
+            "parameters": {
+              "DUMMY": ""
+            }
+          },
+          {
+            "ddName": "SYSUDUMP",
+            "line": 17,
+            "dummy": true,
+            "parameters": {
+              "DUMMY": ""
+            }
+          },
+          {
+            "ddName": "CEEDUMP",
+            "line": 18,
+            "dummy": true,
+            "parameters": {
+              "DUMMY": ""
+            }
+          },
+          {
+            "ddName": "SYSTSPRT",
+            "line": 19,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 20,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

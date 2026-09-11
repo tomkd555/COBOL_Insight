@@ -33,7 +33,9 @@ class RuleTextGlossaryTest {
     private static final List<Path> ROOTS = List.of(
             Path.of("src/main/java/jp/cobolinsight/rules"),
             Path.of("../app/src/main/java/jp/cobolinsight/app/cli"),
-            Path.of("../app/src/main/java/jp/cobolinsight/app/pipeline"));
+            Path.of("../app/src/main/java/jp/cobolinsight/app/pipeline"),
+            Path.of("../jcl-frontend/src/main/java/jp/cobolinsight/frontend/jcl"),
+            Path.of("../sql-frontend/src/main/java/jp/cobolinsight/frontend/sql"));
 
     private static final List<Ban> BANNED = List.of(
             Ban.word("桁落ち", "切り捨て"),
@@ -62,9 +64,11 @@ class RuleTextGlossaryTest {
             Ban.word("コール", "呼び出し"),
             Ban.word("可能性がある", "〜得ます"),
             Ban.word("条件コード", "戻りコード"),
-            // A 常体 sentence ending before 「。」; every field is 敬体 (docs/rule-text.md, Register).
-            // ます・です・ました・でした・ください are the 敬体 endings that share a final kana.
-            new Ban(Pattern.compile("(?:(?<!ま)(?<!で)す|(?<!まし)(?<!でし)た|(?<!くださ)い|[るだむくつぬぶぐ])。"),
+            // A 常体 sentence ending before 「。」 or before the colon that introduces a list;
+            // every field is 敬体 (docs/rule-text.md, Register). ます・です・ました・でした・
+            // ください are the 敬体 endings that share a final kana.
+            new Ban(Pattern.compile(
+                    "(?:(?<!ま)(?<!で)す|(?<!まし)(?<!でし)た|(?<!くださ)い|[るだむくつぬぶぐ])[。:：]"),
                     "敬体 (〜ます。/〜です。/〜ください。)"));
 
     /** Phrases that contain a banned substring but are correct as they stand. */

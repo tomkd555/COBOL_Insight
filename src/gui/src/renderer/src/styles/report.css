@@ -35,6 +35,13 @@
   color: var(--color-destructive);
 }
 
+/* What the report covers. A sentence the reader has to take in, so it keeps the body size. */
+.ci-report__note {
+  margin: 0;
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-md);
+}
+
 .ci-report__frame {
   flex: 1;
   min-height: 0;

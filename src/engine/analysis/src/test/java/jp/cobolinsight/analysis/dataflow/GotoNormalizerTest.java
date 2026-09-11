@@ -95,12 +95,7 @@ class GotoNormalizerTest {
         successors.put(c, List.of(b, exit));
         successors.put(exit, List.of());
 
-        Map<Statement, CfgNode> byStatement = new IdentityHashMap<>();
-        byStatement.put(stmtB, b);
-        byStatement.put(stmtC, c);
-
-        return new ControlFlowGraph("IRR", List.of(entry, b, c, exit), entry, exit,
-                successors, byStatement);
+        return new ControlFlowGraph("IRR", List.of(entry, b, c, exit), entry, exit, successors);
     }
 
     private static SourceRange lineRange(int line) {

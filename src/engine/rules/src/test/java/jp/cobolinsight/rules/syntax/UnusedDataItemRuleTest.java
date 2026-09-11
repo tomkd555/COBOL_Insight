@@ -86,6 +86,92 @@ class UnusedDataItemRuleTest {
                 "FILE SECTION(FD配下)の未参照レコード項目は対象外であること");
     }
 
+    private static final String TABLE_COPYBOOK = String.join("\n",
+            "       01  CPY-AREA.",
+            "           05  CPY-USED                PIC X(05).",
+            "           05  CPY-UNUSED              PIC X(05).",
+            "       01  CPY-ALONE                   PIC X(05).",
+            "");
+
+    /** A SEARCH ALL table initialised through a REDEFINES, next to a copybook used in part. */
+    private static final String REDEFINES_AND_COPY = String.join("\n",
+            /*  1 */ "       IDENTIFICATION DIVISION.",
+            /*  2 */ "       PROGRAM-ID.  FIX002C.",
+            /*  3 */ "       DATA DIVISION.",
+            /*  4 */ "       WORKING-STORAGE SECTION.",
+            /*  5 */ "           COPY TBLCPY.",
+            /*  6 */ "       01  WS-CODE-INIT.",
+            /*  7 */ "           05  FILLER  PIC X(10) VALUE '10001TOKYO'.",
+            /*  8 */ "           05  FILLER  PIC X(10) VALUE '10002OSAKA'.",
+            /*  9 */ "       01  WS-CODE-TBL REDEFINES WS-CODE-INIT.",
+            /* 10 */ "           05  WS-CODE-ENT OCCURS 2 TIMES",
+            /* 11 */ "                   ASCENDING KEY IS WS-CODE INDEXED BY WS-CODE-IX.",
+            /* 12 */ "               10  WS-CODE             PIC X(05).",
+            /* 13 */ "               10  WS-CODE-NAME        PIC X(05).",
+            /* 14 */ "       01  WS-KEY                      PIC X(05).",
+            /* 15 */ "       01  WS-UNUSED                   PIC X(05).",
+            /* 16 */ "       PROCEDURE DIVISION.",
+            /* 17 */ "       0000-MAIN.",
+            /* 18 */ "           MOVE CPY-USED TO WS-KEY",
+            /* 19 */ "           SEARCH ALL WS-CODE-ENT",
+            /* 20 */ "               WHEN WS-CODE (WS-CODE-IX) = WS-KEY",
+            /* 21 */ "                   DISPLAY WS-CODE-NAME (WS-CODE-IX)",
+            /* 22 */ "           END-SEARCH",
+            /* 23 */ "           GOBACK.",
+            "");
+
+    @Test
+    void skipsCopybookItemsAndTablesUsedThroughARedefines() throws java.io.IOException {
+        Path copybookDir = tempDir.resolve("cpy");
+        java.nio.file.Files.createDirectories(copybookDir);
+        java.nio.file.Files.writeString(copybookDir.resolve("TBLCPY.cpy"), TABLE_COPYBOOK);
+        CobolSemanticModel model = Fixtures.parse(tempDir, "FIX002C.cbl", REDEFINES_AND_COPY,
+                copybookDir);
+        AnalysisContext context = Fixtures.context(List.of(model), Map.of(
+                model.sourceFile(), REDEFINES_AND_COPY,
+                copybookDir.resolve("TBLCPY.cpy").toString(), TABLE_COPYBOOK));
+
+        List<Finding> findings = new UnusedDataItemRule().evaluate(context);
+
+        assertEquals(List.of(15), findings.stream().map(f -> f.location().line()).toList(),
+                () -> "only WS-UNUSED: the copybook's fields and the REDEFINEd init group are "
+                        + "not reported: " + findings);
+    }
+
+    private static final String RECORD_LAYOUT = String.join("\n",
+            "           05  CPY-A                   PIC X(05).",
+            "           05  CPY-B                   PIC X(05).",
+            "");
+
+    /** The common idiom of a record whose layout lives in a copybook below the program's own 01. */
+    private static final String COPY_UNDER_AN_ITEM = String.join("\n",
+            /*  1 */ "       IDENTIFICATION DIVISION.",
+            /*  2 */ "       PROGRAM-ID.  FIX002D.",
+            /*  3 */ "       DATA DIVISION.",
+            /*  4 */ "       WORKING-STORAGE SECTION.",
+            /*  5 */ "       01  WS-REC.",
+            /*  6 */ "           COPY RECLAYOUT.",
+            /*  7 */ "       PROCEDURE DIVISION.",
+            /*  8 */ "       0000-MAIN.",
+            /*  9 */ "           DISPLAY CPY-A",
+            /* 10 */ "           GOBACK.",
+            "");
+
+    @Test
+    void skipsCopybookFieldsPulledInUnderAnItemOfTheProgram() throws java.io.IOException {
+        Path copybookDir = tempDir.resolve("cpy");
+        java.nio.file.Files.createDirectories(copybookDir);
+        java.nio.file.Files.writeString(copybookDir.resolve("RECLAYOUT.cpy"), RECORD_LAYOUT);
+        CobolSemanticModel model = Fixtures.parse(tempDir, "FIX002D.cbl", COPY_UNDER_AN_ITEM,
+                copybookDir);
+        AnalysisContext context = Fixtures.context(List.of(model), Map.of(
+                model.sourceFile(), COPY_UNDER_AN_ITEM,
+                copybookDir.resolve("RECLAYOUT.cpy").toString(), RECORD_LAYOUT));
+
+        assertEquals(List.of(), new UnusedDataItemRule().evaluate(context),
+                "CPY-B belongs to the copybook, not to this program");
+    }
+
     @Test
     void returnsNothingWithoutSourceTextIndex() {
         CobolSemanticModel model = Fixtures.parse(tempDir, "FIX002B.cbl",

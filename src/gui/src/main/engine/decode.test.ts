@@ -6,7 +6,6 @@ const RESULT_JSON = JSON.stringify({
   text: "000100 IDENTIFICATION DIVISION.\n",
   codepage: "IBM930",
   detected: true,
-  soSiPresent: true,
   lines: [{ byteLength: 80, boundaries: [6, 7, 11, 72] }],
   stamp: { mtimeMs: 1700000000000, byteSize: 82 },
   error: "",
@@ -57,7 +56,6 @@ describe("parseDecodeJson", () => {
     const result = parseDecodeJson(RESULT_JSON);
     expect(result.codepage).toBe("IBM930");
     expect(result.detected).toBe(true);
-    expect(result.soSiPresent).toBe(true);
     expect(result.lines).toEqual([{ byteLength: 80, boundaries: [6, 7, 11, 72] }]);
     expect(result.stamp).toEqual({ mtimeMs: 1700000000000, byteSize: 82 });
     expect(result.error).toBe("");

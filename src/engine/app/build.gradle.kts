@@ -22,10 +22,21 @@ dependencies {
     implementation(project(":engine:bms-frontend"))
     implementation("info.picocli:picocli:4.7.7")
     implementation("org.xerial:sqlite-jdbc:3.53.2.0")
-    implementation("io.github.java-diff-utils:java-diff-utils:4.15")
-    // Call-graph SVG/PNG rendering runs viz.js on GraalJS (Nashorn is gone since Java 15).
-    implementation("guru.nidi:graphviz-java:0.18.1")
-    runtimeOnly("org.graalvm.js:js:24.2.1")
+}
+
+tasks.test {
+    // -Dgolden.regenerate=true rewrites the snapshots the tests of this module hold.
+    System.getProperty("golden.regenerate")?.let { systemProperty("golden.regenerate", it) }
+    // The benchmark and acceptance tests read the asset folders from the repository root — the
+    // fixtures, the committed snapshots and the expected-findings and baseline tables alike. None
+    // of it is on the test classpath, so without these an edit confined to ground truth leaves the
+    // task UP-TO-DATE and the measurement that has to read it never runs.
+    for (folder in listOf("samples", "samples-field", "corpus", "corpus-public",
+            "corpus-constructs")) {
+        inputs.dir(rootProject.layout.projectDirectory.dir(folder))
+            .withPropertyName(folder)
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+    }
 }
 
 // The zip and tar the application plugin would add to `build` are not shipped: release/ is the one
@@ -62,9 +73,15 @@ tasks.register<Exec>("jpackageAppImage") {
             "--main-class", "jp.cobolinsight.app.cli.Main",
             "--dest", outDir.asFile.absolutePath,
             "--java-options", "-Dfile.encoding=UTF-8",
+            // jpackage takes one --java-options per JVM option. Without these the packaged engine
+            // runs on the defaults: a heap capped at 25% of the machine's memory, which a large
+            // asset folder outgrows, and a 1 MB main stack, which the recursive descent over a
+            // deeply nested COBOL or SQL statement overflows.
+            "--java-options", "-XX:MaxRAMPercentage=50",
+            "--java-options", "-Xss4m",
             // jdk.charsets carries x-IBM930/x-IBM939 (EBCDIC); without it the packaged image cannot
-            // decode Japanese EBCDIC sources. java.sql is sqlite-jdbc, java.desktop is graphviz-java.
-            "--add-modules", "java.base,java.logging,java.sql,java.xml,java.naming,java.desktop,java.scripting,jdk.charsets,jdk.unsupported",
+            // decode Japanese EBCDIC sources. java.sql is sqlite-jdbc.
+            "--add-modules", "java.base,java.logging,java.sql,java.xml,java.naming,jdk.charsets,jdk.unsupported",
             // Console launcher: this is a CLI, not a windowed application.
             "--win-console"
         )

@@ -1,0 +1,81 @@
+[
+  {
+    "jobName": "CJ516",
+    "line": 2,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "IWS OPC SCHEDULER MARKERS",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "schedulerVariables": [
+      "&TDATE",
+      "&OYMD1",
+      "&RUNDATE"
+    ],
+    "diagnostics": [
+      {
+        "ruleId": "jcl-directive",
+        "line": 1,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（//*%OPC SCAN）。"
+      },
+      {
+        "ruleId": "jcl-directive",
+        "line": 4,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（//*%OPC SETVAR TDATE=(OYMD1)）。"
+      },
+      {
+        "ruleId": "jcl-directive",
+        "line": 15,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（//*>OPC SETVAR RUNDATE=D2026254）。"
+      },
+      {
+        "ruleId": "jcl-directive",
+        "line": 16,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（//*%OPC BEGIN ACTION=INCLUDE,COMP=(&TDA…）。"
+      },
+      {
+        "ruleId": "jcl-directive",
+        "line": 20,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（//*%OPC END ACTION=INCLUDE）。"
+      }
+    ],
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 17,
+        "ddStatements": [
+          {
+            "ddName": "OUTDS",
+            "line": 18,
+            "datasetName": "MY.DS.D&OYMD1",
+            "dataset": {
+              "name": "MY.DS.D&OYMD1"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "MY.DS.D&OYMD1",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 19,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

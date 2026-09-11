@@ -1,0 +1,207 @@
+[
+  {
+    "kind": "BEGIN_DECLARE_SECTION",
+    "startLine": 20,
+    "endLine": 20,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_TABLE",
+    "file": "corpus-constructs/sql/CSD101.cpy",
+    "startLine": 9,
+    "endLine": 14,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "declaredTable": "CSQDB.KOKYAKU",
+    "declaredColumns": [
+      {
+        "name": "KOKYAKU_NO",
+        "type": "CHAR(8)",
+        "nullable": false
+      },
+      {
+        "name": "KOKYAKU_MEI",
+        "type": "CHAR(30)",
+        "nullable": false
+      },
+      {
+        "name": "DENWA_BANGO",
+        "type": "CHAR(13)",
+        "nullable": true
+      },
+      {
+        "name": "TOROKU_YMD",
+        "type": "CHAR(8)",
+        "nullable": false
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "END_DECLARE_SECTION",
+    "startLine": 25,
+    "endLine": 25,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "COMMIT",
+    "startLine": 32,
+    "endLine": 32,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "KOKYAKU-MEI",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "DENWA-BANGO",
+        "mangledName": "HV2",
+        "indicatorName": "電話番号指標"
+      },
+      {
+        "originalName": "TOROKU-YMD",
+        "mangledName": "HV3"
+      },
+      {
+        "originalName": "顧客コード",
+        "mangledName": "HV4"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.KOKYAKU"
+    ],
+    "startLine": 41,
+    "endLine": 48,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "KOKYAKU-MEI",
+      "DENWA-BANGO",
+      "TOROKU-YMD"
+    ],
+    "tableAccess": {
+      "CSQDB.KOKYAKU": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "KOKYAKU_MEI"
+      },
+      {
+        "column": "DENWA_BANGO"
+      },
+      {
+        "column": "TOROKU_YMD"
+      },
+      {
+        "column": "KOKYAKU_NO"
+      }
+    ],
+    "selectList": [
+      "KOKYAKU_MEI",
+      "DENWA_BANGO",
+      "TOROKU_YMD"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "UPDATE",
+    "hostVariables": [
+      {
+        "originalName": "電話番号",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "顧客コード",
+        "mangledName": "HV2"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.KOKYAKU"
+    ],
+    "startLine": 55,
+    "endLine": 59,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "tableAccess": {
+      "CSQDB.KOKYAKU": "U"
+    },
+    "columnRefs": [
+      {
+        "column": "DENWA_BANGO"
+      },
+      {
+        "column": "KOKYAKU_NO"
+      }
+    ],
+    "setPairs": [
+      {
+        "column": "DENWA_BANGO",
+        "value": ":電話番号"
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

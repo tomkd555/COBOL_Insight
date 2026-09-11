@@ -69,31 +69,25 @@ export function Settings({ notify }: SettingsEditorProps): ReactElement {
   /** Whether a text field has been typed into since it was last applied. */
   const typed = useRef(false);
 
+  /**
+   * Checks which copybook paths do not exist. Run on commit only — a path is not worth a filesystem
+   * round trip until it is typed out, and a check per keystroke would mean dozens of IPC calls for
+   * one path.
+   */
+  const checkCopybookPaths = (paths: readonly string[]): void => {
+    const candidates = paths.filter((path) => path.trim() !== "");
+    Promise.all(candidates.map((path) => api().dirExists(path)))
+      .then((flags) => setMissing(candidates.filter((_path, index) => !flags[index])))
+      .catch(() => setMissing([]));
+  };
+
   // The stored settings arrive after the first render; the screen takes them once they are in.
   useEffect(() => {
     setDraft(draftOf(settings));
+    checkCopybookPaths(settings.copybookPaths);
     // Only the arrival of the stored settings resets the screen; later edits are the user's own.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.restored]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const paths = draft.copybookPaths.filter((path) => path.trim() !== "");
-    Promise.all(paths.map((path) => api().dirExists(path)))
-      .then((flags) => {
-        if (!cancelled) {
-          setMissing(paths.filter((_path, index) => !flags[index]));
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setMissing([]);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [draft.copybookPaths]);
 
   // The write-out must not land among the originals, so a fix output directory inside the asset
   // folder is refused: the field keeps what was typed and the stored setting keeps its last value.
@@ -110,6 +104,7 @@ export function Settings({ notify }: SettingsEditorProps): ReactElement {
     dispatch({ type: "SET_ENCODING", encoding: next.defaultEncoding });
     dispatch({ type: "SET_COPYBOOK_PATHS", paths });
     dispatch({ type: "SET_FIX_OUT_DIR", dir: fixOutDir });
+    checkCopybookPaths(paths);
     api()
       .writeSettings(toAppSettings({ ...settings, ...next, copybookPaths: paths, fixOutDir }))
       .catch((error: unknown) => notify(errorMessage(error), true));

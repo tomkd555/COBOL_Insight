@@ -37,7 +37,7 @@ class ScanIncrementalTest {
 
         ScanOutcome.Summary first = Pipelines.scan(assets, databaseFile,
                 List.of(assets.resolve("copybook")), Map.of()).summary();
-        assertEquals(16, first.analyzed().size());
+        assertEquals(19, first.analyzed().size());
         assertEquals(0, first.exitCode());
 
         // A copybook change includes the importing programs (SYK001-SYK003) in the reanalysis scope
@@ -46,9 +46,9 @@ class ScanIncrementalTest {
                 List.of(assets.resolve("copybook")), Map.of()).summary();
         assertEquals(List.of("cobol/SYK001.cbl", "cobol/SYK002.cbl", "cobol/SYK003.cbl",
                 "copybook/SYKCPY1.cpy"), second.analyzed().stream().sorted().toList());
-        assertEquals(12, second.skipped().size());
+        assertEquals(15, second.skipped().size());
         assertEquals(0, second.exitCode());
-        assertEdgeCounts(databaseFile, 6, 6);
+        assertEdgeCounts(databaseFile, 6, 9);
 
         // A program change includes the JCL that calls it (SYKD010, SYKD030) in the reanalysis scope
         appendCommentLine(assets.resolve("cobol").resolve("SYK001.cbl"));
@@ -57,7 +57,7 @@ class ScanIncrementalTest {
         assertEquals(List.of("cobol/SYK001.cbl", "jcl/SYKD010.jcl", "jcl/SYKD030.jcl"),
                 third.analyzed().stream().sorted().toList());
         assertEquals(0, third.exitCode());
-        assertEdgeCounts(databaseFile, 6, 6);
+        assertEdgeCounts(databaseFile, 6, 9);
 
         // A deleted source disappears along with its rows and node
         Files.delete(assets.resolve("jcl").resolve("SYKD030.jcl"));
@@ -65,9 +65,9 @@ class ScanIncrementalTest {
                 List.of(assets.resolve("copybook")), Map.of()).summary();
         assertEquals(List.of("jcl/SYKD030.jcl"), fourth.removed());
         assertEquals(List.of(), fourth.analyzed());
-        assertEdgeCounts(databaseFile, 6, 4);
+        assertEdgeCounts(databaseFile, 6, 7);
         try (PersistenceDatabase database = PersistenceDatabase.open(databaseFile)) {
-            assertEquals(15, new PersistenceDao(database.connection()).findAllSources().size());
+            assertEquals(18, new PersistenceDao(database.connection()).findAllSources().size());
         }
     }
 

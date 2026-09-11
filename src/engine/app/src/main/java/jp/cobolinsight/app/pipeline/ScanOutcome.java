@@ -7,16 +7,18 @@ import jp.cobolinsight.core.source.CopyInlineExpansion;
 import jp.cobolinsight.core.source.ExpandedCopyLine;
 
 import java.util.List;
+import java.util.Map;
 
 /**
- * What {@code scan} and {@code call-graph} produce: the summary the GUI reads, the call graph, the
- * linker's record of how it resolved each call, and the inline COPY expansions.
+ * What {@code scan} produces: the summary the GUI reads, the call graph, the linker's record of how
+ * it resolved each call, the inline COPY expansions, and what the walk dropped or reinterpreted.
  */
 public record ScanOutcome(Summary summary, CallGraph callGraph, List<Finding> linkerFindings,
-        CopyExpansions copyExpansions) {
+        CopyExpansions copyExpansions, List<String> warnings) {
 
     public ScanOutcome {
         linkerFindings = List.copyOf(linkerFindings);
+        warnings = List.copyOf(warnings);
     }
 
     /** One file whose extension and content disagreed. Kind names are {@code AssetKind}'s own. */
@@ -25,13 +27,22 @@ public record ScanOutcome(Summary summary, CallGraph callGraph, List<Finding> li
 
     public record Summary(List<String> analyzed, List<String> skipped, List<String> removed,
             int findingCount, int exitCode, boolean truncated, List<String> undecided,
-            List<KindMismatch> mismatches, List<String> unreadable) {
+            List<KindMismatch> mismatches, List<String> unreadable,
+            Map<String, Integer> diagnostics) {
 
         /** A summary with nothing to report about the walk. */
         public Summary(List<String> analyzed, List<String> skipped, List<String> removed,
                 int findingCount, int exitCode) {
             this(analyzed, skipped, removed, findingCount, exitCode, false,
                     List.of(), List.of(), List.of());
+        }
+
+        /** A summary from before the per-file diagnostic counts existed. */
+        public Summary(List<String> analyzed, List<String> skipped, List<String> removed,
+                int findingCount, int exitCode, boolean truncated, List<String> undecided,
+                List<KindMismatch> mismatches, List<String> unreadable) {
+            this(analyzed, skipped, removed, findingCount, exitCode, truncated, undecided,
+                    mismatches, unreadable, Map.of());
         }
 
         /**
@@ -42,6 +53,11 @@ public record ScanOutcome(Summary summary, CallGraph callGraph, List<Finding> li
          * <p>{@code undecided}, {@code mismatches} and {@code unreadable} are <b>complete</b> and
          * carry no separate count — the array length is the count. A count beside a sample leaves
          * room to truncate the sample, and the reader loses any way to know there is more.
+         *
+         * <p>{@code diagnostics} names each file this run read a statement of only in part, against
+         * how many such places it found: a JCL statement the parser recovered from, a scheduler
+         * directive it read past, and an embedded SQL statement the grammar would not read in full.
+         * A file with none is absent, so the object is empty when everything was read whole.
          */
         public String toJson(String databaseFile, String copyExpansionFile) {
             JsonWriter writer = new JsonWriter();
@@ -68,6 +84,11 @@ public record ScanOutcome(Summary summary, CallGraph callGraph, List<Finding> li
             }
             writer.endArray();
             writeArray(writer, "unreadable", unreadable);
+            writer.name("diagnostics").beginObject();
+            for (Map.Entry<String, Integer> entry : diagnostics.entrySet()) {
+                writer.name(entry.getKey()).value(entry.getValue());
+            }
+            writer.endObject();
             writer.name("exitCode").value(exitCode);
             writer.endObject();
             return writer.toString();

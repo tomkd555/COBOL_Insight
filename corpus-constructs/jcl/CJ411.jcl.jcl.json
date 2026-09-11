@@ -1,0 +1,112 @@
+[
+  {
+    "jobName": "CJ411",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "IDCAMS GDG REPRO DELETE",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IDCAMS",
+        "line": 10,
+        "utility": {
+          "datasetUses": [
+            {
+              "dataset": "CJT.KEIYAKU.HISTORY",
+              "access": "CREATE"
+            },
+            {
+              "dataset": "CJT.D260909.REPRO.OLDDATA",
+              "access": "READ"
+            },
+            {
+              "dataset": "CJT.D260910.REPRO.NEWDATA",
+              "access": "WRITE"
+            },
+            {
+              "dataset": "CJT.D260908.WORK.TEMP",
+              "access": "DELETE"
+            }
+          ],
+          "ddRoles": {
+            "IN": "READ",
+            "OUT": "WRITE",
+            "SYSPRINT": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSPRINT",
+            "line": 11,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "IN",
+            "line": 12,
+            "datasetName": "CJT.D260910.REPRO.INPUT",
+            "dataset": {
+              "name": "CJT.D260910.REPRO.INPUT"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.REPRO.INPUT",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "OUT",
+            "line": 13,
+            "datasetName": "CJT.D260910.REPRO.OUTPUT",
+            "dataset": {
+              "name": "CJT.D260910.REPRO.OUTPUT"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.REPRO.OUTPUT",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(5,5),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=80,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 17,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  DEFINE GDG (NAME(CJT.KEIYAKU.HISTORY)                    -",
+              "              LIMIT(10)                                    -",
+              "              SCRATCH)",
+              "  REPRO INFILE(IN) OUTFILE(OUT)",
+              "  REPRO INDATASET(CJT.D260909.REPRO.OLDDATA)                -",
+              "        OUTDATASET(CJT.D260910.REPRO.NEWDATA)",
+              "  DELETE CJT.D260908.WORK.TEMP CLUSTER PURGE"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

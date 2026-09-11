@@ -1,0 +1,411 @@
+[
+  {
+    "kind": "DECLARE_TABLE",
+    "startLine": 30,
+    "endLine": 36,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "declaredTable": "CSQDB.BUMON",
+    "declaredColumns": [
+      {
+        "name": "BUMON_CD",
+        "type": "CHAR(4)",
+        "nullable": false
+      },
+      {
+        "name": "BUMON_MEI",
+        "type": "CHAR(20)",
+        "nullable": false
+      },
+      {
+        "name": "BUMON_KANRISHA",
+        "type": "CHAR(8)",
+        "nullable": true
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "BEGIN_DECLARE_SECTION",
+    "startLine": 38,
+    "endLine": 38,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "END_DECLARE_SECTION",
+    "startLine": 41,
+    "endLine": 41,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_TABLE",
+    "file": "corpus-constructs/sql/CSD201.cpy",
+    "startLine": 9,
+    "endLine": 16,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "declaredTable": "CSQDB.SHOHIN",
+    "declaredColumns": [
+      {
+        "name": "SHOHIN_CD",
+        "type": "CHAR(8)",
+        "nullable": false
+      },
+      {
+        "name": "SHOHIN_MEI",
+        "type": "CHAR(40)",
+        "nullable": false
+      },
+      {
+        "name": "TANKA",
+        "type": "DECIMAL(9, 2)",
+        "nullable": false
+      },
+      {
+        "name": "ZAIKO_SU",
+        "type": "INTEGER",
+        "nullable": false
+      },
+      {
+        "name": "TORIATSUKAI_KBN",
+        "type": "CHAR(1)",
+        "nullable": true
+      },
+      {
+        "name": "KOSHIN_YMD",
+        "type": "CHAR(8)",
+        "nullable": true
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "WHENEVER",
+    "startLine": 53,
+    "endLine": 53,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "whenever": {
+      "condition": "SQLERROR",
+      "target": "9000-SQL-ERROR"
+    },
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "WHENEVER",
+    "startLine": 54,
+    "endLine": 54,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "whenever": {
+      "condition": "SQLWARNING"
+    },
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "WHENEVER",
+    "startLine": 67,
+    "endLine": 69,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "whenever": {
+      "condition": "NOT FOUND",
+      "target": "9100-BUMON-NOT-FOUND"
+    },
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-BUMON-MEI",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-BUMON-CD",
+        "mangledName": "HV2"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.BUMON"
+    ],
+    "startLine": 70,
+    "endLine": 75,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "WS-BUMON-MEI"
+    ],
+    "tableAccess": {
+      "CSQDB.BUMON": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "BUMON_MEI"
+      },
+      {
+        "column": "BUMON_CD"
+      }
+    ],
+    "selectList": [
+      "BUMON_MEI"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "WHENEVER",
+    "startLine": 76,
+    "endLine": 76,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "whenever": {
+      "condition": "NOT FOUND"
+    },
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "referencedTables": [
+      "CSQDB.SHOHIN"
+    ],
+    "startLine": 81,
+    "endLine": 87,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-LIST",
+        "forReadOnly": true,
+        "forFetchOnly": false,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-LIST",
+    "tableAccess": {
+      "CSQDB.SHOHIN": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "SHOHIN_CD"
+      },
+      {
+        "column": "SHOHIN_MEI"
+      },
+      {
+        "column": "TANKA"
+      },
+      {
+        "column": "TORIATSUKAI_KBN"
+      }
+    ],
+    "selectList": [
+      "SHOHIN_CD",
+      "SHOHIN_MEI",
+      "TANKA"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 88,
+    "endLine": 88,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-LIST",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 90,
+    "endLine": 90,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-LIST",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "SHOHIN-CD",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "SHOHIN-MEI",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "TANKA",
+        "mangledName": "HV3"
+      }
+    ],
+    "startLine": 93,
+    "endLine": 96,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-LIST",
+    "intoTargets": [
+      "SHOHIN-CD",
+      "SHOHIN-MEI",
+      "TANKA"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "WHENEVER",
+    "startLine": 112,
+    "endLine": 112,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "whenever": {
+      "condition": "SQLERROR"
+    },
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 114,
+    "endLine": 114,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-LIST",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

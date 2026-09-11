@@ -9,7 +9,7 @@ import {
 } from "react";
 import { api, errorMessage } from "./api";
 import { text } from "./i18n/text";
-import { ProjectProvider, useProject } from "./state/projectStore";
+import { ProjectProvider, artifactItems, useProject } from "./state/projectStore";
 import {
   PANEL_LIMITS,
   SIDE_LIMITS,
@@ -20,9 +20,8 @@ import {
   useWorkbench,
   useWorkbenchDispatch,
 } from "./state/workbenchStore";
-import { SettingsProvider, useSettingsDispatch } from "./state/settingsStore";
+import { SettingsProvider } from "./state/settingsStore";
 import { RulesProvider } from "./state/rulesStore";
-import { useRules } from "./state/useRules";
 import { EditorStatusProvider } from "./state/editorStatusStore";
 import { useShellStartup } from "./state/useShellStartup";
 import { useTheme } from "./state/useTheme";
@@ -37,9 +36,10 @@ import {
 } from "./state/keybindings";
 import { useAnalysis } from "./state/useAnalysis";
 import { useSourceSave } from "./state/useSourceSave";
+import { assetTypeOf } from "./model/assetTree";
 import { closeDecision } from "./model/closeGuard";
-import { forgetDocument, openDocument } from "./model/openDocuments";
-import { disposeModel, resetModel } from "./vendor/monacoModels";
+import { forgetDocument } from "./model/openDocuments";
+import { disposeModel } from "./vendor/monacoModels";
 import { languageIdFor } from "./vendor/monarch";
 import { ActivityBar } from "./shell/ActivityBar";
 import { SideBar } from "./shell/SideBar";
@@ -58,13 +58,9 @@ function Shell(): ReactElement {
   const project = useProject();
   const workbench = useWorkbench();
   const workbenchDispatch = useWorkbenchDispatch();
-  const settingsDispatch = useSettingsDispatch();
-  const analysis = useAnalysis();
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [pendingClose, setPendingClose] = useState<string | null>(null);
-  /** The tab whose edits are waiting to be thrown away. They are lost the moment it is confirmed. */
-  const [pendingDiscard, setPendingDiscard] = useState<string | null>(null);
   const [toasts, setToasts] = useState<readonly ToastMessage[]>([]);
   const toastId = useRef(0);
 
@@ -78,9 +74,9 @@ function Shell(): ReactElement {
     setToasts((current) => current.filter((message) => message.id !== id));
   }, []);
 
-  useShellStartup(notify);
+  const { persistPaneSizes } = useShellStartup(notify);
   useTheme();
-  const rulesActions = useRules(notify);
+  const analysis = useAnalysis(notify);
   const sourceSave = useSourceSave(notify);
 
   const openAsset = useCallback(
@@ -107,7 +103,34 @@ function Shell(): ReactElement {
     [workbenchDispatch],
   );
 
+  /** Analyses what the explorer has selected: one asset, or everything under one folder. */
   const runAnalysis = useCallback((): void => {
+    if (project.inputDir === null) {
+      notify(text.run.noFolder, true);
+      return;
+    }
+    const selection = workbench.selection;
+    if (selection === null) {
+      notify(text.run.noSelection, true);
+      return;
+    }
+    // A copybook is not a unit of analysis: it is checked through the programs that copy it, so a
+    // scope holding no program leaves the engine nothing to parse and its empty result would erase
+    // the findings those copybooks genuinely have. The test is over the whole scope rather than the
+    // selected item, because a folder of copybooks is as empty a scope as one copybook.
+    const analysable = artifactItems(project.inventory).some(
+      (item) =>
+        (item.path === selection.path || item.path.startsWith(`${selection.path}/`)) &&
+        assetTypeOf(item.type) !== "copybook",
+    );
+    if (!analysable) {
+      notify(text.run.copybookSelection, true);
+      return;
+    }
+    void analysis.runScope(project.inputDir, selection.path);
+  }, [analysis, project.inputDir, project.inventory, workbench.selection, notify]);
+
+  const runAnalysisAll = useCallback((): void => {
     if (project.inputDir === null) {
       notify(text.run.noFolder, true);
       return;
@@ -137,21 +160,12 @@ function Shell(): ReactElement {
           }
           workbenchDispatch({ type: "CLOSE_ALL_TABS" });
         }
-        settingsDispatch({ type: "SET_LAST_INPUT_DIR", dir: folder });
         // Opening a folder lists what is in it and stops there. Detecting the findings can take
         // minutes on a large folder, and it is the analysis the user asks for by name.
         void analysis.scan(folder);
       })
       .catch((error: unknown) => notify(errorMessage(error), true));
-  }, [
-    analysis,
-    settingsDispatch,
-    workbenchDispatch,
-    project.inputDir,
-    workbench.tabs,
-    sourceSave.hasDirty,
-    notify,
-  ]);
+  }, [analysis, workbenchDispatch, project.inputDir, workbench.tabs, sourceSave.hasDirty, notify]);
 
   const cancelAnalysis = useCallback((): void => {
     analysis.cancel().catch((error: unknown) => notify(errorMessage(error), true));
@@ -167,21 +181,6 @@ function Shell(): ReactElement {
       }
     },
     [workbench, closeTab],
-  );
-
-  /** Asks before throwing a tab's edits away; the reset clears the undo stack, so there is no way back. */
-  const requestDiscardTab = useCallback(
-    (id: string): void => setPendingDiscard(id),
-    [],
-  );
-
-  /** Takes the file as it was last read and drops the tab's unsaved text. */
-  const discardTab = useCallback(
-    (id: string): void => {
-      resetModel(id, openDocument(id)?.text ?? "");
-      workbenchDispatch({ type: "SET_DRAFT", id, draft: null });
-    },
-    [workbenchDispatch],
   );
 
   const saveActiveTab = useCallback((): void => {
@@ -202,24 +201,28 @@ function Shell(): ReactElement {
         workbenchDispatch,
         selectFolder,
         runAnalysis,
+        runAnalysisAll,
         cancelAnalysis,
         requestCloseTab,
-        requestDiscardTab,
-        rulesActions,
         saveActiveTab,
         saveAllTabs,
         hasDirty: sourceSave.hasDirty,
       }),
+    // project as a whole changes on every run-log line; only the fields buildCommands actually reads
+    // (mode, inputDir, inventory) decide whether a command applies, so only those are listed here —
+    // otherwise every log line during a run would rebuild the list and re-register the key listener.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
-      project,
+      project.mode,
+      project.inputDir,
+      project.inventory,
       workbench,
       workbenchDispatch,
       selectFolder,
       runAnalysis,
+      runAnalysisAll,
       cancelAnalysis,
       requestCloseTab,
-      requestDiscardTab,
-      rulesActions,
       saveActiveTab,
       saveAllTabs,
       sourceSave.hasDirty,
@@ -294,8 +297,8 @@ function Shell(): ReactElement {
   }, [commands]);
 
   const commitSize = useCallback((): void => {
-    workbenchDispatch({ type: "COMMIT_SIZE" });
-  }, [workbenchDispatch]);
+    persistPaneSizes();
+  }, [persistPaneSizes]);
 
   const conflict = sourceSave.conflict;
 
@@ -305,11 +308,19 @@ function Shell(): ReactElement {
       // What the toasts stack above, so they never cover the panel (styles/overlays.css).
       style={
         {
-          "--ci-panel-open-height": workbench.panelVisible ? `${workbench.panelHeight}px` : "0px",
+          "--ci-panel-open-height": workbench.panelVisible
+            ? `min(${workbench.panelHeight}px, 50%)`
+            : "0px",
         } as CSSProperties
       }
     >
-      <TitleBar onRun={runAnalysis} onCancel={cancelAnalysis} onSelectFolder={selectFolder} />
+      <TitleBar
+        onRun={runAnalysis}
+        onRunAll={runAnalysisAll}
+        target={workbench.selection}
+        onCancel={cancelAnalysis}
+        onSelectFolder={selectFolder}
+      />
       <div className="ci-shell__body">
         <ActivityBar />
         {workbench.sideVisible ? (
@@ -332,6 +343,7 @@ function Shell(): ReactElement {
           <EditorGroup
             onRequestClose={requestCloseTab}
             onSelectFolder={selectFolder}
+            onRunAll={runAnalysisAll}
             notify={notify}
             onShowFix={showFix}
           />
@@ -346,7 +358,10 @@ function Shell(): ReactElement {
                 onSizeChange={(height) => workbenchDispatch({ type: "SET_PANEL_HEIGHT", height })}
                 onCommit={commitSize}
               />
-              <div className="ci-shell__panel" style={{ height: `${workbench.panelHeight}px` }}>
+              <div
+                className="ci-shell__panel"
+                style={{ height: `min(${workbench.panelHeight}px, 50%)` }}
+              >
                 <Panel onOpenAsset={openAsset} onShowFix={showFix} />
               </div>
             </>
@@ -408,37 +423,6 @@ function Shell(): ReactElement {
         />
       )}
 
-      {pendingDiscard === null ? null : (
-        <Modal
-          title={text.modal.confirmDiscardTitle}
-          testId="confirm-source-discard"
-          onDismiss={() => setPendingDiscard(null)}
-          actions={
-            <>
-              <button
-                type="button"
-                className="ci-button ci-button--danger"
-                onClick={() => {
-                  discardTab(pendingDiscard);
-                  setPendingDiscard(null);
-                }}
-                data-testid="confirm-source-discard-yes"
-              >
-                {text.modal.discardConfirm}
-              </button>
-              <button
-                type="button"
-                className="ci-button"
-                onClick={() => setPendingDiscard(null)}
-                data-testid="confirm-source-discard-no"
-              >
-                {text.modal.keep}
-              </button>
-            </>
-          }
-        />
-      )}
-
       {conflict === null ? null : (
         <Modal
           title={text.save.conflictTitle}
@@ -458,7 +442,7 @@ function Shell(): ReactElement {
               </button>
               <button
                 type="button"
-                className="ci-button"
+                className="ci-button ci-button--danger-quiet"
                 onClick={() => {
                   const id = conflict.tabId;
                   sourceSave.dismissConflict();

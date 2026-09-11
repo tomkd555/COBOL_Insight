@@ -1,0 +1,234 @@
+[
+  {
+    "jobName": "CJ206",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "CJ DSATTR FORMS",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 9,
+        "utility": {
+          "ddRoles": {
+            "DD1": "CREATE",
+            "TAPELBL": "CREATE",
+            "RETPDDS": "CREATE",
+            "EXPDTDS": "CREATE",
+            "SMSDS": "CREATE",
+            "LIBTYP": "CREATE",
+            "LARGTYP": "CREATE",
+            "LIKEDS": "CREATE",
+            "REFDDS": "CREATE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "DD1",
+            "line": 10,
+            "datasetName": "FLW.CJ206.BASE",
+            "dataset": {
+              "name": "FLW.CJ206.BASE"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ206.BASE",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(5,1),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=80,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "TAPELBL",
+            "line": 13,
+            "datasetName": "FLT.CJ206.TAPE",
+            "dataset": {
+              "name": "FLT.CJ206.TAPE"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLT.CJ206.TAPE",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "TAPE",
+              "VOL": "SER=TAP001",
+              "LABEL": "(2,SL,EXPDT=99000)"
+            }
+          },
+          {
+            "ddName": "RETPDDS",
+            "line": 16,
+            "datasetName": "FLW.CJ206.RETPD",
+            "dataset": {
+              "name": "FLW.CJ206.RETPD"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ206.RETPD",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(5,1),RLSE)",
+              "RETPD": "3650"
+            }
+          },
+          {
+            "ddName": "EXPDTDS",
+            "line": 19,
+            "datasetName": "FLW.CJ206.EXPDT",
+            "dataset": {
+              "name": "FLW.CJ206.EXPDT"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ206.EXPDT",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(5,1),RLSE)",
+              "EXPDT": "2099/365"
+            }
+          },
+          {
+            "ddName": "SMSDS",
+            "line": 22,
+            "datasetName": "FLW.CJ206.SMS",
+            "dataset": {
+              "name": "FLW.CJ206.SMS"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ206.SMS",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "DATACLAS": "STD80",
+              "STORCLAS": "STAND01",
+              "MGMTCLAS": "MCPRD01"
+            }
+          },
+          {
+            "ddName": "LIBTYP",
+            "line": 25,
+            "datasetName": "FLW.CJ206.LIBRARY",
+            "dataset": {
+              "name": "FLW.CJ206.LIBRARY"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ206.LIBRARY",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(5,1),RLSE)",
+              "DSNTYPE": "LIBRARY"
+            }
+          },
+          {
+            "ddName": "LARGTYP",
+            "line": 29,
+            "datasetName": "FLW.CJ206.LARGEDS",
+            "dataset": {
+              "name": "FLW.CJ206.LARGEDS"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ206.LARGEDS",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "SPACE": "(CYL,(50,20),RLSE)",
+              "DSNTYPE": "LARGE"
+            }
+          },
+          {
+            "ddName": "LIKEDS",
+            "line": 33,
+            "datasetName": "FLW.CJ206.LIKEDS",
+            "dataset": {
+              "name": "FLW.CJ206.LIKEDS"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ206.LIKEDS",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "LIKE": "FL.PROD.MODEL.DSN"
+            }
+          },
+          {
+            "ddName": "REFDDS",
+            "line": 36,
+            "datasetName": "FLW.CJ206.REFDD",
+            "dataset": {
+              "name": "FLW.CJ206.REFDD"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ206.REFDD",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "REFDD": "*.DD1"
+            },
+            "referbacks": {
+              "REFDD": "*.DD1"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

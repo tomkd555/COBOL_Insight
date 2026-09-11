@@ -1,0 +1,134 @@
+[
+  {
+    "jobName": "&ZUSER.J",
+    "line": 11,
+    "parameters": {
+      "ACCOUNT": "CJ0001"
+    },
+    "schedulerVariables": [
+      "&ZUSER.",
+      "&X"
+    ],
+    "diagnostics": [
+      {
+        "ruleId": "jcl-directive",
+        "line": 1,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（)CM -----------------------------------…）。"
+      },
+      {
+        "ruleId": "jcl-directive",
+        "line": 2,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（)CM  CS501 : ISPF file-tailoring skelet…）。"
+      },
+      {
+        "ruleId": "jcl-directive",
+        "line": 3,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（)CM    - )SEL / )ENDSEL   selects the J…）。"
+      },
+      {
+        "ruleId": "jcl-directive",
+        "line": 4,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（)CM    - )SET             assigns a dia…）。"
+      },
+      {
+        "ruleId": "jcl-directive",
+        "line": 5,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（)CM    - )DOT / )ENDDOT   repeats a ste…）。"
+      },
+      {
+        "ruleId": "jcl-directive",
+        "line": 6,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（)CM    - )IM              imbeds anothe…）。"
+      },
+      {
+        "ruleId": "jcl-directive",
+        "line": 7,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（)CM    - &ZUSER           an ISPF dialo…）。"
+      },
+      {
+        "ruleId": "jcl-directive",
+        "line": 8,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（)CM                       symbol）。"
+      },
+      {
+        "ruleId": "jcl-directive",
+        "line": 9,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（)CM -----------------------------------…）。"
+      },
+      {
+        "ruleId": "jcl-directive",
+        "line": 10,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（)SEL &ZENV = 'PROD'）。"
+      },
+      {
+        "ruleId": "jcl-directive",
+        "line": 12,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（)ENDSEL）。"
+      },
+      {
+        "ruleId": "jcl-directive",
+        "line": 13,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（)SEL &ZENV = 'TEST'）。"
+      },
+      {
+        "ruleId": "jcl-directive",
+        "line": 15,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（)ENDSEL）。"
+      },
+      {
+        "ruleId": "jcl-directive",
+        "line": 16,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（)SET &X = 1）。"
+      },
+      {
+        "ruleId": "jcl-directive",
+        "line": 17,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（)DOT &STEPTAB）。"
+      },
+      {
+        "ruleId": "jcl-directive",
+        "line": 20,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（)SET &X = &X + 1）。"
+      },
+      {
+        "ruleId": "jcl-directive",
+        "line": 21,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（)ENDDOT）。"
+      },
+      {
+        "ruleId": "jcl-directive",
+        "line": 22,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（)IM CI301）。"
+      }
+    ]
+  },
+  {
+    "jobName": "&ZUSER.J",
+    "line": 14,
+    "parameters": {
+      "ACCOUNT": "CJ0001"
+    },
+    "schedulerVariables": [
+      "&ZUSER.",
+      "&X"
+    ],
+    "steps": [
+      {
+        "name": "STEP0&X",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 18,
+        "ddStatements": [
+          {
+            "ddName": "SYSPRINT",
+            "line": 19,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

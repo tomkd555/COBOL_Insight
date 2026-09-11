@@ -1,0 +1,105 @@
+*----------------------------------------------------------------*
+* マップセット FLM010  契約照会（トランザクション FL01）
+*   FLM01  契約番号入力画面
+*   FLM02  契約明細画面（明細 10 行）
+*   複写原文 FLM010.cpy が対応するシンボリックマップ
+*----------------------------------------------------------------*
+         PRINT NOGEN
+FLM010   DFHMSD TYPE=&SYSPARM,                                         X
+               MODE=INOUT,                                             X
+               LANG=COBOL,                                             X
+               TIOAPFX=YES,                                            X
+               CTRL=(FREEKB,FRSET),                                    X
+               STORAGE=AUTO,                                           X
+               TERM=3270-2
+*----------------------------------------------------------------*
+* FLM01  契約番号入力
+*----------------------------------------------------------------*
+FLM01    DFHMDI SIZE=(24,80)
+         DFHMDF POS=(1,26),                                            X
+               LENGTH=20,                                              X
+               ATTRB=(PROT,BRT),                                       X
+               INITIAL='契約照会'
+         DFHMDF POS=(5,10),                                            X
+               LENGTH=16,                                              X
+               ATTRB=(PROT,NORM),                                      X
+               INITIAL='契約番号'
+KEIYNO   DFHMDF POS=(5,28),                                            X
+               LENGTH=10,                                              X
+               ATTRB=(UNPROT,IC),                                      X
+               PICIN='X(10)'
+         DFHMDF POS=(5,39),                                            X
+               LENGTH=1,                                               X
+               ATTRB=(ASKIP,NORM)
+         DFHMDF POS=(21,10),                                           X
+               LENGTH=30,                                              X
+               ATTRB=(PROT,NORM),                                      X
+               INITIAL='PF3=終了'
+MSG      DFHMDF POS=(23,10),                                           X
+               LENGTH=60,                                              X
+               ATTRB=(PROT,BRT)
+*----------------------------------------------------------------*
+* FLM02  契約明細
+*----------------------------------------------------------------*
+FLM02    DFHMDI SIZE=(24,80)
+         DFHMDF POS=(1,26),                                            X
+               LENGTH=20,                                              X
+               ATTRB=(PROT,BRT),                                       X
+               INITIAL='契約明細'
+         DFHMDF POS=(3,2),                                             X
+               LENGTH=10,                                              X
+               ATTRB=(PROT,NORM),                                      X
+               INITIAL='契約番号'
+KEIYNO2  DFHMDF POS=(3,14),                                            X
+               LENGTH=10,                                              X
+               ATTRB=(PROT,NORM)
+         DFHMDF POS=(4,2),                                             X
+               LENGTH=10,                                              X
+               ATTRB=(PROT,NORM),                                      X
+               INITIAL='顧客名'
+KOKYAKU  DFHMDF POS=(4,14),                                            X
+               LENGTH=30,                                              X
+               ATTRB=(PROT,NORM)
+         DFHMDF POS=(5,2),                                             X
+               LENGTH=10,                                              X
+               ATTRB=(PROT,NORM),                                      X
+               INITIAL='残高'
+ZANDAKA  DFHMDF POS=(5,14),                                            X
+               LENGTH=12,                                              X
+               ATTRB=(PROT,NORM),                                      X
+               PICOUT='ZZZ,ZZZ,ZZ9-'
+MEI01    DFHMDF POS=(8,2),                                             X
+               LENGTH=70,                                              X
+               ATTRB=(PROT,NORM)
+MEI02    DFHMDF POS=(9,2),                                             X
+               LENGTH=70,                                              X
+               ATTRB=(PROT,NORM)
+MEI03    DFHMDF POS=(10,2),                                            X
+               LENGTH=70,                                              X
+               ATTRB=(PROT,NORM)
+MEI04    DFHMDF POS=(11,2),                                            X
+               LENGTH=70,                                              X
+               ATTRB=(PROT,NORM)
+MEI05    DFHMDF POS=(12,2),                                            X
+               LENGTH=70,                                              X
+               ATTRB=(PROT,NORM)
+MEI06    DFHMDF POS=(13,2),                                            X
+               LENGTH=70,                                              X
+               ATTRB=(PROT,NORM)
+MEI07    DFHMDF POS=(14,2),                                            X
+               LENGTH=70,                                              X
+               ATTRB=(PROT,NORM)
+MEI08    DFHMDF POS=(15,2),                                            X
+               LENGTH=70,                                              X
+               ATTRB=(PROT,NORM)
+MEI09    DFHMDF POS=(16,2),                                            X
+               LENGTH=70,                                              X
+               ATTRB=(PROT,NORM)
+MEI10    DFHMDF POS=(17,2),                                            X
+               LENGTH=70,                                              X
+               ATTRB=(PROT,NORM)
+MSG2     DFHMDF POS=(23,10),                                           X
+               LENGTH=60,                                              X
+               ATTRB=(PROT,BRT)
+         DFHMSD TYPE=FINAL
+         END

@@ -60,24 +60,26 @@ export function CustomRules({ notify }: CustomRulesProps): ReactElement {
             </button>
           ))}
         </div>
-        <button
-          type="button"
-          className="ci-button"
-          disabled={rules.rawError !== null}
-          onClick={validateCustomRules}
-          data-testid="custom-validate"
-        >
-          {text.customRules.validate}
-        </button>
-        <button
-          type="button"
-          className="ci-button ci-button--primary"
-          disabled={rules.rawError !== null || !dirty}
-          onClick={saveCustomRules}
-          data-testid="custom-save"
-        >
-          {text.customRules.save}
-        </button>
+        <div className="ci-custom__actions">
+          <button
+            type="button"
+            className="ci-button"
+            disabled={rules.rawError !== null}
+            onClick={validateCustomRules}
+            data-testid="custom-validate"
+          >
+            {text.customRules.validate}
+          </button>
+          <button
+            type="button"
+            className="ci-button ci-button--primary"
+            disabled={rules.rawError !== null || !dirty}
+            onClick={saveCustomRules}
+            data-testid="custom-save"
+          >
+            {text.customRules.save}
+          </button>
+        </div>
       </header>
 
       {rules.rawError === null ? null : (

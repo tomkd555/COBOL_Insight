@@ -16,7 +16,6 @@ import java.nio.file.Path;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -26,7 +25,6 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -66,13 +64,13 @@ class ScanSamplesAcceptanceTest {
     }
 
     @Test
-    void allEighteenSourcesAreScannedWithoutError() {
+    void everySourceIsScannedWithoutError() {
         assertEquals(0, summary.exitCode(), "終了コードは成功(0)であること");
         assertEquals(0, summary.findingCount(), "パース失敗のfindingが無いこと");
-        assertEquals(20, summary.analyzed().size(),
-                "JCL3本・COBOL11本(encoding/の2本を含む)・コピー句3本・BMSマップ1本の計18本を"
+        assertEquals(23, summary.analyzed().size(),
+                "JCL4本・COBOL15本(encoding/の4本を含む)・コピー句3本・BMSマップ1本の計23本を"
                         + "解析すること");
-        assertEquals(20, dao.findAllSources().size());
+        assertEquals(23, dao.findAllSources().size());
     }
 
     @Test
@@ -84,7 +82,7 @@ class ScanSamplesAcceptanceTest {
         List<String> sortedPaths = pathsById.stream().sorted().toList();
         assertEquals(sortedPaths, pathsById, "SOURCE.id はパスの辞書順で振られること");
         assertEquals(1, sources.stream().mapToLong(SourceRecord::id).min().orElseThrow());
-        assertEquals(20, sources.stream().mapToLong(SourceRecord::id).max().orElseThrow());
+        assertEquals(23, sources.stream().mapToLong(SourceRecord::id).max().orElseThrow());
     }
 
     @Test
@@ -117,10 +115,7 @@ class ScanSamplesAcceptanceTest {
                 case "encoding/SYKENC1_CP930.cbl", "encoding/SYKENC1_CP939.cbl" -> "x-IBM930";
                 default -> "UTF-8";
             };
-            var info = dao.findEncodingInfo(source.id()).orElseThrow();
-            assertEquals(expected, info.detectedCharset(), source.path());
-            assertFalse(info.manualOverride());
-            assertEquals(expected, source.codepage());
+            assertEquals(expected, source.codepage(), source.path());
         }
     }
 
@@ -146,58 +141,11 @@ class ScanSamplesAcceptanceTest {
                 "jcl/SYKD020.jcl->cobol/SYK006.cbl",
                 "jcl/SYKD020.jcl->cobol/SYK007.cbl",
                 "jcl/SYKD030.jcl->cobol/SYK001.cbl",
-                "jcl/SYKD030.jcl->cobol/SYK002.cbl"));
+                "jcl/SYKD030.jcl->cobol/SYK002.cbl",
+                "jcl/SYKD040.jcl->cobol/SYK005.cbl",
+                "jcl/SYKD040.jcl->cobol/SYK010.cbl",
+                "jcl/SYKD040.jcl->cobol/SYK011.cbl"));
         assertEquals(expected, edges, "expected-results.md 4章のEXEC PGM対応と一致すること");
-    }
-
-    @Test
-    void sqlStatementsArePersistedWithMangledAndOriginalText() {
-        Map<String, Long> ids = sourceIdByPath();
-        for (String program : List.of("SYK006", "SYK007")) {
-            var statements = dao.findSqlStmtsBySource(ids.get("cobol/" + program + ".cbl"));
-            assertFalse(statements.isEmpty(), program + " のSQL文が保存されること");
-            assertTrue(statements.stream().anyMatch(s -> s.mangledText().contains(":HV1")
-                            && s.originalText().contains(":HOST-")),
-                    program + " のハイフン入りホスト変数がマングリングされ原文も保持されること");
-        }
-        var syk006 = dao.findSqlStmtsBySource(ids.get("cobol/SYK006.cbl"));
-        Set<String> kinds = syk006.stream().map(s -> s.stmtType()).collect(Collectors.toSet());
-        assertTrue(kinds.containsAll(Set.of("SELECT", "UPDATE", "INSERT", "DECLARE_CURSOR",
-                "OPEN", "FETCH", "CLOSE")), "SQL文種別が保存されること: " + kinds);
-    }
-
-    @Test
-    void bmsMapsetMapAndFieldsMatchExpectedStructure() throws SQLException {
-        Map<String, Long> ids = sourceIdByPath();
-        long bmsSourceId = ids.get("bms/SYKMAP1.bms");
-
-        List<Object[]> mapsets = query(
-                "SELECT id, name FROM BMS_MAPSET WHERE source_id = ?", bmsSourceId);
-        assertEquals(1, mapsets.size());
-        assertEquals("SYKMAP1", mapsets.get(0)[1]);
-
-        List<Object[]> maps = query(
-                "SELECT id, name, size_rows, size_cols FROM BMS_MAP WHERE mapset_id = ?",
-                mapsets.get(0)[0]);
-        assertEquals(1, maps.size());
-        assertEquals("SYKM01", maps.get(0)[1]);
-        assertEquals(24, ((Number) maps.get(0)[2]).intValue());
-        assertEquals(80, ((Number) maps.get(0)[3]).intValue());
-
-        List<Object[]> fields = query(
-                "SELECT name, pos_row, pos_col, length, attrb FROM BMS_FIELD WHERE map_id = ? "
-                        + "ORDER BY id", maps.get(0)[0]);
-        assertEquals(2, fields.size());
-        assertEquals("ORDNO", fields.get(0)[0]);
-        assertEquals(3, ((Number) fields.get(0)[1]).intValue());
-        assertEquals(10, ((Number) fields.get(0)[2]).intValue());
-        assertEquals(8, ((Number) fields.get(0)[3]).intValue());
-        assertEquals("UNPROT,NUM", fields.get(0)[4]);
-        assertEquals("MSG", fields.get(1)[0]);
-        assertEquals(22, ((Number) fields.get(1)[1]).intValue());
-        assertEquals(5, ((Number) fields.get(1)[2]).intValue());
-        assertEquals(40, ((Number) fields.get(1)[3]).intValue());
-        assertEquals("PROT,BRT", fields.get(1)[4]);
     }
 
     @Test
@@ -227,7 +175,7 @@ class ScanSamplesAcceptanceTest {
         ScanOutcome.Summary second = Pipelines.scan(SAMPLES,
                 tempDir.resolve("m1.db"), List.of(SAMPLES.resolve("copybook")), Map.of()).summary();
         assertEquals(List.of(), second.analyzed(), "変更が無ければ再解析しないこと");
-        assertEquals(20, second.skipped().size());
+        assertEquals(23, second.skipped().size());
         assertEquals(0, second.exitCode());
     }
 
@@ -256,26 +204,6 @@ class ScanSamplesAcceptanceTest {
                 ResultSet rs = ps.executeQuery()) {
             rs.next();
             return rs.getLong(1);
-        }
-    }
-
-    private static List<Object[]> query(String sql, Object... params) throws SQLException {
-        try (PreparedStatement ps = database.connection().prepareStatement(sql)) {
-            for (int i = 0; i < params.length; i++) {
-                ps.setObject(i + 1, params[i]);
-            }
-            try (ResultSet rs = ps.executeQuery()) {
-                List<Object[]> rows = new ArrayList<>();
-                int columns = rs.getMetaData().getColumnCount();
-                while (rs.next()) {
-                    Object[] row = new Object[columns];
-                    for (int i = 0; i < columns; i++) {
-                        row[i] = rs.getObject(i + 1);
-                    }
-                    rows.add(row);
-                }
-                return rows;
-            }
         }
     }
 }

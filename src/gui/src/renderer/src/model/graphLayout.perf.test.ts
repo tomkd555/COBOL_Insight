@@ -38,6 +38,7 @@ function syntheticGraph(nodeCount: number, edgeCount: number): GraphData {
       resolution: "CONSTANT",
       seq: 1,
       line: null,
+      access: null,
     });
   }
   return { nodes, edges, paragraphs: [], paragraphEdges: [] };

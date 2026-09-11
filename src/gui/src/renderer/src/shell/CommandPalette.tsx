@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { text } from "../i18n/text";
 import { availableCommands, filterCommands, type Command } from "../state/commands";
+import { chordFor } from "../state/keybindings";
 
 export interface CommandPaletteProps {
   commands: readonly Command[];
@@ -97,6 +98,9 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps): Reac
               >
                 <span className="ci-palette__category">{command.category}</span>
                 <span className="ci-palette__title">{command.title}</span>
+                {chordFor(command.id) === null ? null : (
+                  <span className="ci-palette__chord">{chordFor(command.id)}</span>
+                )}
               </li>
             ))}
           </ul>

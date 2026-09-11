@@ -1,0 +1,393 @@
+[
+  {
+    "kind": "DECLARE_TABLE",
+    "file": "corpus-constructs/sql/CSD201.cpy",
+    "startLine": 9,
+    "endLine": 16,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "declaredTable": "CSQDB.SHOHIN",
+    "declaredColumns": [
+      {
+        "name": "SHOHIN_CD",
+        "type": "CHAR(8)",
+        "nullable": false
+      },
+      {
+        "name": "SHOHIN_MEI",
+        "type": "CHAR(40)",
+        "nullable": false
+      },
+      {
+        "name": "TANKA",
+        "type": "DECIMAL(9, 2)",
+        "nullable": false
+      },
+      {
+        "name": "ZAIKO_SU",
+        "type": "INTEGER",
+        "nullable": false
+      },
+      {
+        "name": "TORIATSUKAI_KBN",
+        "type": "CHAR(1)",
+        "nullable": true
+      },
+      {
+        "name": "KOSHIN_YMD",
+        "type": "CHAR(8)",
+        "nullable": true
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "referencedTables": [
+      "CSQDB.SHOHIN"
+    ],
+    "startLine": 36,
+    "endLine": 43,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-UR",
+        "forReadOnly": true,
+        "forFetchOnly": false,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": true
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-UR",
+    "tableAccess": {
+      "CSQDB.SHOHIN": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "SHOHIN_CD"
+      },
+      {
+        "column": "SHOHIN_MEI"
+      },
+      {
+        "column": "SHOHIN_MEI"
+      }
+    ],
+    "selectList": [
+      "SHOHIN_CD",
+      "SHOHIN_MEI"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": true,
+    "dynamic": false,
+    "isolation": "UR"
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 44,
+    "endLine": 44,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-UR",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 49,
+    "endLine": 49,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-UR",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "SHOHIN-CD",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "SHOHIN-MEI",
+        "mangledName": "HV2"
+      }
+    ],
+    "startLine": 52,
+    "endLine": 54,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-UR",
+    "intoTargets": [
+      "SHOHIN-CD",
+      "SHOHIN-MEI"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "referencedTables": [
+      "CSQDB.SHOHIN"
+    ],
+    "startLine": 66,
+    "endLine": 73,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-CS",
+        "forReadOnly": false,
+        "forFetchOnly": false,
+        "forUpdate": true,
+        "forUpdateColumns": [
+          "ZAIKO_SU"
+        ]
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-CS",
+    "tableAccess": {
+      "CSQDB.SHOHIN": "RU"
+    },
+    "columnRefs": [
+      {
+        "column": "SHOHIN_CD"
+      },
+      {
+        "column": "ZAIKO_SU"
+      }
+    ],
+    "selectList": [
+      "SHOHIN_CD",
+      "ZAIKO_SU"
+    ],
+    "withHold": false,
+    "forUpdate": true,
+    "forUpdateColumns": [
+      "ZAIKO_SU"
+    ],
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false,
+    "isolation": "CS"
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 74,
+    "endLine": 74,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-CS",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "SHOHIN-CD",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "ZAIKO-SU",
+        "mangledName": "HV2"
+      }
+    ],
+    "startLine": 78,
+    "endLine": 81,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-CS",
+    "intoTargets": [
+      "SHOHIN-CD",
+      "ZAIKO-SU"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 88,
+    "endLine": 88,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-CS",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "UPDATE",
+    "referencedTables": [
+      "CSQDB.SHOHIN"
+    ],
+    "startLine": 92,
+    "endLine": 96,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-CS",
+    "positionedCursor": "CSR-CS",
+    "tableAccess": {
+      "CSQDB.SHOHIN": "U"
+    },
+    "columnRefs": [
+      {
+        "column": "ZAIKO_SU"
+      },
+      {
+        "column": "ZAIKO_SU"
+      }
+    ],
+    "setPairs": [
+      {
+        "column": "ZAIKO_SU",
+        "value": "ZAIKO_SU - 1"
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "COMMIT",
+    "startLine": 102,
+    "endLine": 102,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 109,
+    "endLine": 109,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-UR",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 110,
+    "endLine": 110,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-CS",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "ROLLBACK",
+    "startLine": 111,
+    "endLine": 111,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

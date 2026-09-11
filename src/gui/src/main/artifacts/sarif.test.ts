@@ -135,17 +135,4 @@ describe("parseSarif defensiveness", () => {
     );
     expect(findings[0].file).toBe("a%ZZb.cbl");
   });
-
-  it("keeps ruleIndex only when the document supplies one", () => {
-    const withIndex = parseSarif(
-      JSON.stringify({
-        runs: [{ results: [{ ruleId: "R001", ruleIndex: 3 }] }],
-      }),
-    );
-    expect(withIndex[0].ruleIndex).toBe(3);
-    const without = parseSarif(
-      JSON.stringify({ runs: [{ results: [{ ruleId: "R001" }] }] }),
-    );
-    expect(without[0].ruleIndex).toBeUndefined();
-  });
 });

@@ -52,7 +52,7 @@ public final class IdenticalOperandsRule implements Rule {
                     .summary("条件式の両辺が同じ、または COMPUTE 文の右辺が A - A・A / A の"
                             + "形になっている箇所を検出します。")
                     .rationale("条件が常に真か常に偽になり、演算の結果は定数になります。"
-                            + "多くは、別の項目を指すつもりだった書き間違いです。")
+                            + "こうした箇所の多くは、別の項目を指すつもりだった書き間違いです。")
                     .detection("比較・論理演算子の両辺が単一の作用対象（データ項目・定数）として"
                             + "字句一致するもの、および COMPUTE 文の右辺の A - A・A / A を検出します。")
                     .remedy("意図した項目名に直してください。意図どおりなら定数に置き換えてください。")
@@ -66,9 +66,9 @@ public final class IdenticalOperandsRule implements Rule {
                             END-IF.
                             """)
                     .severity(Severity.ADVISORY)
-                    .commands(Command.LINT, Command.REPORT)
+                    .commands(Command.LINT)
                     .targets(AssetKind.COBOL)
-                    .needs(Needs.SEMANTIC, Needs.CFG)
+                    .needs(Needs.CFG)
                     .build();
 
     @Override

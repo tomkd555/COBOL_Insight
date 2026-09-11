@@ -1,0 +1,114 @@
+[
+  {
+    "jobName": "CJ417",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "IEHPROGM IEHLIST",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IEHPROGM",
+        "line": 8,
+        "utility": {
+          "ddRoles": {
+            "SYSPRINT": "WRITE",
+            "VOL1": "UPDATE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSPRINT",
+            "line": 9,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "VOL1",
+            "line": 10,
+            "dispositionText": "OLD",
+            "disposition": {
+              "status": "OLD",
+              "raw": "OLD"
+            },
+            "parameters": {
+              "UNIT": "SYSDA",
+              "VOL": "SER=SYSDA1",
+              "DISP": "OLD"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 11,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  SCRATCH DSNAME=CJT.D260908.WORK.PURGE,VOL=SYSDA=SYSDA1,PURGE"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PGM",
+        "target": "IEHLIST",
+        "line": 15,
+        "condition": "COND=(4,LT,STEP010)",
+        "parameters": {
+          "COND": "(4,LT,STEP010)"
+        },
+        "utility": {
+          "ddRoles": {
+            "SYSPRINT": "WRITE",
+            "VOL1": "UPDATE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSPRINT",
+            "line": 16,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "VOL1",
+            "line": 17,
+            "dispositionText": "OLD",
+            "disposition": {
+              "status": "OLD",
+              "raw": "OLD"
+            },
+            "parameters": {
+              "UNIT": "SYSDA",
+              "VOL": "SER=SYSDA1",
+              "DISP": "OLD"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 18,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  LISTVTOC FORMAT,VOL=SYSDA=SYSDA1"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

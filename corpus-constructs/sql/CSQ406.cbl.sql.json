@@ -1,0 +1,355 @@
+[
+  {
+    "kind": "DECLARE_TABLE",
+    "file": "corpus-constructs/sql/CSD402.cpy",
+    "startLine": 9,
+    "endLine": 17,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "declaredTable": "FLDB.JUCHU",
+    "declaredColumns": [
+      {
+        "name": "JUCHU_NO",
+        "type": "CHAR(10)",
+        "nullable": false
+      },
+      {
+        "name": "KOKYAKU_NO",
+        "type": "CHAR(8)",
+        "nullable": false
+      },
+      {
+        "name": "JUCHU_YMD",
+        "type": "DATE",
+        "nullable": false
+      },
+      {
+        "name": "SHOHIN_CD",
+        "type": "CHAR(8)",
+        "nullable": false
+      },
+      {
+        "name": "SURYO",
+        "type": "DECIMAL(7, 0)",
+        "nullable": false
+      },
+      {
+        "name": "KINGAKU",
+        "type": "DECIMAL(9, 0)",
+        "nullable": false
+      },
+      {
+        "name": "TANTO_CD",
+        "type": "CHAR(5)",
+        "nullable": true
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-KINGAKU-IN",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-KINGAKU-CAST",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "WS-SURYO-INT",
+        "mangledName": "HV3"
+      },
+      {
+        "originalName": "WS-TANTO-COALESCE",
+        "mangledName": "HV4"
+      },
+      {
+        "originalName": "WS-TANTO-VALUE",
+        "mangledName": "HV5"
+      },
+      {
+        "originalName": "WS-SURYO-NULLIF",
+        "mangledName": "HV6",
+        "indicatorName": "WS-SURYO-NULLIF-IND"
+      },
+      {
+        "originalName": "WS-DATE-MINUS30",
+        "mangledName": "HV7"
+      },
+      {
+        "originalName": "WS-JUCHU-YMD-PLUS1M",
+        "mangledName": "HV8"
+      },
+      {
+        "originalName": "WS-DAY-DIFF",
+        "mangledName": "HV9"
+      },
+      {
+        "originalName": "WS-JUCHU-DATE",
+        "mangledName": "HV10"
+      },
+      {
+        "originalName": "WS-JUCHU-TS",
+        "mangledName": "HV11"
+      },
+      {
+        "originalName": "WS-JUCHU-NO-IN",
+        "mangledName": "HV12"
+      }
+    ],
+    "referencedTables": [
+      "FLDB.JUCHU"
+    ],
+    "startLine": 72,
+    "endLine": 90,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "WS-KINGAKU-CAST",
+      "WS-SURYO-INT",
+      "WS-TANTO-COALESCE",
+      "WS-TANTO-VALUE",
+      "WS-SURYO-NULLIF",
+      "WS-DATE-MINUS30",
+      "WS-JUCHU-YMD-PLUS1M",
+      "WS-DAY-DIFF",
+      "WS-JUCHU-DATE",
+      "WS-JUCHU-TS"
+    ],
+    "tableAccess": {
+      "FLDB.JUCHU": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "SURYO"
+      },
+      {
+        "column": "TANTO_CD"
+      },
+      {
+        "column": "TANTO_CD"
+      },
+      {
+        "column": "SURYO"
+      },
+      {
+        "column": "JUCHU_YMD"
+      },
+      {
+        "column": "JUCHU_YMD"
+      },
+      {
+        "column": "JUCHU_YMD"
+      },
+      {
+        "column": "JUCHU_YMD"
+      },
+      {
+        "column": "JUCHU_NO"
+      }
+    ],
+    "selectList": [
+      "CAST(:WS-KINGAKU-IN AS DECIMAL(9,2))",
+      "CAST(SURYO AS INTEGER)",
+      "COALESCE(TANTO_CD, 'T9999')",
+      "VALUE(TANTO_CD, 'T9999')",
+      "NULLIF(SURYO, 0)",
+      "CURRENT DATE - 30 DAYS",
+      "JUCHU_YMD + 1 MONTH",
+      "DAYS(CURRENT DATE) - DAYS(JUCHU_YMD)",
+      "DATE(JUCHU_YMD)",
+      "TIMESTAMP(JUCHU_YMD, '00.00.00')"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-CHAR-TANKA",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-DEC-LITERAL",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "WS-DIGITS-TANKA",
+        "mangledName": "HV3"
+      },
+      {
+        "originalName": "WS-SUBSTR-MEI",
+        "mangledName": "HV4"
+      },
+      {
+        "originalName": "WS-STRIP-MEI",
+        "mangledName": "HV5"
+      },
+      {
+        "originalName": "WS-TRIM-MEI",
+        "mangledName": "HV6"
+      },
+      {
+        "originalName": "WS-LEFT-MEI",
+        "mangledName": "HV7"
+      },
+      {
+        "originalName": "WS-RIGHT-MEI",
+        "mangledName": "HV8"
+      },
+      {
+        "originalName": "WS-LOCATE-POS",
+        "mangledName": "HV9"
+      },
+      {
+        "originalName": "WS-POSSTR-POS",
+        "mangledName": "HV10"
+      },
+      {
+        "originalName": "WS-REPLACE-MEI",
+        "mangledName": "HV11"
+      },
+      {
+        "originalName": "WS-TRANSLATE-MEI",
+        "mangledName": "HV12"
+      },
+      {
+        "originalName": "WS-UPPER-MEI",
+        "mangledName": "HV13"
+      },
+      {
+        "originalName": "WS-LENGTH-MEI",
+        "mangledName": "HV14"
+      },
+      {
+        "originalName": "WS-HEX-CD",
+        "mangledName": "HV15"
+      },
+      {
+        "originalName": "WS-SHOHIN-CD-IN",
+        "mangledName": "HV16"
+      }
+    ],
+    "referencedTables": [
+      "FLDB.SHOHIN"
+    ],
+    "startLine": 106,
+    "endLine": 131,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "WS-CHAR-TANKA",
+      "WS-DEC-LITERAL",
+      "WS-DIGITS-TANKA",
+      "WS-SUBSTR-MEI",
+      "WS-STRIP-MEI",
+      "WS-TRIM-MEI",
+      "WS-LEFT-MEI",
+      "WS-RIGHT-MEI",
+      "WS-LOCATE-POS",
+      "WS-POSSTR-POS",
+      "WS-REPLACE-MEI",
+      "WS-TRANSLATE-MEI",
+      "WS-UPPER-MEI",
+      "WS-LENGTH-MEI",
+      "WS-HEX-CD"
+    ],
+    "tableAccess": {
+      "FLDB.SHOHIN": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "TANKA"
+      },
+      {
+        "column": "TANKA"
+      },
+      {
+        "column": "SHOHIN_MEI"
+      },
+      {
+        "column": "SHOHIN_MEI"
+      },
+      {
+        "column": "SHOHIN_MEI"
+      },
+      {
+        "column": "SHOHIN_MEI"
+      },
+      {
+        "column": "SHOHIN_MEI"
+      },
+      {
+        "column": "SHOHIN_MEI"
+      },
+      {
+        "column": "SHOHIN_MEI"
+      },
+      {
+        "column": "SHOHIN_MEI"
+      },
+      {
+        "column": "SHOHIN_MEI"
+      },
+      {
+        "column": "SHOHIN_MEI"
+      },
+      {
+        "column": "SHOHIN_MEI"
+      },
+      {
+        "column": "SHOHIN_CD"
+      },
+      {
+        "column": "SHOHIN_CD"
+      }
+    ],
+    "selectList": [
+      "CHAR(TANKA)",
+      "DECIMAL('1234.50', 9, 2)",
+      "DIGITS(TANKA)",
+      "SUBSTR(SHOHIN_MEI, 1, 10)",
+      "STRIP(SHOHIN_MEI)",
+      "TRIM(SHOHIN_MEI)",
+      "LEFT(SHOHIN_MEI, 10)",
+      "RIGHT(SHOHIN_MEI, 10)",
+      "LOCATE('用', SHOHIN_MEI)",
+      "POSSTR(SHOHIN_MEI, '用')",
+      "REPLACE(SHOHIN_MEI, '用', ' ')",
+      "TRANSLATE(SHOHIN_MEI)",
+      "UPPER(SHOHIN_MEI)",
+      "LENGTH(SHOHIN_MEI)",
+      "HEX(SHOHIN_CD)"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

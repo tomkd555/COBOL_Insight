@@ -35,7 +35,8 @@ public final class Link implements Step {
         }
         LinkResult linked = CallGraphLinker.link(new LinkerInput(s.programs(), s.jobs(),
                 s.mapsets(), s.sqlByProgramId(),
-                readTransactionTable(s.discovery().transactionTables())));
+                readTransactionTable(s.discovery().transactionTables()),
+                s.sqlByScript(), s.sqlRoutines(), !s.options().scope().isEmpty()));
         LinkResult result = new LinkResult(withUnanalyzableNodes(linked.graph(), s.unanalyzable()),
                 linked.findings(), linked.dynamicCallVariables());
         s.callGraph(result.graph());

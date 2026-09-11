@@ -1,5 +1,8 @@
 package jp.cobolinsight.app.cli;
 
+import jp.cobolinsight.app.persistence.PersistenceDao;
+import jp.cobolinsight.app.persistence.PersistenceDatabase;
+import jp.cobolinsight.app.persistence.model.SourceRecord;
 import jp.cobolinsight.core.json.JsonReader;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -11,6 +14,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -124,6 +129,41 @@ class DecodeCommandTest {
         Map<String, Object> result = readJson(out);
         assertFalse(((String) result.get("error")).isBlank());
         assertEquals("", result.get("text"));
+    }
+
+    /**
+     * A project database written by an earlier build carries a lower schema version. Looking up
+     * its recorded codepage must not upgrade it, or opening a source file in the GUI would rebuild
+     * the whole project database out from under the user.
+     */
+    @Test
+    void decodeWithADbAtAStaleSchemaVersionLeavesItUntouched() throws IOException, SQLException {
+        Path dbFile = tempDir.resolve("insight.db");
+        String fileName = "SYKENC1_SJIS.cbl";
+        try (PersistenceDatabase db = PersistenceDatabase.open(dbFile)) {
+            PersistenceDao dao = new PersistenceDao(db.connection());
+            dao.insertSource(new SourceRecord(1L, SAMPLES.toString(), fileName, "windows-31j",
+                    "hash", 0L));
+            try (var st = db.connection().createStatement()) {
+                st.execute("PRAGMA user_version = 3");
+            }
+        }
+        long versionBefore = userVersion(dbFile);
+
+        Map<String, Object> result = decode(fileName, "--db", dbFile.toString());
+
+        assertEquals("", result.get("error"));
+        assertEquals(versionBefore, userVersion(dbFile),
+                "decode --db must not upgrade a stale project database");
+    }
+
+    private static long userVersion(Path dbFile) throws SQLException {
+        try (var connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile);
+                var st = connection.createStatement();
+                var rs = st.executeQuery("PRAGMA user_version")) {
+            rs.next();
+            return rs.getLong(1);
+        }
     }
 
     private static Map<String, Object> readJson(Path path) {

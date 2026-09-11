@@ -1,14 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { RuleCatalogEntry, SarifFinding } from "../../../shared/ipc";
+import { text } from "../i18n/text";
 import { buildRuleIndex } from "./ruleIndex";
-import {
-  ALL,
-  filterFindings,
-  hiddenByThreshold,
-  initialFindingFilter,
-  mergeFindings,
-  severityCounts,
-} from "./findings";
+import { filterFindings, hiddenByThreshold, initialFindingFilter, mergeFindings } from "./findings";
 
 function rule(id: string, severity: string, name = `name of ${id}`): RuleCatalogEntry {
   return {
@@ -16,14 +10,11 @@ function rule(id: string, severity: string, name = `name of ${id}`): RuleCatalog
     name,
     category: "c",
     severity,
-    phase: "SYNTAX",
     hasFix: false,
     source: "builtin",
     enabled: true,
-    defaultEnabled: true,
     commands: [],
     targets: [],
-    needs: [],
     summary: "",
     rationale: "",
     detection: "",
@@ -95,14 +86,6 @@ describe("filterFindings", () => {
     expect(rows.some((row) => row.severity === "high")).toBe(false);
   });
 
-  it("filters by source", () => {
-    expect(
-      filterFindings(merged, INDEX, { ...initialFindingFilter, source: "sql" }).map(
-        (row) => row.finding.ruleId,
-      ),
-    ).toEqual(["S001"]);
-  });
-
   it("searches the message, the rule id, the rule name and the file", () => {
     const rows = mergeFindings([finding("R001", "a.cbl", 1, "桁あふれの恐れ")], []);
     expect(filterFindings(rows, INDEX, { ...initialFindingFilter, text: "桁あふれ" })).toHaveLength(1);
@@ -127,13 +110,20 @@ describe("filterFindings", () => {
     const rows = filterFindings(mergeFindings([finding("R999", "a.cbl", 1)], []), INDEX, initialFindingFilter);
     expect(rows[0]).toMatchObject({ severity: "medium", ruleName: "R999" });
   });
-});
 
-describe("the severity counts", () => {
-  const merged = mergeFindings(LINT, SQL);
-
-  it("counts every finding by severity, before any filtering", () => {
-    expect(severityCounts(merged, INDEX)).toEqual({ high: 1, medium: 1, low: 1, warning: 1 });
+  it("names the engine's own diagnostics and grades them by their level", () => {
+    const directive: SarifFinding = { ...finding("jcl-directive", "a.jcl", 3), level: "note" };
+    const parseFailure: SarifFinding = { ...finding("parse-failure", "a.cbl", 1), level: "error" };
+    const rows = filterFindings(
+      mergeFindings([directive, parseFailure], []),
+      INDEX,
+      initialFindingFilter,
+    );
+    expect(rows).toMatchObject([
+      { severity: "high", ruleName: text.diagnostic["parse-failure"] },
+      { severity: "warning", ruleName: text.diagnostic["jcl-directive"] },
+    ]);
+    expect(hiddenByThreshold(mergeFindings([directive], []), INDEX, "low")).toBe(1);
   });
 });
 
@@ -144,11 +134,5 @@ describe("hiddenByThreshold", () => {
     expect(hiddenByThreshold(merged, INDEX, "warning")).toBe(0);
     expect(hiddenByThreshold(merged, INDEX, "low")).toBe(1);
     expect(hiddenByThreshold(merged, INDEX, "high")).toBe(3);
-  });
-});
-
-describe("the all sentinel", () => {
-  it("is the value the source selector uses for no restriction", () => {
-    expect(initialFindingFilter.source).toBe(ALL);
   });
 });

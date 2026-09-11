@@ -12,7 +12,8 @@
  *
  * 受理しない入力
  *   - DFHMSD・DFHMDI・DFHMDF 以外の BMS マクロ(パーティション定義の DFHPSD など)。
- *   - PRINT・TITLE・COPY・SPACE・EJECT のようなアセンブラ命令。
+ *   - COPY のようなアセンブラ命令。PRINT・TITLE・SPACE・EJECT の行は BmsSourceParser が
+ *     字句解析の前に空行へ置き換えるため、ここには届かない。
  *   - 条件アセンブリ(AIF・AGO・SETA など)。&SYSPARM のような変数参照は字句として
  *     保持するだけで、値の展開は行わない。
  *   - 行をまたぐ引用文字列。文字列は同一行の中で閉じる必要がある。
@@ -51,6 +52,7 @@ value
     : LPAREN value? (COMMA value?)* RPAREN  # groupValue
     | NAME                                  # nameValue
     | NUMBER                                # numberValue
+    | DASHED                                # dashedValue
     | SYSVAR                                # sysvarValue
     | STRING                                # stringValue
     ;
@@ -78,6 +80,8 @@ RPAREN : ')' ;
 // アセンブラの利用者定義語は、英数字に国別文字 @ # $ を含む。
 NAME   : [A-Za-z@#$] [A-Za-z0-9@#$]* ;
 NUMBER : [0-9]+ ;
+// TERM=3270-2 のような、ハイフンでつないだ値。最長一致で NAME・NUMBER より優先される。
+DASHED : [A-Za-z0-9@#$]+ ('-' [A-Za-z0-9@#$]+)+ ;
 SYSVAR : '&' [A-Za-z@#$] [A-Za-z0-9@#$]* ;
 // 文字列定数の中では ' を 2 個続けて ' 1 個を表す。
 STRING : '\'' ('\'\'' | ~['\r\n])* '\'' ;

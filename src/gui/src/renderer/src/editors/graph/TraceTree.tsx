@@ -146,7 +146,7 @@ export function TraceTree({
               <span className="ci-trace__label">{row.node.label}</span>
               {row.node.cyclic ? <span className="ci-trace__note">{text.graph.cyclic}</span> : null}
               {row.node.line === null ? null : (
-                <span className="ci-trace__line">{`:${row.node.line}`}</span>
+                <span className="ci-trace__line">{`${row.node.line}行`}</span>
               )}
             </div>
           );

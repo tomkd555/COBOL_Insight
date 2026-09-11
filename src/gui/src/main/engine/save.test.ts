@@ -40,8 +40,6 @@ describe("parseSaveSummary", () => {
       {
         written: true,
         path: "C:/assets/a.cbl",
-        changedLineFrom: 10,
-        changedLineTo: 12,
         reparseErrors: [{ line: 11, message: "unexpected token" }],
         error: "",
         exitCode: 1,
@@ -49,7 +47,6 @@ describe("parseSaveSummary", () => {
       0,
     );
     expect(result.written).toBe(true);
-    expect(result.changedLineTo).toBe(12);
     expect(result.reparseErrors).toEqual([{ line: 11, message: "unexpected token" }]);
     // The summary's own exit code wins over the process's.
     expect(result.exitCode).toBe(1);

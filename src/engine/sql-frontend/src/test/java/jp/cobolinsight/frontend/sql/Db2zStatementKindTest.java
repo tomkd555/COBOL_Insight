@@ -1,6 +1,8 @@
 package jp.cobolinsight.frontend.sql;
 
 import jp.cobolinsight.core.sql.CursorSignals;
+import jp.cobolinsight.core.sql.SqlAnalysis;
+import jp.cobolinsight.core.sql.SqlStatementKind;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -22,8 +24,8 @@ class Db2zStatementKindTest {
     private SqlAnalysisResult analyze(String sql, SqlBlockKind kind) {
         SqlAnalysisResult result = analyzer.analyze(new SqlBlock(sql, kind,
                 new SourcePosition(1, 12), new SourcePosition(1, 20)));
-        assertEquals(AnalysisStatus.ANALYZED, result.status(),
-                "the grammar has to accept: " + sql + " -> " + result.statusReason());
+        assertEquals(SqlAnalysis.FULL, result.analysis(),
+                "the grammar has to accept: " + sql + " -> " + result.diagnostic());
         return result;
     }
 
@@ -100,32 +102,34 @@ class Db2zStatementKindTest {
     }
 
     @Test
-    void dynamicSqlStatementsAreAcceptedAsOther() {
-        assertEquals(SqlStatementKind.OTHER, analyze("EXECUTE IMMEDIATE :STMT").statementKind());
-        assertEquals(SqlStatementKind.OTHER, analyze("PREPARE S1 FROM :STMT").statementKind());
-        assertEquals(SqlStatementKind.OTHER, analyze("COMMIT").statementKind());
+    void dynamicSqlAndTransactionStatementsCarryTheirOwnKind() {
+        assertEquals(SqlStatementKind.EXECUTE_IMMEDIATE,
+                analyze("EXECUTE IMMEDIATE :STMT").statementKind());
+        assertEquals(SqlStatementKind.PREPARE, analyze("PREPARE S1 FROM :STMT").statementKind());
+        assertEquals(SqlStatementKind.COMMIT, analyze("COMMIT").statementKind());
     }
 
     @Test
-    void nonExecutableDirectivesAreAcceptedRatherThanRejected() {
-        assertEquals(SqlStatementKind.OTHER,
+    void nonExecutableDirectivesCarryTheirOwnKind() {
+        assertEquals(SqlStatementKind.WHENEVER,
                 analyze("WHENEVER SQLERROR GOTO ERR-EXIT", SqlBlockKind.WHENEVER).statementKind());
-        assertEquals(SqlStatementKind.OTHER,
+        assertEquals(SqlStatementKind.WHENEVER,
                 analyze("WHENEVER SQLERROR CONTINUE", SqlBlockKind.WHENEVER).statementKind());
-        assertEquals(SqlStatementKind.OTHER,
+        assertEquals(SqlStatementKind.INCLUDE,
                 analyze("INCLUDE SQLCA", SqlBlockKind.INCLUDE).statementKind());
-        assertEquals(SqlStatementKind.OTHER, analyze("BEGIN DECLARE SECTION",
+        assertEquals(SqlStatementKind.BEGIN_DECLARE_SECTION, analyze("BEGIN DECLARE SECTION",
                 SqlBlockKind.BEGIN_DECLARE_SECTION).statementKind());
-        assertEquals(SqlStatementKind.OTHER, analyze("END DECLARE SECTION",
+        assertEquals(SqlStatementKind.END_DECLARE_SECTION, analyze("END DECLARE SECTION",
                 SqlBlockKind.END_DECLARE_SECTION).statementKind());
     }
 
     @Test
-    void aStatementTheGrammarRejectsIsReportedAsNotAnalyzable() {
+    void aStatementTheGrammarRejectsIsReportedAsDegraded() {
         SqlAnalysisResult result = analyzer.analyze(new SqlBlock("SELECT FROM WHERE",
                 SqlBlockKind.EXECUTABLE, new SourcePosition(1, 12), new SourcePosition(1, 20)));
 
-        assertEquals(AnalysisStatus.NOT_ANALYZABLE, result.status());
-        assertTrue(result.statusReason().contains("Db2z"), result.statusReason());
+        assertEquals(SqlAnalysis.DEGRADED, result.analysis());
+        assertTrue(result.diagnostic().contains("Db2"), result.diagnostic());
+        assertEquals(SqlStatementKind.SELECT, result.statementKind());
     }
 }

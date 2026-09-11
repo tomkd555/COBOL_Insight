@@ -1,0 +1,152 @@
+[
+  {
+    "jobName": "CREATE1",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "1",
+      "NOTIFY": "&SYSUID"
+    },
+    "members": [
+      "DB2JCL.jcl"
+    ],
+    "steps": [
+      {
+        "name": "SQLEXEC",
+        "execKind": "PROC",
+        "target": "DB2JCL",
+        "line": 6
+      },
+      {
+        "name": "SQLEXEC.SQL",
+        "execKind": "PGM",
+        "target": "IKJEFT01",
+        "line": 6,
+        "file": "DB2JCL.jcl",
+        "procStepName": "SQL",
+        "utility": {
+          "programRuns": [
+            {
+              "program": "DSNTEP2",
+              "plan": "DSNTEP12",
+              "parms": "/ALIGN(MID)",
+              "library": "DSNC10.DBCG.RUNLIB.LOAD"
+            }
+          ],
+          "tableUses": [
+            {
+              "table": "INDEX",
+              "access": "CREATE"
+            }
+          ],
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "SYSTSPRT": "WRITE",
+            "SYSTSIN": "READ",
+            "SYSPRINT": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 7,
+            "file": "DB2JCL.jcl",
+            "datasetName": "DSNC10.SDSNLOAD",
+            "dataset": {
+              "name": "DSNC10.SDSNLOAD"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "DSNC10.SDSNLOAD",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSTSPRT",
+            "line": 8,
+            "file": "DB2JCL.jcl",
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSTSIN",
+            "line": 9,
+            "file": "DB2JCL.jcl",
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  DSN SYSTEM(DBCG)                                                      ",
+              "  RUN  PROGRAM(DSNTEP2) PLAN(DSNTEP12) +                                ",
+              "       LIB('DSNC10.DBCG.RUNLIB.LOAD') PARMS('/ALIGN(MID)')              ",
+              "  END"
+            ]
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 15,
+            "file": "DB2JCL.jcl",
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSUDUMP",
+            "line": 16,
+            "file": "DB2JCL.jcl",
+            "dummy": true,
+            "parameters": {
+              "DUMMY": ""
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 7,
+            "parameters": {
+              "*": "",
+              "SYMBOLS": "CNVTSYS"
+            },
+            "inStreamData": [
+              "--** SQL FOLLOWS ****************************************               ",
+              "--DROP TABLESPACE DB2.&SYSUID.S;",
+              "--COMMIT;                                                               ",
+              "  CREATE TABLESPACE &SYSUID.S  IN DB2                                   ",
+              "    USING STOGROUP DB2DISK PRIQTY 20 SECQTY 20 ERASE NO                 ",
+              "    LOCKSIZE PAGE LOCKMAX SYSTEM                                        ",
+              "    BUFFERPOOL BP0 CLOSE NO COMPRESS YES;                               ",
+              "  COMMIT;                                                               ",
+              "  CREATE TABLE &SYSUID.T                                                ",
+              "                (ACCTNO    CHAR(8)        NOT NULL,                     ",
+              "                 LIMIT     DECIMAL(9,2)           ,                     ",
+              "                 BALANCE   DECIMAL(9,2)           ,                     ",
+              "                 SURNAME   CHAR(20)       NOT NULL,                     ",
+              "                 FIRSTN    CHAR(15)       NOT NULL,                     ",
+              "                 ADDRESS1  CHAR(25)               ,                     ",
+              "                 ADDRESS2  CHAR(20)               ,                     ",
+              "                 ADDRESS3  CHAR(15)               ,                     ",
+              "                 RESERVED  CHAR(7)                ,                     ",
+              "                 COMMENTS  CHAR(50)               ,                     ",
+              "                 PRIMARY KEY(ACCTNO))                                   ",
+              "         IN DB2.&SYSUID.S;                                              ",
+              "  COMMIT;                                                               ",
+              "--*******************************************************               ",
+              "  CREATE UNIQUE INDEX &SYSUID.I                                         ",
+              "                   ON &SYSUID.T (ACCTNO  ASC)                           ",
+              "                   USING STOGROUP DB2DISK  PRIQTY 12 ERASE NO           ",
+              "                   BUFFERPOOL BP0 CLOSE NO;                             ",
+              "--*******************************************************               ",
+              "  COMMIT;"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

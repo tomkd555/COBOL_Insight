@@ -44,7 +44,18 @@ public final class SarifWriter {
                 .thenComparing(Finding::message);
     }
 
+    /** A run over the whole asset folder, which is every run but a scoped {@code lint}. */
     public static String toJson(List<Rule> rules, List<Finding> findings) {
+        return toJson(rules, findings, List.of());
+    }
+
+    /**
+     * The same, for a run that covered part of the asset folder. The scopes are written into the
+     * run as a property of its own, so that the file says what it covers: a scoped result and a
+     * whole-folder result are otherwise the same document, and the partial one reads as an estate
+     * with fewer defects than it has.
+     */
+    public static String toJson(List<Rule> rules, List<Finding> findings, List<String> scope) {
         List<Rule> sortedRules = new ArrayList<>(rules);
         sortedRules.sort(Comparator.comparing(rule -> rule.meta().id()));
         List<Finding> sortedFindings = new ArrayList<>(findings);
@@ -103,7 +114,15 @@ public final class SarifWriter {
             writeFixes(writer, finding.fixes());
             writer.endObject();
         }
-        writer.endArray().endObject().endArray().endObject();
+        writer.endArray();
+        if (!scope.isEmpty()) {
+            writer.name("properties").beginObject().name("scope").beginArray();
+            for (String path : scope) {
+                writer.value(path);
+            }
+            writer.endArray().endObject();
+        }
+        writer.endObject().endArray().endObject();
         return writer.toString();
     }
 

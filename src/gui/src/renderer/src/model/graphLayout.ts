@@ -120,17 +120,6 @@ export function edgeKindStyles(theme: ThemeName): EdgeKindStyle[] {
   }));
 }
 
-/** An unknown edge kind is drawn in grey rather than dropped: no result is hidden. */
-export function edgeKindStyle(kind: string, theme: ThemeName): EdgeKindStyle {
-  return (
-    edgeKindStyles(theme).find((style) => style.kind === kind) ?? {
-      kind,
-      color: pick(PLAIN_EDGE, theme),
-      arrowShape: "tee",
-    }
-  );
-}
-
 /** Whether the edge is drawn dashed: a dataflow-derived or unresolved target is not a certainty. */
 export function isDashedEdge(resolution: string | null): boolean {
   return resolution === "DATAFLOW" || resolution === "UNRESOLVED";

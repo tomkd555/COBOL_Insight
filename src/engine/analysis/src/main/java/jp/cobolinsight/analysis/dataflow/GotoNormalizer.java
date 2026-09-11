@@ -2,7 +2,6 @@ package jp.cobolinsight.analysis.dataflow;
 
 import jp.cobolinsight.core.cfg.CfgNode;
 import jp.cobolinsight.core.cfg.ControlFlowGraph;
-import jp.cobolinsight.core.semantic.Statement;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -316,17 +315,7 @@ public final class GotoNormalizer {
             }
         }
 
-        // The index that looks up a node from a Statement holds only pre-duplication nodes. A
-        // single statement can correspond to multiple duplicated nodes, so the original (whose
-        // source-coordinate lookup is unambiguous) is used as the representative.
-        Map<Statement, CfgNode> byStatement = new IdentityHashMap<>();
-        for (CfgNode node : nodes) {
-            if (node.originalNodeId().isEmpty()) {
-                node.statement().ifPresent(statement -> byStatement.put(statement, node));
-            }
-        }
-        return new ControlFlowGraph(cfg.programId(), nodes, cfg.entry(), cfg.exit(),
-                successors, byStatement);
+        return new ControlFlowGraph(cfg.programId(), nodes, cfg.entry(), cfg.exit(), successors);
     }
 
     // --- Tarjan's strongly connected components (iterative implementation, deterministic) ---

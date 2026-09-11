@@ -1,18 +1,18 @@
 package jp.cobolinsight.app.persistence;
 
-import jp.cobolinsight.app.persistence.model.BmsFieldRecord;
-import jp.cobolinsight.app.persistence.model.BmsMapRecord;
-import jp.cobolinsight.app.persistence.model.BmsMapsetRecord;
 import jp.cobolinsight.app.persistence.model.CallEdgeRecord;
-import jp.cobolinsight.app.persistence.model.EncodingInfoRecord;
 import jp.cobolinsight.app.persistence.model.FindingRecord;
+import jp.cobolinsight.app.persistence.model.JclDdRecord;
+import jp.cobolinsight.app.persistence.model.JclStepRecord;
 import jp.cobolinsight.app.persistence.model.LineMapRecord;
 import jp.cobolinsight.app.persistence.model.NodeRecord;
 import jp.cobolinsight.app.persistence.model.ParagraphEdgeRecord;
 import jp.cobolinsight.app.persistence.model.ParagraphRecord;
 import jp.cobolinsight.app.persistence.model.ProgramRecord;
 import jp.cobolinsight.app.persistence.model.SourceRecord;
-import jp.cobolinsight.app.persistence.model.SqlStmtRecord;
+import jp.cobolinsight.app.persistence.model.SqlColumnUseRecord;
+import jp.cobolinsight.app.persistence.model.SqlStatementRecord;
+import jp.cobolinsight.app.persistence.model.SqlTableUseRecord;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-/** Inserts and fetches for all 13 tables, call-graph reachability queries, and full per-source deletion. */
+/** Inserts and fetches for every table, call-graph reachability queries, and full per-source deletion. */
 public final class PersistenceDao {
 
     private final Connection connection;
@@ -82,65 +82,6 @@ public final class PersistenceDao {
     private static SourceRecord mapSource(ResultSet rs) throws SQLException {
         return new SourceRecord(rs.getLong("id"), rs.getString("root"), rs.getString("path"),
                 rs.getString("codepage"), rs.getString("content_hash"), rs.getLong("byte_size"));
-    }
-
-    // ---- ENCODING_INFO ----
-
-    public void insertEncodingInfo(EncodingInfoRecord info) {
-        update("INSERT INTO ENCODING_INFO(source_id, detected_charset, confidence, manual_override, "
-                        + "so_si_present) VALUES (?,?,?,?,?)",
-                info.sourceId(), info.detectedCharset(), info.confidence(), info.manualOverride(),
-                info.soSiPresent());
-    }
-
-    public Optional<EncodingInfoRecord> findEncodingInfo(long sourceId) {
-        return queryOne("SELECT source_id, detected_charset, confidence, manual_override, so_si_present "
-                        + "FROM ENCODING_INFO WHERE source_id = ?",
-                rs -> new EncodingInfoRecord(rs.getLong("source_id"), rs.getString("detected_charset"),
-                        rs.getDouble("confidence"), rs.getBoolean("manual_override"),
-                        rs.getBoolean("so_si_present")),
-                sourceId);
-    }
-
-    // ---- BMS_MAPSET / BMS_MAP / BMS_FIELD ----
-
-    public void insertBmsMapset(BmsMapsetRecord mapset) {
-        update("INSERT INTO BMS_MAPSET(id, source_id, name) VALUES (?,?,?)",
-                mapset.id(), mapset.sourceId(), mapset.name());
-    }
-
-    public Optional<BmsMapsetRecord> findBmsMapset(long id) {
-        return queryOne("SELECT id, source_id, name FROM BMS_MAPSET WHERE id = ?",
-                rs -> new BmsMapsetRecord(rs.getLong("id"), rs.getLong("source_id"), rs.getString("name")),
-                id);
-    }
-
-    public void insertBmsMap(BmsMapRecord map) {
-        update("INSERT INTO BMS_MAP(id, mapset_id, name, size_rows, size_cols) VALUES (?,?,?,?,?)",
-                map.id(), map.mapsetId(), map.name(), map.sizeRows(), map.sizeCols());
-    }
-
-    public Optional<BmsMapRecord> findBmsMap(long id) {
-        return queryOne("SELECT id, mapset_id, name, size_rows, size_cols FROM BMS_MAP WHERE id = ?",
-                rs -> new BmsMapRecord(rs.getLong("id"), rs.getLong("mapset_id"), rs.getString("name"),
-                        rs.getInt("size_rows"), rs.getInt("size_cols")),
-                id);
-    }
-
-    public void insertBmsField(BmsFieldRecord field) {
-        update("INSERT INTO BMS_FIELD(id, map_id, name, pos_row, pos_col, length, attrb) "
-                        + "VALUES (?,?,?,?,?,?,?)",
-                field.id(), field.mapId(), field.name(), field.posRow(), field.posCol(), field.length(),
-                field.attrb());
-    }
-
-    public Optional<BmsFieldRecord> findBmsField(long id) {
-        return queryOne(
-                "SELECT id, map_id, name, pos_row, pos_col, length, attrb FROM BMS_FIELD WHERE id = ?",
-                rs -> new BmsFieldRecord(rs.getLong("id"), rs.getLong("map_id"), rs.getString("name"),
-                        rs.getInt("pos_row"), rs.getInt("pos_col"), rs.getInt("length"),
-                        rs.getString("attrb")),
-                id);
     }
 
     // ---- PROGRAM / PARAGRAPH ----
@@ -229,10 +170,10 @@ public final class PersistenceDao {
     }
 
     public void insertCallEdge(CallEdgeRecord edge) {
-        update("INSERT INTO CALL_EDGE(id, from_node, to_node, kind, resolution, host_var, seq, line) "
-                        + "VALUES (?,?,?,?,?,?,?,?)",
+        update("INSERT INTO CALL_EDGE(id, from_node, to_node, kind, resolution, host_var, seq, "
+                        + "line, access, attrs_json) VALUES (?,?,?,?,?,?,?,?,?,?)",
                 edge.id(), edge.fromNode(), edge.toNode(), edge.kind(), edge.resolution(),
-                edge.hostVar(), edge.seq(), edge.line());
+                edge.hostVar(), edge.seq(), edge.line(), edge.access(), edge.attrsJson());
     }
 
     public Optional<CallEdgeRecord> findCallEdge(long id) {
@@ -255,7 +196,8 @@ public final class PersistenceDao {
     }
 
     private static final String SELECT_CALL_EDGE =
-            "SELECT id, from_node, to_node, kind, resolution, host_var, seq, line FROM CALL_EDGE";
+            "SELECT id, from_node, to_node, kind, resolution, host_var, seq, line, access, "
+                    + "attrs_json FROM CALL_EDGE";
 
     public void deleteCallEdgesFrom(long nodeId, String kind) {
         update("DELETE FROM CALL_EDGE WHERE from_node = ? AND kind = ?", nodeId, kind);
@@ -309,57 +251,139 @@ public final class PersistenceDao {
         String hostVar = rs.getString("host_var");
         int seq = rs.getInt("seq");
         int line = rs.getInt("line");
+        Integer lineOrNull = rs.wasNull() ? null : line;
         return new CallEdgeRecord(id, fromNode, toNode, kind, resolution, hostVar, seq,
-                rs.wasNull() ? null : line);
+                lineOrNull, rs.getString("access"), rs.getString("attrs_json"));
     }
 
     // ---- FINDING ----
 
     public void insertFinding(FindingRecord finding) {
-        update("INSERT INTO FINDING(id, rule_id, level, source_id, start_line, start_col, byte_offset, "
-                        + "message, sarif_json) VALUES (?,?,?,?,?,?,?,?,?)",
+        update("INSERT INTO FINDING(id, rule_id, level, source_id, start_line, start_col, message) "
+                        + "VALUES (?,?,?,?,?,?,?)",
                 finding.id(), finding.ruleId(), finding.level(), finding.sourceId(), finding.startLine(),
-                finding.startCol(), finding.byteOffset(), finding.message(), finding.sarifJson());
+                finding.startCol(), finding.message());
     }
 
     public Optional<FindingRecord> findFinding(long id) {
-        return queryOne("SELECT id, rule_id, level, source_id, start_line, start_col, byte_offset, "
-                + "message, sarif_json FROM FINDING WHERE id = ?", PersistenceDao::mapFinding, id);
+        return queryOne("SELECT id, rule_id, level, source_id, start_line, start_col, message "
+                + "FROM FINDING WHERE id = ?", PersistenceDao::mapFinding, id);
     }
 
     public List<FindingRecord> findFindingsBySource(long sourceId) {
-        return queryList("SELECT id, rule_id, level, source_id, start_line, start_col, byte_offset, "
-                + "message, sarif_json FROM FINDING WHERE source_id = ?", PersistenceDao::mapFinding,
+        return queryList("SELECT id, rule_id, level, source_id, start_line, start_col, message "
+                + "FROM FINDING WHERE source_id = ?", PersistenceDao::mapFinding,
                 sourceId);
     }
 
     private static FindingRecord mapFinding(ResultSet rs) throws SQLException {
         return new FindingRecord(rs.getLong("id"), rs.getString("rule_id"), rs.getString("level"),
                 rs.getLong("source_id"), rs.getInt("start_line"), rs.getInt("start_col"),
-                rs.getLong("byte_offset"), rs.getString("message"), rs.getString("sarif_json"));
+                rs.getString("message"));
     }
 
-    // ---- SQL_STMT ----
+    // ---- JCL_STEP / JCL_DD ----
 
-    public void insertSqlStmt(SqlStmtRecord stmt) {
-        update("INSERT INTO SQL_STMT(id, source_id, stmt_type, mangled_text, original_text) "
-                        + "VALUES (?,?,?,?,?)",
-                stmt.id(), stmt.sourceId(), stmt.stmtType(), stmt.mangledText(), stmt.originalText());
+    public void insertJclStep(JclStepRecord step) {
+        update("INSERT INTO JCL_STEP(id, source_id, job_name, seq, step_name, exec_kind, target, "
+                        + "proc_step, line, file, detail_json) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                step.id(), step.sourceId(), step.jobName(), step.seq(), step.stepName(),
+                step.execKind(), step.target(), step.procStep(), step.line(), step.file(),
+                step.detailJson());
     }
 
-    public Optional<SqlStmtRecord> findSqlStmt(long id) {
-        return queryOne("SELECT id, source_id, stmt_type, mangled_text, original_text FROM SQL_STMT "
-                + "WHERE id = ?", PersistenceDao::mapSqlStmt, id);
+    /** The steps of one JCL source, in execution order (which is the order their ids run in). */
+    public List<JclStepRecord> findJclStepsBySource(long sourceId) {
+        return queryList("SELECT id, source_id, job_name, seq, step_name, exec_kind, target, "
+                        + "proc_step, line, file, detail_json FROM JCL_STEP "
+                        + "WHERE source_id = ? ORDER BY id",
+                rs -> {
+                    int line = rs.getInt("line");
+                    Integer lineOrNull = rs.wasNull() ? null : line;
+                    return new JclStepRecord(rs.getLong("id"), rs.getLong("source_id"),
+                            rs.getString("job_name"), rs.getInt("seq"), rs.getString("step_name"),
+                            rs.getString("exec_kind"), rs.getString("target"),
+                            rs.getString("proc_step"), lineOrNull, rs.getString("file"),
+                            rs.getString("detail_json"));
+                },
+                sourceId);
     }
 
-    public List<SqlStmtRecord> findSqlStmtsBySource(long sourceId) {
-        return queryList("SELECT id, source_id, stmt_type, mangled_text, original_text FROM SQL_STMT "
-                + "WHERE source_id = ?", PersistenceDao::mapSqlStmt, sourceId);
+    public void insertJclDd(JclDdRecord dd) {
+        update("INSERT INTO JCL_DD(id, step_id, seq, dd_name, dsn, access, line, file, "
+                        + "detail_json) VALUES (?,?,?,?,?,?,?,?,?)",
+                dd.id(), dd.stepId(), dd.seq(), dd.ddName(), dd.dsn(), dd.access(), dd.line(),
+                dd.file(), dd.detailJson());
     }
 
-    private static SqlStmtRecord mapSqlStmt(ResultSet rs) throws SQLException {
-        return new SqlStmtRecord(rs.getLong("id"), rs.getLong("source_id"), rs.getString("stmt_type"),
-                rs.getString("mangled_text"), rs.getString("original_text"));
+    /** The DD statements of one step, in the order the source writes them. */
+    public List<JclDdRecord> findJclDdsByStep(long stepId) {
+        return queryList("SELECT id, step_id, seq, dd_name, dsn, access, line, file, detail_json "
+                        + "FROM JCL_DD WHERE step_id = ? ORDER BY id",
+                rs -> {
+                    int line = rs.getInt("line");
+                    Integer lineOrNull = rs.wasNull() ? null : line;
+                    return new JclDdRecord(rs.getLong("id"), rs.getLong("step_id"),
+                            rs.getInt("seq"), rs.getString("dd_name"), rs.getString("dsn"),
+                            rs.getString("access"), lineOrNull, rs.getString("file"),
+                            rs.getString("detail_json"));
+                },
+                stepId);
+    }
+
+    // ---- SQL_STMT / SQL_TABLE_USE / SQL_COLUMN_USE ----
+
+    public void insertSqlStatement(SqlStatementRecord statement) {
+        update("INSERT INTO SQL_STMT(id, source_id, program_id, seq, kind, cursor_name, line, "
+                        + "end_line, analysis, text, file, detail_json) "
+                        + "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                statement.id(), statement.sourceId(), statement.programId(), statement.seq(),
+                statement.kind(), statement.cursorName(), statement.line(), statement.endLine(),
+                statement.analysis(), statement.text(), statement.file(),
+                statement.detailJson());
+    }
+
+    /** The SQL statements of one source, in the order they appear in it. */
+    public List<SqlStatementRecord> findSqlStatementsBySource(long sourceId) {
+        return queryList("SELECT id, source_id, program_id, seq, kind, cursor_name, line, "
+                        + "end_line, analysis, text, file, detail_json FROM SQL_STMT "
+                        + "WHERE source_id = ? ORDER BY id",
+                rs -> {
+                    long programId = rs.getLong("program_id");
+                    Long programOrNull = rs.wasNull() ? null : programId;
+                    return new SqlStatementRecord(rs.getLong("id"), rs.getLong("source_id"),
+                            programOrNull, rs.getInt("seq"), rs.getString("kind"),
+                            rs.getString("cursor_name"), rs.getInt("line"), rs.getInt("end_line"),
+                            rs.getString("analysis"), rs.getString("text"), rs.getString("file"),
+                            rs.getString("detail_json"));
+                },
+                sourceId);
+    }
+
+    public void insertSqlTableUse(SqlTableUseRecord use) {
+        update("INSERT INTO SQL_TABLE_USE(id, stmt_id, table_name, access) VALUES (?,?,?,?)",
+                use.id(), use.stmtId(), use.tableName(), use.access());
+    }
+
+    public List<SqlTableUseRecord> findSqlTableUsesByStatement(long stmtId) {
+        return queryList("SELECT id, stmt_id, table_name, access FROM SQL_TABLE_USE "
+                        + "WHERE stmt_id = ? ORDER BY id",
+                rs -> new SqlTableUseRecord(rs.getLong("id"), rs.getLong("stmt_id"),
+                        rs.getString("table_name"), rs.getString("access")),
+                stmtId);
+    }
+
+    public void insertSqlColumnUse(SqlColumnUseRecord use) {
+        update("INSERT INTO SQL_COLUMN_USE(id, stmt_id, table_name, column_name) VALUES (?,?,?,?)",
+                use.id(), use.stmtId(), use.tableName(), use.columnName());
+    }
+
+    public List<SqlColumnUseRecord> findSqlColumnUsesByStatement(long stmtId) {
+        return queryList("SELECT id, stmt_id, table_name, column_name FROM SQL_COLUMN_USE "
+                        + "WHERE stmt_id = ? ORDER BY id",
+                rs -> new SqlColumnUseRecord(rs.getLong("id"), rs.getLong("stmt_id"),
+                        rs.getString("table_name"), rs.getString("column_name")),
+                stmtId);
     }
 
     // ---- LINE_MAP ----

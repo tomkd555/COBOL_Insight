@@ -2,11 +2,14 @@ package jp.cobolinsight.rules.sql;
 
 import jp.cobolinsight.core.finding.Finding;
 import jp.cobolinsight.core.spi.AnalysisContext;
+import jp.cobolinsight.core.sql.SqlAnalysis;
 import jp.cobolinsight.core.sql.SqlStatementKind;
 import jp.cobolinsight.core.sql.SqlStatementModel;
+import jp.cobolinsight.core.sql.SqlStructureSignals;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -35,6 +38,18 @@ class SqlAdviceRuleTest {
         assertEquals(10, findings.get(0).location().line());
     }
 
+    /** SELECT INTO is a kind of its own since C3, and both rules still read its signals. */
+    @Test
+    void s001FiresOnSelectStarOfASelectInto() {
+        SqlStatementModel model = SqlAdviceFixtures.model(
+                "SELECT * INTO :WS-REC FROM SYKDB.ZAIKOM WHERE SHOHIN_CD = :WS-CD", 11);
+        assertEquals(SqlStatementKind.SELECT_INTO, model.kind());
+
+        List<Finding> findings = new SelectStarRule().evaluate(SqlAdviceFixtures.context(model));
+        assertEquals(1, findings.size(), () -> "SELECT INTO の * を1件指摘すること: " + findings);
+        assertEquals(11, findings.get(0).location().line());
+    }
+
     @Test
     void s001SilentOnExplicitColumns() {
         AnalysisContext ctx = SqlAdviceFixtures.context(
@@ -61,6 +76,19 @@ class SqlAdviceRuleTest {
         assertEquals(1, findings.size(), () -> "算術で列を包む述語を1件指摘すること: " + findings);
         assertTrue(findings.get(0).message().contains("は索引で絞り込めません。全表走査になります。"),
                 findings.get(0).message());
+    }
+
+    @Test
+    void s002FiresOnASelectIntoWithALeadingWildcardLike() {
+        SqlStatementModel model = SqlAdviceFixtures.model(
+                "SELECT SHOHIN_CD INTO :WS-CD FROM SYKDB.ZAIKOM WHERE SHOHIN_NM LIKE '%TEST'", 21);
+        assertEquals(SqlStatementKind.SELECT_INTO, model.kind());
+
+        List<Finding> findings =
+                new NonSargablePredicateRule().evaluate(SqlAdviceFixtures.context(model));
+        assertEquals(1, findings.size(),
+                () -> "SELECT INTO の先頭%のLIKEを1件指摘すること: " + findings);
+        assertEquals(21, findings.get(0).location().line());
     }
 
     @Test
@@ -127,6 +155,33 @@ class SqlAdviceRuleTest {
         AnalysisContext ctx = SqlAdviceFixtures.context(SqlAdviceFixtures.model(
                 "DECLARE C1 CURSOR FOR SELECT SHOHIN_CD FROM SYKDB.ZAIKOM FOR READ ONLY", 55));
         assertTrue(new CursorDeclarationRule().evaluate(ctx).isEmpty());
+    }
+
+    @Test
+    void s004SilentOnDegradedCursorDeclaration() {
+        // The grammar stops at the unbalanced parenthesis, so the FOR clause was never read;
+        // its absence from the model is not evidence that the source is missing one.
+        SqlStatementModel degraded = SqlAdviceFixtures.model(
+                "DECLARE C1 CURSOR FOR SELECT SHOHIN_CD FROM SYKDB.ZAIKOM WHERE (", 65);
+        assertEquals(SqlAnalysis.DEGRADED, degraded.analysis());
+        assertEquals(SqlStatementKind.DECLARE_CURSOR, degraded.kind());
+        assertTrue(new CursorDeclarationRule()
+                .evaluate(SqlAdviceFixtures.context(degraded)).isEmpty());
+    }
+
+    @Test
+    void s001AndS002AreSilentOnADegradedStatement() {
+        // The signals are the ones a full parse of this statement would carry, so what keeps the
+        // two rules silent is the DEGRADED analysis and nothing else.
+        SqlStatementModel degraded = SqlAdviceFixtures.degradedWithSignals(
+                "SELECT * FROM SYKDB.ZAIKOM WHERE UPPER(SHOHIN_NM) = 'X' AND", 70,
+                new SqlStructureSignals(true, List.of("UPPER(SHOHIN_NM) = 'X'"),
+                        List.of("UPPER(SHOHIN_NM) = 'X'"), Optional.empty(), false, false, false));
+        assertEquals(SqlAnalysis.DEGRADED, degraded.analysis());
+        assertTrue(degraded.structureSignals().selectStar());
+        AnalysisContext ctx = SqlAdviceFixtures.context(degraded);
+        assertTrue(new SelectStarRule().evaluate(ctx).isEmpty());
+        assertTrue(new NonSargablePredicateRule().evaluate(ctx).isEmpty());
     }
 
     @Test

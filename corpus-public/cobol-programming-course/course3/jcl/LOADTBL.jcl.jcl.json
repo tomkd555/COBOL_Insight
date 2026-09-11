@@ -1,0 +1,398 @@
+[
+  {
+    "jobName": "LOADTBL",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "1",
+      "NOTIFY": "&SYSUID"
+    },
+    "members": [
+      "DSNUPROC.jcl"
+    ],
+    "steps": [
+      {
+        "name": "LOAD",
+        "execKind": "PROC",
+        "target": "DSNUPROC",
+        "line": 6,
+        "parm": "DBCG,Z99",
+        "parameters": {
+          "PARM": "'DBCG,Z99'"
+        }
+      },
+      {
+        "name": "LOAD.DSNUPROC",
+        "execKind": "PGM",
+        "target": "DSNUTILB",
+        "line": 3,
+        "file": "DSNUPROC.jcl",
+        "procStepName": "DSNUPROC",
+        "parm": "DBCG,Z99",
+        "parameters": {
+          "REGION": "0K",
+          "PARM": "'DBCG,Z99'"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "SYSPRINT": "WRITE",
+            "UTPRINT": "WRITE",
+            "SORTLIB": "READ",
+            "DSNTRACE": "WRITE",
+            "TBLRECS": "READ",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 4,
+            "file": "DSNUPROC.jcl",
+            "datasetName": "DSNC10.SDSNLOAD",
+            "dataset": {
+              "name": "DSNC10.SDSNLOAD"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "DSNC10.SDSNLOAD",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 5,
+            "file": "DSNUPROC.jcl",
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "UTPRINT",
+            "line": 6,
+            "file": "DSNUPROC.jcl",
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSUDUMP",
+            "line": 7,
+            "file": "DSNUPROC.jcl",
+            "dummy": true,
+            "parameters": {
+              "DUMMY": ""
+            }
+          },
+          {
+            "ddName": "SYSUT1",
+            "line": 8,
+            "file": "DSNUPROC.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(4000,(20,20),,,ROUND)"
+            }
+          },
+          {
+            "ddName": "SORTLIB",
+            "line": 9,
+            "file": "DSNUPROC.jcl",
+            "datasetName": "SYS1.SORTLIB",
+            "dataset": {
+              "name": "SYS1.SORTLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "SYS1.SORTLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SORTOUT",
+            "line": 10,
+            "file": "DSNUPROC.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(4000,(20,20),,,ROUND)"
+            }
+          },
+          {
+            "ddName": "SYSREC",
+            "line": 11,
+            "file": "DSNUPROC.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(4000,(200,200),,,ROUND)"
+            }
+          },
+          {
+            "ddName": "DSNTRACE",
+            "line": 12,
+            "file": "DSNUPROC.jcl",
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSERR",
+            "line": 13,
+            "file": "DSNUPROC.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(4000,(20,20),,,ROUND)"
+            }
+          },
+          {
+            "ddName": "SYSDISC",
+            "line": 14,
+            "file": "DSNUPROC.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(4000,(20,20),,,ROUND)"
+            }
+          },
+          {
+            "ddName": "SYSMAP",
+            "line": 15,
+            "file": "DSNUPROC.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(4000,(20,20),,,ROUND)"
+            }
+          },
+          {
+            "ddName": "TBLRECS",
+            "line": 7,
+            "datasetName": "ZOS.PUBLIC.SEQ.DATA",
+            "dataset": {
+              "name": "ZOS.PUBLIC.SEQ.DATA"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "ZOS.PUBLIC.SEQ.DATA",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 8,
+            "parameters": {
+              "*": "",
+              "SYMBOLS": "CNVTSYS"
+            },
+            "inStreamData": [
+              "  LOAD DATA INDDN(TBLRECS) INTO TABLE &SYSUID.T",
+              "     (ACCTNO    POSITION( 1)  CHAR(8),",
+              "      LIMIT     POSITION( 9)  DECIMAL PACKED,",
+              "      BALANCE   POSITION(14)  DECIMAL PACKED,",
+              "      SURNAME   POSITION(19)  CHAR(20),",
+              "      FIRSTN    POSITION(39)  CHAR(15),",
+              "      ADDRESS1  POSITION(54)  CHAR(25),",
+              "      ADDRESS2  POSITION(79)  CHAR(20),",
+              "      ADDRESS3  POSITION(99)  CHAR(15),",
+              "      RESERVED  POSITION(114) CHAR(7),",
+              "      COMMENTS  POSITION(121) CHAR(50))",
+              "  SORTDEVT SYSALLDA SORTNUM 2"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "RUNSTAT",
+        "execKind": "PROC",
+        "target": "DSNUPROC",
+        "line": 22,
+        "condition": "COND=(0,NE)",
+        "parm": "DBCG,Z99",
+        "parameters": {
+          "PARM": "'DBCG,Z99'",
+          "COND": "(0,NE)"
+        }
+      },
+      {
+        "name": "RUNSTAT.DSNUPROC",
+        "execKind": "PGM",
+        "target": "DSNUTILB",
+        "line": 3,
+        "file": "DSNUPROC.jcl",
+        "condition": "COND=(0,NE)",
+        "procStepName": "DSNUPROC",
+        "parm": "DBCG,Z99",
+        "parameters": {
+          "REGION": "0K",
+          "PARM": "'DBCG,Z99'",
+          "COND": "(0,NE)"
+        },
+        "utility": {
+          "tableUses": [
+            {
+              "table": "DB2",
+              "access": "READ"
+            }
+          ],
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "SYSPRINT": "WRITE",
+            "UTPRINT": "WRITE",
+            "SORTLIB": "READ",
+            "DSNTRACE": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 4,
+            "file": "DSNUPROC.jcl",
+            "datasetName": "DSNC10.SDSNLOAD",
+            "dataset": {
+              "name": "DSNC10.SDSNLOAD"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "DSNC10.SDSNLOAD",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 5,
+            "file": "DSNUPROC.jcl",
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "UTPRINT",
+            "line": 6,
+            "file": "DSNUPROC.jcl",
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSUDUMP",
+            "line": 7,
+            "file": "DSNUPROC.jcl",
+            "dummy": true,
+            "parameters": {
+              "DUMMY": ""
+            }
+          },
+          {
+            "ddName": "SYSUT1",
+            "line": 8,
+            "file": "DSNUPROC.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(4000,(20,20),,,ROUND)"
+            }
+          },
+          {
+            "ddName": "SORTLIB",
+            "line": 9,
+            "file": "DSNUPROC.jcl",
+            "datasetName": "SYS1.SORTLIB",
+            "dataset": {
+              "name": "SYS1.SORTLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "SYS1.SORTLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SORTOUT",
+            "line": 10,
+            "file": "DSNUPROC.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(4000,(20,20),,,ROUND)"
+            }
+          },
+          {
+            "ddName": "SYSREC",
+            "line": 11,
+            "file": "DSNUPROC.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(4000,(200,200),,,ROUND)"
+            }
+          },
+          {
+            "ddName": "DSNTRACE",
+            "line": 12,
+            "file": "DSNUPROC.jcl",
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSERR",
+            "line": 13,
+            "file": "DSNUPROC.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(4000,(20,20),,,ROUND)"
+            }
+          },
+          {
+            "ddName": "SYSDISC",
+            "line": 14,
+            "file": "DSNUPROC.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(4000,(20,20),,,ROUND)"
+            }
+          },
+          {
+            "ddName": "SYSMAP",
+            "line": 15,
+            "file": "DSNUPROC.jcl",
+            "parameters": {
+              "UNIT": "SYSALLDA",
+              "SPACE": "(4000,(20,20),,,ROUND)"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 23,
+            "parameters": {
+              "*": "",
+              "SYMBOLS": "CNVTSYS"
+            },
+            "inStreamData": [
+              "  RUNSTATS TABLESPACE DB2.&SYSUID.S INDEX(ALL) TABLE(ALL)"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

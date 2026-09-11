@@ -6,7 +6,8 @@
  * write-back reported, and `format` the lines whose bytes run past the record.
  *
  * Severity is taken from the rule catalog rather than from the SARIF level, for the same reason the
- * problems table does: level has three values and says nothing rule-specific.
+ * problems table does: level has three values and says nothing rule-specific. A finding the catalog
+ * lists no rule for — the engine's own diagnostics — is graded from its level, which is all it has.
  */
 
 import type { SarifFinding, SaveReparseError } from "../../../shared/ipc";
@@ -74,7 +75,7 @@ export function findingMarkers(
   return findings
     .filter((finding) => finding.file === path)
     .map((finding) => {
-      const rule = ruleOf(index, finding.ruleId);
+      const rule = ruleOf(index, finding.ruleId, finding.level);
       return {
         startLineNumber: Math.max(1, finding.startLine),
         startColumn: Math.max(1, finding.startColumn),

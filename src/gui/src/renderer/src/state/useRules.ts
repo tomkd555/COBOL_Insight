@@ -47,6 +47,7 @@ export function useRules(notify: Notify): RulesActions {
         .writeRules(rulesPath, next)
         .then(async () => {
           rulesDispatch({ type: "SET_FILE", file: next });
+          projectDispatch({ type: "RULES_WRITTEN" });
           const catalog = await api().rules({ rulesFile: rulesPath });
           projectDispatch({
             type: "SET_RULES",

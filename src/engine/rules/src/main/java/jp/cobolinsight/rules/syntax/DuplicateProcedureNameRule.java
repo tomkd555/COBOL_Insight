@@ -30,10 +30,10 @@ public final class DuplicateProcedureNameRule implements Rule {
                     + "重ねて宣言している箇所を検出します。")
             .rationale("PERFORM 文や GO TO 文の移行先が一意に定まらず、"
                     + "意図した側とは別の宣言に制御が移り得ます。")
-            .detection("所属する節と名前の組が同じ宣言が 2 件以上あるものを検出し、"
+            .detection("同じ節に同じ名前の宣言が 2 件以上あるものを検出し、"
                     + "2 件目以降の宣言位置で報告します。"
                     + "異なる節にある同名の段落は合法のため対象外です。")
-            .remedy("いずれかの名前を改め、参照している側も併せて直してください。")
+            .remedy("いずれかの名前を直し、参照している側も併せて直してください。")
             .example("""
                     CALC-TAX.
                         COMPUTE WS-TAX = WS-AMT * 0.10.
@@ -46,9 +46,8 @@ public final class DuplicateProcedureNameRule implements Rule {
                         COMPUTE WS-TAX = WS-AMT * 0.08.
                     """)
             .severity(Severity.MEDIUM)
-            .commands(Command.LINT, Command.REPORT)
+            .commands(Command.LINT)
             .targets(AssetKind.COBOL)
-            .needs(Needs.SEMANTIC)
             .build();
 
     @Override

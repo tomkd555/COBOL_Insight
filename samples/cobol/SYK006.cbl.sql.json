@@ -1,0 +1,343 @@
+[
+  {
+    "kind": "BEGIN_DECLARE_SECTION",
+    "startLine": 45,
+    "endLine": 45,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "END_DECLARE_SECTION",
+    "startLine": 51,
+    "endLine": 51,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "HOST-在庫数量",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "HOST-商品コード",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "HOST-倉庫コード",
+        "mangledName": "HV3"
+      }
+    ],
+    "referencedTables": [
+      "SYKDB.ZAIKOM"
+    ],
+    "startLine": 96,
+    "endLine": 101,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "HOST-在庫数量"
+    ],
+    "tableAccess": {
+      "SYKDB.ZAIKOM": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "ZAIKO_SU"
+      },
+      {
+        "column": "SHOHIN_CD"
+      },
+      {
+        "column": "SOKO_CD"
+      }
+    ],
+    "selectList": [
+      "ZAIKO_SU"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "UPDATE",
+    "hostVariables": [
+      {
+        "originalName": "HOST-増減数量",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "HOST-商品コード",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "HOST-倉庫コード",
+        "mangledName": "HV3"
+      }
+    ],
+    "referencedTables": [
+      "SYKDB.ZAIKOM"
+    ],
+    "startLine": 114,
+    "endLine": 119,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "tableAccess": {
+      "SYKDB.ZAIKOM": "U"
+    },
+    "columnRefs": [
+      {
+        "column": "ZAIKO_SU"
+      },
+      {
+        "column": "ZAIKO_SU"
+      },
+      {
+        "column": "SHOHIN_CD"
+      },
+      {
+        "column": "SOKO_CD"
+      }
+    ],
+    "setPairs": [
+      {
+        "column": "ZAIKO_SU",
+        "value": "ZAIKO_SU + :HOST-増減数量"
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "INSERT",
+    "hostVariables": [
+      {
+        "originalName": "HOST-商品コード",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "HOST-倉庫コード",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "HOST-増減数量",
+        "mangledName": "HV3"
+      }
+    ],
+    "referencedTables": [
+      "SYKDB.ZAIKOM"
+    ],
+    "startLine": 123,
+    "endLine": 129,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "tableAccess": {
+      "SYKDB.ZAIKOM": "C"
+    },
+    "columnRefs": [
+      {
+        "column": "SHOHIN_CD"
+      },
+      {
+        "column": "SOKO_CD"
+      },
+      {
+        "column": "ZAIKO_SU"
+      },
+      {
+        "column": "HIKIATE_SU"
+      },
+      {
+        "column": "KOSHIN_BI"
+      }
+    ],
+    "insertColumns": [
+      "SHOHIN_CD",
+      "SOKO_CD",
+      "ZAIKO_SU",
+      "HIKIATE_SU",
+      "KOSHIN_BI"
+    ],
+    "insertValues": [
+      ":HOST-商品コード",
+      ":HOST-倉庫コード",
+      ":HOST-増減数量",
+      "0",
+      "'00000000'"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "referencedTables": [
+      "SYKDB.ZAIKOM"
+    ],
+    "startLine": 145,
+    "endLine": 149,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "SYKZAIKOCUR",
+        "forReadOnly": false,
+        "forFetchOnly": false,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "SYKZAIKOCUR",
+    "tableAccess": {
+      "SYKDB.ZAIKOM": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "SHOHIN_CD"
+      },
+      {
+        "column": "SOKO_CD"
+      },
+      {
+        "column": "ZAIKO_SU"
+      },
+      {
+        "column": "HIKIATE_SU"
+      }
+    ],
+    "selectList": [
+      "SHOHIN_CD",
+      "SOKO_CD",
+      "ZAIKO_SU",
+      "HIKIATE_SU"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 150,
+    "endLine": 152,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "SYKZAIKOCUR",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 155,
+    "endLine": 157,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "SYKZAIKOCUR",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "HOST-商品コード",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "HOST-倉庫コード",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "HOST-在庫数量",
+        "mangledName": "HV3"
+      },
+      {
+        "originalName": "HOST-引当数量",
+        "mangledName": "HV4"
+      }
+    ],
+    "startLine": 160,
+    "endLine": 164,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "SYKZAIKOCUR",
+    "intoTargets": [
+      "HOST-商品コード",
+      "HOST-倉庫コード",
+      "HOST-在庫数量",
+      "HOST-引当数量"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

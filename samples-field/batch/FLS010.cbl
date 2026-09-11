@@ -1,0 +1,99 @@
+000100*=================================================================
+000200* PROGRAM-ID : FLS010
+000300* 機能       : 共通エラーログ出力
+000400* 処理概要   : 呼び出し元から受け取った異常内容を整形して
+000500*              ログへ書き出し、エラーコードがあるときは
+000600*              戻り値 8 を返します。
+000700* 起動元     : FLB020 ほかの業務プログラム
+000800* 呼び出し先 : なし
+000900*=================================================================
+001000 IDENTIFICATION DIVISION.
+001100 PROGRAM-ID.    FLS010.
+001200 AUTHOR.        FL-BATCH-TEAM.
+001300 DATE-WRITTEN.  2021-04-01.
+001400*
+001500 ENVIRONMENT DIVISION.
+001600 CONFIGURATION SECTION.
+001700 SOURCE-COMPUTER. IBM-370.
+001800 OBJECT-COMPUTER. IBM-370.
+001900*
+002000 DATA DIVISION.
+002100 WORKING-STORAGE SECTION.
+002200*
+002300* ログ 1 行の編集領域
+002400 01  WS-LOG-LINE.
+002500     05  FILLER                     PIC X(06) VALUE 'FLLOG '.
+002600     05  WS-LOG-YMD                 PIC X(08).
+002700     05  FILLER                     PIC X(01) VALUE SPACE.
+002800     05  WS-LOG-TIME                PIC X(06).
+002900     05  FILLER                     PIC X(01) VALUE SPACE.
+003000     05  WS-LOG-PGM                 PIC X(08).
+003100     05  FILLER                     PIC X(01) VALUE SPACE.
+003200     05  WS-LOG-LEVEL               PIC X(04) VALUE SPACE.
+003300     05  FILLER                     PIC X(01) VALUE SPACE.
+003400     05  WS-LOG-CD                  PIC X(04).
+003500     05  FILLER                     PIC X(01) VALUE SPACE.
+003600     05  WS-LOG-MSG                 PIC X(60).
+003700*
+003800 01  WS-WORK-AREA.
+003900     05  WS-WK-DATE                 PIC 9(08) VALUE ZERO.
+004000     05  WS-WK-TIME                 PIC 9(08) VALUE ZERO.
+004100     05  WS-LOG-SEQ                 PIC 9(06) VALUE ZERO.         CHG23007
+004200*
+004300 LINKAGE SECTION.
+004400 01  LK-ERR-AREA.
+004500     05  LK-PGM-NAME                PIC X(08).
+004600     05  LK-ERR-CODE                PIC X(04).
+004700     05  LK-ERR-MSG                 PIC X(60).
+004800*
+004900 PROCEDURE DIVISION USING LK-ERR-AREA.
+005000*
+005100*----- 主処理 ----------------------------------------------------
+005200 0000-MAIN.
+005300     PERFORM 1000-INIT
+005400     PERFORM 2000-EDIT
+005500     PERFORM 3000-OUTPUT
+005600     PERFORM 8000-END
+005700     GOBACK.
+005800*
+005900*----- 初期処理 --------------------------------------------------
+006000 1000-INIT.
+006100     MOVE SPACE TO WS-LOG-PGM
+006200     MOVE SPACE TO WS-LOG-CD
+006300     MOVE SPACE TO WS-LOG-MSG
+006400     ACCEPT WS-WK-DATE FROM DATE YYYYMMDD
+006500     ACCEPT WS-WK-TIME FROM TIME                                  CHG23007
+006600     MOVE WS-WK-DATE TO WS-LOG-YMD
+006700     MOVE WS-WK-TIME TO WS-LOG-TIME
+006800     ADD 1 TO WS-LOG-SEQ.
+006900*
+007000*----- ログ行の編集 ----------------------------------------------
+007100 2000-EDIT.
+007200     MOVE LK-PGM-NAME TO WS-LOG-PGM
+007300     MOVE LK-ERR-CODE TO WS-LOG-CD                                CHG23007
+007400     MOVE LK-ERR-MSG  TO WS-LOG-MSG
+007500     EVALUATE LK-ERR-CODE
+007600         WHEN SPACE
+007700             MOVE 'INFO' TO WS-LOG-LEVEL
+007800         WHEN '0000'
+007900             MOVE 'INFO' TO WS-LOG-LEVEL
+008000         WHEN '9999'
+008100             MOVE 'ABND' TO WS-LOG-LEVEL
+008200         WHEN OTHER
+008300             MOVE 'ERR ' TO WS-LOG-LEVEL
+008400     END-EVALUATE.
+008500*
+008600*----- ログ出力 --------------------------------------------------
+008700 3000-OUTPUT.
+008800     DISPLAY WS-LOG-LINE
+008900     IF WS-LOG-LEVEL = 'ABND'
+009000         DISPLAY '  呼び出し元で異常終了が発生しました。'
+009100     END-IF.
+009200*
+009300*----- 終了処理 --------------------------------------------------
+009400 8000-END.
+009500     IF LK-ERR-CODE NOT = SPACE AND LK-ERR-CODE NOT = '0000'
+009600         MOVE 8 TO RETURN-CODE
+009700     ELSE
+009800         MOVE ZERO TO RETURN-CODE
+009900     END-IF.

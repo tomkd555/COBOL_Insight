@@ -93,4 +93,35 @@ class CopyReplacingRuleTest {
         assertTrue(findings.stream().noneMatch(f -> f.message().startsWith("REC ")),
                 "TRAILING指定は後方境界のみで照合し、TRL-RECへの後方一致を出現とみなすこと");
     }
+
+    private static final String COLON_COPYBOOK = String.join("\n",
+            "       01  :PFX:-REC.",
+            "           05  :PFX:-FIELD             PIC X(05).",
+            "");
+
+    private static final String COLON_SOURCE = String.join("\n",
+            "       IDENTIFICATION DIVISION.",
+            "       PROGRAM-ID.  FIX024B.",
+            "       DATA DIVISION.",
+            "       WORKING-STORAGE SECTION.",
+            "           COPY COLCPY REPLACING ==:PFX:== BY ==IN==.",
+            "       PROCEDURE DIVISION.",
+            "       0000-MAIN.",
+            "           MOVE SPACES TO IN-FIELD",
+            "           GOBACK.",
+            "");
+
+    @Test
+    void matchesColonDelimitedPseudoTextInsideAWord() throws IOException {
+        Path copybookDir = tempDir.resolve("colon");
+        Files.createDirectories(copybookDir);
+        Files.writeString(copybookDir.resolve("COLCPY.cpy"), COLON_COPYBOOK, StandardCharsets.UTF_8);
+        CobolSemanticModel model = Fixtures.parse(tempDir, "FIX024B.cbl", COLON_SOURCE, copybookDir);
+
+        List<Finding> findings = new CopyReplacingRule().evaluate(Fixtures.context(List.of(model),
+                Map.of(model.sourceFile(), COLON_SOURCE,
+                        copybookDir.resolve("COLCPY.cpy").toString(), COLON_COPYBOOK)));
+
+        assertEquals(List.of(), findings, () -> ":PFX:-REC carries :PFX: as its own word: " + findings);
+    }
 }

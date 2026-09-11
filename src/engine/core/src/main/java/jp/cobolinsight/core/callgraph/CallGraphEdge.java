@@ -1,6 +1,9 @@
 package jp.cobolinsight.core.callgraph;
 
+import java.util.Collections;
+import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 
 /**
  * An edge of the call graph. References both endpoints by node ID and holds the resolution basis.
@@ -10,10 +13,12 @@ import java.util.Objects;
  *
  * <p>Edge identity is determined solely by the two endpoints, kind, and resolution basis. This is so
  * that calling the same target from multiple places collapses into a single edge, with seq and line
- * recorded from the first occurrence.
+ * recorded from the first occurrence. attributes holds kind-specific auxiliary information (the
+ * access a step makes of a data set, the plan a Db2 batch program runs under) in ascending key
+ * order, and takes no part in identity, for the same reason.
  */
 public record CallGraphEdge(String fromId, String toId, EdgeKind kind, Resolution resolution,
-        int seq, Integer line) {
+        int seq, Integer line, Map<String, String> attributes) {
 
     public CallGraphEdge {
         if (fromId == null || fromId.isBlank()) {
@@ -24,6 +29,13 @@ public record CallGraphEdge(String fromId, String toId, EdgeKind kind, Resolutio
         }
         Objects.requireNonNull(kind, "kind");
         Objects.requireNonNull(resolution, "resolution");
+        attributes = Collections.unmodifiableSortedMap(new TreeMap<>(attributes));
+    }
+
+    /** An edge carrying nothing beyond its order and line. */
+    public CallGraphEdge(String fromId, String toId, EdgeKind kind, Resolution resolution,
+            int seq, Integer line) {
+        this(fromId, toId, kind, resolution, seq, line, Map.of());
     }
 
     /** An edge whose order and line are both unknown. */

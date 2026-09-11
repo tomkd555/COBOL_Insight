@@ -1,0 +1,230 @@
+[
+  {
+    "jobName": "SYKD040",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "SYK1234",
+      "PROGRAMMER": "SYK04 在庫再集計",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID",
+      "RESTART": "STEP020"
+    },
+    "unresolvedSymbols": [
+      "&MODE"
+    ],
+    "unresolvedOverrides": [
+      {
+        "line": 31,
+        "text": "BADSTEP.SYSIN"
+      }
+    ],
+    "unresolvedReferbacks": [
+      {
+        "line": 28,
+        "text": "*.STEP999.OUT1"
+      }
+    ],
+    "missingMembers": [
+      {
+        "line": 33,
+        "kind": "PROC",
+        "name": "SYKPRC99"
+      }
+    ],
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "SYK010",
+        "line": 20,
+        "parm": "&MODE",
+        "parameters": {
+          "PARM": "'&MODE'"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 21,
+            "datasetName": "SYK.PROD.LOADLIB",
+            "dataset": {
+              "name": "SYK.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "SYK.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 22,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 23,
+            "sysout": "A",
+            "parameters": {
+              "SYSOUT": "A"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PGM",
+        "target": "SYK011",
+        "line": 25,
+        "condition": "COND=(4,LT,STEP010)",
+        "parameters": {
+          "COND": "(4,LT,STEP010)"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "SYSOUT": "WRITE",
+            "BACKREF": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 26,
+            "datasetName": "SYK.PROD.LOADLIB",
+            "dataset": {
+              "name": "SYK.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "SYK.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 27,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "BACKREF",
+            "line": 28,
+            "datasetName": "*.STEP999.OUT1",
+            "dataset": {
+              "name": "*.STEP999.OUT1",
+              "referback": "*.STEP999.OUT1"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "*.STEP999.OUT1",
+              "DISP": "SHR"
+            },
+            "referbacks": {
+              "DSN": "*.STEP999.OUT1"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP030",
+        "execKind": "PROC",
+        "target": "SYKPRC02",
+        "line": 30,
+        "condition": "COND=(4,LT,STEP010)",
+        "parameters": {
+          "CYCLE": "250718",
+          "COND": "(4,LT,STEP010)"
+        },
+        "ddStatements": [
+          {
+            "ddName": "BADSTEP.SYSIN",
+            "line": 31,
+            "dummy": true,
+            "parameters": {
+              "DUMMY": ""
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP030.PRTSTEP",
+        "execKind": "PGM",
+        "target": "SYK005",
+        "line": 15,
+        "condition": "COND=(4,LT,STEP010)",
+        "procStepName": "PRTSTEP",
+        "parameters": {
+          "COND": "(4,LT,STEP010)"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 16,
+            "datasetName": "SYK.PROD.LOADLIB",
+            "dataset": {
+              "name": "SYK.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "SYK.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 17,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP040",
+        "execKind": "PROC",
+        "target": "SYKPRC99",
+        "line": 33,
+        "condition": "COND=(4,LT,STEP010)",
+        "parameters": {
+          "COND": "(4,LT,STEP010)"
+        }
+      }
+    ]
+  }
+]

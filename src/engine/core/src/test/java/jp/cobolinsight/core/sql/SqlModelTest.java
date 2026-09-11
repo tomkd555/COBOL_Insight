@@ -5,7 +5,9 @@ import jp.cobolinsight.core.source.SourceRange;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -54,6 +56,43 @@ class SqlModelTest {
     void statementModelRejectsBlankText() {
         assertThrows(IllegalArgumentException.class, () -> new SqlStatementModel(SqlStatementKind.OTHER,
                 " ", "X", List.of(), List.of(), range(), SqlStructureSignals.empty()));
+    }
+
+    @Test
+    void aDegradedStatementMayCarryNoMangledText() {
+        SqlStatementModel stmt = new SqlStatementModel(SqlStatementKind.OTHER,
+                "EXEC SQL  END-EXEC", "", List.of(), List.of(), range(),
+                SqlStructureSignals.empty(), SqlAnalysis.DEGRADED,
+                Optional.of("EXEC SQL の中身がありません"));
+        assertFalse(stmt.isFullyAnalysed());
+        assertEquals("", stmt.mangledText());
+    }
+
+    @Test
+    void aFullyAnalysedStatementStillRejectsBlankMangledText() {
+        assertThrows(IllegalArgumentException.class, () -> new SqlStatementModel(
+                SqlStatementKind.OTHER, "SELECT 1 FROM T", " ", List.of(), List.of(), range(),
+                SqlStructureSignals.empty(), SqlAnalysis.FULL, Optional.empty()));
+    }
+
+    /** tableAccess is wrapped rather than copied through Map.copyOf, so it checks for null itself. */
+    @Test
+    void tableAccessRejectsANullTableOrLetters() {
+        Map<String, String> nullTable = new HashMap<>();
+        nullTable.put(null, "R");
+        assertThrows(NullPointerException.class, () -> facts().tableAccess(nullTable)
+                .build("SELECT 1 FROM T", "SELECT 1 FROM T", List.of(), range(),
+                        SqlStructureSignals.empty(), SqlAnalysis.FULL, Optional.empty()));
+
+        Map<String, String> nullLetters = new HashMap<>();
+        nullLetters.put("T", null);
+        assertThrows(NullPointerException.class, () -> facts().tableAccess(nullLetters)
+                .build("SELECT 1 FROM T", "SELECT 1 FROM T", List.of(), range(),
+                        SqlStructureSignals.empty(), SqlAnalysis.FULL, Optional.empty()));
+    }
+
+    private static SqlStatementModel.Builder facts() {
+        return new SqlStatementModel.Builder().kind(SqlStatementKind.SELECT);
     }
 
     @Test

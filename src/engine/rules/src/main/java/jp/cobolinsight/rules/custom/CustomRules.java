@@ -121,7 +121,7 @@ public final class CustomRules {
         RuleMeta meta = metaOf(object, id, name, targets,
                 String.join("・", verbs) + " 文を検出します。",
                 describeStatement(targets, verbs, clauses, inParagraphText),
-                Set.of(Needs.SEMANTIC));
+                Set.of());
         return new StatementRule(meta, verbs, clauses, inParagraph, message);
     }
 
@@ -160,7 +160,7 @@ public final class CustomRules {
                 verb + " の実行後に " + String.join("・", dataItems)
                         + " を検査しない箇所を検出します。",
                 describeCheckedAfter(targets, verb, textRegex, dataItems, scope, onEveryPath),
-                Set.of(Needs.SEMANTIC, Needs.CFG));
+                Set.of(Needs.CFG));
         return new CheckedAfterRule(meta, verb, afterText, dataItems, scope, onEveryPath, message);
     }
 
@@ -242,21 +242,28 @@ public final class CustomRules {
         }
     }
 
-    /** Absent means lint and report, which is where a hand-written rule was run before V2. */
+    /** Absent means lint, which is where a hand-written rule was run before V2. */
     private static Set<Command> toCommands(Object value) {
         if (value == null) {
-            return Set.of(Command.LINT, Command.REPORT);
+            return Set.of(Command.LINT);
         }
         EnumSet<Command> commands = EnumSet.noneOf(Command.class);
         for (Object element : asArray(value, "commands")) {
             if (!(element instanceof String text)) {
                 throw new IllegalArgumentException("commands に扱えない値があります: " + element);
             }
+            String upper = text.strip().toUpperCase(Locale.ROOT);
+            // REPORT and SCAN were removed from Command; a rules.json from an earlier build still
+            // offers them, so they are read as LINT rather than dropping the whole custom rule.
+            if (upper.equals("REPORT") || upper.equals("SCAN")) {
+                commands.add(Command.LINT);
+                continue;
+            }
             try {
-                commands.add(Command.valueOf(text.strip().toUpperCase(Locale.ROOT)));
+                commands.add(Command.valueOf(upper));
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("commands に扱えない値があります: " + text
-                        + "（扱えるのは LINT・SQL_LINT・REPORT・FIX・SCAN）");
+                        + "（扱えるのは LINT・SQL_LINT・FIX）");
             }
         }
         if (commands.isEmpty()) {
@@ -278,7 +285,7 @@ public final class CustomRules {
                 targets.add(AssetKind.valueOf(text.strip().toUpperCase(Locale.ROOT)));
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("targets に扱えない種別があります: " + text
-                        + "（扱えるのは COBOL・COPYBOOK・BMS・JCL）");
+                        + "（扱えるのは " + labelOf(EnumSet.allOf(AssetKind.class)) + "）");
             }
         }
         if (targets.isEmpty()) {

@@ -46,14 +46,3 @@ export function monacoEditor(): typeof monaco {
   }
   return monaco;
 }
-
-/**
- * Registers the codicon font without starting the editor. The shell's icons are codicon glyphs, so
- * the font has to be present before the first paint even where no editor is open.
- *
- * Importing this module is what registers the font; this function exists so the import is a
- * deliberate call rather than a side effect a bundler might drop.
- */
-export function monacoCodicons(): void {
-  // The side-effect import at the top of this module has already installed the @font-face rule.
-}

@@ -9,7 +9,7 @@
  * that changed underneath is not overwritten silently: the caller is asked what to do with it.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { SaveResult } from "../../../shared/ipc";
 import { api, errorMessage } from "../api";
 import { text } from "../i18n/text";
@@ -121,6 +121,7 @@ export function useSourceSave(notify: (message: string, failed?: boolean) => voi
         path: document.path,
         findings: outcome.diagnostics,
       });
+      projectDispatch({ type: "SOURCE_SAVED" });
       if (outcome.message !== null) {
         notify(outcome.message);
       }
@@ -238,6 +239,8 @@ export function useSourceSave(notify: (message: string, failed?: boolean) => voi
 
   const dismissConflict = useCallback((): void => setConflict(null), []);
 
+  const hasDirty = useMemo(() => dirtySourceTabs(workbench).length > 0, [workbench]);
+
   return {
     save,
     saveAll,
@@ -246,6 +249,6 @@ export function useSourceSave(notify: (message: string, failed?: boolean) => voi
     overwrite,
     showConflictDiff,
     dismissConflict,
-    hasDirty: dirtySourceTabs(workbench).length > 0,
+    hasDirty,
   };
 }

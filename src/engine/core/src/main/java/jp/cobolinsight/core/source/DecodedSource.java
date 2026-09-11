@@ -6,7 +6,8 @@ import java.util.Objects;
 /**
  * A decoded source. Keeps the original byte array as-is, plus a table (charByteOffsets) that
  * maps each character position in text to its offset in the original byte array. The arrays are
- * defensively copied both on intake and on return.
+ * defensively copied on intake; the accessors return the internal arrays as-is, so a caller must
+ * not mutate what it gets back.
  */
 public record DecodedSource(String path, String text, byte[] originalBytes, int[] charByteOffsets,
         EncodingInfo encoding) {
@@ -25,16 +26,6 @@ public record DecodedSource(String path, String text, byte[] originalBytes, int[
         }
         originalBytes = originalBytes.clone();
         charByteOffsets = charByteOffsets.clone();
-    }
-
-    @Override
-    public byte[] originalBytes() {
-        return originalBytes.clone();
-    }
-
-    @Override
-    public int[] charByteOffsets() {
-        return charByteOffsets.clone();
     }
 
     /** The offset in the original byte array where the character at the given position in text begins. charIndex must be 0 or greater and less than text's length. */

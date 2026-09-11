@@ -1,0 +1,555 @@
+[
+  {
+    "jobName": "CJ404",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "DSNUTILB DB2 UTILITIES",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "DSNUTILB",
+        "line": 13,
+        "parm": "DB2P,CJ404L",
+        "parameters": {
+          "PARM": "'DB2P,CJ404L'"
+        },
+        "utility": {
+          "tableUses": [
+            {
+              "table": "SCHEMA.TBL",
+              "access": "WRITE"
+            }
+          ],
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "SYSPRINT": "WRITE",
+            "UTPRINT": "WRITE",
+            "SYSREC": "READ",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 14,
+            "datasetName": "DB2P.SDSNLOAD",
+            "dataset": {
+              "name": "DB2P.SDSNLOAD"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "DB2P.SDSNLOAD",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 15,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSUT1",
+            "line": 16,
+            "parameters": {
+              "UNIT": "SYSDA",
+              "SPACE": "(CYL,(5,5))"
+            }
+          },
+          {
+            "ddName": "SORTOUT",
+            "line": 17,
+            "parameters": {
+              "UNIT": "SYSDA",
+              "SPACE": "(CYL,(5,5))"
+            }
+          },
+          {
+            "ddName": "UTPRINT",
+            "line": 18,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSERR",
+            "line": 19,
+            "parameters": {
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(5,5))"
+            }
+          },
+          {
+            "ddName": "SYSMAP",
+            "line": 20,
+            "parameters": {
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(5,5))"
+            }
+          },
+          {
+            "ddName": "SYSDISC",
+            "line": 21,
+            "parameters": {
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(5,5))"
+            }
+          },
+          {
+            "ddName": "SYSREC",
+            "line": 22,
+            "datasetName": "CJT.D260910.SCHEMA.TBL.LOADREC",
+            "dataset": {
+              "name": "CJT.D260910.SCHEMA.TBL.LOADREC"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.SCHEMA.TBL.LOADREC",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 23,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  LOAD DATA INDDN(SYSREC) RESUME NO REPLACE LOG NO",
+              "      INTO TABLE SCHEMA.TBL",
+              "      (COL1 POSITION(1:8)   CHAR,",
+              "       COL2 POSITION(9:12)  CHAR,",
+              "       COL3 POSITION(13:20) DECIMAL EXTERNAL)"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PGM",
+        "target": "DSNUTILB",
+        "line": 31,
+        "condition": "COND=(4,LT,STEP010)",
+        "parm": "DB2P,CJ404U",
+        "parameters": {
+          "PARM": "'DB2P,CJ404U'",
+          "COND": "(4,LT,STEP010)"
+        },
+        "utility": {
+          "tableUses": [
+            {
+              "table": "DB.TS",
+              "access": "READ"
+            },
+            {
+              "table": "SCHEMA.TBL",
+              "access": "READ"
+            }
+          ],
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "SYSPRINT": "WRITE",
+            "SYSREC": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 33,
+            "datasetName": "DB2P.SDSNLOAD",
+            "dataset": {
+              "name": "DB2P.SDSNLOAD"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "DB2P.SDSNLOAD",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 34,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSREC",
+            "line": 35,
+            "datasetName": "CJT.D260910.SCHEMA.TBL.UNLOAD",
+            "dataset": {
+              "name": "CJT.D260910.SCHEMA.TBL.UNLOAD"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.SCHEMA.TBL.UNLOAD",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(5,5),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=100,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 39,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  UNLOAD TABLESPACE DB.TS",
+              "      FROM TABLE SCHEMA.TBL"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "STEP030",
+        "execKind": "PGM",
+        "target": "DSNUTILB",
+        "line": 44,
+        "condition": "COND=(4,LT,STEP020)",
+        "parm": "DB2P,CJ404R",
+        "parameters": {
+          "PARM": "'DB2P,CJ404R'",
+          "COND": "(4,LT,STEP020)"
+        },
+        "utility": {
+          "tableUses": [
+            {
+              "table": "DB.TS",
+              "access": "READ"
+            }
+          ],
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "SYSPRINT": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 46,
+            "datasetName": "DB2P.SDSNLOAD",
+            "dataset": {
+              "name": "DB2P.SDSNLOAD"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "DB2P.SDSNLOAD",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 47,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 48,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  RUNSTATS TABLESPACE DB.TS",
+              "      TABLE(ALL) INDEX(ALL) SHRLEVEL REFERENCE"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "STEP040",
+        "execKind": "PGM",
+        "target": "DSNUTILB",
+        "line": 53,
+        "condition": "COND=(4,LT,STEP030)",
+        "parm": "DB2P,CJ404G",
+        "parameters": {
+          "PARM": "'DB2P,CJ404G'",
+          "COND": "(4,LT,STEP030)"
+        },
+        "utility": {
+          "tableUses": [
+            {
+              "table": "DB.TS",
+              "access": "UPDATE"
+            }
+          ],
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "SYSPRINT": "WRITE",
+            "UTPRINT": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 55,
+            "datasetName": "DB2P.SDSNLOAD",
+            "dataset": {
+              "name": "DB2P.SDSNLOAD"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "DB2P.SDSNLOAD",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 56,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSUT1",
+            "line": 57,
+            "parameters": {
+              "UNIT": "SYSDA",
+              "SPACE": "(CYL,(10,10))"
+            }
+          },
+          {
+            "ddName": "SORTOUT",
+            "line": 58,
+            "parameters": {
+              "UNIT": "SYSDA",
+              "SPACE": "(CYL,(10,10))"
+            }
+          },
+          {
+            "ddName": "UTPRINT",
+            "line": 59,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 60,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  REORG TABLESPACE DB.TS",
+              "      SHRLEVEL REFERENCE"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "STEP050",
+        "execKind": "PGM",
+        "target": "DSNUTILB",
+        "line": 65,
+        "condition": "COND=(4,LT,STEP040)",
+        "parm": "DB2P,CJ404C",
+        "parameters": {
+          "PARM": "'DB2P,CJ404C'",
+          "COND": "(4,LT,STEP040)"
+        },
+        "utility": {
+          "tableUses": [
+            {
+              "table": "DB.TS",
+              "access": "READ"
+            }
+          ],
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "SYSPRINT": "WRITE",
+            "SYSCOPY": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 67,
+            "datasetName": "DB2P.SDSNLOAD",
+            "dataset": {
+              "name": "DB2P.SDSNLOAD"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "DB2P.SDSNLOAD",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 68,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSCOPY",
+            "line": 69,
+            "datasetName": "CJT.D260910.DB.TS.IMGCOPY",
+            "dataset": {
+              "name": "CJT.D260910.DB.TS.IMGCOPY"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.DB.TS.IMGCOPY",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(5,5),RLSE)"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 72,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  COPY TABLESPACE DB.TS",
+              "      FULL YES SHRLEVEL REFERENCE"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "STEP060",
+        "execKind": "PGM",
+        "target": "DSNUTILB",
+        "line": 77,
+        "condition": "COND=(4,LT,STEP050)",
+        "parm": "DB2P,CJ404K",
+        "parameters": {
+          "PARM": "'DB2P,CJ404K'",
+          "COND": "(4,LT,STEP050)"
+        },
+        "utility": {
+          "tableUses": [
+            {
+              "table": "DB.TS",
+              "access": "READ"
+            }
+          ],
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "SYSPRINT": "WRITE",
+            "SYSERR": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 79,
+            "datasetName": "DB2P.SDSNLOAD",
+            "dataset": {
+              "name": "DB2P.SDSNLOAD"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "DB2P.SDSNLOAD",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 80,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSERR",
+            "line": 81,
+            "datasetName": "CJT.D260910.SCHEMA.TBL.CHKERR",
+            "dataset": {
+              "name": "CJT.D260910.SCHEMA.TBL.CHKERR"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.SCHEMA.TBL.CHKERR",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(TRK,(5,5),RLSE)"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 84,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  CHECK DATA TABLESPACE DB.TS",
+              "      SCOPE ALL"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

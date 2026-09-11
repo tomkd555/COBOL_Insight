@@ -1,0 +1,113 @@
+{
+  "statements": [
+    {
+      "kind": "SELECT",
+      "referencedTables": [
+        "CSDB.CSQKOZA"
+      ],
+      "startLine": 2,
+      "endLine": 3,
+      "structureSignals": {
+        "selectStar": false,
+        "hasFetchFirst": false,
+        "hasOptimizeFor": false,
+        "hasWithUr": false
+      },
+      "analysis": "FULL",
+      "tableAccess": {
+        "CSDB.CSQKOZA": "R"
+      },
+      "selectList": [
+        "COUNT(*)"
+      ],
+      "withHold": false,
+      "forUpdate": false,
+      "hasWhere": false,
+      "hasOrderBy": false,
+      "dynamic": false
+    },
+    {
+      "kind": "SELECT",
+      "referencedTables": [
+        "CSDB.CSQKOZA"
+      ],
+      "startLine": 5,
+      "endLine": 8,
+      "structureSignals": {
+        "selectStar": false,
+        "hasFetchFirst": false,
+        "hasOptimizeFor": false,
+        "hasWithUr": false
+      },
+      "analysis": "FULL",
+      "tableAccess": {
+        "CSDB.CSQKOZA": "R"
+      },
+      "columnRefs": [
+        {
+          "column": "KOZA_NO"
+        },
+        {
+          "column": "KOKYAKU_NO"
+        },
+        {
+          "column": "ZANDAKA"
+        },
+        {
+          "column": "ZANDAKA"
+        },
+        {
+          "column": "ZANDAKA"
+        }
+      ],
+      "selectList": [
+        "KOZA_NO",
+        "KOKYAKU_NO",
+        "ZANDAKA"
+      ],
+      "withHold": false,
+      "forUpdate": false,
+      "hasWhere": true,
+      "hasOrderBy": true,
+      "dynamic": false
+    },
+    {
+      "kind": "UPDATE",
+      "referencedTables": [
+        "CSDB.CSQKOZA"
+      ],
+      "startLine": 10,
+      "endLine": 12,
+      "structureSignals": {
+        "selectStar": false,
+        "hasFetchFirst": false,
+        "hasOptimizeFor": false,
+        "hasWithUr": false
+      },
+      "analysis": "FULL",
+      "tableAccess": {
+        "CSDB.CSQKOZA": "U"
+      },
+      "columnRefs": [
+        {
+          "column": "KOSHIN_YMD"
+        },
+        {
+          "column": "KOZA_NO"
+        }
+      ],
+      "setPairs": [
+        {
+          "column": "KOSHIN_YMD",
+          "value": "REPLACE(CHAR(CURRENT DATE, ISO), '-', '')"
+        }
+      ],
+      "withHold": false,
+      "forUpdate": false,
+      "hasWhere": true,
+      "hasOrderBy": false,
+      "dynamic": false
+    }
+  ],
+  "routines": []
+}

@@ -23,10 +23,9 @@ export function StatusBar(): ReactElement {
   const status = useEditorStatus();
   const active = activeTabOf(workbench);
   const sourcePath = active?.kind === "source" ? active.path : null;
-  const findings = findingCount(
-    artifactCount(project.findings),
-    artifactCount(project.sqlFindings),
-  );
+  const lintAndSql = findingCount(artifactCount(project.findings), artifactCount(project.sqlFindings));
+  // The problems panel also lists the save-time reparse findings; the count must match what it shows.
+  const findings = lintAndSql === null ? null : lintAndSql + project.saveFindings.length;
 
   return (
     <footer className="ci-statusbar" aria-label={text.status.label} data-testid="statusbar">

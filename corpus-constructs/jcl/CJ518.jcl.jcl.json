@@ -1,0 +1,57 @@
+[
+  {
+    "jobName": "CJ518",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "CA7 IN-MEMBER OVERRIDE STMTS",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "diagnostics": [
+      {
+        "ruleId": "jcl-directive",
+        "line": 3,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（#JI,ID=1,BD=20260101,JOB=TESTJOB）。"
+      },
+      {
+        "ruleId": "jcl-directive",
+        "line": 13,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（#JO,ID=2,BD=20260101,JOB=TESTJOB）。"
+      },
+      {
+        "ruleId": "jcl-directive",
+        "line": 15,
+        "message": "スケジューラーまたはライブラリ管理の指示行として読み飛ばしました（#JEND）。"
+      }
+    ],
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 11,
+        "ddStatements": [
+          {
+            "ddName": "SYSPRINT",
+            "line": 12,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSUDUMP",
+            "line": 14,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

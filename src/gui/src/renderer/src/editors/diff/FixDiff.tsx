@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactElement } from "react";
 import type { FixDiff as FixDiffData } from "../../../../shared/ipc";
-import { api, errorMessage } from "../../api";
+import { api, engineFailure, errorMessage } from "../../api";
 import { text } from "../../i18n/text";
 import { useProject } from "../../state/projectStore";
 import { useSettings } from "../../state/settingsStore";
@@ -38,6 +38,13 @@ function joinPath(base: string, relPath: string): string {
 }
 
 /**
+ * The `fix` request the preview directory was last built from, so mounting a second tab (or
+ * reopening this one) after the same run does not launch the engine again for a diff already on
+ * disk. Module-level rather than per-instance: every open tab shares one preview directory.
+ */
+let previewReadyFor = "";
+
+/**
  * The fix proposal for one asset, shown against the original.
  *
  * The original is never written to. `fix apply` writes the corrected sources into a directory of its
@@ -52,6 +59,8 @@ export function FixDiff({ path, onNotify }: FixDiffProps): ReactElement {
   const settings = useSettings();
   const [load, setLoad] = useState<Load>({ status: "loading" });
   const [applying, setApplying] = useState(false);
+  /** How many files the preview run wrote out; the write-out button is only worth pressing above 0. */
+  const [previewWritten, setPreviewWritten] = useState(0);
 
   const inputDir = project.inputDir;
   const dbPath = project.outputPaths?.db;
@@ -66,15 +75,27 @@ export function FixDiff({ path, onNotify }: FixDiffProps): ReactElement {
     }
     let cancelled = false;
     setLoad({ status: "loading" });
+    const key = `${project.runId}|${previewDir}|${rulesFile ?? ""}|${copybookPaths.join("|")}`;
     void (async () => {
-      try {
-        await api().run({
-          subcommand: "fix-apply",
-          request: { inputDir, copybookPaths: [...copybookPaths], rulesFile, outDir: previewDir },
-        });
-      } catch (error: unknown) {
-        if (!cancelled) setLoad({ status: "error", message: errorMessage(error) });
-        return;
+      if (key !== previewReadyFor) {
+        try {
+          const result = await api().run({
+            subcommand: "fix",
+            request: { inputDir, copybookPaths: [...copybookPaths], rulesFile, outDir: previewDir },
+          });
+          const crashed = engineFailure(result);
+          if (crashed !== null) {
+            // The preview directory still holds the previous run's proposals; reading one now would
+            // show it as this run's. The key is left as it was, so the next mount tries again.
+            if (!cancelled) setLoad({ status: "error", message: crashed });
+            return;
+          }
+          previewReadyFor = key;
+          if (!cancelled) setPreviewWritten(writtenCount(result.summary));
+        } catch (error: unknown) {
+          if (!cancelled) setLoad({ status: "error", message: errorMessage(error) });
+          return;
+        }
       }
       try {
         const diff = await api().readFixDiff({
@@ -94,7 +115,7 @@ export function FixDiff({ path, onNotify }: FixDiffProps): ReactElement {
     return () => {
       cancelled = true;
     };
-  }, [inputDir, path, previewDir, copybookPaths, rulesFile]);
+  }, [inputDir, path, previewDir, copybookPaths, rulesFile, project.runId]);
 
   const apply = (): void => {
     if (inputDir === null) {
@@ -109,7 +130,7 @@ export function FixDiff({ path, onNotify }: FixDiffProps): ReactElement {
     setApplying(true);
     api()
       .run({
-        subcommand: "fix-apply",
+        subcommand: "fix",
         request: { inputDir, copybookPaths: [...copybookPaths], rulesFile, outDir: applyDir },
       })
       // The write-out covers the whole asset folder, not the file on screen, so it reports how many
@@ -124,12 +145,12 @@ export function FixDiff({ path, onNotify }: FixDiffProps): ReactElement {
       <div className="ci-source__meta">
         {/* The tab already names the asset and the proposal, so the row carries the action alone. */}
         <div className="ci-source__spacer" />
+        <span className="ci-source__note">{text.report.path}: {applyDir}</span>
         <button
           type="button"
           className="ci-button"
           onClick={apply}
-          disabled={applying || load.status !== "ready"}
-          title={applyDir}
+          disabled={applying || previewWritten === 0}
           data-testid="fix-apply"
         >
           {text.fixView.apply}

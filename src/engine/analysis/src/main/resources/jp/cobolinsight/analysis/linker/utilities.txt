@@ -1,0 +1,58 @@
+# EXEC PGM= targets that are system utilities rather than application programs. One name per
+# line; a line starting with # is a comment. A target not listed here becomes a PROGRAM node.
+
+# Sort products
+DFSORT
+ICEMAN
+ICETOOL
+SORT
+SYNCSORT
+ICEGENER
+
+# Data set and library utilities
+ADRDSSU
+AMATERSE
+IDCAMS
+IEBCOMPR
+IEBCOPY
+IEBDG
+IEBEDIT
+IEBGENER
+IEBIMAGE
+IEBPTPCH
+IEBUPDTE
+IEFBR14
+IEHINITT
+IEHLIST
+IEHPROGM
+PKZIP
+TRSMAIN
+
+# Db2
+DSNJU003
+DSNJU004
+DSNTEP2
+DSNTEP4
+DSNTIAD
+DSNTIAUL
+DSNUPROC
+DSNUTILB
+
+# TSO, REXX and the batch monitors a Db2 program runs under
+IKJEFT01
+IKJEFT1A
+IKJEFT1B
+IRXJCL
+
+# CICS, IMS and MQ
+DFHCSDUP
+DFSMVRC0
+DFSRRC00
+CSQUTIL
+
+# Other packaged products
+EZTPA00
+FILEAID
+FTP
+GIMSMP
+SAS

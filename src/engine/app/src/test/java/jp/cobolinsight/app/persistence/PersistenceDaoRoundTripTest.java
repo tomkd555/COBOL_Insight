@@ -1,18 +1,18 @@
 package jp.cobolinsight.app.persistence;
 
-import jp.cobolinsight.app.persistence.model.BmsFieldRecord;
-import jp.cobolinsight.app.persistence.model.BmsMapRecord;
-import jp.cobolinsight.app.persistence.model.BmsMapsetRecord;
 import jp.cobolinsight.app.persistence.model.CallEdgeRecord;
-import jp.cobolinsight.app.persistence.model.EncodingInfoRecord;
 import jp.cobolinsight.app.persistence.model.FindingRecord;
+import jp.cobolinsight.app.persistence.model.JclDdRecord;
+import jp.cobolinsight.app.persistence.model.JclStepRecord;
 import jp.cobolinsight.app.persistence.model.LineMapRecord;
 import jp.cobolinsight.app.persistence.model.NodeRecord;
 import jp.cobolinsight.app.persistence.model.ParagraphEdgeRecord;
 import jp.cobolinsight.app.persistence.model.ParagraphRecord;
 import jp.cobolinsight.app.persistence.model.ProgramRecord;
 import jp.cobolinsight.app.persistence.model.SourceRecord;
-import jp.cobolinsight.app.persistence.model.SqlStmtRecord;
+import jp.cobolinsight.app.persistence.model.SqlColumnUseRecord;
+import jp.cobolinsight.app.persistence.model.SqlStatementRecord;
+import jp.cobolinsight.app.persistence.model.SqlTableUseRecord;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,30 +48,6 @@ class PersistenceDaoRoundTripTest {
         dao.insertSource(source);
         assertEquals(source, dao.findSource(1L).orElseThrow());
         assertEquals(source, dao.findSourceByPath("/assets", "COPYBOOKS/CUST.cpy").orElseThrow());
-    }
-
-    @Test
-    void encodingInfoRoundTrip() {
-        dao.insertSource(new SourceRecord(1L, "/assets", "A.cbl", "IBM930", "hash-1", 10L));
-        EncodingInfoRecord info = new EncodingInfoRecord(1L, "IBM930", 0.95, false, true);
-        dao.insertEncodingInfo(info);
-        assertEquals(info, dao.findEncodingInfo(1L).orElseThrow());
-    }
-
-    @Test
-    void bmsHierarchyRoundTrip() {
-        dao.insertSource(new SourceRecord(1L, "/assets", "SCREEN.bms", null, "hash-1", 10L));
-        BmsMapsetRecord mapset = new BmsMapsetRecord(1L, 1L, "MAPSET1");
-        dao.insertBmsMapset(mapset);
-        assertEquals(mapset, dao.findBmsMapset(1L).orElseThrow());
-
-        BmsMapRecord map = new BmsMapRecord(1L, 1L, "MAP1", 24, 80);
-        dao.insertBmsMap(map);
-        assertEquals(map, dao.findBmsMap(1L).orElseThrow());
-
-        BmsFieldRecord field = new BmsFieldRecord(1L, 1L, "FLD1", 1, 1, 10, "UNPROT");
-        dao.insertBmsField(field);
-        assertEquals(field, dao.findBmsField(1L).orElseThrow());
     }
 
     @Test
@@ -160,23 +136,114 @@ class PersistenceDaoRoundTripTest {
     }
 
     @Test
-    void findingRoundTrip() {
-        dao.insertSource(new SourceRecord(1L, "/assets", "A.cbl", "IBM930", "hash-1", 10L));
-        FindingRecord finding = new FindingRecord(1L, "R001", "warning", 1L, 5, 8, 120L,
-                "未初期化の項目を参照している", "{\"ruleId\":\"R001\"}");
-        dao.insertFinding(finding);
-        assertEquals(finding, dao.findFinding(1L).orElseThrow());
-        assertEquals(1, dao.findFindingsBySource(1L).size());
+    void callEdgeCarriesItsAccessAndTheRestOfItsAttributes() {
+        dao.insertNode(new NodeRecord(1L, "STEP", "STEP010"));
+        dao.insertNode(new NodeRecord(2L, "DATASET", "SYKT.ORDER.DAILY"));
+        // access has a column of its own, so attrs_json carries what is left beside it.
+        CallEdgeRecord edge = new CallEdgeRecord(1L, 1L, 2L, "REFERENCE", "CONSTANT", null, 1, 16,
+                "READ", "{\"launcher\":\"IKJEFT01\"}");
+        dao.insertCallEdge(edge);
+        assertEquals(edge, dao.findCallEdge(1L).orElseThrow());
     }
 
     @Test
-    void sqlStmtRoundTrip() {
+    void jclStepAndDdRoundTrip() {
+        dao.insertSource(new SourceRecord(1L, "/assets", "jcl/A.jcl", "IBM930", "hash-1", 10L));
+        JclStepRecord step = new JclStepRecord(1_000_001L, 1L, "JOBA", 1, "STEP010", "PGM",
+                "PGMA", null, 14, "jcl/A.jcl", "{\"parameters\":{}}");
+        JclStepRecord expanded = new JclStepRecord(1_000_002L, 1L, "JOBA", 2, "STEP020.STEP1",
+                "PGM", "PGMB", "STEP1", 4, "jcl/A.proc", "{\"parameters\":{}}");
+        dao.insertJclStep(step);
+        dao.insertJclStep(expanded);
+        assertEquals(List.of(step, expanded), dao.findJclStepsBySource(1L));
+
+        JclDdRecord withDataset = new JclDdRecord(1_000_001L, 1_000_001L, 1, "ORDIN",
+                "SYKT.ORDER.DAILY", "READ", 15, "jcl/A.jcl", "{\"inStreamLines\":0}");
+        // A SYSOUT DD names no data set at all, so its dsn stays empty.
+        JclDdRecord withoutDataset = new JclDdRecord(1_000_002L, 1_000_001L, 2, "SYSOUT", null,
+                "WRITE", 16, "jcl/A.jcl", "{\"inStreamLines\":0}");
+        dao.insertJclDd(withDataset);
+        dao.insertJclDd(withoutDataset);
+        assertEquals(List.of(withDataset, withoutDataset), dao.findJclDdsByStep(1_000_001L));
+    }
+
+    @Test
+    void deletingSourceRemovesItsStepsAndTheirDdStatements() {
+        dao.insertSource(new SourceRecord(1L, "/assets", "jcl/A.jcl", "IBM930", "hash-1", 10L));
+        dao.insertJclStep(new JclStepRecord(1_000_001L, 1L, "JOBA", 1, "STEP010", "PGM", "PGMA",
+                null, 14, "jcl/A.jcl", "{}"));
+        dao.insertJclDd(new JclDdRecord(1_000_001L, 1_000_001L, 1, "ORDIN", "SYKT.ORDER.DAILY",
+                "READ", 15, "jcl/A.jcl", "{}"));
+
+        dao.deleteSourceCascade(1L);
+        assertEquals(List.of(), dao.findJclStepsBySource(1L));
+        assertEquals(List.of(), dao.findJclDdsByStep(1_000_001L),
+                "DD の削除は JCL_STEP 経由の二段カスケードで起きる");
+    }
+
+    @Test
+    void sqlStatementWithItsTableAndColumnUsesRoundTrip() {
+        dao.insertSource(new SourceRecord(1L, "/assets", "cobol/A.cbl", "IBM930", "hash-1", 10L));
+        dao.insertProgram(new ProgramRecord(1L, 1L, "PROGA"));
+        SqlStatementRecord statement = new SqlStatementRecord(1_000_001L, 1L, 1L, 1, "SELECT",
+                "CSR-ORDER", 200, 204, "FULL", "SELECT A FROM SYKDB.ZAIKOM", "cobol/A.cbl",
+                "{\"hasWhere\":true}");
+        dao.insertSqlStatement(statement);
+        assertEquals(List.of(statement), dao.findSqlStatementsBySource(1L));
+
+        SqlTableUseRecord table =
+                new SqlTableUseRecord(1_000_001L, 1_000_001L, "SYKDB.ZAIKOM", "R");
+        dao.insertSqlTableUse(table);
+        assertEquals(List.of(table), dao.findSqlTableUsesByStatement(1_000_001L));
+
+        SqlColumnUseRecord qualified =
+                new SqlColumnUseRecord(1_000_001L, 1_000_001L, "SYKDB.ZAIKOM", "ZAIKO-SU");
+        // An unqualified column keeps no table.
+        SqlColumnUseRecord bare = new SqlColumnUseRecord(1_000_002L, 1_000_001L, null, "SOKO-CD");
+        dao.insertSqlColumnUse(qualified);
+        dao.insertSqlColumnUse(bare);
+        assertEquals(List.of(qualified, bare), dao.findSqlColumnUsesByStatement(1_000_001L));
+
+        dao.deleteSourceCascade(1L);
+        assertEquals(List.of(), dao.findSqlStatementsBySource(1L));
+        assertEquals(List.of(), dao.findSqlTableUsesByStatement(1_000_001L));
+        assertEquals(List.of(), dao.findSqlColumnUsesByStatement(1_000_001L));
+    }
+
+    /** A source with no PROGRAM row of its own still records the statements it holds. */
+    @Test
+    void anSqlStatementOfAnUnparsedSourceKeepsNoProgram() {
+        dao.insertSource(new SourceRecord(1L, "/assets", "cobol/A.cbl", "IBM930", "hash-1", 10L));
+        dao.insertSqlStatement(new SqlStatementRecord(1_000_001L, 1L, null, 1, "OTHER", null,
+                12, 12, "DEGRADED", "EXEC SQL WHATEVER END-EXEC", "cobol/A.cbl", "{}"));
+        assertNull(dao.findSqlStatementsBySource(1L).get(0).programId());
+    }
+
+    /**
+     * A statement the program takes in through a COPY carries the copybook's lines, so its row
+     * names the copybook while the source it belongs to stays the program.
+     */
+    @Test
+    void anSqlStatementFromACopybookNamesTheCopybook() {
+        dao.insertSource(new SourceRecord(1L, "/assets", "cobol/A.cbl", "IBM930", "hash-1", 10L));
+        dao.insertProgram(new ProgramRecord(1L, 1L, "PROGA"));
+        dao.insertSqlStatement(new SqlStatementRecord(1_000_001L, 1L, 1L, 1, "DECLARE_TABLE",
+                null, 7, 19, "FULL", "DECLARE SYKDB.ZAIKOM TABLE", "copybook/SYKDCL1.cpy",
+                "{\"declaredTable\":\"SYKDB.ZAIKOM\"}"));
+        SqlStatementRecord stored = dao.findSqlStatementsBySource(1L).get(0);
+        assertEquals("copybook/SYKDCL1.cpy", stored.file());
+        assertEquals(7, stored.line());
+        assertEquals(1L, stored.sourceId());
+    }
+
+    @Test
+    void findingRoundTrip() {
         dao.insertSource(new SourceRecord(1L, "/assets", "A.cbl", "IBM930", "hash-1", 10L));
-        SqlStmtRecord stmt = new SqlStmtRecord(1L, 1L, "SELECT", "SELECT * FROM T WHERE K = :H1",
-                "SELECT * FROM T WHERE K = :CUST-ID");
-        dao.insertSqlStmt(stmt);
-        assertEquals(stmt, dao.findSqlStmt(1L).orElseThrow());
-        assertEquals(1, dao.findSqlStmtsBySource(1L).size());
+        FindingRecord finding = new FindingRecord(1L, "R001", "warning", 1L, 5, 8,
+                "未初期化の項目を参照している");
+        dao.insertFinding(finding);
+        assertEquals(finding, dao.findFinding(1L).orElseThrow());
+        assertEquals(1, dao.findFindingsBySource(1L).size());
     }
 
     @Test

@@ -10,6 +10,8 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.CompoundStatement;
 import jp.cobolinsight.core.semantic.ControlKind;
+import jp.cobolinsight.core.semantic.PerformRelation;
+import jp.cobolinsight.core.semantic.Procedure;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.rule.Command;
@@ -37,10 +39,11 @@ import java.util.regex.Pattern;
  * R012 A PERFORM UNTIL whose termination condition is never updated. Detects, as a possible
  * infinite loop, a configuration where the variable used in the UNTIL condition of a paragraph
  * PERFORM, or in the continuation condition of an inline PERFORM, is not updated by any statement
- * in the loop body (the set of nodes that can flow back to the loop header on the CFG) and does not
- * appear in the body text either. An 88-level condition name is resolved to its parent item, and a
- * special register such as SQLCODE (updated by the runtime) and a VARYING control variable are
- * treated as already updated.
+ * in the loop body (the nodes that can flow back to the loop header on the CFG and that the header
+ * dominates, so an enclosing loop's statements do not count) and does not appear in the body text
+ * either. An 88-level condition name is resolved to its parent item, and a special register such
+ * as SQLCODE (updated by the runtime) and a VARYING control variable are treated as already
+ * updated.
  */
 public final class PerformUntilNotUpdatedRule implements Rule {
 
@@ -76,9 +79,9 @@ public final class PerformUntilNotUpdatedRule implements Rule {
                     END-PERFORM.
                     """)
             .severity(Severity.HIGH)
-            .commands(Command.LINT, Command.REPORT)
+            .commands(Command.LINT)
             .targets(AssetKind.COBOL)
-            .needs(Needs.SEMANTIC, Needs.CFG, Needs.DATAFLOW, Needs.SOURCE_TEXT)
+            .needs(Needs.CFG, Needs.DATAFLOW, Needs.SOURCE_TEXT)
             .build();
 
     @Override
@@ -99,7 +102,7 @@ public final class PerformUntilNotUpdatedRule implements Rule {
             ProgramDataFlow df = facts.of(model).orElse(null);
             ControlFlowGraph cfg = cfgs.of(model).orElse(null);
             if (df != null && cfg != null) {
-                evaluate(model, cfg, df, new DataFlowSupport(model, texts),
+                evaluate(model, cfg, df, DataFlowSupport.of(model, texts),
                         texts.textOf(model.sourceFile()).orElse(""), findings);
             }
         }
@@ -117,6 +120,10 @@ public final class PerformUntilNotUpdatedRule implements Rule {
             Set<CfgNode> body = loopBody(cfg, node);
             if (body.isEmpty()) {
                 continue;
+            }
+            Set<CfgNode> performed = performedBody(model, cfg, statement);
+            if (!performed.isEmpty()) {
+                body = performed;
             }
             Set<String> updated = updatedInBody(df, body, support);
             Set<String> varyingVars = varyingControlVars(statement, source);
@@ -162,34 +169,111 @@ public final class PerformUntilNotUpdatedRule implements Rule {
         return List.of();
     }
 
-    /** The body nodes that can flow back to the loop header (forward reach ∩ backward reach, excluding the header itself). */
+    /**
+     * The body nodes that can flow back to the loop header: forward reach ∩ backward reach,
+     * excluding the header itself. When the loop sits inside an outer loop, that intersection
+     * also holds the outer loop's body, whose statements run only between iterations of the
+     * outer loop and never between two tests of this header. The nodes the header dominates
+     * (those unreachable from ENTRY without passing the header) are the loop's own; they are
+     * used when there are any, and the wider set stays as the fallback for a paragraph that is
+     * also performed from elsewhere.
+     */
     private static Set<CfgNode> loopBody(ControlFlowGraph cfg, CfgNode header) {
-        Set<CfgNode> forward = reach(cfg, header, true);
+        Set<CfgNode> forward = reach(cfg, header, true, null);
         if (!forward.contains(header) && cfg.successors(header).stream().noneMatch(forward::contains)) {
             return Set.of();
         }
-        Set<CfgNode> backward = reach(cfg, header, false);
+        Set<CfgNode> backward = reach(cfg, header, false, null);
         Set<CfgNode> body = Collections.newSetFromMap(new IdentityHashMap<>());
         for (CfgNode n : forward) {
             if (n != header && backward.contains(n)) {
                 body.add(n);
             }
         }
+        Set<CfgNode> avoidingHeader = reach(cfg, cfg.entry(), true, header);
+        Set<CfgNode> own = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (CfgNode n : body) {
+            if (!avoidingHeader.contains(n)) {
+                own.add(n);
+            }
+        }
+        return own.isEmpty() ? body : own;
+    }
+
+    /**
+     * For a paragraph PERFORM, the statements of the performed range and of every range it
+     * performs in turn. The CFG's fall-through edge into a paragraph that is only ever performed
+     * makes the header dominate nothing, so the range comes from the semantic model instead.
+     * Empty for an inline PERFORM.
+     */
+    private static Set<CfgNode> performedBody(CobolSemanticModel model, ControlFlowGraph cfg,
+            Statement header) {
+        if (!(header instanceof SimpleStatement)) {
+            return Set.of();
+        }
+        List<Procedure> procedures = model.procedures();
+        Set<String> names = new LinkedHashSet<>();
+        Deque<PerformRelation> pending = new ArrayDeque<>();
+        for (PerformRelation perform : model.performs()) {
+            if (perform.range().equals(header.range())) {
+                pending.add(perform);
+            }
+        }
+        while (!pending.isEmpty()) {
+            PerformRelation perform = pending.removeFirst();
+            int from = indexOf(procedures, perform.targetProcedure());
+            if (from < 0) {
+                continue;
+            }
+            int to = perform.thruProcedure().map(name -> indexOf(procedures, name)).orElse(from);
+            for (int i = from; i <= Math.max(from, to); i++) {
+                Procedure procedure = procedures.get(i);
+                if (!names.add(procedure.name().toUpperCase(Locale.ROOT))) {
+                    continue;
+                }
+                int first = procedure.range().start().line();
+                int last = procedure.range().end().line();
+                for (PerformRelation nested : model.performs()) {
+                    int line = nested.range().start().line();
+                    if (line >= first && line <= last && !nested.range().equals(header.range())) {
+                        pending.add(nested);
+                    }
+                }
+            }
+        }
+        Set<CfgNode> body = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (CfgNode n : cfg.nodes()) {
+            if (n.statement().isPresent()
+                    && names.contains(n.procedureName().toUpperCase(Locale.ROOT))) {
+                body.add(n);
+            }
+        }
         return body;
     }
 
-    private static Set<CfgNode> reach(ControlFlowGraph cfg, CfgNode start, boolean forward) {
+    private static int indexOf(List<Procedure> procedures, String name) {
+        for (int i = 0; i < procedures.size(); i++) {
+            if (procedures.get(i).name().equalsIgnoreCase(name)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /** Nodes reachable from start along successor (or predecessor) edges, never stepping onto {@code blocked}. */
+    private static Set<CfgNode> reach(ControlFlowGraph cfg, CfgNode start, boolean forward,
+            CfgNode blocked) {
         Set<CfgNode> visited = Collections.newSetFromMap(new IdentityHashMap<>());
         Deque<CfgNode> queue = new ArrayDeque<>();
         for (CfgNode next : forward ? cfg.successors(start) : cfg.predecessors(start)) {
-            if (visited.add(next)) {
+            if (next != blocked && visited.add(next)) {
                 queue.addLast(next);
             }
         }
         while (!queue.isEmpty()) {
             CfgNode n = queue.removeFirst();
             for (CfgNode next : forward ? cfg.successors(n) : cfg.predecessors(n)) {
-                if (visited.add(next)) {
+                if (next != blocked && visited.add(next)) {
                     queue.addLast(next);
                 }
             }

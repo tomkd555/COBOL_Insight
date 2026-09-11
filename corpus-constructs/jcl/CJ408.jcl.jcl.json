@@ -1,0 +1,107 @@
+[
+  {
+    "jobName": "CJ408",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "DFSORT MERGE",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "SORT",
+        "line": 9,
+        "utility": {
+          "ddRoles": {
+            "SORTOF01": "WRITE",
+            "SORTIN01": "READ",
+            "SORTIN02": "READ",
+            "SYSOUT": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SORTIN01",
+            "line": 10,
+            "datasetName": "CJT.D260910.MERGE.IN01",
+            "dataset": {
+              "name": "CJT.D260910.MERGE.IN01"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.MERGE.IN01",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SORTIN02",
+            "line": 11,
+            "datasetName": "CJT.D260910.MERGE.IN02",
+            "dataset": {
+              "name": "CJT.D260910.MERGE.IN02"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.MERGE.IN02",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SORTOF01",
+            "line": 12,
+            "datasetName": "CJT.D260910.MERGE.OUT01",
+            "dataset": {
+              "name": "CJT.D260910.MERGE.OUT01"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.MERGE.OUT01",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(5,5),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=80,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 16,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 17,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  MERGE FIELDS=(1,8,CH,A)",
+              "  OUTFIL FNAMES=SORTOF01"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

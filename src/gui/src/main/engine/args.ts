@@ -8,8 +8,9 @@ import {
 /**
  * Assembles the engine CLI arguments deterministically from a typed request.
  *
- * Subcommands do not all accept the same options (lint, sql-lint and fix have no --db), so the
- * shared part and the per-subcommand part are kept separate. The positional INPUT_DIR comes first.
+ * Subcommands do not all accept the same options (lint and fix have no --db, report takes no asset
+ * folder at all), so the shared part and the per-subcommand part are kept separate. The positional
+ * INPUT_DIR comes first where a subcommand has one.
  *
  * Rule configuration is one file passed as `--rules` to every subcommand that consults rules.
  */
@@ -27,32 +28,26 @@ export function buildEngineArgs(invocation: EngineInvocation): string[] {
         r.copyExpansion ?? COPY_EXPANSION_FILE_NAME,
       ];
     }
-    case "call-graph": {
-      const r = invocation.request;
-      return [
-        "call-graph",
-        ...common(r),
-        ...opt("--db", r.db),
-        ...opt("--json", r.jsonFile),
-        ...opt("--dot", r.dotFile),
-        ...opt("--svg", r.svgFile),
-        ...opt("--png", r.pngFile),
-      ];
-    }
     case "lint": {
       const r = invocation.request;
-      return ["lint", ...common(r), ...opt("--sarif", r.sarifFile)];
-    }
-    case "sql-lint": {
-      const r = invocation.request;
-      return ["sql-lint", ...common(r), ...opt("--sarif", r.sarifFile)];
+      // --scope narrows what is analysed inside the asset folder; the folder itself stays the
+      // positional INPUT_DIR, so the copybook search paths and every relative path are unchanged.
+      return [
+        "lint",
+        ...common(r),
+        ...repeated("--scope", r.scope),
+        ...opt("--sarif", r.sarifFile),
+        ...opt("--sql-sarif", r.sqlSarifFile),
+      ];
     }
     case "report": {
+      // No asset folder and no parsing options: report only reads artefacts already on disk.
       const r = invocation.request;
       return [
         "report",
-        ...common(r),
         ...opt("--db", r.db),
+        ...opt("--sarif", r.sarifFile),
+        ...opt("--sql-sarif", r.sqlSarifFile),
         ...opt("--html", r.htmlFile),
         ...opt("--text", r.textFile),
       ];
@@ -67,19 +62,15 @@ export function buildEngineArgs(invocation: EngineInvocation): string[] {
         ...opt("--out", r.outDir),
       ];
     }
-    case "fix-preview": {
+    case "fix": {
       const r = invocation.request;
-      return ["fix", "preview", ...common(r), ...opt("--html", r.htmlFile)];
-    }
-    case "fix-apply": {
-      const r = invocation.request;
-      return ["fix", "apply", ...common(r), ...opt("--out", r.outDir)];
+      return ["fix", ...common(r), ...opt("--out", r.outDir)];
     }
     case "rules": {
-      // The only subcommand without an asset folder, so `common` does not apply. The output is always
-      // JSON, which is the shape the screens read.
+      // Neither call takes an asset folder, so `common` does not apply. The output is always JSON,
+      // which is the shape the screens read.
       const r = invocation.request;
-      return ["rules", "--json", ...opt("--rules", r.rulesFile)];
+      return ["rules", ...opt("--rules", r.rulesFile)];
     }
     case "save": {
       // The only subcommand that takes the file to write directly rather than an asset folder.
@@ -132,11 +123,8 @@ export function collectRequestedOutputs(invocation: EngineInvocation): EngineOut
         : COPY_EXPANSION_FILE_NAME;
   }
   if ("db" in r && r.db !== undefined) outputs.db = r.db;
-  if ("jsonFile" in r && r.jsonFile !== undefined) outputs.json = r.jsonFile;
-  if ("dotFile" in r && r.dotFile !== undefined) outputs.dot = r.dotFile;
-  if ("svgFile" in r && r.svgFile !== undefined) outputs.svg = r.svgFile;
-  if ("pngFile" in r && r.pngFile !== undefined) outputs.png = r.pngFile;
   if ("sarifFile" in r && r.sarifFile !== undefined) outputs.sarif = r.sarifFile;
+  if ("sqlSarifFile" in r && r.sqlSarifFile !== undefined) outputs.sqlSarif = r.sqlSarifFile;
   if ("htmlFile" in r && r.htmlFile !== undefined) outputs.html = r.htmlFile;
   if ("textFile" in r && r.textFile !== undefined) outputs.text = r.textFile;
   if ("outDir" in r && r.outDir !== undefined) outputs.outDir = r.outDir;

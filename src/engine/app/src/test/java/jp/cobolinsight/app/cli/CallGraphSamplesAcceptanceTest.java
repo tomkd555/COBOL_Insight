@@ -27,6 +27,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -36,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Acceptance regression test for call-graph construction. Compares the call graph built from
- * the entire samples/ set (COBOL9 / JCL3 / BMS1) against the expected graph in
+ * the entire samples/ set (COBOL11 / JCL4 / BMS1) against the expected graph in
  * expected-results.md chapters 4, 5 and 9, edge by edge.
  */
 class CallGraphSamplesAcceptanceTest {
@@ -80,12 +81,21 @@ class CallGraphSamplesAcceptanceTest {
         expected.add("job:SYKD020 -> step:SYKD020.STEP020.STEP020 [EXECUTION/CONSTANT]");
         expected.add("job:SYKD030 -> step:SYKD030.STEP010 [EXECUTION/CONSTANT]");
         expected.add("job:SYKD030 -> step:SYKD030.STEP020 [EXECUTION/CONSTANT]");
+        // SYKD040's STEP030 calls the in-stream PROC SYKPRC02, so its body step is
+        // STEP030.PRTSTEP; STEP040 calls a PROC member that is not there and, like every
+        // PROC-invoking step, is no node of its own.
+        expected.add("job:SYKD040 -> step:SYKD040.STEP010 [EXECUTION/CONSTANT]");
+        expected.add("job:SYKD040 -> step:SYKD040.STEP020 [EXECUTION/CONSTANT]");
+        expected.add("job:SYKD040 -> step:SYKD040.STEP030.PRTSTEP [EXECUTION/CONSTANT]");
         expected.add("step:SYKD010.STEP010 -> program:SYK001 [EXECUTION/CONSTANT]");
         expected.add("step:SYKD010.STEP020 -> program:SYK002 [EXECUTION/CONSTANT]");
         expected.add("step:SYKD020.STEP010 -> program:SYK006 [EXECUTION/CONSTANT]");
         expected.add("step:SYKD020.STEP020.STEP020 -> program:SYK007 [EXECUTION/CONSTANT]");
         expected.add("step:SYKD030.STEP010 -> program:SYK001 [EXECUTION/CONSTANT]");
         expected.add("step:SYKD030.STEP020 -> program:SYK002 [EXECUTION/CONSTANT]");
+        expected.add("step:SYKD040.STEP010 -> program:SYK010 [EXECUTION/CONSTANT]");
+        expected.add("step:SYKD040.STEP020 -> program:SYK011 [EXECUTION/CONSTANT]");
+        expected.add("step:SYKD040.STEP030.PRTSTEP -> program:SYK005 [EXECUTION/CONSTANT]");
         // Chapter 4: dataset references. &CYCLE (SET CYCLE=250718) must already be resolved to 250718.
         // Inter-step linkage (ORDER.VALID / STOCK.EXTRACT), inter-job linkage (ORDER.ERROR),
         // and the shared VSAM (SYKV.ORDER.MASTER) appear as sharing of the same dataset node.
@@ -106,10 +116,15 @@ class CallGraphSamplesAcceptanceTest {
         expected.add(
                 "step:SYKD030.STEP020 -> dataset:SYKW.D250718.ORDER.RERUN.VALID [REFERENCE/CONSTANT]");
         expected.add("step:SYKD030.STEP020 -> dataset:SYKV.ORDER.MASTER [REFERENCE/CONSTANT]");
+        // SYKD040 STEP020's DD BACKREF is seeded defect No. 26: DSN=*.STEP999.OUT1, a referback
+        // to a step the job does not define. Nothing resolves it, so the DD names no data set and
+        // draws neither a node nor an edge; the text it was written as stays in its JCL_DD row.
         // Chapter 4: Db2 table references (SYK006 -> SYKDB.ZAIKOM; SYK007 -> SYKDB.ZAIKOM and SYKDB.SOKOM)
         expected.add("program:SYK006 -> db2:SYKDB.ZAIKOM [REFERENCE/CONSTANT]");
         expected.add("program:SYK007 -> db2:SYKDB.ZAIKOM [REFERENCE/CONSTANT]");
         expected.add("program:SYK007 -> db2:SYKDB.SOKOM [REFERENCE/CONSTANT]");
+        expected.add("program:SYK010 -> db2:SYKDB.ZAIKOSHUKEI [REFERENCE/CONSTANT]");
+        expected.add("program:SYK011 -> db2:SYKDB.ZAIKOSHUKEI [REFERENCE/CONSTANT]");
         // Chapter 5: static CALL (SYK001->SYK003; SYK006->SYK005 collapses two occurrences at
         // lines 133 and 142 into one edge); dynamic CALL (SYK002->SYK004, resolved by constant
         // propagation, so its origin is CONSTANT)
@@ -137,8 +152,8 @@ class CallGraphSamplesAcceptanceTest {
     void nodesAreTypedAsExpected() {
         Map<String, CallGraphNode> byId = result.callGraph().nodes().stream()
                 .collect(Collectors.toMap(CallGraphNode::id, n -> n));
-        assertEquals(32, byId.size(),
-                "ジョブ3・ステップ6・プログラム10(SYK001〜009とSYKENC1)・データセット8・Db2表2・"
+        assertEquals(39, byId.size(),
+                "ジョブ4・ステップ9・プログラム12(SYK001〜011とSYKENC1)・データセット8・Db2表3・"
                         + "トランザクション1・BMSマップ2");
         assertEquals(NodeKind.JOB, byId.get("job:SYKD010").kind());
         assertEquals(NodeKind.STEP, byId.get("step:SYKD020.STEP020.STEP020").kind());
@@ -151,10 +166,11 @@ class CallGraphSamplesAcceptanceTest {
         // synthetic fixtures in the linker module tests)
         assertTrue(byId.values().stream().noneMatch(n -> n.kind() == NodeKind.UNRESOLVED));
         assertTrue(byId.values().stream().noneMatch(n -> n.kind() == NodeKind.EXTERNAL_UTILITY));
-        // All 9 COBOL programs must be source-derived program nodes, not typed as external
-        for (int i = 1; i <= 9; i++) {
-            assertTrue(byId.get("program:SYK00" + i).attributes().isEmpty(),
-                    "SYK00" + i + " は外部プログラム扱いにならないこと");
+        // All 11 COBOL programs must be source-derived program nodes, not typed as external
+        for (int i = 1; i <= 11; i++) {
+            String program = String.format("SYK%03d", i);
+            assertTrue(byId.get("program:" + program).attributes().isEmpty(),
+                    program + " は外部プログラム扱いにならないこと");
         }
     }
 
@@ -176,24 +192,29 @@ class CallGraphSamplesAcceptanceTest {
         Map<String, Long> sourceIdByPath = dao.findAllSources().stream()
                 .collect(Collectors.toMap(SourceRecord::path, SourceRecord::id));
 
-        // Graph-layer nodes: the 19 nodes with no source (6 steps, 8 datasets, 2 Db2 tables,
-        // 1 transaction, 2 BMS maps) must be persisted following the ID numbering convention
-        long graphNodes = result.callGraph().nodes().stream()
-                .filter(n -> n.kind() != NodeKind.PROGRAM && n.kind() != NodeKind.JOB).count();
-        assertEquals(19, graphNodes);
-        for (long i = 0; i < graphNodes; i++) {
-            NodeRecord node = dao.findNode(Persist.GRAPH_ID_BASE + i).orElseThrow();
+        // Graph-layer nodes: every node with no SOURCE row of its own (9 steps, 8 datasets,
+        // 3 Db2 tables, 1 transaction, 2 BMS maps) is numbered from GRAPH_ID_BASE upwards. The
+        // count is read back from the file rather than mirrored from Persist's rule, so a node
+        // that moves into or out of the layer changes it.
+        int graphNodes = 0;
+        for (Optional<NodeRecord> found = dao.findNode(Persist.GRAPH_ID_BASE); found.isPresent();
+                found = dao.findNode(Persist.GRAPH_ID_BASE + graphNodes)) {
             assertTrue(Set.of("STEP", "DATASET", "DB2_TABLE", "TRANSACTION", "BMS_MAP")
-                    .contains(node.type()), node.type());
+                    .contains(found.get().type()), found.get().type());
+            graphNodes++;
         }
+        assertEquals(23, graphNodes);
 
-        // Graph-layer edges: all 36 edges must be persisted, and the dynamic CALL edge must carry the variable name in host_var
+        // Graph-layer edges: every edge of the graph must be persisted, and the dynamic CALL edge
+        // must carry the data item name in host_var
         long syk002 = sourceIdByPath.get("cobol/SYK002.cbl");
         long syk004 = sourceIdByPath.get("cobol/SYK004.cbl");
         int graphEdgeCount = 0;
         boolean dynamicEdgeFound = false;
-        for (int i = 0; i < result.callGraph().edges().size(); i++) {
-            CallEdgeRecord edge = dao.findCallEdge(Persist.GRAPH_ID_BASE + i).orElseThrow();
+        for (Optional<CallEdgeRecord> found = dao.findCallEdge(Persist.GRAPH_ID_BASE);
+                found.isPresent();
+                found = dao.findCallEdge(Persist.GRAPH_ID_BASE + graphEdgeCount)) {
+            CallEdgeRecord edge = found.get();
             graphEdgeCount++;
             if (edge.fromNode() == syk002 && edge.toNode() == syk004
                     && "CALL".equals(edge.kind())) {
@@ -202,7 +223,8 @@ class CallGraphSamplesAcceptanceTest {
                 dynamicEdgeFound = true;
             }
         }
-        assertEquals(36, graphEdgeCount);
+        assertEquals(result.callGraph().edges().size(), graphEdgeCount,
+                "グラフ層の辺がすべて保存されること");
         assertTrue(dynamicEdgeFound, "動的CALL辺がNODE.id=SOURCE.id規約のノードIDで保存されること");
 
         // linker finding: a NOTE tied to SYK002's source ID must be persisted
@@ -231,7 +253,7 @@ class CallGraphSamplesAcceptanceTest {
                 }
             }
         }
-        assertEquals(6, executionEdges.size(), "M1のJCL→プログラム実行辺6本が残ること");
+        assertEquals(9, executionEdges.size(), "M1のJCL→プログラム実行辺9本が残ること");
         assertEquals(6, copyEdges.size(), "M1のコピー句取込辺6本が残ること");
     }
 
@@ -243,7 +265,7 @@ class CallGraphSamplesAcceptanceTest {
         ScanOutcome second = Pipelines.scan(SAMPLES,
                 rescanDb, List.of(SAMPLES.resolve("copybook")), Map.of());
         assertEquals(List.of(), second.summary().analyzed(), "変更が無ければ再解析しないこと");
-        assertEquals(20, second.summary().skipped().size());
+        assertEquals(23, second.summary().skipped().size());
         assertEquals(0, second.summary().exitCode());
         assertEquals(result.callGraph().toJson(), second.callGraph().toJson(),
                 "増分scan(全ファイルskip)でも同一のグラフが再構築されること");

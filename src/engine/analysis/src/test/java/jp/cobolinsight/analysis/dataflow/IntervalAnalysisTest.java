@@ -227,6 +227,32 @@ class IntervalAnalysisTest {
         assertTrue(c.mayBeNegative(), "符号なし WS-C に負値が算出され得る(R028 相当)");
     }
 
+    // ---- decimal literals ----
+
+    private static final String DECIMAL = InlinePrograms.source(
+            "       IDENTIFICATION DIVISION.",
+            "       PROGRAM-ID. DECLIT.",
+            "       DATA DIVISION.",
+            "       WORKING-STORAGE SECTION.",
+            "       01  WS-RATE   PIC 9V99.",
+            "       01  WS-TOTAL  PIC 9(04) VALUE 10.",
+            "       PROCEDURE DIVISION.",
+            "       MAIN-PARA.",
+            "           MOVE .25 TO WS-RATE.",
+            "           ADD 1.50 TO WS-TOTAL.",
+            "           DISPLAY WS-RATE.",
+            "           STOP RUN.");
+
+    @Test
+    void decimalLiteralIsNotReadAsItsDigitRun() {
+        assertEquals(ValueInterval.unbounded(),
+                intervalAt(DECIMAL, "ADD 1.50 TO WS-TOTAL", "WS-RATE"),
+                "MOVE .25 TO WS-RATE は [25,25] ではなく上下限なし");
+        assertEquals(ValueInterval.unbounded(),
+                intervalAt(DECIMAL, "DISPLAY WS-RATE", "WS-TOTAL"),
+                "ADD 1.50 TO WS-TOTAL は 1 と 50 を足さず上下限なし");
+    }
+
     // ---- untracked variables yield empty ----
 
     @Test

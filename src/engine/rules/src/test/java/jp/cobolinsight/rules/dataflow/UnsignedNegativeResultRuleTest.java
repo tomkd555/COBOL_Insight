@@ -77,6 +77,42 @@ class UnsignedNegativeResultRuleTest {
         assertEquals(List.of(), run("F028C", text), "符号付き受信項目は対象外");
     }
 
+    /** The divisor may be zero, which is R004's business; the quotient of two unsigned items is never negative. */
+    @Test
+    void ignoresQuotientOfUnsignedItems() {
+        String text = program("F028E", "01  WS-UNS  PIC 9(05)V99.",
+                "           COMPUTE WS-UNS = WS-A / WS-B",
+                "           DISPLAY WS-UNS",
+                "           STOP RUN.");
+        assertEquals(List.of(), run("F028E", text), "符号なしどうしの商は負にならない");
+    }
+
+    /**
+     * An unsigned total that a signed amount was added into holds the magnitude of the sum, so
+     * dividing it by an unsigned count cannot go negative. The ADD itself is not R028's business.
+     */
+    @Test
+    void ignoresQuotientOfAnUnsignedAccumulator() {
+        String text = String.join("\n",
+                "       IDENTIFICATION DIVISION.",
+                "       PROGRAM-ID. F028F.",
+                "       DATA DIVISION.",
+                "       WORKING-STORAGE SECTION.",
+                "       01  WS-AMT    PIC S9(09) COMP-3.",
+                "       01  WS-TOTAL  PIC 9(09)V99 VALUE ZERO.",
+                "       01  WS-COUNT  PIC 9(05) VALUE ZERO.",
+                "       01  WS-AVG    PIC 9(11)V99 VALUE ZERO.",
+                "       PROCEDURE DIVISION.",
+                "       MAIN-PARA.",
+                "           ADD WS-AMT TO WS-TOTAL",
+                "           ADD 1 TO WS-COUNT",
+                "           COMPUTE WS-AVG = WS-TOTAL / WS-COUNT",
+                "           DISPLAY WS-AVG",
+                "           STOP RUN.",
+                "");
+        assertEquals(List.of(), run("F028F", text), "符号なし累計の商は負にならない");
+    }
+
     @Test
     void ignoresNonNegativeResult() {
         String text = program("F028D", "01  WS-UNS  PIC 9(05).",

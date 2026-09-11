@@ -16,16 +16,12 @@ describe("RESTORE", () => {
         severityThreshold: "medium",
         defaultEncoding: "IBM930",
         copybookPaths: ["C:/cpy"],
-        lastInputDir: "C:/assets",
-        paneSizes: { sideWidth: 320 },
       },
     });
     expect(state).toMatchObject({
       severityThreshold: "medium",
       defaultEncoding: "IBM930",
       copybookPaths: ["C:/cpy"],
-      lastInputDir: "C:/assets",
-      paneSizes: { sideWidth: 320 },
       restored: true,
     });
   });
@@ -55,26 +51,14 @@ describe("RESTORE", () => {
   });
 });
 
-describe("updates", () => {
-  it("stores a pane size beside the ones already there", () => {
-    const state = settingsReducer(
-      { ...initialSettingsState, paneSizes: { sideWidth: 300 } },
-      { type: "SET_PANE_SIZE", key: "panelHeight", size: 240 },
-    );
-    expect(state.paneSizes).toEqual({ sideWidth: 300, panelHeight: 240 });
-  });
-});
-
 describe("toAppSettings", () => {
-  it("produces the shape the settings file stores", () => {
+  it("produces only the fields the settings screen owns, leaving paneSizes out", () => {
     const state: SettingsState = {
       severityThreshold: "high",
       defaultEncoding: "Shift_JIS",
       copybookPaths: ["C:/cpy"],
       fixOutDir: "C:/out",
       theme: "light",
-      lastInputDir: "C:/assets",
-      paneSizes: { sideWidth: 320 },
       restored: true,
     };
     expect(toAppSettings(state)).toEqual({
@@ -82,8 +66,6 @@ describe("toAppSettings", () => {
       defaultEncoding: "Shift_JIS",
       copybookPaths: ["C:/cpy"],
       fixOutDir: "C:/out",
-      lastInputDir: "C:/assets",
-      paneSizes: { sideWidth: 320 },
       theme: "light",
     });
   });

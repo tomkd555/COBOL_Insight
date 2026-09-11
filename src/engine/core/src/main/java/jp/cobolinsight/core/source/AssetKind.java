@@ -24,7 +24,9 @@ public enum AssetKind {
     /** A copybook. */
     COPYBOOK(".cpy", ".copy"),
     /** JCL. */
-    JCL(".jcl");
+    JCL(".jcl"),
+    /** An SQL script: DDL, a native SQL PL procedure or trigger, SPUFI or DSNTEP2 input. */
+    SQL(".sql", ".ddl", ".spufi", ".dml");
 
     private final List<String> extensions;
 

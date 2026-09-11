@@ -1,0 +1,289 @@
+[
+  {
+    "jobName": "CJ409",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "ICETOOL JOINKEYS",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "ICETOOL",
+        "line": 9,
+        "utility": {
+          "ddRoles": {
+            "IN": "READ",
+            "OUT": "WRITE",
+            "COPYOUT": "WRITE",
+            "CTL1CNTL": "READ",
+            "COPYOU2": "WRITE",
+            "CTL2CNTL": "READ",
+            "TOOLMSG": "WRITE",
+            "DFSMSG": "WRITE",
+            "TOOLIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "TOOLMSG",
+            "line": 10,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "DFSMSG",
+            "line": 11,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "IN",
+            "line": 12,
+            "datasetName": "CJT.D260910.ICETOOL.INPUT",
+            "dataset": {
+              "name": "CJT.D260910.ICETOOL.INPUT"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.ICETOOL.INPUT",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "OUT",
+            "line": 13,
+            "datasetName": "CJT.D260910.ICETOOL.SELECT",
+            "dataset": {
+              "name": "CJT.D260910.ICETOOL.SELECT"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.ICETOOL.SELECT",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(5,5),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=80,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "COPYOUT",
+            "line": 17,
+            "datasetName": "CJT.D260910.ICETOOL.COPY1",
+            "dataset": {
+              "name": "CJT.D260910.ICETOOL.COPY1"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.ICETOOL.COPY1",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(5,5),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=80,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "COPYOU2",
+            "line": 21,
+            "datasetName": "CJT.D260910.ICETOOL.COPY2",
+            "dataset": {
+              "name": "CJT.D260910.ICETOOL.COPY2"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.ICETOOL.COPY2",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(5,5),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=80,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "CTL1CNTL",
+            "line": 25,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  INCLUDE COND=(9,2,CH,EQ,C'AB')"
+            ]
+          },
+          {
+            "ddName": "CTL2CNTL",
+            "line": 28,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  OMIT COND=(1,1,CH,EQ,C'X')"
+            ]
+          },
+          {
+            "ddName": "TOOLIN",
+            "line": 31,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  SELECT FROM(IN) TO(OUT) ON(1,8,CH) FIRST",
+              "  COPY FROM(IN) TO(COPYOUT) USING(CTL1)",
+              "  COPY FROM(IN) TO(COPYOU2) USING(CTL2)",
+              "  COUNT FROM(IN)",
+              "  STATS FROM(IN) ON(20,3,ZD)"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PGM",
+        "target": "SORT",
+        "line": 39,
+        "condition": "COND=(4,LT,STEP010)",
+        "parameters": {
+          "COND": "(4,LT,STEP010)"
+        },
+        "utility": {
+          "ddRoles": {
+            "SORTJNF1": "READ",
+            "SORTJNF2": "READ",
+            "SYSOUT": "WRITE",
+            "F1": "READ",
+            "F2": "READ",
+            "JNF1CNTL": "READ",
+            "JNF2CNTL": "READ",
+            "SORTOUT": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSOUT",
+            "line": 40,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "F1",
+            "line": 41,
+            "datasetName": "CJT.D260910.JOIN.FILE1",
+            "dataset": {
+              "name": "CJT.D260910.JOIN.FILE1"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.JOIN.FILE1",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "F2",
+            "line": 42,
+            "datasetName": "CJT.D260910.JOIN.FILE2",
+            "dataset": {
+              "name": "CJT.D260910.JOIN.FILE2"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.JOIN.FILE2",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "JNF1CNTL",
+            "line": 43,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  INCLUDE COND=(9,2,CH,EQ,C'AB')"
+            ]
+          },
+          {
+            "ddName": "JNF2CNTL",
+            "line": 46,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  OMIT COND=(1,1,CH,EQ,C'X')"
+            ]
+          },
+          {
+            "ddName": "SORTOUT",
+            "line": 49,
+            "datasetName": "CJT.D260910.JOIN.OUTPUT",
+            "dataset": {
+              "name": "CJT.D260910.JOIN.OUTPUT"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.JOIN.OUTPUT",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(5,5),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=100,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 53,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  JOINKEYS FILE=F1,FIELDS=(1,8,A)",
+              "  JOINKEYS FILE=F2,FIELDS=(1,8,A)",
+              "  JOIN UNPAIRED,F1",
+              "  REFORMAT FIELDS=(F1:1,80,F2:9,20)",
+              "  OPTION COPY"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,174 @@
+[
+  {
+    "jobName": "CJ203",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "CJ DCB FORMS",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "diagnostics": [
+      {
+        "ruleId": "jcl-syntax",
+        "line": 22,
+        "message": "22 行の JCL 文のパラメーター DCB を解析できませんでした。値は原文のまま保持します。"
+      }
+    ],
+    "steps": [
+      {
+        "name": "STEP1",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 10,
+        "utility": {
+          "ddRoles": {
+            "DD1": "CREATE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "DD1",
+            "line": 11,
+            "datasetName": "FLW.CJ203.BASE",
+            "dataset": {
+              "name": "FLW.CJ203.BASE"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ203.BASE",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(5,1),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=80,BLKSIZE=0,DSORG=PS)"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP2",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 14,
+        "condition": "COND=(4,LT)",
+        "parameters": {
+          "COND": "(4,LT)"
+        },
+        "utility": {
+          "ddRoles": {
+            "DD2": "CREATE",
+            "DD3": "CREATE",
+            "MODELDS": "CREATE",
+            "OUTSIDE": "CREATE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "DD2",
+            "line": 15,
+            "datasetName": "FLW.CJ203.REFBACK",
+            "dataset": {
+              "name": "FLW.CJ203.REFBACK"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ203.REFBACK",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(5,1),RLSE)",
+              "DCB": "*.STEP1.DD1"
+            },
+            "referbacks": {
+              "DCB": "*.STEP1.DD1"
+            }
+          },
+          {
+            "ddName": "DD3",
+            "line": 18,
+            "datasetName": "FLW.CJ203.REFBACK2",
+            "dataset": {
+              "name": "FLW.CJ203.REFBACK2"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ203.REFBACK2",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(5,1),RLSE)",
+              "DCB": "(*.STEP1.DD1,LRECL=133)"
+            },
+            "referbacks": {
+              "DCB": "*.STEP1.DD1"
+            }
+          },
+          {
+            "ddName": "MODELDS",
+            "line": 22,
+            "datasetName": "FLW.CJ203.MODELED",
+            "dataset": {
+              "name": "FLW.CJ203.MODELED"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ203.MODELED",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(5,1),RLSE)",
+              "DCB": "MODEL.DSCB"
+            }
+          },
+          {
+            "ddName": "OUTSIDE",
+            "line": 26,
+            "datasetName": "FLW.CJ203.OUTSIDE",
+            "dataset": {
+              "name": "FLW.CJ203.OUTSIDE"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ203.OUTSIDE",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(5,1),RLSE)",
+              "RECFM": "FB",
+              "LRECL": "100",
+              "BLKSIZE": "0"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

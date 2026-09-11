@@ -1,0 +1,200 @@
+[
+  {
+    "jobName": "CRPD010",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CRP1234",
+      "PROGRAMMER": "CRP01 入庫日次",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "CRP001",
+        "line": 14,
+        "parm": "250901",
+        "parameters": {
+          "PARM": "'250901'"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "CRPIN": "READ",
+            "CRPVALID": "WRITE",
+            "CRPERR": "WRITE",
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 15,
+            "datasetName": "CRP.PROD.LOADLIB",
+            "dataset": {
+              "name": "CRP.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CRP.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "CRPIN",
+            "line": 16,
+            "datasetName": "CRPT.D250901.NYUKO.DAILY",
+            "dataset": {
+              "name": "CRPT.D250901.NYUKO.DAILY"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CRPT.D250901.NYUKO.DAILY",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "CRPVALID",
+            "line": 17,
+            "datasetName": "CRPW.D250901.NYUKO.VALID",
+            "dataset": {
+              "name": "CRPW.D250901.NYUKO.VALID"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "CRPW.D250901.NYUKO.VALID",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(5,5),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=253,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "CRPERR",
+            "line": 21,
+            "datasetName": "CRPW.D250901.NYUKO.ERROR",
+            "dataset": {
+              "name": "CRPW.D250901.NYUKO.ERROR"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "CRPW.D250901.NYUKO.ERROR",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(2,2),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=200,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 25,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PGM",
+        "target": "CRP002",
+        "line": 27,
+        "condition": "COND=(4,LT,STEP010)",
+        "parameters": {
+          "COND": "(4,LT,STEP010)"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "CRPTRAN": "READ",
+            "CRPMSTR": "READ",
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 28,
+            "datasetName": "CRP.PROD.LOADLIB",
+            "dataset": {
+              "name": "CRP.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CRP.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "CRPTRAN",
+            "line": 29,
+            "datasetName": "CRPT.D250901.SHOHIN.TRAN",
+            "dataset": {
+              "name": "CRPT.D250901.SHOHIN.TRAN"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CRPT.D250901.SHOHIN.TRAN",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "CRPMSTR",
+            "line": 30,
+            "datasetName": "CRPV.SHOHIN.MASTER",
+            "dataset": {
+              "name": "CRPV.SHOHIN.MASTER"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CRPV.SHOHIN.MASTER",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 31,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

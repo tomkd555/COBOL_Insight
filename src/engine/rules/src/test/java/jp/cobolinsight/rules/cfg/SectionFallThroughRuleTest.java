@@ -66,7 +66,8 @@ class SectionFallThroughRuleTest {
                 CfgFixtures.context(List.of(model), Map.of(model.sourceFile(), FALL_THROUGH)));
         assertEquals(1, findings.size(), () -> "末尾EXITなしのSEC-A流下1件を検出すること: " + findings);
         assertEquals("R014", findings.get(0).ruleId());
-        assertEquals(FindingLevel.WARNING, findings.get(0).level());
+        assertEquals(FindingLevel.NOTE, findings.get(0).level(),
+                "field code showed only style hits, so R014 ships at LOW");
         assertEquals(13, findings.get(0).location().line());
     }
 

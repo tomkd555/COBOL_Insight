@@ -57,20 +57,20 @@ describe("the column ruler", () => {
 
 describe("where the import lands", () => {
   it("joins the destination folder and the name with forward slashes", () => {
-    expect(importRelPath("cobol", "cobol\\src", "SYK001.cbl")).toBe("cobol/src/SYK001.cbl");
-    expect(importRelPath("jcl", "", "SYKD010.jcl")).toBe("SYKD010.jcl");
+    expect(importRelPath("cobol\\src", "SYK001.cbl")).toBe("cobol/src/SYK001.cbl");
+    expect(importRelPath("", "SYKD010.jcl")).toBe("SYKD010.jcl");
   });
 
-  it("completes a copybook's extension, because the COPY search looks for it", () => {
-    expect(importRelPath("copybook", "", "SYKCPY1")).toBe("SYKCPY1.cpy");
-    expect(importRelPath("copybook", "", "SYKCPY1.cpy")).toBe("SYKCPY1.cpy");
+  it("uses the typed file name as-is", () => {
+    expect(importRelPath("", "SYKCPY1")).toBe("SYKCPY1");
+    expect(importRelPath("", "SYKCPY1.cpy")).toBe("SYKCPY1.cpy");
   });
 
   it("refuses a name that is empty, holds a separator, or climbs out of the folder", () => {
-    expect(importRelPath("cobol", "", "")).toBeNull();
-    expect(importRelPath("cobol", "", "a/b.cbl")).toBeNull();
-    expect(importRelPath("cobol", "", ".cbl")).toBeNull();
-    expect(importRelPath("cobol", "", "SYK001.")).toBeNull();
-    expect(importRelPath("cobol", "../up", "SYK001.cbl")).toBeNull();
+    expect(importRelPath("", "")).toBeNull();
+    expect(importRelPath("", "a/b.cbl")).toBeNull();
+    expect(importRelPath("", ".cbl")).toBeNull();
+    expect(importRelPath("", "SYK001.")).toBeNull();
+    expect(importRelPath("../up", "SYK001.cbl")).toBeNull();
   });
 });

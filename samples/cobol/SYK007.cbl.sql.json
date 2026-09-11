@@ -1,0 +1,137 @@
+[
+  {
+    "kind": "BEGIN_DECLARE_SECTION",
+    "startLine": 30,
+    "endLine": 30,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "END_DECLARE_SECTION",
+    "startLine": 35,
+    "endLine": 35,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "HOST-倉庫名",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "HOST-倉庫コード",
+        "mangledName": "HV2"
+      }
+    ],
+    "referencedTables": [
+      "SYKDB.SOKOM"
+    ],
+    "startLine": 69,
+    "endLine": 73,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "HOST-倉庫名"
+    ],
+    "tableAccess": {
+      "SYKDB.SOKOM": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "SOKO_NM"
+      },
+      {
+        "column": "SOKO_CD"
+      }
+    ],
+    "selectList": [
+      "SOKO_NM"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "UPDATE",
+    "hostVariables": [
+      {
+        "originalName": "HOST-引当数量",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "HOST-商品コード",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "HOST-倉庫コード",
+        "mangledName": "HV3"
+      }
+    ],
+    "referencedTables": [
+      "SYKDB.ZAIKOM"
+    ],
+    "startLine": 84,
+    "endLine": 89,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "tableAccess": {
+      "SYKDB.ZAIKOM": "U"
+    },
+    "columnRefs": [
+      {
+        "column": "HIKIATE_SU"
+      },
+      {
+        "column": "SHOHIN_CD"
+      },
+      {
+        "column": "SOKO_CD"
+      }
+    ],
+    "setPairs": [
+      {
+        "column": "HIKIATE_SU",
+        "value": ":HOST-引当数量"
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

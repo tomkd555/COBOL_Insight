@@ -33,7 +33,8 @@ public final class NonSargablePredicateRule implements Rule {
             .detection("WHERE 句の左辺が列を式で包む述語、先頭が % の LIKE、"
                     + "WHERE 句・JOIN 条件でいずれかの辺が列を関数・CAST で包む比較を検出し、"
                     + "該当箇所は原データ名に復元したテキストで示します。"
-                    + "双方に当てはまる述語は一件だけ報告します。")
+                    + "双方に当てはまる述語は一件だけ報告します。"
+                    + "COBOL の埋込みSQLと、SQL スクリプトの文の双方を対象とします。")
             .remedy("列を式で包まない形に書き換え、関数は列側から外して比較する値の側で"
                     + "変換してください。前方一致で足りる検索は先頭の % を外してください。")
             .example("""
@@ -43,7 +44,7 @@ public final class NonSargablePredicateRule implements Rule {
                     """)
             .severity(Severity.HIGH)
             .commands(Command.SQL_LINT)
-            .targets(AssetKind.COBOL)
+            .targets(AssetKind.COBOL, AssetKind.SQL)
             .needs(Needs.SQL)
             .build();
 
@@ -56,6 +57,10 @@ public final class NonSargablePredicateRule implements Rule {
     public List<Finding> evaluate(AnalysisContext context) {
         List<Finding> findings = new ArrayList<>();
         for (SqlStatementModel statement : context.sqlStatements()) {
+            if (!statement.isFullyAnalysed()) {
+                // A degraded statement carries no structure signals; there is nothing to read.
+                continue;
+            }
             List<String> predicates = statement.structureSignals().nonSargablePredicates();
             if (!predicates.isEmpty()) {
                 findings.add(finding(statement, String.join(" / ", predicates)

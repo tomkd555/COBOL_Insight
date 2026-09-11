@@ -23,26 +23,31 @@ import java.util.Set;
 
 /**
  * R022 Pseudo-conversational break due to a missing CICS RETURN. Flags a CICS-participating
- * program that reaches its terminal point without a single EXEC CICS RETURN TRANSID, since
- * control of the pseudo-conversational transaction then never returns to CICS. CICS
- * participation is judged by whether the program itself has a CICS block, or is the transfer
- * target of another program's XCTL/LINK/START (neither the call graph nor the transaction
- * definition table is used).
+ * program that reaches its terminal point without a single EXEC CICS RETURN, since control of
+ * the transaction then never returns to CICS. A RETURN with TRANSID continues the
+ * pseudo-conversation and a plain RETURN ends it; both hand control back. CICS participation is
+ * judged by whether the program itself talks to the terminal (SEND, RECEIVE, CONVERSE, RETURN
+ * TRANSID), or is the transfer target of another program's XCTL/START (neither the call graph
+ * nor the transaction definition table is used). A LINK target or a CALLed subprogram that only
+ * reads files or queues under CICS returns to its caller with GOBACK, so neither is a
+ * participant on that ground.
  */
 public final class CicsReturnMissingRule implements Rule {
 
     private static final RuleMeta META =
             RuleMeta.named("R022", "CICS RETURN 文欠如による疑似会話の途絶", "制御フロー")
-                    .summary("EXEC CICS RETURN TRANSID を 1 つも持たないまま終端に達する"
+                    .summary("EXEC CICS RETURN を 1 つも持たないまま終端に達する"
                             + "CICS プログラムを検出します。")
-                    .rationale("制御が CICS に戻らず、次の入力を受け付ける状態が作られないため、"
-                            + "疑似会話が途切れて端末が応答しなくなります。")
-                    .detection("自プログラムに CICS コマンドを持つか、他プログラムの XCTL・LINK・START の"
+                    .rationale("プログラムが制御を CICS に戻さないため、次の入力を受け付ける状態が"
+                            + "作られません。疑似会話が途切れ、端末が応答しなくなります。")
+                    .detection("端末と SEND・RECEIVE でやり取りするか、他プログラムの XCTL・START の"
                             + "遷移先であるプログラムを CICS プログラムとみなし、"
-                            + "RETURN TRANSID の有無で検出します。"
+                            + "RETURN（TRANSID の有無を問わない）の有無で検出します。"
+                            + "LINK や CALL の呼び出し先は GOBACK で呼び出し元へ戻るため、"
+                            + "ファイルやキューを扱う CICS コマンドだけでは対象になりません。"
                             + "STOP・GOBACK・EXIT PROGRAM のいずれも持たないプログラムは対象外です。")
-                    .remedy("処理の終わりに EXEC CICS RETURN TRANSID を置き、"
-                            + "次に起動するトランザクションを指定してください。")
+                    .remedy("処理の終わりに EXEC CICS RETURN を置いてください。疑似会話を続けるなら"
+                            + "TRANSID で次に起動するトランザクションを指定してください。")
                     .example("""
                             EXEC CICS SEND MAP('MAP01') MAPSET('MAPSET1') END-EXEC.
                             GOBACK.
@@ -51,9 +56,8 @@ public final class CicsReturnMissingRule implements Rule {
                             EXEC CICS RETURN TRANSID('TR01') COMMAREA(WS-COMM) END-EXEC.
                             """)
                     .severity(Severity.MEDIUM)
-                    .commands(Command.LINT, Command.REPORT)
+                    .commands(Command.LINT)
                     .targets(AssetKind.COBOL)
-                    .needs(Needs.SEMANTIC)
                     .build();
 
     @Override
@@ -66,9 +70,9 @@ public final class CicsReturnMissingRule implements Rule {
         Set<String> transferTargets = transferTargets(context);
         List<Finding> findings = new ArrayList<>();
         for (CobolSemanticModel model : context.cobolPrograms()) {
-            boolean participates = hasCicsBlock(model)
+            boolean participates = talksToTerminal(model)
                     || transferTargets.contains(CfgSupport.upper(model.programId()));
-            if (!participates || hasReturnTransid(model)) {
+            if (!participates || hasReturn(model)) {
                 continue;
             }
             Statement terminal = firstTerminal(model);
@@ -83,12 +87,11 @@ public final class CicsReturnMissingRule implements Rule {
         return findings;
     }
 
-    private static Set<String> transferTargets(AnalysisContext context) {
+    static Set<String> transferTargets(AnalysisContext context) {
         Set<String> targets = new LinkedHashSet<>();
         for (CobolSemanticModel model : context.cobolPrograms()) {
             for (EmbeddedBlock block : model.embeddedBlocks()) {
                 if (block.kind() == EmbeddedBlockKind.CICS_XCTL
-                        || block.kind() == EmbeddedBlockKind.CICS_LINK
                         || block.kind() == EmbeddedBlockKind.CICS_START) {
                     String program = block.operands().get("PROGRAM");
                     if (program != null && !program.isBlank()) {
@@ -100,13 +103,27 @@ public final class CicsReturnMissingRule implements Rule {
         return targets;
     }
 
-    private static boolean hasCicsBlock(CobolSemanticModel model) {
-        return model.embeddedBlocks().stream().anyMatch(block -> block.kind().isCics());
+    /**
+     * SEND, RECEIVE, CONVERSE and RETURN TRANSID: the commands of a program that owns the
+     * terminal conversation. A subprogram that only reads files or queues under CICS is CALLed
+     * or LINKed and ends in GOBACK.
+     */
+    static boolean talksToTerminal(CobolSemanticModel model) {
+        return model.embeddedBlocks().stream().anyMatch(block -> switch (block.kind()) {
+            case CICS_SEND_MAP, CICS_RECEIVE_MAP, CICS_RETURN_TRANSID -> true;
+            case CICS_OTHER -> {
+                String verb = CfgSupport.upper(block.text()).replaceAll("\\s+", " ")
+                        .replaceFirst("^.*?EXEC CICS ", "").split("[ (]", 2)[0];
+                yield verb.equals("SEND") || verb.equals("RECEIVE") || verb.equals("CONVERSE");
+            }
+            default -> false;
+        });
     }
 
-    private static boolean hasReturnTransid(CobolSemanticModel model) {
+    private static boolean hasReturn(CobolSemanticModel model) {
         return model.embeddedBlocks().stream()
-                .anyMatch(block -> block.kind() == EmbeddedBlockKind.CICS_RETURN_TRANSID);
+                .anyMatch(block -> block.kind() == EmbeddedBlockKind.CICS_RETURN_TRANSID
+                        || block.kind() == EmbeddedBlockKind.CICS_RETURN);
     }
 
     private static Statement firstTerminal(CobolSemanticModel model) {

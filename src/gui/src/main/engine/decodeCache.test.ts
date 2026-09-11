@@ -7,7 +7,6 @@ function decoded(text: string, error = ""): DecodeResult {
     text,
     codepage: "Shift_JIS",
     detected: true,
-    soSiPresent: false,
     lines: [],
     stamp: { mtimeMs: 1, byteSize: 1 },
     error,

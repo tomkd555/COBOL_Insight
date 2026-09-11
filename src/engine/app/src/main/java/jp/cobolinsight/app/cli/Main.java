@@ -13,8 +13,8 @@ import java.nio.charset.StandardCharsets;
 /** The main entry point for the group of picocli subcommands. */
 @Command(name = "cobol-insight", mixinStandardHelpOptions = true, version = "COBOL Insight 0.1.0-m2",
         description = "COBOL資産の統合解析ツール",
-        subcommands = {ScanCommand.class, CallGraphCommand.class, LintCommand.class,
-                SqlAdviseCommand.class, ReportCommand.class, TranspileCommand.class,
+        subcommands = {ScanCommand.class, LintCommand.class,
+                ReportCommand.class, TranspileCommand.class,
                 FixCommand.class, RulesCommand.class, SaveCommand.class,
                 DecodeCommand.class})
 public final class Main implements Runnable {
@@ -30,15 +30,21 @@ public final class Main implements Runnable {
     }
 
     /**
-     * The configured command line, with every subcommand plus the handler that turns an uncaught
-     * exception into one Japanese line on stderr instead of a stack trace. Package-private so
-     * {@code MainCommandTest} can exercise the handler directly.
+     * The configured command line, with every subcommand plus the two handlers that turn a failure
+     * into one Japanese line on stderr: an uncaught exception instead of a stack trace, and a
+     * misused option instead of the whole usage block. The GUI shows this stream in its run log,
+     * where twenty-odd lines of command-line help would bury the one line that explains the
+     * problem. Package-private so {@code MainCommandTest} can exercise the handlers directly.
      */
     static CommandLine commandLine() {
         CommandLine cmd = new CommandLine(new Main());
         cmd.setExecutionExceptionHandler((ex, commandLine, parseResult) -> {
             System.err.println("エラー: " + Failures.describe(ex) + "。処理を中止しました。");
             return ExitCodes.ERRORS;
+        });
+        cmd.setParameterExceptionHandler((ex, args) -> {
+            System.err.println("エラー: " + ex.getMessage());
+            return ex.getCommandLine().getCommandSpec().exitCodeOnInvalidInput();
         });
         return cmd;
     }

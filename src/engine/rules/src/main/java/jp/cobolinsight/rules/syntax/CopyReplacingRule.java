@@ -68,9 +68,9 @@ public final class CopyReplacingRule implements Rule {
                     COPY CUSTREC REPLACING ==:PRE:== BY ==CUST==.
                     """)
             .severity(Severity.MEDIUM)
-            .commands(Command.LINT, Command.REPORT)
+            .commands(Command.LINT)
             .targets(AssetKind.COBOL, AssetKind.COPYBOOK)
-            .needs(Needs.SEMANTIC, Needs.SOURCE_TEXT)
+            .needs(Needs.SOURCE_TEXT)
             .build();
 
     @Override
@@ -155,7 +155,8 @@ public final class CopyReplacingRule implements Rule {
             if (!occursIn(content, CobolTexts.upper(value.trim()), mode)) {
                 findings.add(Finding.of("R024", Severity.MEDIUM.toLevel(),
                         value.trim() + " がコピー句 " + copybookName
-                                + " に一件も出現しません。REPLACING の置換が起きません。",
+                                + " に単語として一件も出現しません（単語の一部は置換の対象になりません）。"
+                                + "REPLACING の置換が起きません。",
                         new SourcePosition(file, line, column,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
             }
@@ -170,15 +171,17 @@ public final class CopyReplacingRule implements Rule {
      */
     private static boolean occursIn(String content, String upperValue, String mode) {
         String quoted = Pattern.quote(upperValue);
-        String regex;
-        if ("LEADING".equalsIgnoreCase(mode)) {
-            regex = WORD_BOUNDARY_BEFORE + quoted;
-        } else if ("TRAILING".equalsIgnoreCase(mode)) {
-            regex = quoted + WORD_BOUNDARY_AFTER;
-        } else {
-            regex = WORD_BOUNDARY_BEFORE + quoted + WORD_BOUNDARY_AFTER;
-        }
-        return Pattern.compile(regex).matcher(content).find();
+        // A boundary is asked for only next to a word-forming character. A pseudo-text such as
+        // :PFX: ends in a colon, which COBOL treats as its own boundary: :PFX:-REC matches it.
+        boolean wordStart = isWordChar(upperValue.charAt(0));
+        boolean wordEnd = isWordChar(upperValue.charAt(upperValue.length() - 1));
+        String before = wordStart && !"TRAILING".equalsIgnoreCase(mode) ? WORD_BOUNDARY_BEFORE : "";
+        String after = wordEnd && !"LEADING".equalsIgnoreCase(mode) ? WORD_BOUNDARY_AFTER : "";
+        return Pattern.compile(before + quoted + after).matcher(content).find();
+    }
+
+    private static boolean isWordChar(char c) {
+        return Character.isLetterOrDigit(c) || c == '-';
     }
 
     private static String bodyContent(String copybookText) {

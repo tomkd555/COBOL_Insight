@@ -31,10 +31,45 @@ describe("buildEngineArgs", () => {
   });
 
   it("omits --rules when no rule file is given", () => {
-    expect(buildEngineArgs({ subcommand: "sql-lint", request: { inputDir: "C:/assets" } })).toEqual([
-      "sql-lint",
+    expect(buildEngineArgs({ subcommand: "lint", request: { inputDir: "C:/assets" } })).toEqual([
+      "lint",
       "C:/assets",
     ]);
+  });
+
+  it("passes lint both SARIF destinations", () => {
+    expect(
+      buildEngineArgs({
+        subcommand: "lint",
+        request: { inputDir: "C:/assets", sarifFile: "C:/out.sarif", sqlSarifFile: "C:/out-sql.sarif" },
+      }),
+    ).toEqual(["lint", "C:/assets", "--sarif", "C:/out.sarif", "--sql-sarif", "C:/out-sql.sarif"]);
+  });
+
+  it("repeats --scope once per scoped path, and only for lint", () => {
+    // lint alone accepts a scope: it is typed on LintRequest, so no other subcommand can carry one.
+    expect(
+      buildEngineArgs({
+        subcommand: "lint",
+        request: { inputDir: "C:/assets", scope: ["cobol/A.cbl", "jcl"], sarifFile: "C:/out.sarif" },
+      }),
+    ).toEqual([
+      "lint",
+      "C:/assets",
+      "--scope",
+      "cobol/A.cbl",
+      "--scope",
+      "jcl",
+      "--sarif",
+      "C:/out.sarif",
+    ]);
+  });
+
+  it("omits --scope when the whole folder is analysed", () => {
+    // What a whole-folder run emits: the renderer leaves the scope out rather than passing none.
+    expect(
+      buildEngineArgs({ subcommand: "lint", request: { inputDir: "C:/assets", scope: undefined } }),
+    ).toEqual(["lint", "C:/assets"]);
   });
 
   it("always makes scan write the COPY expansion table", () => {
@@ -52,51 +87,43 @@ describe("buildEngineArgs", () => {
     ).toEqual(["scan", "C:/assets", "--db", "C:/p.db", "--copy-expansion", "C:/copy.json"]);
   });
 
-  it("passes every call-graph output that was requested", () => {
+  it("gives report no asset folder and no parsing options", () => {
     expect(
       buildEngineArgs({
-        subcommand: "call-graph",
+        subcommand: "report",
         request: {
-          inputDir: "C:/assets",
           db: "C:/p.db",
-          jsonFile: "C:/g.json",
-          dotFile: "C:/g.dot",
-          svgFile: "C:/g.svg",
-          pngFile: "C:/g.png",
+          sarifFile: "C:/out.sarif",
+          sqlSarifFile: "C:/out-sql.sarif",
+          htmlFile: "C:/r.html",
+          textFile: "C:/r.txt",
         },
       }),
     ).toEqual([
-      "call-graph",
-      "C:/assets",
+      "report",
       "--db",
       "C:/p.db",
-      "--json",
-      "C:/g.json",
-      "--dot",
-      "C:/g.dot",
-      "--svg",
-      "C:/g.svg",
-      "--png",
-      "C:/g.png",
+      "--sarif",
+      "C:/out.sarif",
+      "--sql-sarif",
+      "C:/out-sql.sarif",
+      "--html",
+      "C:/r.html",
+      "--text",
+      "C:/r.txt",
     ]);
   });
 
-  it("splits fix into the preview and apply subcommands", () => {
-    expect(buildEngineArgs({ subcommand: "fix-preview", request: { inputDir: "C:/a" } })).toEqual([
-      "fix",
-      "preview",
-      "C:/a",
-    ]);
+  it("gives fix the asset folder and the write-out directory", () => {
     expect(
-      buildEngineArgs({ subcommand: "fix-apply", request: { inputDir: "C:/a", outDir: "C:/out" } }),
-    ).toEqual(["fix", "apply", "C:/a", "--out", "C:/out"]);
+      buildEngineArgs({ subcommand: "fix", request: { inputDir: "C:/a", outDir: "C:/out" } }),
+    ).toEqual(["fix", "C:/a", "--out", "C:/out"]);
   });
 
-  it("gives rules no asset folder and always asks for JSON", () => {
-    expect(buildEngineArgs({ subcommand: "rules", request: {} })).toEqual(["rules", "--json"]);
+  it("gives rules no asset folder", () => {
+    expect(buildEngineArgs({ subcommand: "rules", request: {} })).toEqual(["rules"]);
     expect(buildEngineArgs({ subcommand: "rules", request: { rulesFile: "C:/r.json" } })).toEqual([
       "rules",
-      "--json",
       "--rules",
       "C:/r.json",
     ]);
@@ -189,12 +216,12 @@ describe("collectRequestedOutputs", () => {
     ).toEqual({});
   });
 
-  it("reports the SARIF file lint was asked for", () => {
+  it("reports both SARIF files lint was asked for", () => {
     expect(
       collectRequestedOutputs({
         subcommand: "lint",
-        request: { inputDir: "C:/a", sarifFile: "C:/out.sarif" },
+        request: { inputDir: "C:/a", sarifFile: "C:/out.sarif", sqlSarifFile: "C:/out-sql.sarif" },
       }),
-    ).toEqual({ sarif: "C:/out.sarif" });
+    ).toEqual({ sarif: "C:/out.sarif", sqlSarif: "C:/out-sql.sarif" });
   });
 });

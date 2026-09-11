@@ -1,0 +1,333 @@
+{
+  "statements": [
+    {
+      "kind": "DDL",
+      "startLine": 17,
+      "endLine": 26,
+      "structureSignals": {
+        "selectStar": false,
+        "hasFetchFirst": false,
+        "hasOptimizeFor": false,
+        "hasWithUr": false
+      },
+      "analysis": "DEGRADED",
+      "diagnostic": "Db2 文法が受け付けませんでした: no viable alternative at input 'CREATE TABLE CSDB.CSQ_MEISAI ( MEISAI_NO INTEGER GENERATED ALWAYS AS IDENTITY (START WITH 1, INCREMENT BY 1), KOZA_NO CHAR(10) N …",
+      "declaredTable": "CSDB.CSQ_MEISAI",
+      "withHold": false,
+      "forUpdate": false,
+      "hasWhere": false,
+      "hasOrderBy": false,
+      "dynamic": false
+    },
+    {
+      "kind": "DDL",
+      "startLine": 29,
+      "endLine": 30,
+      "structureSignals": {
+        "selectStar": false,
+        "hasFetchFirst": false,
+        "hasOptimizeFor": false,
+        "hasWithUr": false
+      },
+      "analysis": "FULL",
+      "withHold": false,
+      "forUpdate": false,
+      "hasWhere": false,
+      "hasOrderBy": false,
+      "dynamic": false
+    },
+    {
+      "kind": "DDL",
+      "startLine": 33,
+      "endLine": 41,
+      "structureSignals": {
+        "selectStar": false,
+        "hasFetchFirst": false,
+        "hasOptimizeFor": false,
+        "hasWithUr": false
+      },
+      "analysis": "FULL",
+      "declaredTable": "CSDB.CSQKOZA",
+      "declaredColumns": [
+        {
+          "name": "KOZA_NO",
+          "type": "CHAR(10)",
+          "nullable": false
+        },
+        {
+          "name": "KOKYAKU_NO",
+          "type": "CHAR(8)",
+          "nullable": false
+        },
+        {
+          "name": "ZANDAKA",
+          "type": "DECIMAL(11, 0)",
+          "nullable": false
+        },
+        {
+          "name": "KOZA_MEI",
+          "type": "VARCHAR(30)",
+          "nullable": false
+        },
+        {
+          "name": "BIKO",
+          "type": "VARCHAR(60)",
+          "nullable": true
+        },
+        {
+          "name": "KOSHIN_YMD",
+          "type": "CHAR(8)",
+          "nullable": true
+        }
+      ],
+      "withHold": false,
+      "forUpdate": false,
+      "hasWhere": false,
+      "hasOrderBy": false,
+      "dynamic": false
+    },
+    {
+      "kind": "DDL",
+      "startLine": 44,
+      "endLine": 46,
+      "structureSignals": {
+        "selectStar": false,
+        "hasFetchFirst": false,
+        "hasOptimizeFor": false,
+        "hasWithUr": false
+      },
+      "analysis": "FULL",
+      "columnRefs": [
+        {
+          "column": "KOZA_NO"
+        },
+        {
+          "column": "KOKYAKU_NO"
+        },
+        {
+          "column": "ZANDAKA"
+        }
+      ],
+      "withHold": false,
+      "forUpdate": false,
+      "hasWhere": false,
+      "hasOrderBy": false,
+      "dynamic": false
+    },
+    {
+      "kind": "DDL",
+      "startLine": 49,
+      "endLine": 55,
+      "structureSignals": {
+        "selectStar": false,
+        "hasFetchFirst": false,
+        "hasOptimizeFor": false,
+        "hasWithUr": false
+      },
+      "analysis": "FULL",
+      "withHold": false,
+      "forUpdate": false,
+      "hasWhere": false,
+      "hasOrderBy": false,
+      "dynamic": false
+    },
+    {
+      "kind": "DDL",
+      "startLine": 58,
+      "endLine": 66,
+      "structureSignals": {
+        "selectStar": false,
+        "hasFetchFirst": false,
+        "hasOptimizeFor": false,
+        "hasWithUr": false
+      },
+      "analysis": "DEGRADED",
+      "diagnostic": "Db2 文法が受け付けませんでした: no viable alternative at input 'CREATE TABLE CSDB.CSQ_AUDIT ( AUDIT_NO INTEGER GENERATED ALWAYS AS IDENTITY, KOZA_NO CHAR(10) NOT NULL, ZANDAKA_OLD DECIMAL(11,  …",
+      "declaredTable": "CSDB.CSQ_AUDIT",
+      "withHold": false,
+      "forUpdate": false,
+      "hasWhere": false,
+      "hasOrderBy": false,
+      "dynamic": false
+    },
+    {
+      "kind": "DDL",
+      "startLine": 69,
+      "endLine": 77,
+      "structureSignals": {
+        "selectStar": false,
+        "hasFetchFirst": false,
+        "hasOptimizeFor": false,
+        "hasWithUr": false
+      },
+      "analysis": "FULL",
+      "withHold": false,
+      "forUpdate": false,
+      "hasWhere": false,
+      "hasOrderBy": false,
+      "dynamic": false
+    },
+    {
+      "kind": "DDL",
+      "startLine": 80,
+      "endLine": 87,
+      "structureSignals": {
+        "selectStar": false,
+        "hasFetchFirst": false,
+        "hasOptimizeFor": false,
+        "hasWithUr": false
+      },
+      "analysis": "FULL",
+      "withHold": false,
+      "forUpdate": false,
+      "hasWhere": false,
+      "hasOrderBy": false,
+      "dynamic": false
+    },
+    {
+      "kind": "DDL",
+      "startLine": 91,
+      "endLine": 115,
+      "structureSignals": {
+        "selectStar": false,
+        "hasFetchFirst": false,
+        "hasOptimizeFor": false,
+        "hasWithUr": false
+      },
+      "analysis": "FULL",
+      "columnRefs": [
+        {
+          "column": "ZANDAKA"
+        },
+        {
+          "column": "KOZA_NO"
+        },
+        {
+          "column": "P_KOZA_NO"
+        },
+        {
+          "column": "ZANDAKA"
+        },
+        {
+          "column": "V_ZANDAKA"
+        },
+        {
+          "column": "P_GAKU"
+        },
+        {
+          "column": "KOSHIN_YMD"
+        },
+        {
+          "column": "KOZA_NO"
+        },
+        {
+          "column": "P_KOZA_NO"
+        }
+      ],
+      "setPairs": [
+        {
+          "column": "ZANDAKA",
+          "value": "V_ZANDAKA + P_GAKU"
+        },
+        {
+          "column": "KOSHIN_YMD",
+          "value": "REPLACE(CHAR(CURRENT DATE, ISO), '-', '')"
+        }
+      ],
+      "withHold": false,
+      "forUpdate": false,
+      "hasWhere": false,
+      "hasOrderBy": false,
+      "dynamic": false
+    },
+    {
+      "kind": "DDL",
+      "startLine": 118,
+      "endLine": 118,
+      "structureSignals": {
+        "selectStar": false,
+        "hasFetchFirst": false,
+        "hasOptimizeFor": false,
+        "hasWithUr": false
+      },
+      "analysis": "FULL",
+      "withHold": false,
+      "forUpdate": false,
+      "hasWhere": false,
+      "hasOrderBy": false,
+      "dynamic": false
+    },
+    {
+      "kind": "DDL",
+      "startLine": 120,
+      "endLine": 121,
+      "structureSignals": {
+        "selectStar": false,
+        "hasFetchFirst": false,
+        "hasOptimizeFor": false,
+        "hasWithUr": false
+      },
+      "analysis": "FULL",
+      "withHold": false,
+      "forUpdate": false,
+      "hasWhere": false,
+      "hasOrderBy": false,
+      "dynamic": false
+    }
+  ],
+  "routines": [
+    {
+      "name": "CSDB.CSQ_TRG_ZANKOU",
+      "line": 69,
+      "body": [
+        {
+          "kind": "INSERT",
+          "line": 74,
+          "tableAccess": {
+            "CSDB.CSQ_AUDIT": "C"
+          }
+        }
+      ]
+    },
+    {
+      "name": "CSDB.CSQ_RISOKU",
+      "line": 80
+    },
+    {
+      "name": "CSDB.CSQ_UPD_ZANDAKA",
+      "line": 91,
+      "body": [
+        {
+          "kind": "OTHER",
+          "line": 98
+        },
+        {
+          "kind": "OTHER",
+          "line": 99
+        },
+        {
+          "kind": "SELECT",
+          "line": 101,
+          "tableAccess": {
+            "CSDB.CSQKOZA": "R"
+          }
+        },
+        {
+          "kind": "SET",
+          "line": 107
+        },
+        {
+          "kind": "UPDATE",
+          "line": 109,
+          "tableAccess": {
+            "CSDB.CSQKOZA": "U"
+          }
+        },
+        {
+          "kind": "SET",
+          "line": 113
+        }
+      ]
+    }
+  ]
+}

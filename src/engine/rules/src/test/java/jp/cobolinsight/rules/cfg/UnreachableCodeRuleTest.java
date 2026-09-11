@@ -121,6 +121,103 @@ class UnreachableCodeRuleTest {
                 "NOT INVALID KEY の中の PERFORM も参照として数えること");
     }
 
+    /**
+     * Legacy structure: a READ whose AT END branches with GO TO, an ALTER that rewires a GO TO,
+     * and paragraphs entered by falling in from a paragraph a GO TO reached.
+     */
+    private static final String LEGACY_FLOW = String.join("\n",
+            /*  1 */ "       IDENTIFICATION DIVISION.",
+            /*  2 */ "       PROGRAM-ID. FIX011D.",
+            /*  3 */ "       ENVIRONMENT DIVISION.",
+            /*  4 */ "       INPUT-OUTPUT SECTION.",
+            /*  5 */ "       FILE-CONTROL.",
+            /*  6 */ "           SELECT MSTR ASSIGN TO MSTR.",
+            /*  7 */ "       DATA DIVISION.",
+            /*  8 */ "       FILE SECTION.",
+            /*  9 */ "       FD  MSTR.",
+            /* 10 */ "       01  MST-REC  PIC X(08).",
+            /* 11 */ "       WORKING-STORAGE SECTION.",
+            /* 12 */ "       01  WS-D PIC 9(01).",
+            /* 13 */ "       PROCEDURE DIVISION.",
+            /* 14 */ "       0000-MAIN.",
+            /* 15 */ "           OPEN INPUT MSTR",
+            /* 16 */ "           ALTER 1100-SW TO PROCEED TO 1300-SECOND.",
+            /* 17 */ "       1000-LOOP.",
+            /* 18 */ "           READ MSTR AT END GO TO 2000-EOF.",
+            /* 19 */ "           PERFORM 1100-SW.",
+            /* 20 */ "           GO TO 1000-LOOP.",
+            /* 21 */ "       1100-SW.",
+            /* 22 */ "           GO TO 1200-FIRST.",
+            /* 23 */ "       1200-FIRST.",
+            /* 24 */ "           MOVE 1 TO WS-D.",
+            /* 25 */ "       1300-SECOND.",
+            /* 26 */ "           MOVE 2 TO WS-D.",
+            /* 27 */ "       2000-EOF.",
+            /* 28 */ "           CLOSE MSTR.",
+            /* 29 */ "       2100-AFTER-EOF.",
+            /* 30 */ "           MOVE 3 TO WS-D",
+            /* 31 */ "           STOP RUN.",
+            /* 32 */ "       9000-DEAD.",
+            /* 33 */ "           MOVE 4 TO WS-D",
+            /* 34 */ "           MOVE 5 TO WS-D.",
+            "");
+
+    @Test
+    void followsNestedGoToAlterAndFallThrough() {
+        List<Finding> findings = run("FIX011D.cbl", LEGACY_FLOW);
+        assertEquals(List.of(32), findings.stream().map(f -> f.location().line()).toList(),
+                () -> "2000-EOF (READ AT END GO TO), 1300-SECOND (ALTER) and 2100-AFTER-EOF "
+                        + "(fall-through from a GO TO target) are reached; only 9000-DEAD is "
+                        + "reported, once, without one row per statement: " + findings);
+    }
+
+    /** A PERFORM THRU returns at the end of its range; what follows the range is not entered through it. */
+    private static final String THRU_RANGE = String.join("\n",
+            /*  1 */ "       IDENTIFICATION DIVISION.",
+            /*  2 */ "       PROGRAM-ID. FIX011E.",
+            /*  3 */ "       DATA DIVISION.",
+            /*  4 */ "       WORKING-STORAGE SECTION.",
+            /*  5 */ "       01  WS-D PIC 9(01).",
+            /*  6 */ "       PROCEDURE DIVISION.",
+            /*  7 */ "       0000-MAIN.",
+            /*  8 */ "           PERFORM 1000-A THRU 1000-EXIT",
+            /*  9 */ "           STOP RUN.",
+            /* 10 */ "       1000-A.",
+            /* 11 */ "           MOVE 1 TO WS-D.",
+            /* 12 */ "       1000-EXIT.",
+            /* 13 */ "           EXIT.",
+            /* 14 */ "       9000-DEAD.",
+            /* 15 */ "           MOVE 2 TO WS-D.",
+            "");
+
+    @Test
+    void stopsAtTheEndOfAPerformThruRange() {
+        List<Finding> findings = run("FIX011E.cbl", THRU_RANGE);
+        assertEquals(List.of(14), findings.stream().map(f -> f.location().line()).toList(),
+                () -> "1000-EXIT returns to the PERFORM, so 9000-DEAD is unused: " + findings);
+    }
+
+    /** CICS branches to a HANDLE label the way a GO TO would. */
+    private static final String HANDLE_LABEL = String.join("\n",
+            /*  1 */ "       IDENTIFICATION DIVISION.",
+            /*  2 */ "       PROGRAM-ID. FIX011F.",
+            /*  3 */ "       DATA DIVISION.",
+            /*  4 */ "       WORKING-STORAGE SECTION.",
+            /*  5 */ "       01  WS-D PIC 9(01).",
+            /*  6 */ "       PROCEDURE DIVISION.",
+            /*  7 */ "       0000-MAIN.",
+            /*  8 */ "           EXEC CICS HANDLE CONDITION MAPFAIL(8100-MAPFAIL) END-EXEC",
+            /*  9 */ "           GOBACK.",
+            /* 10 */ "       8100-MAPFAIL.",
+            /* 11 */ "           MOVE 1 TO WS-D.",
+            "");
+
+    @Test
+    void countsAHandleConditionLabelAsAReference() {
+        assertEquals(List.of(), run("FIX011F.cbl", HANDLE_LABEL),
+                "the label of a HANDLE CONDITION is reached and its statement reachable");
+    }
+
     private static Finding unusedParagraphFinding(List<Finding> findings) {
         return findings.stream().filter(f -> f.message().contains("を呼ぶ PERFORM・GO TO がありません"))
                 .findFirst()

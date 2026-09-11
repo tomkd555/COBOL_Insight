@@ -56,6 +56,11 @@ public final class CursorDeclarationRule implements Rule {
     public List<Finding> evaluate(AnalysisContext context) {
         List<Finding> findings = new ArrayList<>();
         for (SqlStatementModel statement : context.sqlStatements()) {
+            if (!statement.isFullyAnalysed()) {
+                // A degraded declaration carries no FOR clause either way, so it is not evidence
+                // that the clause is missing.
+                continue;
+            }
             if (statement.kind() != SqlStatementKind.DECLARE_CURSOR) {
                 continue;
             }

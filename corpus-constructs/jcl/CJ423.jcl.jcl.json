@@ -1,0 +1,213 @@
+[
+  {
+    "jobName": "CJ423",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "CSQUTIL EZTPA00",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "CSQUTIL",
+        "line": 8,
+        "parm": "CJQM01",
+        "parameters": {
+          "PARM": "'CJQM01'"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "SYSPRINT": "WRITE",
+            "SYSIN": "READ",
+            "CMDINP": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 9,
+            "datasetName": "MQM.PROD.SCSQANLE",
+            "dataset": {
+              "name": "MQM.PROD.SCSQANLE"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "MQM.PROD.SCSQANLE",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "STEPLIB",
+            "line": 10,
+            "concatIndex": 1,
+            "datasetName": "MQM.PROD.SCSQAUTH",
+            "dataset": {
+              "name": "MQM.PROD.SCSQAUTH"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "MQM.PROD.SCSQAUTH",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 11,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 12,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "COMMAND DDNAME(CMDINP)"
+            ]
+          },
+          {
+            "ddName": "CMDINP",
+            "line": 15,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "DEFINE QLOCAL('CJT.WORK.QUEUE') REPLACE"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PGM",
+        "target": "EZTPA00",
+        "line": 19,
+        "condition": "COND=(4,LT,STEP010)",
+        "parameters": {
+          "COND": "(4,LT,STEP010)"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "EZTVFY": "WRITE",
+            "SYSPRINT": "WRITE",
+            "KEIYAKU": "READ",
+            "TOKLIST": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 20,
+            "datasetName": "CAI.EASY.LOADLIB",
+            "dataset": {
+              "name": "CAI.EASY.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CAI.EASY.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "EZTVFY",
+            "line": 21,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 22,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "KEIYAKU",
+            "line": 23,
+            "datasetName": "CJT.D260910.KEIYAKU.MASTER",
+            "dataset": {
+              "name": "CJT.D260910.KEIYAKU.MASTER"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.KEIYAKU.MASTER",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "TOKLIST",
+            "line": 24,
+            "datasetName": "CJT.D260910.TOKUSOKU.LIST",
+            "dataset": {
+              "name": "CJT.D260910.TOKUSOKU.LIST"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.TOKUSOKU.LIST",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(2,1),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=132,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 28,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "FILE KEIYAKU",
+              "   KEIYAKU-NO    1   8  A",
+              "   ZANDAKA       9   6  P  2",
+              "FILE TOKLIST",
+              "   OUT-NO        1   8  A",
+              "   OUT-GAKU      9   6  P  2",
+              "JOB INPUT KEIYAKU NAME TOKULIST",
+              "   IF ZANDAKA GT 100000",
+              "      MOVE KEIYAKU-NO TO OUT-NO",
+              "      MOVE ZANDAKA  TO OUT-GAKU",
+              "      PUT TOKLIST",
+              "   END-IF"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

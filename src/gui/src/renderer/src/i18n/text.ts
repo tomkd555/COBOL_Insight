@@ -13,6 +13,9 @@ export const text = {
   app: {
     name: "COBOL Insight",
     run: "解析",
+    /** What the run button will analyse, named beside it. */
+    runTarget: (path: string, kind: "file" | "folder"): string =>
+      `解析: ${path}（${kind === "folder" ? "フォルダ" : "ファイル"}）`,
     cancel: "中止",
     running: "解析中",
   },
@@ -59,7 +62,6 @@ export const text = {
 
   welcome: {
     selectFolder: "資産フォルダを開く",
-    recent: "前回のフォルダ",
     shortcutHint: "コマンドパレットを開く",
   },
 
@@ -81,6 +83,7 @@ export const text = {
     copybook: "コピー句",
     jcl: "JCL",
     bms: "BMS",
+    sql: "SQL スクリプト",
     other: "その他",
   },
 
@@ -88,7 +91,7 @@ export const text = {
     high: "高",
     medium: "中",
     low: "低",
-    warning: "注意",
+    warning: "参考",
   },
 
   problems: {
@@ -98,8 +101,10 @@ export const text = {
     clean: "指摘はありません。",
     error: "指摘を読めませんでした。",
     search: "内容・ルール・資産で絞り込む",
+    // product-ui: ignore C14 accessible name of the filter box, not a rendered label; it names the three fields it searches.
     searchLabel: "指摘を内容・ルール・資産で絞り込む",
     hidden: (count: number): string => `しきい値未満の指摘 ${count}件を表示していません。`,
+    staleRules: "ルールを変えました。もう一度解析すると一覧に反映されます。",
     columnSeverity: "重大度",
     columnRule: "ルール",
     columnMessage: "内容",
@@ -114,8 +119,16 @@ export const text = {
     jumpTo: (file: string, line: number): string => `${file} の${line}行へ`,
   },
 
-  source: {
-    save: "保存時の検証",
+  /**
+   * The engine's own finding ids. They are diagnostics of the analysis rather than rules, so the
+   * catalogue does not list them and their names live here.
+   */
+  diagnostic: {
+    "parse-failure": "構文解析の失敗",
+    "decode-failure": "復号の失敗",
+    "jcl-syntax": "読み取れなかった JCL 文",
+    "jcl-directive": "読み飛ばした指示行",
+    "sql-syntax": "読み切れなかった SQL 文",
   },
 
   output: {
@@ -139,7 +152,6 @@ export const text = {
     toggleLabel: (name: string): string => `${name} の展開`,
     // product-ui: ignore C14 Monaco editor command title (not a rendered <button>); the checker buckets it as "button" only because the catalog key is literally "action".
     action: "カーソル行のCOPYの展開を切り替える",
-    glyphHint: "このCOPYの展開を切り替えます。",
   },
 
   transpileView: {
@@ -162,7 +174,7 @@ export const text = {
     nothingToSave: "保存していない変更はありません。",
     unsavedRemain: (count: number): string => `${count}件の資産が未保存のままです。`,
     dirtyBeforeFolderChange:
-      "保存していない変更があります。保存するか変更を破棄してから、フォルダを開いてください。",
+      "保存していない変更があるため、フォルダを開けません。",
     conflictTitle: "原本が書き換わっています",
     conflictBody: (path: string): string =>
       `「${path}」は、開いたあとにこのツールの外で書き換わりました。上書きすると、その変更は失われます。再読み込みすると、保存していない変更は失われます。`,
@@ -172,10 +184,6 @@ export const text = {
     conflictCancel: "キャンセル",
     diskLabel: "原本",
     draftLabel: "編集中",
-  },
-
-  quickFix: {
-    showFix: "この指摘の修正案を開く",
   },
 
   fixView: {
@@ -188,7 +196,7 @@ export const text = {
     fixed: "修正案",
     apply: "フォルダ全体の修正案を書き出す",
     applied: (dir: string, count: number): string =>
-      `「${dir}」へ${count}件の修正案を書き出しました。`,
+      `「${dir}」へ修正した資産 ${count}件を書き出しました。`,
     outDirInside: "修正案の出力先が資産フォルダの中にあります。設定で出力先を変えてください。",
   },
 
@@ -202,7 +210,8 @@ export const text = {
     search: "ノードを名前で絞り込む",
     depth: "深さ",
     depthLabel: "起点からたどる深さ",
-    clearFocus: "起点を解除",
+    clearFocus: (label: string): string => `起点 ${label} を解除`,
+    clearFocusNone: "起点を解除",
     zoomIn: "拡大",
     zoomOut: "縮小",
     fit: "全体を表示",
@@ -211,7 +220,7 @@ export const text = {
     nodeCount: (visible: number, total: number): string => `ノード ${visible}/${total}`,
     expand: (label: string, open: boolean): string =>
       `${label} の下位を${open ? "畳む" : "開く"}`,
-    cyclic: "巡回のためここで止めています",
+    cyclic: "巡回",
     detail: "ノードの情報",
     incoming: "このノードへの辺",
     outgoing: "このノードからの辺",
@@ -236,10 +245,10 @@ export const text = {
     },
     edgeKind: {
       EXECUTION: "実行（EXEC PGM）",
-      CALL: "呼び出し（CALL・XCTL・LINK）",
-      REFERENCE: "参照（データセット・Db2表）",
+      CALL: "呼び出し（CALL・LINK）",
+      REFERENCE: "参照（データセット・Db2表・BINDの対象）",
       // product-ui: ignore C14 graph legend label (not a rendered <button>); the checker buckets it as "button" only because "action" is a substring of "TRANSACTION".
-      TRANSACTION_TRANSITION: "トランザクション遷移",
+      TRANSACTION_TRANSITION: "トランザクション遷移（XCTL・START・RETURN TRANSID）",
       MAP_REFERENCE: "BMSマップ参照",
     },
     resolution: {
@@ -260,13 +269,18 @@ export const text = {
 
   report: {
     title: "レポート",
-    generateHtml: "HTMLを生成",
-    generateText: "テキストを生成",
+    generateHtml: "HTMLで表示",
+    generateText: "テキストで表示",
     export: "書き出す",
     exportLabel: "別の場所へ書き出す",
     generating: "レポートを生成しています…",
     failed: (reason: string): string => `レポートを生成できませんでした。${reason}`,
     preview: "レポートの内容",
+    /** What the report covers. `report` reads the whole project file, not the folder on screen. */
+    wholeProject: "このレポートはプロジェクトファイル全体を対象にします。",
+    /** Shown when a scoped run came after the last whole-folder run, which the report is built from. */
+    scopedSinceWholeRun:
+      "フォルダ全体の解析のあとに、範囲を絞った解析を実行しました。レポートの指摘には、その結果は入りません。",
     path: "出力先",
     saved: (path: string): string => `「${path}」へ書き出しました。`,
   },
@@ -274,15 +288,20 @@ export const text = {
   run: {
     scan: "走査",
     lint: "指摘の検出",
-    sqlLint: "SQL指摘の検出",
     started: "解析を開始しました。",
-    cancelled: "解析を中止しました（完了した分の結果は残ります）。",
+    startedScope: (scope: string): string => `解析を開始しました（対象: ${scope}）。`,
+    cancelled: "解析を中止しました。",
     stageStarted: (stage: string): string => `${stage}を開始しました。`,
     stageDone: (stage: string, count: number): string => `${stage}を終えました（${count}件）。`,
     stageFailed: (stage: string): string => `${stage}を完了できませんでした。`,
     scanDone: (count: number): string => `走査を終えました（資産 ${count}件）。`,
     stageCancelled: (stage: string): string => `${stage}を中止しました。`,
     noFolder: "先に資産フォルダを開いてください。",
+    noSelection: "解析する対象をエクスプローラーで選んでください。",
+    /** A copybook is analysed through the programs that copy it, so it cannot be a scope of its own. */
+    copybookSelection: "コピー句は単独では解析できません。コピー句を使うプログラムを選んでください。",
+    engineFailed: "解析エンジンが途中で終了しました。",
+    scopeFailed: (scope: string): string => `「${scope}」を解析できませんでした。`,
   },
 
   palette: {
@@ -297,6 +316,7 @@ export const text = {
     categoryRun: "実行",
     selectFolder: "資産フォルダを開く",
     run: "解析",
+    runAll: "フォルダ全体を解析",
     cancel: "解析を中止する",
     toggleSideBar: "サイドバーの表示を切り替える",
     togglePanel: "パネルの表示を切り替える",
@@ -307,13 +327,8 @@ export const text = {
     showGraph: "呼び出し関係図を開く",
     showReport: "レポートを開く",
     showSettings: "設定を開く",
-    showTranspile: "この資産の変換結果を開く",
+    showTranspile: "変換を開く",
     reopenWithEncoding: "文字コードを指定して開き直す",
-    discard: "変更を破棄する",
-    toggleRule: "このルールの有効・無効を切り替える",
-    validateCustomRules: "利用者定義ルールを検証する",
-    saveCustomRules: "利用者定義ルールを保存する",
-    categoryRules: "ルール",
     closeTab: "タブを閉じる",
     nextTab: "次のタブへ",
     previousTab: "前のタブへ",
@@ -323,7 +338,6 @@ export const text = {
 
   modal: {
     confirmDiscardTitle: "保存していない変更があります",
-    discardConfirm: "破棄する",
     discard: "破棄して閉じる",
     saveAndClose: "保存して閉じる",
     keep: "編集を続ける",
@@ -336,6 +350,7 @@ export const text = {
 
   rules: {
     search: "ルールを絞り込む",
+    // product-ui: ignore C14 accessible name of the filter box, not a rendered label; it names the three fields it searches.
     searchLabel: "ルールをID・名前・概要で絞り込む",
     empty: "ルールを読み込んでいます…",
     loadFailed: "ルールを読み込めませんでした。",
@@ -356,7 +371,7 @@ export const text = {
     detailRemedy: "直し方",
     detailBad: "該当する例",
     detailGood: "直した例",
-    detailCommands: "実行するコマンド",
+    detailCommands: "実行する解析",
     detailTargets: "対象の資産",
     detailUnknown: "このルールは見つかりません。",
   },
@@ -372,8 +387,8 @@ export const text = {
     rawBlocked: "JSONを直せるまでフォームへは戻れません。",
     add: "ルールを追加",
     remove: "このルールを削除する",
-    validate: "検証",
-    save: "保存",
+    validate: "検証する",
+    save: "保存する",
     validationOk: "解析エンジンはこの内容を受け付けました。",
     validationFailed: "解析エンジンはこの内容を受け付けませんでした。",
     fieldId: "ID",
@@ -381,7 +396,7 @@ export const text = {
     fieldCategory: "分類",
     fieldSummary: "概要",
     fieldSeverity: "重大度",
-    fieldCommands: "実行するコマンド",
+    fieldCommands: "実行する解析",
     fieldTargets: "対象の資産",
     fieldMessage: "指摘の文言",
     fieldRationale: "なぜ問題か",
@@ -443,35 +458,35 @@ export const text = {
     copybookRemove: "このパスを削除",
     copybookPlaceholder: "C:\\assets\\copybook",
     copybookMissing: "このフォルダは見つかりません。",
-    threshold: "指摘の重大度しきい値",
+    threshold: "一覧に表示する最低の重大度",
     fixOutDir: "修正案の出力先",
     fixOutDirInside: "資産フォルダの外を指定してください。",
     browse: "参照",
   },
 
   import: {
-    open: "端末から取り込む",
-    title: "端末からの取り込み",
+    open: "端末から貼り付ける",
+    title: "端末からの貼り付け",
     paste: "端末から貼り付けた本文",
-    kind: "資産の種別",
-    destDir: "保存先",
+    destDir: "保存先フォルダ",
     destDirPlaceholder: "資産フォルダの直下",
     fileName: "ファイル名",
     fileNamePlaceholder: "SYK001.cbl",
     fileNameInvalid: 'パス区切りと記号 \\ / : * ? " < > | は使えません。',
-    destination: (relPath: string): string => `取り込み先: ${relPath}`,
-    columns: "取り込む桁",
+    destination: (relPath: string): string => `保存先: ${relPath}`,
+    columns: "保存する桁",
     columnFrom: "開始桁",
     columnTo: "終了桁",
     columnsInvalid: "終了桁は開始桁以上にしてください。",
     preview: "切り出した本文",
     lineCount: (count: number): string => `${count}行`,
-    save: "取り込む",
-    saving: "取り込んでいます…",
+    save: "保存する",
+    saving: "保存しています…",
     cancel: "キャンセル",
-    exists: (relPath: string): string => `「${relPath}」は既にあります。`,
+    exists: (relPath: string): string =>
+      `「${relPath}」は既にあります。上書きすると、いまの内容は失われます。`,
     saved: (relPath: string, count: number): string =>
-      `「${relPath}」を取り込みました（${count}行）。もう一度解析すると一覧に出ます。`,
+      `「${relPath}」を保存しました（${count}行）。もう一度解析すると一覧に出ます。`,
     overwrite: "上書きする",
   },
 } as const;

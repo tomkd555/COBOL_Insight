@@ -53,9 +53,8 @@ public final class CursorNotClosedRule implements Rule {
                     EXEC SQL CLOSE CUR-CUST END-EXEC.
                     """)
             .severity(Severity.MEDIUM)
-            .commands(Command.LINT, Command.REPORT)
+            .commands(Command.LINT)
             .targets(AssetKind.COBOL)
-            .needs(Needs.SEMANTIC)
             .build();
 
     @Override

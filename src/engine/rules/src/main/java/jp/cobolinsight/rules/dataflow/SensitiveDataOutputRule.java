@@ -41,7 +41,7 @@ public final class SensitiveDataOutputRule implements Rule {
                     .summary("機密項目の値を、マスキングも暗号化も経ずに"
                             + "表示・帳票・ログへ渡す箇所を検出します。")
                     .rationale("個人番号や口座番号が画面・帳票・ログに残り、"
-                            + "それらを閲覧できる範囲がそのまま漏えいの範囲になります。")
+                            + "画面・帳票・ログを閲覧できる範囲がそのまま漏えいの範囲になります。")
                     .detection("名前の末尾が -SSN・-ACCT-NO・-CARD-NO の項目を機密とみなし、その値が"
                             + "DISPLAY・帳票出力（WRITE）・ログ出力（CALL）に到達するものを検出します。"
                             + "定数の転記で値を差し替えた項目は対象外です。")
@@ -54,9 +54,9 @@ public final class SensitiveDataOutputRule implements Rule {
                             DISPLAY "口座番号: " WS-MASKED.
                             """)
                     .severity(Severity.MEDIUM)
-                    .commands(Command.LINT, Command.REPORT)
+                    .commands(Command.LINT)
                     .targets(AssetKind.COBOL)
-                    .needs(Needs.SEMANTIC, Needs.CFG, Needs.DATAFLOW)
+                    .needs(Needs.CFG, Needs.DATAFLOW)
                     .build();
 
     @Override

@@ -1,0 +1,153 @@
+[
+  {
+    "jobName": "CJ207",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "CJ DD LIFECYCLE",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 9,
+        "ddStatements": [
+          {
+            "ddName": "FWDREF",
+            "line": 10,
+            "parameters": {
+              "DDNAME": "LATER"
+            }
+          },
+          {
+            "ddName": "AMPDS",
+            "line": 11,
+            "datasetName": "FLW.CJ207.VSAM",
+            "dataset": {
+              "name": "FLW.CJ207.VSAM"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ207.VSAM",
+              "DISP": "SHR",
+              "AMP": "('BUFND=10','BUFNI=5')"
+            }
+          },
+          {
+            "ddName": "RLSDS",
+            "line": 13,
+            "datasetName": "FLW.CJ207.RLSVSM",
+            "dataset": {
+              "name": "FLW.CJ207.RLSVSM"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ207.RLSVSM",
+              "DISP": "SHR",
+              "RLS": "CR"
+            }
+          },
+          {
+            "ddName": "IN1",
+            "line": 14,
+            "datasetName": "FLW.CJ207.IN1DS",
+            "dataset": {
+              "name": "FLW.CJ207.IN1DS"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ207.IN1DS",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SUBSYSDS",
+            "line": 15,
+            "parameters": {
+              "SUBSYS": "(BLSR,'DDNAME=IN1')"
+            }
+          },
+          {
+            "ddName": "FREEDS",
+            "line": 16,
+            "datasetName": "FLW.CJ207.FREECLS",
+            "dataset": {
+              "name": "FLW.CJ207.FREECLS"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ207.FREECLS",
+              "DISP": "SHR",
+              "FREE": "CLOSE"
+            }
+          },
+          {
+            "ddName": "SPINDS",
+            "line": 17,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*",
+              "SPIN": "UNALLOC"
+            }
+          },
+          {
+            "ddName": "CHKPTDS",
+            "line": 18,
+            "datasetName": "FLW.CJ207.CHKPT",
+            "dataset": {
+              "name": "FLW.CJ207.CHKPT"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ207.CHKPT",
+              "DISP": "SHR",
+              "CHKPT": "EOV"
+            }
+          },
+          {
+            "ddName": "LATER",
+            "line": 19,
+            "datasetName": "FLW.CJ207.LATER",
+            "dataset": {
+              "name": "FLW.CJ207.LATER"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "FLW.CJ207.LATER",
+              "DISP": "SHR"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

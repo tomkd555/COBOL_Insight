@@ -126,10 +126,11 @@ class FixSamplesAcceptanceTest {
     @Test
     void everyDetectionOfTheFourFixableRulesYieldsEdits() {
         // Of the 4 rules that generate fixes (R004, R017, R018, R021), the samples detections
-        // are: R004 1, R017 9, R018 2, R021 1. R021 edits two spots (the RESP operand and the
-        // check statement), so the total edit count is 1+9+2+2=14.
+        // are: R004 1, R017 9, R018 3 (two DMLs and the FETCH at SYK007:73), R021 1. R021 edits
+        // two spots (the RESP operand and the check statement), so the total edit count is
+        // 1+9+3+2=15.
         FixRunner.Result result = runFix();
-        assertEquals(14, result.fixCount(), "編集の総数");
+        assertEquals(15, result.fixCount(), "編集の総数");
     }
 
     @Test

@@ -92,9 +92,28 @@ final class Intervals {
         return make(min, max);
     }
 
-    /** Division does not track interval precision and falls back to unbounded on both sides. */
+    /**
+     * Division keeps only the sign: the quotient of two non-negative intervals is non-negative
+     * (a zero divisor is a size error, not a negative value), everything else is unbounded on
+     * both sides.
+     */
     static ValueInterval div(ValueInterval x, ValueInterval y) {
-        return UNBOUNDED;
+        boolean nonNegative = !x.loUnbounded() && x.lo() >= 0 && !y.loUnbounded() && y.lo() >= 0;
+        return nonNegative ? make(0L, null) : UNBOUNDED;
+    }
+
+    /** The interval of |v|: what an unsigned item holds after v is stored into it. */
+    static ValueInterval magnitude(ValueInterval v) {
+        if (!v.mayBeNegative()) {
+            return v;
+        }
+        if (v.loUnbounded()) {
+            return make(!v.hiUnbounded() && v.hi() < 0 ? -v.hi() : 0L, null);
+        }
+        if (v.hiUnbounded()) {
+            return make(0L, null);
+        }
+        return v.hi() < 0 ? make(-v.hi(), -v.lo()) : make(0L, Math.max(-v.lo(), v.hi()));
     }
 
     /** Tightens the upper end to at most bound (the lower end is unchanged). A contradiction (lower end > bound) is rounded to the point interval [bound,bound]. */

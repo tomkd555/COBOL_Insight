@@ -37,11 +37,12 @@ class BuiltinRulesTest {
 
     /**
      * A built-in rule is on unless the measurement in {@code corpus/rule-hits.md} showed it to be
-     * noise. Pinning the list here keeps a rule from being switched off in passing.
+     * noise, or what it reports is a site convention rather than a defect (R058). Pinning the list
+     * here keeps a rule from being switched off in passing.
      */
     @Test
-    void onlyTheMeasuredStyleRulesShipDisabled() {
-        assertEquals(List.of("R008"), BuiltinRules.all().stream()
+    void onlyR008AndR058ShipDisabled() {
+        assertEquals(List.of("R008", "R058"), BuiltinRules.all().stream()
                 .filter(rule -> !rule.meta().defaultEnabled())
                 .map(rule -> rule.meta().id())
                 .toList());

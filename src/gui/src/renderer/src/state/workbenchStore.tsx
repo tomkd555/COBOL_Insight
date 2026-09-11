@@ -36,9 +36,18 @@ export interface WorkbenchTab {
   readonly line: number | null;
 }
 
+/** What the explorer has selected: the asset or the folder an analysis run covers. */
+export interface TreeSelection {
+  /** Path relative to the asset folder, as the tree row carries it. */
+  readonly path: string;
+  readonly kind: "file" | "folder";
+}
+
 export interface WorkbenchState {
   readonly tabs: readonly WorkbenchTab[];
   readonly activeTabId: string | null;
+  /** The explorer row the run command analyses, or null while nothing is selected. */
+  readonly selection: TreeSelection | null;
   readonly sideVisible: boolean;
   readonly sideWidth: number;
   readonly sideView: SideView;
@@ -50,12 +59,6 @@ export interface WorkbenchState {
    * cannot hold the text without losing it on every switch. The presence of a key is the dirty flag.
    */
   readonly drafts: Readonly<Record<string, string>>;
-  /**
-   * How many times a resize has finished. Dragging changes the size on every pixel, and persisting
-   * all of that would mean dozens of writes per drag; the settings are saved on changes to this
-   * count alone.
-   */
-  readonly sizeCommitCount: number;
 }
 
 /** Side bar sizing. `min` keeps the panel usable; `oppositeMin` is what the editor must keep. */
@@ -74,6 +77,7 @@ export const PANE_SIZE_KEYS = { side: "sideWidth", panel: "panelHeight" } as con
 export const initialWorkbenchState: WorkbenchState = {
   tabs: [],
   activeTabId: null,
+  selection: null,
   sideVisible: true,
   sideWidth: SIDE_LIMITS.initial,
   sideView: "explorer",
@@ -81,7 +85,6 @@ export const initialWorkbenchState: WorkbenchState = {
   panelHeight: PANEL_LIMITS.initial,
   panelView: "problems",
   drafts: {},
-  sizeCommitCount: 0,
 };
 
 /** The id of an asset's tab, used both by the editor and by the draft lookup. */
@@ -165,6 +168,7 @@ export type WorkbenchAction =
   | { type: "CLOSE_TAB"; id: string }
   | { type: "CLOSE_ALL_TABS" }
   | { type: "ACTIVATE_TAB"; id: string }
+  | { type: "SELECT"; selection: TreeSelection | null }
   | { type: "STEP_TAB"; step: 1 | -1 }
   | { type: "SET_DRAFT"; id: string; draft: string | null }
   | { type: "TOGGLE_SIDE" }
@@ -173,7 +177,6 @@ export type WorkbenchAction =
   | { type: "TOGGLE_PANEL" }
   | { type: "SHOW_PANEL"; view: PanelView }
   | { type: "SET_PANEL_HEIGHT"; height: number }
-  | { type: "COMMIT_SIZE" }
   | { type: "RESTORE_SIZES"; sideWidth?: number; panelHeight?: number };
 
 /** Returns the drafts without the given tab's entry. */
@@ -240,7 +243,19 @@ export function workbenchReducer(state: WorkbenchState, action: WorkbenchAction)
     case "CLOSE_ALL_TABS":
       // A tab id names an asset by its path relative to the asset folder, so tabs opened from one
       // folder mean nothing once another is chosen. The caller releases their models and decodes.
-      return { ...state, tabs: [], activeTabId: null, drafts: {} };
+      // The selection goes with them: that path names nothing in the folder being opened.
+      return { ...state, tabs: [], activeTabId: null, drafts: {}, selection: null };
+
+    case "SELECT":
+      // Focusing a row selects it, and the keyboard both moves and focuses, so the same row is
+      // selected twice per keypress. Standing still keeps the command list from being rebuilt.
+      if (
+        state.selection?.path === action.selection?.path &&
+        state.selection?.kind === action.selection?.kind
+      ) {
+        return state;
+      }
+      return { ...state, selection: action.selection };
 
     case "ACTIVATE_TAB":
       return state.tabs.some((tab) => tab.id === action.id)
@@ -291,9 +306,6 @@ export function workbenchReducer(state: WorkbenchState, action: WorkbenchAction)
 
     case "SET_PANEL_HEIGHT":
       return { ...state, panelHeight: action.height };
-
-    case "COMMIT_SIZE":
-      return { ...state, sizeCommitCount: state.sizeCommitCount + 1 };
 
     case "RESTORE_SIZES":
       return {

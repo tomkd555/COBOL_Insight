@@ -2,9 +2,9 @@
  * The persisted GUI settings. Shared because main reads and writes the file while the renderer
  * restores and updates the values.
  *
- * Only what is worth surviving a restart is stored: the asset folder, the copybook search paths, the
- * severity threshold, the default encoding, and the shell's pane sizes. Values that mean something
- * only within one session (the search text, the selected asset) are not stored.
+ * Only what is worth surviving a restart is stored: the copybook search paths, the severity
+ * threshold, the default encoding, and the shell's pane sizes. Values that mean something only
+ * within one session (the search text, the selected asset, the folder open) are not stored.
  *
  * Normalisation here only fixes types. Whether a severity or an encoding name is one the renderer
  * knows is checked on restore, because that vocabulary lives in the renderer.
@@ -22,8 +22,6 @@ export interface AppSettings {
   readonly copybookPaths: readonly string[];
   /** Where `fix apply` writes the corrected sources. Empty means the engine's own default. */
   readonly fixOutDir: string;
-  /** The asset folder last opened, so the shell can offer it again on the next start. */
-  readonly lastInputDir: string;
   /** Shell pane sizes in pixels, keyed by pane id. Unknown keys are dropped on restore. */
   readonly paneSizes: Readonly<Record<string, number>>;
   /** The colour theme: "system", "dark" or "light". Empty and unknown values mean "system". */
@@ -42,7 +40,6 @@ export function emptyAppSettings(): AppSettings {
     defaultEncoding: "",
     copybookPaths: [],
     fixOutDir: "",
-    lastInputDir: "",
     paneSizes: {},
     theme: "",
   };
@@ -57,7 +54,6 @@ export function normalizeAppSettings(value: unknown): AppSettings {
     defaultEncoding: asString(settings["defaultEncoding"]),
     copybookPaths: asStringArray(settings["copybookPaths"]),
     fixOutDir: asString(settings["fixOutDir"]),
-    lastInputDir: asString(settings["lastInputDir"]),
     paneSizes: asNumberRecord(settings["paneSizes"]),
     theme: asString(settings["theme"]),
   };

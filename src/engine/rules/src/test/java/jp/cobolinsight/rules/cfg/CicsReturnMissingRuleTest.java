@@ -80,4 +80,84 @@ class CicsReturnMissingRuleTest {
                 CfgFixtures.context(List.of(model), Map.of(model.sourceFile(), WITH_RETURN)));
         assertEquals(List.of(), findings, () -> "RETURN TRANSID を持てば非検出: " + findings);
     }
+
+    /** Ends the transaction with a plain RETURN: control goes back to CICS all the same. */
+    private static final String PLAIN_RETURN = String.join("\n",
+            "       IDENTIFICATION DIVISION.",
+            "       PROGRAM-ID. FIX022C.",
+            "       DATA DIVISION.",
+            "       WORKING-STORAGE SECTION.",
+            "       01  WS-MAP.",
+            "           05  WS-F PIC X(08).",
+            "       PROCEDURE DIVISION.",
+            "       0000-MAIN.",
+            "           EXEC CICS SEND MAP('MAP1') MAPSET('SET1') FROM(WS-MAP)",
+            "           END-EXEC",
+            "           EXEC CICS RETURN END-EXEC",
+            "           GOBACK.",
+            "");
+
+    /** LINKs to FIX022E, which ends in GOBACK as a called subprogram does. */
+    private static final String LINKER = String.join("\n",
+            "       IDENTIFICATION DIVISION.",
+            "       PROGRAM-ID. FIX022D.",
+            "       DATA DIVISION.",
+            "       WORKING-STORAGE SECTION.",
+            "       01  WS-COMM PIC X(20).",
+            "       PROCEDURE DIVISION.",
+            "       0000-MAIN.",
+            "           EXEC CICS LINK PROGRAM('FIX022E') COMMAREA(WS-COMM) END-EXEC",
+            "           EXEC CICS RETURN TRANSID('TX01') END-EXEC.",
+            "");
+
+    private static final String LINK_TARGET = String.join("\n",
+            "       IDENTIFICATION DIVISION.",
+            "       PROGRAM-ID. FIX022E.",
+            "       DATA DIVISION.",
+            "       LINKAGE SECTION.",
+            "       01  DFHCOMMAREA PIC X(20).",
+            "       PROCEDURE DIVISION.",
+            "       0000-MAIN.",
+            "           MOVE SPACES TO DFHCOMMAREA",
+            "           GOBACK.",
+            "");
+
+    @Test
+    void acceptsPlainReturnAsTheEndOfTheTransaction() {
+        CobolSemanticModel model = CfgFixtures.parse(tempDir, "FIX022C.cbl", PLAIN_RETURN);
+        List<Finding> findings = new CicsReturnMissingRule().evaluate(
+                CfgFixtures.context(List.of(model), Map.of(model.sourceFile(), PLAIN_RETURN)));
+        assertEquals(List.of(), findings, () -> "a plain RETURN hands control back: " + findings);
+    }
+
+    /** A CALLed subprogram may issue EXEC CICS ASSIGN and still end in GOBACK: it owns no conversation. */
+    private static final String ASSIGN_ONLY = String.join("\n",
+            "       IDENTIFICATION DIVISION.",
+            "       PROGRAM-ID. FIX022F.",
+            "       DATA DIVISION.",
+            "       WORKING-STORAGE SECTION.",
+            "       01  WS-USER PIC X(08).",
+            "       PROCEDURE DIVISION.",
+            "       0000-MAIN.",
+            "           EXEC CICS ASSIGN USERID(WS-USER) END-EXEC",
+            "           GOBACK.",
+            "");
+
+    @Test
+    void ignoresSubprogramThatOnlyUsesAssign() {
+        CobolSemanticModel model = CfgFixtures.parse(tempDir, "FIX022F.cbl", ASSIGN_ONLY);
+        List<Finding> findings = new CicsReturnMissingRule().evaluate(
+                CfgFixtures.context(List.of(model), Map.of(model.sourceFile(), ASSIGN_ONLY)));
+        assertEquals(List.of(), findings, () -> "ASSIGN alone makes no conversation: " + findings);
+    }
+
+    @Test
+    void ignoresLinkTargetThatEndsInGoback() {
+        CobolSemanticModel linker = CfgFixtures.parse(tempDir, "FIX022D.cbl", LINKER);
+        CobolSemanticModel target = CfgFixtures.parse(tempDir, "FIX022E.cbl", LINK_TARGET);
+        List<Finding> findings = new CicsReturnMissingRule().evaluate(
+                CfgFixtures.context(List.of(linker, target), Map.of(
+                        linker.sourceFile(), LINKER, target.sourceFile(), LINK_TARGET)));
+        assertEquals(List.of(), findings, () -> "a LINK target is a subprogram: " + findings);
+    }
 }

@@ -1,0 +1,248 @@
+[
+  {
+    "jobName": "CJ303",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "CJ CATLG PROC 2",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "jcllib": [
+      "CJ.PROD.PROCLIB"
+    ],
+    "members": [
+      "CP301.proc",
+      "CP302.proc"
+    ],
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PROC",
+        "target": "CP301",
+        "line": 13,
+        "parameters": {
+          "CYCLE": "250902"
+        }
+      },
+      {
+        "name": "STEP010.OUTSTEP",
+        "execKind": "PGM",
+        "target": "CCP001",
+        "line": 12,
+        "file": "CP301.proc",
+        "procStepName": "OUTSTEP",
+        "parm": "250902",
+        "parameters": {
+          "PARM": "'250902'"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "WORK1": "WRITE",
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 13,
+            "file": "CP301.proc",
+            "datasetName": "CJ.PROD.LOADLIB",
+            "dataset": {
+              "name": "CJ.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJ.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "WORK1",
+            "line": 14,
+            "file": "CP301.proc",
+            "datasetName": "CJW.D250902.CP301.WORK1",
+            "dataset": {
+              "name": "CJW.D250902.CP301.WORK1"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "CJW.D250902.CP301.WORK1",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(2,2),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=120,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 18,
+            "file": "CP301.proc",
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP010.CALLSTEP",
+        "execKind": "PROC",
+        "target": "CP302",
+        "line": 23,
+        "file": "CP301.proc",
+        "condition": "COND=(0,NE,OUTSTEP)",
+        "procStepName": "CALLSTEP",
+        "parameters": {
+          "CYCLE": "250902",
+          "COND": "(0,NE,OUTSTEP)"
+        }
+      },
+      {
+        "name": "STEP010.CALLSTEP.INSTEP",
+        "execKind": "PGM",
+        "target": "CCP002",
+        "line": 8,
+        "file": "CP302.proc",
+        "condition": "COND=(0,NE,OUTSTEP)",
+        "procStepName": "INSTEP",
+        "parm": "250902",
+        "parameters": {
+          "PARM": "'250902'",
+          "COND": "(0,NE,OUTSTEP)"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "WORKDD": "READ",
+            "OUTDD": "WRITE",
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 9,
+            "file": "CP302.proc",
+            "datasetName": "CJ.PROD.LOADLIB",
+            "dataset": {
+              "name": "CJ.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJ.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "WORKDD",
+            "line": 24,
+            "file": "CP301.proc",
+            "datasetName": "CJW.CP301.NESTDFLT",
+            "dataset": {
+              "name": "CJW.CP301.NESTDFLT"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJW.CP301.NESTDFLT",
+              "DISP": "SHR",
+              "SPACE": "(CYL,(2,2),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=120,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "OUTDD",
+            "line": 14,
+            "file": "CP302.proc",
+            "datasetName": "CJW2.D250902.CP302.OUTDD",
+            "dataset": {
+              "name": "CJW2.D250902.CP302.OUTDD"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "CJW2.D250902.CP302.OUTDD",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(2,2),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=132,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 18,
+            "file": "CP302.proc",
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PGM",
+        "target": "CCP003",
+        "line": 16,
+        "condition": "IF (STEP010.RC = 0) THEN",
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 17,
+            "datasetName": "CJ.PROD.LOADLIB",
+            "dataset": {
+              "name": "CJ.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJ.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 18,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

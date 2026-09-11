@@ -10,7 +10,9 @@ import jp.cobolinsight.rules.SourceTextIndex;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -68,6 +70,20 @@ final class DataFlowSupport {
             index(item, List.of());
         }
         resolveUsingParameters();
+    }
+
+    /**
+     * Every dataflow rule builds its own instance for the program it is evaluating, so a program
+     * with several such rules re-indexes the same data items once per rule. Memoised on the
+     * model's identity (not {@code equals}, since {@link CobolSemanticModel} is a record whose
+     * generated equality would walk the whole parsed program on every cache lookup) for the
+     * lifetime of this process, which is one CLI invocation.
+     */
+    private static final Map<CobolSemanticModel, DataFlowSupport> CACHE =
+            Collections.synchronizedMap(new IdentityHashMap<>());
+
+    static DataFlowSupport of(CobolSemanticModel model, SourceTextIndex texts) {
+        return CACHE.computeIfAbsent(model, m -> new DataFlowSupport(m, texts));
     }
 
     static String norm(String name) {

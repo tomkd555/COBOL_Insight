@@ -1,0 +1,358 @@
+[
+  {
+    "kind": "DECLARE_TABLE",
+    "file": "corpus-constructs/sql/CSD402.cpy",
+    "startLine": 9,
+    "endLine": 17,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "declaredTable": "FLDB.JUCHU",
+    "declaredColumns": [
+      {
+        "name": "JUCHU_NO",
+        "type": "CHAR(10)",
+        "nullable": false
+      },
+      {
+        "name": "KOKYAKU_NO",
+        "type": "CHAR(8)",
+        "nullable": false
+      },
+      {
+        "name": "JUCHU_YMD",
+        "type": "DATE",
+        "nullable": false
+      },
+      {
+        "name": "SHOHIN_CD",
+        "type": "CHAR(8)",
+        "nullable": false
+      },
+      {
+        "name": "SURYO",
+        "type": "DECIMAL(7, 0)",
+        "nullable": false
+      },
+      {
+        "name": "KINGAKU",
+        "type": "DECIMAL(9, 0)",
+        "nullable": false
+      },
+      {
+        "name": "TANTO_CD",
+        "type": "CHAR(5)",
+        "nullable": true
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-CNT",
+        "mangledName": "HV1"
+      }
+    ],
+    "referencedTables": [
+      "FLDB.JUCHU"
+    ],
+    "startLine": 40,
+    "endLine": 48,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "WS-CNT"
+    ],
+    "tableAccess": {
+      "FLDB.JUCHU": "R"
+    },
+    "columnRefs": [
+      {
+        "table": "FLDB.JUCHU",
+        "column": "KINGAKU"
+      },
+      {
+        "table": "FLDB.JUCHU",
+        "column": "KINGAKU"
+      },
+      {
+        "table": "FLDB.JUCHU",
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "table": "FLDB.JUCHU",
+        "column": "KOKYAKU_NO"
+      }
+    ],
+    "selectList": [
+      "COUNT(*)"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-CNT",
+        "mangledName": "HV1"
+      }
+    ],
+    "referencedTables": [
+      "FLDB.KOKYAKU",
+      "FLDB.JUCHU"
+    ],
+    "startLine": 57,
+    "endLine": 65,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "WS-CNT"
+    ],
+    "tableAccess": {
+      "FLDB.KOKYAKU": "R",
+      "FLDB.JUCHU": "R"
+    },
+    "columnRefs": [
+      {
+        "table": "FLDB.JUCHU",
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "table": "FLDB.KOKYAKU",
+        "column": "KOKYAKU_NO"
+      }
+    ],
+    "selectList": [
+      "COUNT(*)"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-CNT",
+        "mangledName": "HV1"
+      }
+    ],
+    "referencedTables": [
+      "FLDB.KOKYAKU",
+      "FLDB.JUCHU"
+    ],
+    "startLine": 74,
+    "endLine": 82,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "WS-CNT"
+    ],
+    "tableAccess": {
+      "FLDB.KOKYAKU": "R",
+      "FLDB.JUCHU": "R"
+    },
+    "columnRefs": [
+      {
+        "table": "FLDB.JUCHU",
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "table": "FLDB.KOKYAKU",
+        "column": "KOKYAKU_NO"
+      }
+    ],
+    "selectList": [
+      "COUNT(*)"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-CNT",
+        "mangledName": "HV1"
+      }
+    ],
+    "referencedTables": [
+      "FLDB.SHOHIN",
+      "FLDB.JUCHU"
+    ],
+    "startLine": 91,
+    "endLine": 98,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "WS-CNT"
+    ],
+    "tableAccess": {
+      "FLDB.SHOHIN": "R",
+      "FLDB.JUCHU": "R"
+    },
+    "columnRefs": [
+      {
+        "table": "FLDB.SHOHIN",
+        "column": "SHOHIN_CD"
+      },
+      {
+        "table": "FLDB.JUCHU",
+        "column": "SHOHIN_CD"
+      }
+    ],
+    "selectList": [
+      "COUNT(*)"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-CNT",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-SHOHIN-CD-IN",
+        "mangledName": "HV2"
+      }
+    ],
+    "referencedTables": [
+      "FLDB.JUCHU"
+    ],
+    "startLine": 107,
+    "endLine": 115,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "WS-CNT"
+    ],
+    "tableAccess": {
+      "FLDB.JUCHU": "R"
+    },
+    "columnRefs": [
+      {
+        "table": "FLDB.JUCHU",
+        "column": "KINGAKU"
+      },
+      {
+        "table": "FLDB.JUCHU",
+        "column": "KINGAKU"
+      },
+      {
+        "table": "FLDB.JUCHU",
+        "column": "SHOHIN_CD"
+      }
+    ],
+    "selectList": [
+      "COUNT(*)"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-CNT",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-SHOHIN-CD-IN2",
+        "mangledName": "HV2"
+      }
+    ],
+    "referencedTables": [
+      "FLDB.JUCHU"
+    ],
+    "startLine": 124,
+    "endLine": 132,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "WS-CNT"
+    ],
+    "tableAccess": {
+      "FLDB.JUCHU": "R"
+    },
+    "columnRefs": [
+      {
+        "table": "FLDB.JUCHU",
+        "column": "KINGAKU"
+      },
+      {
+        "table": "FLDB.JUCHU",
+        "column": "KINGAKU"
+      },
+      {
+        "table": "FLDB.JUCHU",
+        "column": "SHOHIN_CD"
+      }
+    ],
+    "selectList": [
+      "COUNT(*)"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

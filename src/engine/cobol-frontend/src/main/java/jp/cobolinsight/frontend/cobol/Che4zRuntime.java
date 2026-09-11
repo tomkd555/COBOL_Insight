@@ -11,6 +11,7 @@ import org.eclipse.lsp.cobol.common.AnalysisResult;
 import org.eclipse.lsp.cobol.common.CleanerPreprocessor;
 import org.eclipse.lsp.cobol.common.benchmark.BenchmarkService;
 import org.eclipse.lsp.cobol.common.copybook.CopybookProcessingMode;
+import org.eclipse.lsp.cobol.common.copybook.CopybookService;
 import org.eclipse.lsp.cobol.common.dialects.CobolLanguageId;
 import org.eclipse.lsp.cobol.common.message.MessageService;
 import org.eclipse.lsp.cobol.common.pipeline.Pipeline;
@@ -52,7 +53,10 @@ final class Che4zRuntime {
     private final Injector injector;
     private final CobolLanguageEngine engine;
     private final DocumentModelService documentService;
+    private final CopybookService copybooks;
     private final SearchPathClient client;
+    /** The search paths the last analysis ran under; null before the first one. */
+    private List<Path> lastSearchPaths;
 
     private Che4zRuntime() {
         client = new SearchPathClient();
@@ -64,6 +68,7 @@ final class Che4zRuntime {
         }));
         engine = injector.getInstance(CobolLanguageEngine.class);
         documentService = injector.getInstance(DocumentModelService.class);
+        copybooks = injector.getInstance(CopybookService.class);
     }
 
     static synchronized Che4zRuntime instance() {
@@ -74,6 +79,18 @@ final class Che4zRuntime {
     }
 
     synchronized Analysis analyze(String uri, String text, List<Path> copybookSearchPaths) {
+        // Che4z caches a resolved copybook, and the failure to resolve one, under the copybook's
+        // name and the program's URI, never under the search path it looked in, and holds it for
+        // hours. Without this, one analysis of a program whose search path cannot reach its
+        // copybooks answers every later analysis of that same program in this process, and the
+        // program loses its whole semantic model. Only a change of search path can make a cached
+        // entry answer for a different set of copybooks, so that is when the cache is dropped: a
+        // whole folder analysed under one search path — every run of this tool — keeps it and reads
+        // each copybook once. The implicit copybooks the engine ships are kept either way.
+        if (!copybookSearchPaths.equals(lastSearchPaths)) {
+            copybooks.invalidateCache(true);
+            lastSearchPaths = List.copyOf(copybookSearchPaths);
+        }
         client.setSearchPaths(copybookSearchPaths);
         AnalysisConfig config = AnalysisConfig.defaultConfig(CopybookProcessingMode.ENABLED);
         documentService.openDocument(uri, text, "COBOL");

@@ -1,0 +1,160 @@
+[
+  {
+    "kind": "DECLARE_CURSOR",
+    "hostVariables": [
+      {
+        "originalName": "WS-HANBAITEN-CD",
+        "mangledName": "HV1"
+      }
+    ],
+    "referencedTables": [
+      "FLDB.KEIYAKU"
+    ],
+    "startLine": 42,
+    "endLine": 47,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-TAISHO",
+        "forReadOnly": false,
+        "forFetchOnly": false,
+        "forUpdate": true,
+        "forUpdateColumns": [
+          "SHORI_KBN"
+        ]
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-TAISHO",
+    "tableAccess": {
+      "FLDB.KEIYAKU": "RU"
+    },
+    "columnRefs": [
+      {
+        "column": "KEIYAKU_NO"
+      },
+      {
+        "column": "HANBAITEN_CD"
+      }
+    ],
+    "selectList": [
+      "KEIYAKU_NO"
+    ],
+    "withHold": false,
+    "forUpdate": true,
+    "forUpdateColumns": [
+      "SHORI_KBN"
+    ],
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 63,
+    "endLine": 63,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-TAISHO",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "WS-KEIYAKU-NO",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 71,
+    "endLine": 73,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-TAISHO",
+    "intoTargets": [
+      "WS-KEIYAKU-NO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "UPDATE",
+    "hostVariables": [
+      {
+        "originalName": "WS-SHORI-KBN",
+        "mangledName": "HV1"
+      }
+    ],
+    "referencedTables": [
+      "FLDB.KEIYAKU"
+    ],
+    "startLine": 85,
+    "endLine": 89,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-TAISHO",
+    "positionedCursor": "CSR-TAISHO",
+    "tableAccess": {
+      "FLDB.KEIYAKU": "U"
+    },
+    "columnRefs": [
+      {
+        "column": "SHORI_KBN"
+      }
+    ],
+    "setPairs": [
+      {
+        "column": "SHORI_KBN",
+        "value": ":WS-SHORI-KBN"
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 98,
+    "endLine": 98,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-TAISHO",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

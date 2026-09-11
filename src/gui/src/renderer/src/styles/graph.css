@@ -21,6 +21,12 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  gap: var(--ci-space-4);
+}
+
+.ci-graph__group {
+  display: flex;
+  align-items: center;
   gap: var(--ci-space-2);
 }
 
@@ -101,6 +107,11 @@
   min-width: 0;
   padding: 0 var(--ci-space-2);
   background: var(--color-muted);
+}
+
+/* With nothing selected the pane holds only the legend, so it need not claim as much width. */
+.ci-graph__detail--unselected {
+  flex: 0 1 14rem;
 }
 
 .ci-graph__detail-title {
@@ -213,7 +224,7 @@
 
 .ci-trace {
   display: flex;
-  flex: 0 1 18rem;
+  flex: 0 1 16rem;
   flex-direction: column;
   min-height: 0;
   min-width: 0;

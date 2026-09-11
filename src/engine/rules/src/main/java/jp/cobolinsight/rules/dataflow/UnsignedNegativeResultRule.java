@@ -57,9 +57,9 @@ public final class UnsignedNegativeResultRule implements Rule {
                                 COMPUTE WS-DIFF = WS-A - WS-B.
                             """)
                     .severity(Severity.MEDIUM)
-                    .commands(Command.LINT, Command.REPORT)
+                    .commands(Command.LINT)
                     .targets(AssetKind.COBOL)
-                    .needs(Needs.SEMANTIC, Needs.CFG, Needs.DATAFLOW, Needs.SOURCE_TEXT)
+                    .needs(Needs.CFG, Needs.DATAFLOW, Needs.SOURCE_TEXT)
                     .build();
 
     @Override
@@ -80,7 +80,7 @@ public final class UnsignedNegativeResultRule implements Rule {
             ProgramDataFlow df = facts.of(model).orElse(null);
             ControlFlowGraph cfg = cfgs.of(model).orElse(null);
             if (df != null && cfg != null) {
-                evaluate(model, cfg, df, new DataFlowSupport(model, texts), findings);
+                evaluate(model, cfg, df, DataFlowSupport.of(model, texts), findings);
             }
         }
         return findings;

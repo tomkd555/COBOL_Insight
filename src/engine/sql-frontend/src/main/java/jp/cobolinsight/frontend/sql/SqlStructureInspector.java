@@ -5,6 +5,7 @@ import jp.cobolinsight.core.sql.SqlStructureSignals;
 import jp.cobolinsight.frontend.sql.gen.DB2zSQLParser.BasicPredicateContext;
 import jp.cobolinsight.frontend.sql.gen.DB2zSQLParser.CastSpecificationContext;
 import jp.cobolinsight.frontend.sql.gen.DB2zSQLParser.ColumnNameContext;
+import jp.cobolinsight.frontend.sql.gen.DB2zSQLParser.CommonTableExpressionContext;
 import jp.cobolinsight.frontend.sql.gen.DB2zSQLParser.DeclareCursorStatementContext;
 import jp.cobolinsight.frontend.sql.gen.DB2zSQLParser.ExpressionContext;
 import jp.cobolinsight.frontend.sql.gen.DB2zSQLParser.FetchClauseContext;
@@ -16,7 +17,9 @@ import jp.cobolinsight.frontend.sql.gen.DB2zSQLParser.OptimizeClauseContext;
 import jp.cobolinsight.frontend.sql.gen.DB2zSQLParser.PredicateContext;
 import jp.cobolinsight.frontend.sql.gen.DB2zSQLParser.ReadOnlyClauseContext;
 import jp.cobolinsight.frontend.sql.gen.DB2zSQLParser.SelectClauseContext;
+import jp.cobolinsight.frontend.sql.gen.DB2zSQLParser.SelectIntoStatementContext;
 import jp.cobolinsight.frontend.sql.gen.DB2zSQLParser.SqlStatementContext;
+import jp.cobolinsight.frontend.sql.gen.DB2zSQLParser.SubSelectContext;
 import jp.cobolinsight.frontend.sql.gen.DB2zSQLParser.UpdateClauseContext;
 import jp.cobolinsight.frontend.sql.gen.DB2zSQLParser.WhereClauseContext;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -26,7 +29,6 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.regex.Pattern;
 
 /**
  * Reads the structure signals for the SQL advice rules (S001 to S006) off the Db2z parse tree.
@@ -34,9 +36,6 @@ import java.util.regex.Pattern;
  * names by {@link MangledSql#restore}.
  */
 final class SqlStructureInspector {
-
-    private static final Pattern WITH_UR =
-            Pattern.compile("\\bWITH\\s+UR\\b", Pattern.CASE_INSENSITIVE);
 
     private SqlStructureInspector() {
     }
@@ -65,8 +64,11 @@ final class SqlStructureInspector {
                 hasFetchFirst(statement), hasOptimizeFor(statement), hasWithUr(statement));
     }
 
-    /** Cursor name and the FOR READ ONLY / FOR FETCH ONLY / FOR UPDATE OF clauses (S004). */
-    static CursorSignals cursorSignals(DeclareCursorStatementContext declare) {
+    /**
+     * Cursor name and the FOR READ ONLY / FOR FETCH ONLY / FOR UPDATE OF clauses (S004). The
+     * names come back restored, so the cursor a rule reads here is the one the model names.
+     */
+    static CursorSignals cursorSignals(DeclareCursorStatementContext declare, MangledSql mangled) {
         boolean forReadOnly = false;
         boolean forFetchOnly = false;
         for (ReadOnlyClauseContext readOnly : descendants(declare, ReadOnlyClauseContext.class)) {
@@ -77,21 +79,50 @@ final class SqlStructureInspector {
         List<String> columns = new ArrayList<>();
         for (UpdateClauseContext update : updates) {
             for (ColumnNameContext column : update.columnName()) {
-                columns.add(column.getText());
+                columns.add(mangled.restore(column.getText()));
             }
         }
-        return new CursorSignals(declare.cursorName().getText(), forReadOnly, forFetchOnly,
-                !updates.isEmpty(), columns);
+        return new CursorSignals(mangled.restore(declare.cursorName().getText()), forReadOnly,
+                forFetchOnly, !updates.isEmpty(), columns);
     }
 
-    /** SELECT * in a select list (S001). A qualified {@code T.*} is not counted, as before. */
+    /**
+     * SELECT * in the statement's own select list (S001). A qualified {@code T.*} is not counted,
+     * as before, and neither is the star of a subquery: the {@code EXISTS (SELECT * FROM …)} idiom
+     * transfers no column at all. Every branch of a set operation is the statement's own, because
+     * a UNION whose second branch alone writes a star does fetch every column of that table.
+     */
     private static boolean hasSelectStar(SqlStatementContext statement) {
-        for (SelectClauseContext select : descendants(statement, SelectClauseContext.class)) {
+        List<SelectClauseContext> own = new ArrayList<>();
+        collectOwnSelectClauses(statement, own);
+        for (SelectClauseContext select : own) {
             if (select.SPLAT() != null) {
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * The select clause of each query block the statement is itself. A block's own clause is
+     * taken and the walk stops there, so nothing a predicate or a table reference nests inside it
+     * is read; a common table expression defines a name rather than being the statement, so it is
+     * left out the way {@code SqlFactExtractor} leaves it out of the facts.
+     */
+    private static void collectOwnSelectClauses(ParseTree node, List<SelectClauseContext> out) {
+        if (node instanceof CommonTableExpressionContext) {
+            return;
+        }
+        if (node instanceof SubSelectContext || node instanceof SelectIntoStatementContext) {
+            SelectClauseContext select = child((ParserRuleContext) node, SelectClauseContext.class);
+            if (select != null) {
+                out.add(select);
+            }
+            return;
+        }
+        for (int i = 0; i < node.getChildCount(); i++) {
+            collectOwnSelectClauses(node.getChild(i), out);
+        }
     }
 
     /** FETCH FIRST n ROWS ONLY (S005). The LIMIT alternative of the same rule does not count. */
@@ -110,12 +141,13 @@ final class SqlStructureInspector {
     }
 
     /**
-     * WITH UR, reported as a hint only. Read from the text, not from the tree: right after
-     * "FROM table" the grammar also fits "WITH UR" as a correlation name plus a correlation
+     * WITH UR, reported as a hint only. Read through the same reader as the isolation fact, so
+     * the two cannot drift apart; that reader works on the text rather than the tree because right
+     * after "FROM table" the grammar also fits "WITH UR" as a correlation name plus a correlation
      * clause, and then no isolationClause node exists to find.
      */
     private static boolean hasWithUr(SqlStatementContext statement) {
-        return WITH_UR.matcher(SqlTextScanner.maskStringLiterals(sourceText(statement))).find();
+        return "UR".equals(SqlFactExtractor.isolationOf(sourceText(statement)));
     }
 
     /**
@@ -202,7 +234,7 @@ final class SqlStructureInspector {
     }
 
     /** The source text the context spans, layout included (unlike {@code getText}). */
-    private static String sourceText(ParserRuleContext context) {
+    static String sourceText(ParserRuleContext context) {
         Interval span = new Interval(context.getStart().getStartIndex(),
                 context.getStop().getStopIndex());
         return context.getStart().getInputStream().getText(span);

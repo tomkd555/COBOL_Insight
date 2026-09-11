@@ -50,7 +50,7 @@ describe("runEngine", () => {
     );
     expect(spawn).toHaveBeenCalledWith(
       "java",
-      ["-classpath", "lib/*", "Main", "rules", "--json"],
+      ["-classpath", "lib/*", "Main", "rules"],
       expect.anything(),
     );
   });

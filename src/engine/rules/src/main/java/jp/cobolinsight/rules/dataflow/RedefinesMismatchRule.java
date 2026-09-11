@@ -47,9 +47,9 @@ public final class RedefinesMismatchRule implements Rule {
                                 05  WS-PART2 PIC X(8).
                             """)
                     .severity(Severity.HIGH)
-                    .commands(Command.LINT, Command.REPORT)
+                    .commands(Command.LINT)
                     .targets(AssetKind.COBOL)
-                    .needs(Needs.SEMANTIC, Needs.SOURCE_TEXT)
+                    .needs(Needs.SOURCE_TEXT)
                     .build();
 
     @Override
@@ -65,7 +65,7 @@ public final class RedefinesMismatchRule implements Rule {
         }
         List<Finding> findings = new ArrayList<>();
         for (CobolSemanticModel model : context.cobolPrograms()) {
-            DataFlowSupport support = new DataFlowSupport(model, texts);
+            DataFlowSupport support = DataFlowSupport.of(model, texts);
             List<DataItem> all = new ArrayList<>();
             for (DataItem item : model.dataItems()) {
                 collect(item, all);
@@ -85,7 +85,8 @@ public final class RedefinesMismatchRule implements Rule {
                             redefiner.name() + "（" + redefLen + "バイト）が元の項目 "
                                     + original.name() + "（" + origLen
                                     + "バイト）を超えています。隣接する領域を上書きします。",
-                            new SourcePosition(model.sourceFile(), redefiner.position().line(), 1,
+                            new SourcePosition(redefiner.position().file(),
+                                    redefiner.position().line(), 1,
                                     SourcePosition.UNKNOWN_BYTE_OFFSET)));
                 }
             }

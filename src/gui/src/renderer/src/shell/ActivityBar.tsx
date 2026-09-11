@@ -1,8 +1,12 @@
 import { useRef, type KeyboardEvent, type ReactElement } from "react";
 import { text } from "../i18n/text";
+import { activeCobolPath } from "../state/commands";
+import { useProject } from "../state/projectStore";
 import {
   graphTab,
   reportTab,
+  settingsTab,
+  transpileTab,
   useWorkbench,
   useWorkbenchDispatch,
   type SideView,
@@ -29,6 +33,12 @@ const EDITORS: readonly { id: string; icon: string; label: string; tab: () => Wo
     label: text.report.title,
     tab: () => reportTab(text.report.title),
   },
+  {
+    id: "settings",
+    icon: "codicon-gear",
+    label: text.settings.title,
+    tab: () => settingsTab(text.settings.title),
+  },
 ];
 
 /**
@@ -37,9 +47,11 @@ const EDITORS: readonly { id: string; icon: string; label: string; tab: () => Wo
  * not cost four presses of Tab.
  */
 export function ActivityBar(): ReactElement {
+  const project = useProject();
   const workbench = useWorkbench();
   const dispatch = useWorkbenchDispatch();
   const listRef = useRef<HTMLDivElement | null>(null);
+  const cobolPath = activeCobolPath(project, workbench);
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     const step = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
@@ -98,6 +110,21 @@ export function ActivityBar(): ReactElement {
             <span className={`codicon ${entry.icon}`} aria-hidden="true" />
           </button>
         ))}
+        <button
+          type="button"
+          aria-label={text.transpileView.tab}
+          disabled={cobolPath === null}
+          title={text.transpileView.tab}
+          className="ci-activitybar__item"
+          onClick={() => {
+            if (cobolPath !== null) {
+              dispatch({ type: "OPEN_TAB", tab: transpileTab(cobolPath) });
+            }
+          }}
+          data-testid="activity-transpile"
+        >
+          <span className="codicon codicon-file-code" aria-hidden="true" />
+        </button>
       </div>
     </div>
   );

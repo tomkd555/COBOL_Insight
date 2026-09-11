@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type KeyboardEvent, type ReactElement } from "react";
 import { text } from "../../i18n/text";
 import { artifactItems, useProject } from "../../state/projectStore";
-import { activeTabOf, useWorkbench } from "../../state/workbenchStore";
+import { activeTabOf, useWorkbench, useWorkbenchDispatch } from "../../state/workbenchStore";
 import {
   ASSET_TYPE_FILTERS,
   buildTreeRows,
@@ -33,6 +33,8 @@ function badgeIcon(type: AssetTypeCode): string {
       return "list-ordered";
     case "bms":
       return "layout";
+    case "sql":
+      return "database";
     case "other":
       return "file";
   }
@@ -48,12 +50,18 @@ function badgeIcon(type: AssetTypeCode): string {
 export function Explorer({ onOpenAsset }: ExplorerProps): ReactElement {
   const project = useProject();
   const workbench = useWorkbench();
+  const workbenchDispatch = useWorkbenchDispatch();
   const activeTabPath = activeTabOf(workbench)?.path ?? null;
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<AssetTypeFilter>("all");
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
-  const [focusedPath, setFocusedPath] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  // The focused row is the selection: it is what the run command analyses, so it is held in the
+  // workbench store rather than here, where the title bar and the palette could not reach it.
+  const focusedPath = workbench.selection?.path ?? null;
+  const select = (row: TreeRow): void => {
+    workbenchDispatch({ type: "SELECT", selection: { path: row.path, kind: row.kind } });
+  };
   const treeRef = useRef<HTMLDivElement | null>(null);
 
   const findingCounts = useMemo(
@@ -94,7 +102,7 @@ export function Explorer({ onOpenAsset }: ExplorerProps): ReactElement {
     const move = (to: number): void => {
       event.preventDefault();
       const target = rows[Math.min(Math.max(to, 0), rows.length - 1)];
-      setFocusedPath(target.path);
+      select(target);
       queueMicrotask(() =>
         treeRef.current
           ?.querySelector<HTMLElement>(`[data-testid="tree-${CSS.escape(target.path)}"]`)
@@ -174,17 +182,21 @@ export function Explorer({ onOpenAsset }: ExplorerProps): ReactElement {
             role="treeitem"
             aria-level={row.depth + 1}
             aria-expanded={row.kind === "folder" ? row.expanded : undefined}
-            aria-selected={(focusedPath ?? activeTabPath) === row.path}
+            // The selected row is what the run command analyses, so it is the row that is marked.
+            // Until anything is selected the open asset is, as it was before the tree had one.
+            aria-selected={
+              focusedPath === null ? activeTabPath === row.path : focusedPath === row.path
+            }
             tabIndex={row.path === tabStop ? 0 : -1}
             className={`ci-tree__row ci-tree__row--${row.kind}`}
             // One inset down the whole column: a root row starts where the toolbar and the filters
             // above it start (12px, styles/lists.css), and each level indents by 12 from there.
             style={{ paddingInlineStart: `${row.depth * 12 + 12}px` }}
             onClick={() => {
-              setFocusedPath(row.path);
+              select(row);
               activate(row);
             }}
-            onFocus={() => setFocusedPath(row.path)}
+            onFocus={() => select(row)}
             data-testid={`tree-${row.path}`}
           >
             <span
@@ -211,7 +223,7 @@ export function Explorer({ onOpenAsset }: ExplorerProps): ReactElement {
             ) : null}
             {row.item !== null && row.item.codepage === null ? (
               <span className="ci-badge ci-badge--warn" title={text.explorer.codepageUnknown}>
-                <span className="codicon codicon-warning" aria-hidden="true" />
+                <span className="codicon codicon-question" aria-hidden="true" />
                 <span className="ci-visually-hidden">{text.explorer.codepageUnknown}</span>
               </span>
             ) : null}
@@ -230,7 +242,11 @@ export function Explorer({ onOpenAsset }: ExplorerProps): ReactElement {
   })();
 
   if (project.inputDir === null) {
-    return <div className="ci-explorer" />;
+    return (
+      <div className="ci-explorer">
+        <p className="ci-explorer__state">{text.empty.noFolder}</p>
+      </div>
+    );
   }
 
   return (

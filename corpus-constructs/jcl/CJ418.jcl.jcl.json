@@ -1,0 +1,128 @@
+[
+  {
+    "jobName": "CJ418",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "ADRDSSU DUMP RESTORE",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "ADRDSSU",
+        "line": 8,
+        "utility": {
+          "ddRoles": {
+            "SYSPRINT": "WRITE",
+            "TAPE": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSPRINT",
+            "line": 9,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "TAPE",
+            "line": 10,
+            "datasetName": "CJT.D260910.DSSU.DUMP",
+            "dataset": {
+              "name": "CJT.D260910.DSSU.DUMP"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.DSSU.DUMP",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "UNIT": "SYSDA",
+              "SPACE": "(CYL,(20,10))",
+              "DCB": "(RECFM=VBS,LRECL=32760,BLKSIZE=32760)"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 14,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  DUMP DATASET(INCLUDE(CJT.D260910.**)) -",
+              "       OUTDDNAME(TAPE)"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PGM",
+        "target": "ADRDSSU",
+        "line": 19,
+        "condition": "COND=(4,LT,STEP010)",
+        "parameters": {
+          "COND": "(4,LT,STEP010)"
+        },
+        "utility": {
+          "ddRoles": {
+            "SYSPRINT": "WRITE",
+            "TAPE": "READ",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSPRINT",
+            "line": 20,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "TAPE",
+            "line": 21,
+            "datasetName": "CJT.D260910.DSSU.DUMP",
+            "dataset": {
+              "name": "CJT.D260910.DSSU.DUMP"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.D260910.DSSU.DUMP",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 22,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  RESTORE DATASET(INCLUDE(CJT.D260910.**)) -",
+              "          INDDNAME(TAPE) -",
+              "          RENAMEU(CJT.D260910.**,CJT.D260911.**)"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

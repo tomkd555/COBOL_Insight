@@ -6,6 +6,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -19,8 +21,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The report acceptance regression test for the whole of samples/. Scans samples to build the
- * SQLite database, runs report against that DB and the asset folder, and checks that the
- * consolidated report includes the following: the 7 defects from data-flow analysis
+ * SQLite database, lints samples to build its two SARIF files, runs report against that DB and
+ * those SARIF files, and checks that the consolidated report includes the following: the 7
+ * defects from data-flow analysis
  * (expected-results.md No.1/2/3/5/9/13/14 = R001/R003/R004/R005) as lint findings; SQL advice
  * S004 (SYK006:145); a call-graph summary (CALL edges between programs); both an HTML and a text
  * rendering; and a consolidated exit code of 2 (because samples contains ERROR-level findings).
@@ -35,12 +38,19 @@ class ReportSamplesAcceptanceTest {
     private static ReportRunner.Result result;
 
     @BeforeAll
-    static void scanThenReport() {
+    static void scanThenLintThenReport() throws IOException {
         Path db = tempDir.resolve("report.db");
         Pipelines.scan(SAMPLES, db,
                 List.of(SAMPLES.resolve("copybook")), Map.of()).summary();
-        result = ReportRunner.run(new ReportRunner.Options(SAMPLES, db,
+
+        LintRunner.Result lint = LintRunner.run(new LintRunner.Options(SAMPLES,
                 List.of(SAMPLES.resolve("copybook")), Map.of()));
+        Path sarif = tempDir.resolve("report.sarif");
+        Path sqlSarif = tempDir.resolve("report-sql.sarif");
+        Files.writeString(sarif, lint.sarifJson());
+        Files.writeString(sqlSarif, lint.sqlSarifJson());
+
+        result = ReportRunner.run(new ReportRunner.Options(db, sarif, sqlSarif));
     }
 
     /** Converts findings into a set of strings in the form "ruleId@file:line". */
@@ -68,6 +78,15 @@ class ReportSamplesAcceptanceTest {
         Set<String> advice = keyed(result.sqlAdviceFindings());
         assertEquals(Set.of("S004@cobol/SYK006.cbl:145"), advice,
                 () -> "SQL指摘は S004(SYK006:145)の1件であること: " + advice);
+    }
+
+    /** S004 is the only SQL advice on samples. Also confirms withdrawn S005/S006 have not come back. */
+    @Test
+    void sqlAdviceHasNoWithdrawnS005OrS006() {
+        Set<String> ruleIds = result.sqlAdviceFindings().stream().map(Finding::ruleId)
+                .collect(Collectors.toCollection(TreeSet::new));
+        assertEquals(Set.of("S004"), ruleIds,
+                () -> "samples の SQL指摘は S004 のみであること: " + ruleIds);
     }
 
     @Test

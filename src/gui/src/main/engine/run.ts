@@ -34,9 +34,6 @@ export interface RunEngineDeps {
   onStart?: (child: EngineProcess) => void;
 }
 
-/** Progress callback signature. Nothing calls it yet; it reserves the shape for streamed progress. */
-export type EngineProgress = (line: string) => void;
-
 /**
  * Concatenates every chunk before decoding once as UTF-8. Decoding chunk by chunk would turn any
  * multi-byte character split across a chunk boundary into a replacement character. The engine writes
@@ -63,9 +60,7 @@ export function runEngine(
   deps: RunEngineDeps,
   launch: EngineLaunch,
   invocation: EngineInvocation,
-  onProgress?: EngineProgress,
 ): Promise<EngineResult> {
-  void onProgress;
   const args = [...launch.prefixArgs, ...buildEngineArgs(invocation)];
   return new Promise<EngineResult>((resolve, reject) => {
     const child = deps.spawn(launch.command, args, { env: deps.env, cwd: deps.cwd });

@@ -1,0 +1,36 @@
+[
+  {
+    "jobName": "CJ515",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "DBCS COMMENT AND PARM",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 9,
+        "parm": "締め",
+        "parameters": {
+          "PARM": "'締め'"
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSPRINT",
+            "line": 10,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -10,10 +10,14 @@ import jp.cobolinsight.core.callgraph.NodeKind;
 import jp.cobolinsight.core.callgraph.Resolution;
 import jp.cobolinsight.core.finding.Finding;
 import jp.cobolinsight.core.finding.FindingLevel;
+import jp.cobolinsight.core.jcl.JclDataset;
 import jp.cobolinsight.core.jcl.JclDdStatement;
+import jp.cobolinsight.core.jcl.JclDisposition;
 import jp.cobolinsight.core.jcl.JclExecKind;
 import jp.cobolinsight.core.jcl.JclJobModel;
 import jp.cobolinsight.core.jcl.JclStep;
+import jp.cobolinsight.core.jcl.JclUtilityFacts;
+import jp.cobolinsight.core.jcl.JclUtilityFacts.DatasetAccess;
 import jp.cobolinsight.core.semantic.CallKind;
 import jp.cobolinsight.core.semantic.CallRelation;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
@@ -22,11 +26,16 @@ import jp.cobolinsight.core.semantic.ControlKind;
 import jp.cobolinsight.core.semantic.DataItem;
 import jp.cobolinsight.core.semantic.EmbeddedBlock;
 import jp.cobolinsight.core.semantic.EmbeddedBlockKind;
+import jp.cobolinsight.core.semantic.FileAccess;
+import jp.cobolinsight.core.semantic.FileDefinition;
 import jp.cobolinsight.core.semantic.Procedure;
 import jp.cobolinsight.core.semantic.ProcedureKind;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.semantic.StatementBlock;
+import jp.cobolinsight.core.sql.SqlAnalysis;
+import jp.cobolinsight.core.sql.SqlDeclaredColumn;
+import jp.cobolinsight.core.sql.SqlRoutineDefinition;
 import jp.cobolinsight.core.sql.SqlStatementKind;
 import jp.cobolinsight.core.sql.SqlStatementModel;
 import jp.cobolinsight.core.sql.SqlStructureSignals;
@@ -38,8 +47,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CallGraphLinkerTest {
@@ -73,8 +84,48 @@ class CallGraphLinkerTest {
     }
 
     private static JclDdStatement dd(String ddName, String dsn) {
-        return new JclDdStatement(ddName, Optional.ofNullable(dsn),
+        return new JclDdStatement(ddName, Optional.ofNullable(dsn), Optional.empty(),
                 SourcePosition.fileStart("JOB1.jcl"));
+    }
+
+    /** A DD whose DSN carries a relative generation, and whose DISP says how the step uses it. */
+    private static JclDdStatement gdgDd(String ddName, String name, int generation, String disp) {
+        return new JclDdStatement(ddName, Optional.of(name + "(+" + generation + ")"),
+                Optional.of(new JclDataset(name, Optional.empty(), Optional.of(generation), false,
+                        Optional.empty())),
+                Optional.of(disp),
+                Optional.of(new JclDisposition(disp, Optional.empty(), Optional.empty(), disp)),
+                Optional.empty(), false, Map.of(), Map.of(), List.of(), 0,
+                SourcePosition.fileStart("JOB1.jcl"));
+    }
+
+    private static CobolSemanticModel programWithFiles(String programId,
+            List<FileDefinition> files) {
+        String file = programId + ".cbl";
+        Procedure main = new Procedure("0000-MAIN", ProcedureKind.PARAGRAPH, Optional.empty(),
+                List.of(), range(file, 10));
+        return new CobolSemanticModel(programId, file, List.of(), List.of(main), List.of(),
+                List.of(), List.of(), List.of(), List.of(), files);
+    }
+
+    private static FileDefinition file(String fileName, String ddName, FileAccess... accesses) {
+        return new FileDefinition(fileName, Optional.of(ddName), Optional.of("SEQUENTIAL"),
+                Set.of(accesses), SourcePosition.fileStart(fileName + ".cbl"));
+    }
+
+    private static JclStep stepWithFacts(String stepName, String target,
+            List<JclDdStatement> dds, JclUtilityFacts facts) {
+        return new JclStep(stepName, JclExecKind.PGM, target, Optional.empty(), dds, Map.of(),
+                Optional.empty(), Optional.empty(), Optional.of(facts),
+                SourcePosition.fileStart("JOB1.jcl"));
+    }
+
+    /** One embedded SQL statement with the facts the caller sets on its builder. */
+    private static SqlStatementModel sql(SqlStatementKind kind, String text, int line,
+            UnaryOperator<SqlStatementModel.Builder> facts) {
+        return facts.apply(new SqlStatementModel.Builder().kind(kind))
+                .build(text, text, List.of(), range("SQLPGM.cbl", line),
+                        SqlStructureSignals.empty(), SqlAnalysis.FULL, Optional.empty());
     }
 
     private static CallGraphNode node(LinkResult result, String id) {
@@ -151,6 +202,27 @@ class CallGraphLinkerTest {
         CallGraphNode node = node(result, "program:PLIPGM1");
         assertEquals(NodeKind.PROGRAM, node.kind());
         assertEquals("true", node.attributes().get("external"), "ソース無しの外部プログラムと分かること");
+    }
+
+    /**
+     * Under {@code lint --scope} part of the COBOL is never read, so an unresolved callee may
+     * well be in the folder. Every one of them says so, so that a rule about unanalysed callees
+     * leaves them alone; a whole-folder run marks none of them.
+     */
+    @Test
+    void marksEveryUnresolvedTargetOfAScopedRunAsOutsideTheScope() {
+        JclJobModel jobModel = job("JOB1", List.of(pgmStep("JOB1", "STEP010", "PGMOUT", List.of())));
+        LinkResult scoped = CallGraphLinker.link(new LinkerInput(List.of(), List.of(jobModel),
+                List.of(), Map.of(), Map.of(), Map.of(), List.of(), true));
+        LinkResult wholeFolder = CallGraphLinker.link(new LinkerInput(List.of(), List.of(jobModel),
+                List.of(), Map.of(), Map.of(), Map.of(), List.of(), false));
+
+        CallGraphNode outside = node(scoped, "program:PGMOUT");
+        assertEquals("true", outside.attributes().get("external"));
+        assertEquals("true", outside.attributes().get("outsideScope"),
+                "範囲を絞った走行では範囲外かもしれないと分かること");
+        assertNull(node(wholeFolder, "program:PGMOUT").attributes().get("outsideScope"),
+                "資産フォルダ全体の走行では原始プログラムが無いと分かること");
     }
 
     @Test
@@ -480,7 +552,7 @@ class CallGraphLinkerTest {
                 List.of(), Map.of(), Map.of()));
 
         assertTrue(hasEdge(result, "program:PGM1", "program:PGM2",
-                EdgeKind.TRANSACTION_TRANSITION, Resolution.CONSTANT), "LINK遷移辺");
+                EdgeKind.CALL, Resolution.CONSTANT), "LINK は呼出辺（呼出元へ戻る）");
         assertTrue(hasEdge(result, "program:PGM1", "transaction:SYK9",
                 EdgeKind.TRANSACTION_TRANSITION, Resolution.CONSTANT), "START TRANSID遷移辺");
         // A transaction absent from the definition table remains a leaf with no resolving edge to a program
@@ -505,6 +577,401 @@ class CallGraphLinkerTest {
         assertEquals(NodeKind.DB2_TABLE, node(result, "db2:SYKDB.ZAIKOM").kind());
         assertTrue(hasEdge(result, "program:PGMD", "db2:SYKDB.ZAIKOM", EdgeKind.REFERENCE,
                 Resolution.CONSTANT));
+    }
+
+    // ---- how a step uses a DD, and what its control cards say ----
+
+    /**
+     * The FILE-CONTROL of the program the step runs decides the access wherever the DD name matches
+     * one of its ASSIGN clauses; the DISP the frontend already read stands where it does not.
+     */
+    @Test
+    void datasetEdgesCarryTheAccessTheProgramAndTheDispState() {
+        CobolSemanticModel main = programWithFiles("PGMA", List.of(
+                file("INFILE", "ORDIN", FileAccess.INPUT),
+                file("OUTFILE", "ORDOUT", FileAccess.OUTPUT),
+                file("MASTER", "ORDMSTR", FileAccess.IO)));
+        JclStep step = stepWithFacts("STEP010", "PGMA",
+                List.of(dd("ORDIN", "SYKT.ORDER.DAILY"), dd("ORDOUT", "SYKW.ORDER.VALID"),
+                        dd("ORDMSTR", "SYKV.ORDER.MASTER"), dd("SYSUT1", "SYKT.OTHER.DATA")),
+                new JclUtilityFacts(List.of(), List.of(), List.of(), List.of(),
+                        Map.of("ORDIN", DatasetAccess.UNKNOWN, "SYSUT1", DatasetAccess.READ)));
+        LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(main),
+                List.of(job("JOB1", List.of(step))), List.of(), Map.of(), Map.of()));
+
+        assertEquals("READ", edge(result, "step:JOB1.STEP010", "dataset:SYKT.ORDER.DAILY")
+                .attributes().get("access"), "OPEN INPUT が DISP より優先される");
+        assertEquals("WRITE", edge(result, "step:JOB1.STEP010", "dataset:SYKW.ORDER.VALID")
+                .attributes().get("access"));
+        assertEquals("UPDATE", edge(result, "step:JOB1.STEP010", "dataset:SYKV.ORDER.MASTER")
+                .attributes().get("access"));
+        assertEquals("READ", edge(result, "step:JOB1.STEP010", "dataset:SYKT.OTHER.DATA")
+                .attributes().get("access"), "SELECT が指さない DD は ddRoles から取る");
+    }
+
+    /**
+     * A referback the job could not resolve names no data set, so it adds neither a node nor an
+     * edge: {@code DSN=*.STEP999.OUT1} where no STEP999 is written keeps its text and nothing more.
+     */
+    @Test
+    void anUnresolvedReferbackNamesNoDataset() {
+        JclDdStatement referback = new JclDdStatement("BACKREF",
+                Optional.of("*.STEP999.OUT1"),
+                Optional.of(new JclDataset("*.STEP999.OUT1", Optional.empty(), Optional.empty(),
+                        false, Optional.of("*.STEP999.OUT1"))),
+                Optional.of("SHR"), Optional.empty(), Optional.empty(), false, Map.of(),
+                Map.of("DSN", "*.STEP999.OUT1"), List.of(), 0,
+                SourcePosition.fileStart("JOB1.jcl"));
+        JclStep step = stepWithFacts("STEP020", "PGMA",
+                List.of(referback, dd("ORDIN", "SYKT.ORDER.DAILY")),
+                new JclUtilityFacts(List.of(), List.of(), List.of(), List.of(),
+                        Map.of("BACKREF", DatasetAccess.READ, "ORDIN", DatasetAccess.READ)));
+        LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(),
+                List.of(job("JOB1", List.of(step))), List.of(), Map.of(), Map.of()));
+
+        assertTrue(result.graph().nodes().stream()
+                        .noneMatch(node -> node.id().startsWith("dataset:*.")),
+                "参照解決できない referback をデータセットにしない: " + result.graph().toJson());
+        assertEquals(List.of("dataset:SYKT.ORDER.DAILY"), result.graph().edges().stream()
+                        .filter(edge -> edge.fromId().equals("step:JOB1.STEP020"))
+                        .filter(edge -> edge.kind() == EdgeKind.REFERENCE)
+                        .map(CallGraphEdge::toId).toList(),
+                "解決できた DD だけが辺になる");
+    }
+
+    /** The DSN of a GDG keeps its relative generation in the node id, as the JCL writes it. */
+    @Test
+    void aGdgDatasetKeepsItsRelativeGenerationInTheNodeId() {
+        JclStep step = stepWithFacts("STEP050", "IEBGENER",
+                List.of(gdgDd("SYSUT2", "SYKT.ORDER.HISTORY", 1, "NEW")),
+                new JclUtilityFacts(List.of(), List.of(), List.of(), List.of(),
+                        Map.of("SYSUT2", DatasetAccess.WRITE)));
+        LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(),
+                List.of(job("JOB1", List.of(step))), List.of(), Map.of(), Map.of()));
+
+        assertEquals(NodeKind.DATASET, node(result, "dataset:SYKT.ORDER.HISTORY(+1)").kind());
+        assertEquals("WRITE", edge(result, "step:JOB1.STEP050",
+                "dataset:SYKT.ORDER.HISTORY(+1)").attributes().get("access"));
+    }
+
+    /** IKJEFT01 runs the program its SYSTSIN names, and the plan it runs it under is on the edge. */
+    @Test
+    void aProgramRunCardAddsAnExecutionEdgeCarryingItsPlanAndLauncher() {
+        CobolSemanticModel batch = program("PGMD", List.of(), List.of(), List.of());
+        JclStep step = stepWithFacts("STEP040", "IKJEFT01", List.of(),
+                new JclUtilityFacts(
+                        List.of(new JclUtilityFacts.ProgramRun("PGMD", Optional.of("SYKPLAN1"),
+                                Optional.empty(), Optional.empty())),
+                        List.of(), List.of(), List.of(), Map.of()));
+        LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(batch),
+                List.of(job("JOB1", List.of(step))), List.of(), Map.of(), Map.of()));
+
+        assertTrue(hasEdge(result, "step:JOB1.STEP040", "utility:IKJEFT01", EdgeKind.EXECUTION,
+                Resolution.CONSTANT), "監視プログラム自体への辺は残る");
+        CallGraphEdge run = edge(result, "step:JOB1.STEP040", "program:PGMD");
+        assertEquals(EdgeKind.EXECUTION, run.kind());
+        assertEquals(Map.of("launcher", "IKJEFT01", "plan", "SYKPLAN1"), run.attributes());
+    }
+
+    /** A BIND card names DBRM members, and a card of any utility may name data sets and tables. */
+    @Test
+    void bindDatasetAndTableCardsEachAddTheirOwnEdge() {
+        JclStep step = stepWithFacts("STEP010", "IKJEFT01", List.of(),
+                new JclUtilityFacts(List.of(),
+                        List.of(new JclUtilityFacts.BindRequest("PACKAGE", "SYKPKG1",
+                                List.of("PGME"), Map.of())),
+                        List.of(new JclUtilityFacts.DatasetUse("SYKW.WORK.FILE",
+                                DatasetAccess.DELETE)),
+                        List.of(new JclUtilityFacts.TableUse("SYKDB.ZAIKOM", DatasetAccess.UPDATE)),
+                        Map.of()));
+        LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(),
+                List.of(job("JOB1", List.of(step))), List.of(), Map.of(), Map.of()));
+
+        CallGraphEdge bind = edge(result, "step:JOB1.STEP010", "program:PGME");
+        assertEquals(EdgeKind.REFERENCE, bind.kind());
+        assertEquals(Map.of("bind", "PACKAGE", "plan", "SYKPKG1"), bind.attributes());
+        assertEquals("DELETE", edge(result, "step:JOB1.STEP010", "dataset:SYKW.WORK.FILE")
+                .attributes().get("access"));
+        assertEquals(NodeKind.DB2_TABLE, node(result, "db2:SYKDB.ZAIKOM").kind());
+        assertEquals("UPDATE", edge(result, "step:JOB1.STEP010", "db2:SYKDB.ZAIKOM")
+                .attributes().get("access"));
+    }
+
+    /** Every name of utilities.txt is a leaf, so a Db2 utility is not mistaken for an application. */
+    @Test
+    void theUtilityListIsReadFromItsResource() {
+        JclJobModel jobModel = job("JOB1", List.of(
+                pgmStep("JOB1", "STEP010", "DSNTIAUL", List.of()),
+                pgmStep("JOB1", "STEP020", "IEHPROGM", List.of()),
+                pgmStep("JOB1", "STEP030", "ICETOOL", List.of())));
+        LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(), List.of(jobModel),
+                List.of(), Map.of(), Map.of()));
+
+        for (String utility : List.of("DSNTIAUL", "IEHPROGM", "ICETOOL")) {
+            assertEquals(NodeKind.EXTERNAL_UTILITY, node(result, "utility:" + utility).kind());
+        }
+    }
+
+    /** Two OPENs of one file, one for input and one for output, amount to an update of it. */
+    @Test
+    void aFileOpenedForInputAndForOutputIsAnUpdate() {
+        CobolSemanticModel main = programWithFiles("PGMA", List.of(
+                file("WORKFILE", "ORDWORK", FileAccess.INPUT, FileAccess.OUTPUT)));
+        JclStep step = stepWithFacts("STEP010", "PGMA",
+                List.of(dd("ORDWORK", "SYKW.ORDER.WORK")),
+                new JclUtilityFacts(List.of(), List.of(), List.of(), List.of(), Map.of()));
+        LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(main),
+                List.of(job("JOB1", List.of(step))), List.of(), Map.of(), Map.of()));
+
+        assertEquals("UPDATE", edge(result, "step:JOB1.STEP010", "dataset:SYKW.ORDER.WORK")
+                .attributes().get("access"));
+    }
+
+    /** Two SELECT entries may name one DD; the modes of both decide what the step does with it. */
+    @Test
+    void twoSelectEntriesNamingOneDdAreTakenTogether() {
+        CobolSemanticModel main = programWithFiles("PGMA", List.of(
+                file("READSIDE", "ORDWORK", FileAccess.INPUT),
+                file("WRITESIDE", "ORDWORK", FileAccess.OUTPUT)));
+        JclStep step = stepWithFacts("STEP010", "PGMA",
+                List.of(dd("ORDWORK", "SYKW.ORDER.WORK")),
+                new JclUtilityFacts(List.of(), List.of(), List.of(), List.of(), Map.of()));
+        LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(main),
+                List.of(job("JOB1", List.of(step))), List.of(), Map.of(), Map.of()));
+
+        assertEquals("UPDATE", edge(result, "step:JOB1.STEP010", "dataset:SYKW.ORDER.WORK")
+                .attributes().get("access"));
+    }
+
+    /**
+     * One data set reached through two DD statements of a step, read through one and written
+     * through the other, is an update of it; neither role is lost with the edge that carried it.
+     */
+    @Test
+    void readingThroughOneDdAndWritingThroughAnotherIsAnUpdate() {
+        CobolSemanticModel main = programWithFiles("PGMA", List.of(
+                file("INFILE", "ORDIN", FileAccess.INPUT),
+                file("OUTFILE", "ORDOUT", FileAccess.OUTPUT)));
+        JclStep step = stepWithFacts("STEP010", "PGMA",
+                List.of(dd("ORDIN", "SYKW.ORDER.WORK"), dd("ORDOUT", "SYKW.ORDER.WORK")),
+                new JclUtilityFacts(List.of(), List.of(), List.of(), List.of(), Map.of()));
+        LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(main),
+                List.of(job("JOB1", List.of(step))), List.of(), Map.of(), Map.of()));
+
+        assertEquals("UPDATE", edge(result, "step:JOB1.STEP010", "dataset:SYKW.ORDER.WORK")
+                .attributes().get("access"));
+    }
+
+    /**
+     * A data set a step already updates stays updated whatever the second DD says about it: an
+     * update read beside an update written is an update either way round.
+     */
+    @Test
+    void anUpdateOnOneSideKeepsThePairAnUpdate() {
+        CobolSemanticModel main = programWithFiles("PGMA", List.of(
+                file("IOFILE", "ORDIO", FileAccess.IO),
+                file("INFILE", "ORDIN", FileAccess.INPUT)));
+        JclStep step = stepWithFacts("STEP010", "PGMA",
+                List.of(dd("ORDIO", "SYKW.ORDER.WORK"), dd("ORDIN", "SYKW.ORDER.WORK")),
+                new JclUtilityFacts(List.of(), List.of(), List.of(), List.of(), Map.of()));
+        LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(main),
+                List.of(job("JOB1", List.of(step))), List.of(), Map.of(), Map.of()));
+
+        assertEquals("UPDATE", edge(result, "step:JOB1.STEP010", "dataset:SYKW.ORDER.WORK")
+                .attributes().get("access"), "更新と参照を合わせても更新のままであること");
+    }
+
+    /**
+     * Any other pair keeps what the step states first. A data set one DD of a step deletes and
+     * another reads is still deleted: nothing says the two describe one use, and the step writes
+     * the delete first.
+     */
+    @Test
+    void aPairThatIsNoUpdateKeepsTheAccessStatedFirst() {
+        JclStep step = stepWithFacts("STEP010", "IDCAMS",
+                List.of(dd("ORDDEL", "SYKT.ORDER.DAILY"), dd("ORDIN", "SYKT.ORDER.DAILY")),
+                new JclUtilityFacts(List.of(), List.of(), List.of(), List.of(),
+                        Map.of("ORDDEL", DatasetAccess.DELETE, "ORDIN", DatasetAccess.READ)));
+        LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(),
+                List.of(job("JOB1", List.of(step))), List.of(), Map.of(), Map.of()));
+
+        assertEquals("DELETE", edge(result, "step:JOB1.STEP010", "dataset:SYKT.ORDER.DAILY")
+                .attributes().get("access"), "先に述べた削除が残ること");
+    }
+
+    /** A utility named on a RUN PROGRAM card is a utility, exactly as an EXEC PGM= naming it is. */
+    @Test
+    void aRunProgramCardNamingAUtilityTypesItAsOne() {
+        JclStep step = stepWithFacts("STEP010", "IKJEFT01", List.of(),
+                new JclUtilityFacts(
+                        List.of(new JclUtilityFacts.ProgramRun("DSNTEP2", Optional.of("DSNTEP2"),
+                                Optional.empty(), Optional.empty())),
+                        List.of(), List.of(), List.of(), Map.of()));
+        LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(),
+                List.of(job("JOB1", List.of(step))), List.of(), Map.of(), Map.of()));
+
+        assertEquals(NodeKind.EXTERNAL_UTILITY, node(result, "utility:DSNTEP2").kind());
+        assertTrue(result.graph().nodes().stream()
+                        .noneMatch(n -> n.id().equals("program:DSNTEP2")),
+                "外部プログラム扱いのノードを作らない: " + result.graph().toJson());
+        assertTrue(hasEdge(result, "step:JOB1.STEP010", "utility:DSNTEP2", EdgeKind.EXECUTION,
+                Resolution.CONSTANT));
+    }
+
+    /** One step may bind one member twice, as a package and as a plan; both reasons stay on the edge. */
+    @Test
+    void bindingOneMemberTwiceKeepsBothKindsAndPlans() {
+        JclStep step = stepWithFacts("STEP010", "IKJEFT01", List.of(),
+                new JclUtilityFacts(List.of(),
+                        List.of(new JclUtilityFacts.BindRequest("PACKAGE", "SYKPKG1",
+                                        List.of("PGME"), Map.of()),
+                                new JclUtilityFacts.BindRequest("PLAN", "SYKPLAN1",
+                                        List.of("PGME"), Map.of())),
+                        List.of(), List.of(), Map.of()));
+        LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(),
+                List.of(job("JOB1", List.of(step))), List.of(), Map.of(), Map.of()));
+
+        CallGraphEdge bind = edge(result, "step:JOB1.STEP010", "program:PGME");
+        assertEquals(Map.of("bind", "PACKAGE,PLAN", "plan", "SYKPKG1,SYKPLAN1"), bind.attributes());
+    }
+
+    /**
+     * A launcher reads none of the step's DD statements; the program its card runs does, so that
+     * program's FILE-CONTROL is what decides the access.
+     */
+    @Test
+    void aLauncherStepTakesItsDdAccessFromTheProgramItRuns() {
+        CobolSemanticModel batch = programWithFiles("PGMD", List.of(
+                file("INFILE", "ORDIN", FileAccess.INPUT)));
+        JclStep step = stepWithFacts("STEP040", "IKJEFT01",
+                List.of(dd("ORDIN", "SYKT.ORDER.DAILY")),
+                new JclUtilityFacts(
+                        List.of(new JclUtilityFacts.ProgramRun("PGMD", Optional.of("SYKPLAN1"),
+                                Optional.empty(), Optional.empty())),
+                        List.of(), List.of(), List.of(), Map.of()));
+        LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(batch),
+                List.of(job("JOB1", List.of(step))), List.of(), Map.of(), Map.of()));
+
+        assertEquals("READ", edge(result, "step:JOB1.STEP040", "dataset:SYKT.ORDER.DAILY")
+                .attributes().get("access"));
+    }
+
+    // ---- embedded SQL: CRUD letters and a stored procedure call ----
+
+    /** The letters of every statement of one program are gathered onto its table edge, R C U D. */
+    @Test
+    void aDb2TableEdgeCarriesTheCrudLettersOfTheWholeProgram() {
+        SqlStatementModel select = sql(SqlStatementKind.SELECT, "SELECT A FROM SYKDB.ZAIKOM", 200,
+                builder -> builder.referencedTables(List.of("SYKDB.ZAIKOM"))
+                        .tableAccess(Map.of("SYKDB.ZAIKOM", "R")));
+        SqlStatementModel update = sql(SqlStatementKind.UPDATE, "UPDATE SYKDB.ZAIKOM SET A = 1", 210,
+                builder -> builder.referencedTables(List.of("SYKDB.ZAIKOM"))
+                        .tableAccess(Map.of("SYKDB.ZAIKOM", "U")));
+        CobolSemanticModel pgm = program("PGMF", List.of(), List.of(), List.of());
+        LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(pgm), List.of(),
+                List.of(), Map.of("PGMF", List.of(select, update)), Map.of()));
+
+        assertEquals("RU", edge(result, "program:PGMF", "db2:SYKDB.ZAIKOM")
+                .attributes().get("access"));
+    }
+
+    /** A stored procedure is a callee like any other; one outside the folder is external. */
+    @Test
+    void anSqlCallAddsACallEdgeToTheProcedure() {
+        SqlStatementModel call = sql(SqlStatementKind.OTHER, "CALL SYKPROC1", 220,
+                builder -> builder.procedureName("SYKPROC1"));
+        CobolSemanticModel pgm = program("PGMG", List.of(), List.of(), List.of());
+        LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(pgm), List.of(),
+                List.of(), Map.of("PGMG", List.of(call)), Map.of()));
+
+        CallGraphEdge edge = edge(result, "program:PGMG", "program:SYKPROC1");
+        assertEquals(EdgeKind.CALL, edge.kind());
+        assertEquals("true", edge.attributes().get("sqlProcedure"));
+        assertEquals("true", node(result, "program:SYKPROC1").attributes().get("external"));
+    }
+
+    // ---- SQL scripts ----
+
+    /**
+     * A CALL reaches the routine a script defines even when the two spell the qualifier
+     * differently, because the name without the schema is what they agree on. The routine is then
+     * a program of the folder rather than an external one.
+     */
+    @Test
+    void anSqlCallReachesTheRoutineAScriptDefines() {
+        SqlStatementModel call = sql(SqlStatementKind.CALL, "CALL SYKDB.SYKPROC2", 240,
+                builder -> builder.procedureName("SYKDB.SYKPROC2"));
+        SqlStatementModel update = sql(SqlStatementKind.UPDATE, "UPDATE SYKDB.ZAIKOM SET C = 1", 1,
+                builder -> builder.referencedTables(List.of("SYKDB.ZAIKOM"))
+                        .tableAccess(Map.of("SYKDB.ZAIKOM", "U")));
+        SqlRoutineDefinition routine = new SqlRoutineDefinition("CSDB.SYKPROC2", "ddl/SYK.sql", 12,
+                List.of(update));
+        CobolSemanticModel pgm = program("PGMH", List.of(), List.of(), List.of());
+        LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(pgm), List.of(), List.of(),
+                Map.of("PGMH", List.of(call)), Map.of(), Map.of(), List.of(routine)));
+
+        assertEquals(EdgeKind.CALL, edge(result, "program:PGMH", "sqlroutine:SYKPROC2").kind());
+        CallGraphNode node = node(result, "sqlroutine:SYKPROC2");
+        assertEquals(NodeKind.PROGRAM, node.kind());
+        assertEquals("true", node.attributes().get("sqlProcedure"));
+        assertEquals("ddl/SYK.sql", node.attributes().get("definedIn"));
+        assertNull(node.attributes().get("external"), "フォルダー内で定義した手続きは外部ではないこと");
+        CallGraphEdge reference = edge(result, "sqlroutine:SYKPROC2", "db2:SYKDB.ZAIKOM");
+        assertEquals(EdgeKind.REFERENCE, reference.kind());
+        assertEquals("U", reference.attributes().get("access"));
+        assertEquals(1, reference.line(), "辺の行は本体の文が立つ行であること");
+    }
+
+    /**
+     * A routine keeps its own id space. A COBOL program of the same name is a different thing, and
+     * merging the two would show a call reaching code that program never held.
+     */
+    @Test
+    void aRoutineDoesNotMergeIntoTheProgramOfTheSameName() {
+        CobolSemanticModel pgm = program("SYKPROC3", List.of(), List.of(), List.of());
+        SqlRoutineDefinition routine = new SqlRoutineDefinition("CSDB.SYKPROC3", "ddl/SYK.sql", 3,
+                List.of());
+        LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(pgm), List.of(), List.of(),
+                Map.of(), Map.of(), Map.of(), List.of(routine)));
+
+        assertEquals(NodeKind.PROGRAM, node(result, "program:SYKPROC3").kind());
+        assertNull(node(result, "program:SYKPROC3").attributes().get("sqlProcedure"),
+                "COBOL プログラムのノードは手続きの属性を持たないこと");
+        assertEquals("ddl/SYK.sql",
+                node(result, "sqlroutine:SYKPROC3").attributes().get("definedIn"));
+    }
+
+    /** Two scripts declaring one routine name make one node that names both of them. */
+    @Test
+    void aRoutineDeclaredTwiceNamesEveryScriptThatDeclaresIt() {
+        SqlRoutineDefinition first = new SqlRoutineDefinition("CSDB.SYKPROC4", "ddl/A.sql", 3,
+                List.of());
+        SqlRoutineDefinition second = new SqlRoutineDefinition("FLDB.SYKPROC4", "ddl/B.sql", 7,
+                List.of());
+        LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(), List.of(), List.of(),
+                Map.of(), Map.of(), Map.of(), List.of(first, second)));
+
+        assertEquals("ddl/A.sql,ddl/B.sql",
+                node(result, "sqlroutine:SYKPROC4").attributes().get("definedIn"));
+    }
+
+    /** A CREATE TABLE names the table, so the node says how many columns and which script. */
+    @Test
+    void aDeclaredTableCarriesItsColumnCount() {
+        SqlStatementModel create = sql(SqlStatementKind.DDL,
+                "CREATE TABLE SYKDB.ZAIKOM (ZAIKO_CD CHAR(8) NOT NULL, ZAIKO_SU INTEGER)", 5,
+                builder -> builder.declaredTable("SYKDB.ZAIKOM")
+                        .declaredColumns(List.of(
+                                new SqlDeclaredColumn("ZAIKO_CD", "CHAR(8)", false),
+                                new SqlDeclaredColumn("ZAIKO_SU", "INTEGER", true))));
+        LinkResult result = CallGraphLinker.link(new LinkerInput(List.of(), List.of(), List.of(),
+                Map.of(), Map.of(), Map.of("ddl/ZAIKOM.sql", List.of(create)), List.of()));
+
+        CallGraphNode node = node(result, "db2:SYKDB.ZAIKOM");
+        assertEquals(NodeKind.DB2_TABLE, node.kind());
+        assertEquals("2", node.attributes().get("columns"));
+        assertEquals("ddl/ZAIKOM.sql", node.attributes().get("definedIn"));
+        assertEquals(List.of(), result.graph().edges(), "宣言だけでは辺を作らないこと");
     }
 
     // ---- determinism ----

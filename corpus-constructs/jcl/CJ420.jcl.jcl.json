@@ -1,0 +1,115 @@
+[
+  {
+    "jobName": "CJ420",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "FTP IRXJCL",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "FTP",
+        "line": 9,
+        "utility": {
+          "ddRoles": {
+            "SYSPRINT": "WRITE",
+            "OUTPUT": "WRITE",
+            "INPUT": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSPRINT",
+            "line": 10,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "OUTPUT",
+            "line": 11,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "INPUT",
+            "line": 12,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  OPEN MVSHOST.EXAMPLE.COM",
+              "  USER MFTUSER01 MFTPASS01",
+              "  BINARY",
+              "  PUT 'CJT.D260910.FTP.OUTBOUND' MFTOUT.DAT",
+              "  QUIT"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PGM",
+        "target": "IRXJCL",
+        "line": 20,
+        "condition": "COND=(4,LT,STEP010)",
+        "parm": "MYEXEC ARG1",
+        "parameters": {
+          "PARM": "'MYEXEC ARG1'",
+          "COND": "(4,LT,STEP010)"
+        },
+        "utility": {
+          "ddRoles": {
+            "SYSEXEC": "READ",
+            "SYSTSPRT": "WRITE",
+            "SYSPRINT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSEXEC",
+            "line": 22,
+            "datasetName": "CJT.PROD.REXXLIB",
+            "dataset": {
+              "name": "CJT.PROD.REXXLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.PROD.REXXLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSTSPRT",
+            "line": 23,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 24,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

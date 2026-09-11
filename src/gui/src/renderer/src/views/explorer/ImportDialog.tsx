@@ -3,15 +3,6 @@ import { text } from "../../i18n/text";
 import { api, errorMessage } from "../../api";
 import { Modal } from "../../ui/Modal";
 import { clipColumns, columnRuler, displayWidth, importRelPath } from "../../model/importModel";
-import type { ImportAssetKind } from "../../../../shared/ipc";
-
-/** The asset kinds an import can be filed under, in the order the dialog offers them. */
-const KINDS: readonly { kind: ImportAssetKind; label: string }[] = [
-  { kind: "cobol", label: text.assetType.cobol },
-  { kind: "copybook", label: text.assetType.copybook },
-  { kind: "jcl", label: text.assetType.jcl },
-  { kind: "bms", label: text.assetType.bms },
-];
 
 /** The column range the fields accept. The upper bound leaves room beyond a fixed-format record. */
 const MIN_COLUMN = 1;
@@ -39,13 +30,12 @@ export interface ImportDialogProps {
  * Importing a source file from a terminal screen: the pasted text is cut to a column range and
  * written into the asset folder.
  *
- * The overwrite confirmation is tied to the destination it was raised for. Changing the kind, the
- * folder or the name after the confirmation appeared changes the destination, and an unconfirmed
- * file must not be overwritten by the confirmation of another one.
+ * The overwrite confirmation is tied to the destination it was raised for. Changing the folder or
+ * the name after the confirmation appeared changes the destination, and an unconfirmed file must
+ * not be overwritten by the confirmation of another one.
  */
 export function ImportDialog({ inputDir, onClose }: ImportDialogProps): ReactElement {
   const [pasted, setPasted] = useState("");
-  const [kind, setKind] = useState<ImportAssetKind>("cobol");
   const [destDir, setDestDir] = useState("");
   const [fileName, setFileName] = useState("");
   const [columnFrom, setColumnFrom] = useState(1);
@@ -56,7 +46,7 @@ export function ImportDialog({ inputDir, onClose }: ImportDialogProps): ReactEle
     () => clipColumns(pasted, columnFrom, columnTo),
     [pasted, columnFrom, columnTo],
   );
-  const relPath = importRelPath(kind, destDir, fileName);
+  const relPath = importRelPath(destDir, fileName);
   const columnsValid = columnFrom <= columnTo;
   const pending = status.kind === "confirm" && status.relPath !== relPath ? { kind: "idle" as const } : status;
   const saving = pending.kind === "saving";
@@ -70,7 +60,7 @@ export function ImportDialog({ inputDir, onClose }: ImportDialogProps): ReactEle
   const save = (overwrite: boolean): void => {
     setStatus({ kind: "saving" });
     api()
-      .importSource({ inputDir, kind, destDir, fileName, lines, overwrite })
+      .importSource({ inputDir, destDir, fileName, lines, overwrite })
       .then((result) => {
         setStatus(
           result.status === "exists"
@@ -141,25 +131,6 @@ export function ImportDialog({ inputDir, onClose }: ImportDialogProps): ReactEle
               </button>
             </div>
           ) : null}
-
-          <div className="ci-form__field">
-            <span className="ci-form__label">{text.import.kind}</span>
-            <div className="ci-chips" role="radiogroup" aria-label={text.import.kind}>
-              {KINDS.map((option) => (
-                <button
-                  key={option.kind}
-                  type="button"
-                  role="radio"
-                  aria-checked={kind === option.kind}
-                  className={`ci-chip${kind === option.kind ? " ci-chip--on" : ""}`}
-                  onClick={() => setKind(option.kind)}
-                  data-testid={`import-kind-${option.kind}`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
 
           <label className="ci-form__field">
             <span className="ci-form__label">{text.import.destDir}</span>

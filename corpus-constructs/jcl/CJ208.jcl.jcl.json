@@ -1,0 +1,35 @@
+[
+  {
+    "jobName": "CJ208",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "CJ UNIX FILE DD",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 8,
+        "ddStatements": [
+          {
+            "ddName": "UNIXOUT",
+            "line": 9,
+            "parameters": {
+              "PATH": "'/u/prod/out.dat'",
+              "PATHOPTS": "(OWRONLY,OCREAT,OTRUNC)",
+              "PATHMODE": "(SIRUSR,SIWUSR)",
+              "PATHDISP": "(KEEP,DELETE)",
+              "FILEDATA": "TEXT"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

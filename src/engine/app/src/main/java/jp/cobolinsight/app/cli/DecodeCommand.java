@@ -2,7 +2,6 @@ package jp.cobolinsight.app.cli;
 
 import jp.cobolinsight.app.persistence.PersistenceDao;
 import jp.cobolinsight.app.persistence.PersistenceDatabase;
-import jp.cobolinsight.app.persistence.model.EncodingInfoRecord;
 import jp.cobolinsight.app.persistence.model.SourceRecord;
 import jp.cobolinsight.app.pipeline.Failures;
 import jp.cobolinsight.app.pipeline.Paths;
@@ -18,7 +17,6 @@ import picocli.CommandLine.Option;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Optional;
 import java.util.concurrent.Callable;
 
 /**
@@ -141,14 +139,13 @@ public final class DecodeCommand implements Callable<Integer> {
         if (databaseFile == null || !Files.isRegularFile(databaseFile)) {
             return null;
         }
-        try (PersistenceDatabase database = PersistenceDatabase.open(databaseFile)) {
+        try (PersistenceDatabase database = PersistenceDatabase.openReadOnly(databaseFile)) {
             PersistenceDao dao = new PersistenceDao(database.connection());
             for (SourceRecord source : dao.findAllSources()) {
                 if (!Path.of(source.root()).resolve(source.path()).normalize().equals(target)) {
                     continue;
                 }
-                Optional<EncodingInfoRecord> encoding = dao.findEncodingInfo(source.id());
-                return encoding.map(EncodingInfoRecord::detectedCharset).orElse(source.codepage());
+                return source.codepage();
             }
         }
         return null;

@@ -358,7 +358,7 @@ export function cobolInsightTheme(theme: ThemeName): MonacoThemeData {
       "editor.foreground": c("#e3e5ea", "#2b2f38"),
       "editorLineNumber.foreground": c("#868d99", "#5b6270"),
       "editorLineNumber.activeForeground": c("#6aa7ff", "#2a66d0"),
-      "editorRuler.foreground": c("#6e7582", "#8a92a0"),
+      "editorRuler.foreground": c("#6e7582", "#7b8493"),
       "editorGutter.background": c("#101418", "#f4f7fa"),
       // The caret line, at 6% of the foreground and no border: enough to find the caret after a jump
       // from the problems table, not enough to compete with the column bands drawn over it.
@@ -366,9 +366,12 @@ export function cobolInsightTheme(theme: ThemeName): MonacoThemeData {
       "editor.lineHighlightBorder": "#00000000",
       // One finding, one colour: Monaco's own red, amber and blue are not the palette's, so a marker
       // and the glyph beside it in the margin disagreed on what severity looks like.
-      "editorError.foreground": c("#f75e54", "#bb0916"),
+      "editorError.foreground": c("#ff7266", "#bb0916"),
       "editorWarning.foreground": c("#d59800", "#995700"),
       "editorInfo.foreground": c("#59a0f9", "#0267c7"),
+      "diffEditor.insertedLineBackground": c("#1d2a1a", "#e6f0dd"),
+      // Dark keeps Monaco's own removed-line colour; only light needed one of its own.
+      ...(dark ? {} : { "diffEditor.removedLineBackground": "#f6dcdd" }),
     },
   };
 }

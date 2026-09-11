@@ -110,6 +110,10 @@
   white-space: nowrap;
 }
 
+.ci-rules__name:hover {
+  text-decoration: underline;
+}
+
 /* A rule switched off reads as off, the way an off chip does. */
 .ci-rules__row:has(> input:not(:checked)) .ci-rules__name {
   color: var(--color-muted-foreground);
@@ -319,6 +323,12 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  gap: var(--ci-space-4);
+}
+
+.ci-custom__actions {
+  display: flex;
+  align-items: center;
   gap: var(--ci-space-2);
 }
 
@@ -384,6 +394,12 @@
   flex-direction: column;
   gap: var(--ci-space-2);
   min-width: 0;
+}
+
+/* The dialog's left column is its own measure; the 320px control cap meant for prose-width forms
+   would leave the destination and file name fields adrift in the extra space. */
+.ci-import .ci-form__field > .ci-input {
+  max-width: none;
 }
 
 .ci-import__columns {

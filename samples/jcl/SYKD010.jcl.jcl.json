@@ -1,0 +1,200 @@
+[
+  {
+    "jobName": "SYKD010",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "SYK1234",
+      "PROGRAMMER": "SYK01 受注日次",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "SYK001",
+        "line": 14,
+        "parm": "250718",
+        "parameters": {
+          "PARM": "'250718'"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "ORDIN": "READ",
+            "ORDVALID": "WRITE",
+            "ORDERR": "WRITE",
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 15,
+            "datasetName": "SYK.PROD.LOADLIB",
+            "dataset": {
+              "name": "SYK.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "SYK.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "ORDIN",
+            "line": 16,
+            "datasetName": "SYKT.D250718.ORDER.DAILY",
+            "dataset": {
+              "name": "SYKT.D250718.ORDER.DAILY"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "SYKT.D250718.ORDER.DAILY",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "ORDVALID",
+            "line": 17,
+            "datasetName": "SYKW.D250718.ORDER.VALID",
+            "dataset": {
+              "name": "SYKW.D250718.ORDER.VALID"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "SYKW.D250718.ORDER.VALID",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(5,5),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=253,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "ORDERR",
+            "line": 21,
+            "datasetName": "SYKW.D250718.ORDER.ERROR",
+            "dataset": {
+              "name": "SYKW.D250718.ORDER.ERROR"
+            },
+            "dispositionText": "(NEW,CATLG,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "abnormal": "DELETE",
+              "raw": "(NEW,CATLG,DELETE)"
+            },
+            "parameters": {
+              "DSN": "SYKW.D250718.ORDER.ERROR",
+              "DISP": "(NEW,CATLG,DELETE)",
+              "SPACE": "(CYL,(2,2),RLSE)",
+              "DCB": "(RECFM=FB,LRECL=200,BLKSIZE=0)"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 25,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PGM",
+        "target": "SYK002",
+        "line": 27,
+        "condition": "COND=(4,LT,STEP010)",
+        "parameters": {
+          "COND": "(4,LT,STEP010)"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "ORDVALID": "READ",
+            "ORDMSTR": "READ",
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 28,
+            "datasetName": "SYK.PROD.LOADLIB",
+            "dataset": {
+              "name": "SYK.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "SYK.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "ORDVALID",
+            "line": 29,
+            "datasetName": "SYKW.D250718.ORDER.VALID",
+            "dataset": {
+              "name": "SYKW.D250718.ORDER.VALID"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "SYKW.D250718.ORDER.VALID",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "ORDMSTR",
+            "line": 30,
+            "datasetName": "SYKV.ORDER.MASTER",
+            "dataset": {
+              "name": "SYKV.ORDER.MASTER"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "SYKV.ORDER.MASTER",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 31,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

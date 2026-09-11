@@ -45,11 +45,6 @@ export function EditorTabs({ onRequestClose }: EditorTabsProps): ReactElement {
       dispatch({ type: "STEP_TAB", step: event.key === "ArrowRight" ? 1 : -1 });
       // Keep the focus on the strip: the newly selected tab takes the tab stop on the next render.
       queueMicrotask(() => stripRef.current?.querySelector<HTMLElement>('[tabindex="0"]')?.focus());
-      return;
-    }
-    if (event.key === "Delete" && workbench.activeTabId !== null) {
-      event.preventDefault();
-      onRequestClose(workbench.activeTabId);
     }
   };
 
@@ -83,22 +78,16 @@ export function EditorTabs({ onRequestClose }: EditorTabsProps): ReactElement {
               title={tab.path ?? tab.title}
             >
               {tab.title}
-              {dirty ? (
-                <span
-                  className="ci-tab__dirty"
-                  aria-label={text.editor.unsaved}
-                  data-testid={`dirty-${tab.id}`}
-                />
-              ) : null}
             </button>
             <button
               type="button"
-              className="ci-tab__close"
-              aria-label={`${tab.title} ${text.editor.close}`}
+              className={`ci-tab__close${dirty ? " ci-tab__close--dirty" : ""}`}
+              aria-label={dirty ? `${tab.title} ${text.editor.unsaved}` : `${tab.title} ${text.editor.close}`}
               tabIndex={-1}
               onClick={() => onRequestClose(tab.id)}
               data-testid={`close-${tab.id}`}
             >
+              <span className="ci-tab__dirty-dot" aria-hidden="true" data-testid={`dirty-${tab.id}`} />
               <span className="codicon codicon-close" aria-hidden="true" />
             </button>
           </div>

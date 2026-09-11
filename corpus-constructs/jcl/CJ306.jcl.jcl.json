@@ -1,0 +1,197 @@
+[
+  {
+    "jobName": "CJ306",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "CJ SYMBOLICS",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "CCP007",
+        "line": 18,
+        "parm": "CYCLE=250901,ENV=PROD",
+        "parameters": {
+          "PARM": "'CYCLE=250901,ENV=PROD'"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "CJIN": "READ",
+            "CJWORK": "WRITE",
+            "CJCLN": "READ",
+            "CJHIST": "READ",
+            "CJCLONE": "READ",
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 19,
+            "datasetName": "CJ.PROD.LOADLIB",
+            "dataset": {
+              "name": "CJ.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJ.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "CJIN",
+            "line": 20,
+            "datasetName": "CJT.D250901.NYUKIN.DAILY",
+            "dataset": {
+              "name": "CJT.D250901.NYUKIN.DAILY"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.D250901.NYUKIN.DAILY",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "CJWORK",
+            "line": 21,
+            "datasetName": "&&WORK1",
+            "dataset": {
+              "name": "&&WORK1",
+              "temporary": true
+            },
+            "dispositionText": "(NEW,DELETE,DELETE)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "DELETE",
+              "abnormal": "DELETE",
+              "raw": "(NEW,DELETE,DELETE)"
+            },
+            "parameters": {
+              "DSN": "&&WORK1",
+              "UNIT": "SYSDA",
+              "SPACE": "(CYL,(1,1))",
+              "DISP": "(NEW,DELETE,DELETE)"
+            }
+          },
+          {
+            "ddName": "CJCLN",
+            "line": 23,
+            "datasetName": "CJT.D&YYMMDD..S&SYSNAME..DAILY",
+            "dataset": {
+              "name": "CJT.D&YYMMDD..S&SYSNAME..DAILY"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.D&YYMMDD..S&SYSNAME..DAILY",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "CJHIST",
+            "line": 24,
+            "datasetName": "CJT.HIST.D&LYYMMDD",
+            "dataset": {
+              "name": "CJT.HIST.D&LYYMMDD"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.HIST.D&LYYMMDD",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "CJCLONE",
+            "line": 25,
+            "datasetName": "CJT.D&SYSCLONE(2:1).DAILY",
+            "dataset": {
+              "name": "CJT.D&SYSCLONE(2:1).DAILY"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJT.D&SYSCLONE(2:1).DAILY",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 26,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PGM",
+        "target": "CCP008",
+        "line": 28,
+        "condition": "COND=(0,NE,STEP010)",
+        "parameters": {
+          "COND": "(0,NE,STEP010)"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 29,
+            "datasetName": "CJ.PROD.LOADLIB",
+            "dataset": {
+              "name": "CJ.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CJ.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSOUT",
+            "line": 30,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

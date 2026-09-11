@@ -42,9 +42,8 @@ public final class AlterStatementRule implements Rule {
                     END-IF.
                     """)
             .severity(Severity.HIGH)
-            .commands(Command.LINT, Command.REPORT)
+            .commands(Command.LINT)
             .targets(AssetKind.COBOL)
-            .needs(Needs.SEMANTIC)
             .build();
 
     @Override

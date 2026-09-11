@@ -13,6 +13,9 @@ const { contextBridge } = require("electron");
 const DB_PATH = "C:\\smoke\\cobol-insight.db";
 const LINT_SARIF = "C:\\smoke\\lint.sarif";
 const SQL_SARIF = "C:\\smoke\\sql.sarif";
+/** Where a scoped lint writes, so the whole-folder pair stays as the last full run left it. */
+const SCOPE_SARIF = "C:\\smoke\\scope.sarif";
+const SCOPE_SQL_SARIF = "C:\\smoke\\scope-sql.sarif";
 const RULES_PATH = "C:\\smoke\\data\\rules.json";
 
 /** The lower bound of the graph layer's ids: the engine keeps them clear of the asset ids. */
@@ -30,14 +33,11 @@ const RULES = [
     name: "未初期化のデータ項目の参照",
     category: "データフロー",
     severity: "HIGH",
-    phase: "DATA_FLOW",
     hasFix: false,
     source: "builtin",
     enabled: true,
-    defaultEnabled: true,
     commands: ["LINT", "REPORT"],
     targets: ["COBOL"],
-    needs: ["CFG", "DATAFLOW", "SEMANTIC", "SOURCE_TEXT"],
     summary: "値を設定する前に参照し得るデータ項目を検出します。",
     rationale:
       "記憶域に残った値をそのまま使うため、実行のたびに結果が変わり、再現しない不具合になります。",
@@ -70,14 +70,11 @@ const RULES = [
     name: "ON SIZE ERROR 句の欠如",
     category: "例外処理",
     severity: "HIGH",
-    phase: "DATA_FLOW",
     hasFix: true,
     source: "builtin",
     enabled: true,
-    defaultEnabled: true,
     commands: ["FIX", "LINT", "REPORT"],
     targets: ["COBOL"],
-    needs: ["CFG", "DATAFLOW", "SEMANTIC", "SOURCE_TEXT"],
     summary:
       "結果が受け取り側項目のけた数を超え得るのに ON SIZE ERROR 句を持たない算術文を検出します。",
     rationale:
@@ -107,14 +104,11 @@ const RULES = [
     name: "列を明示しない SELECT *",
     category: "可読性・保守性",
     severity: "MEDIUM",
-    phase: "SYNTAX",
     hasFix: false,
     source: "builtin",
     enabled: true,
-    defaultEnabled: true,
     commands: ["SQL_LINT"],
     targets: ["COBOL"],
-    needs: ["SQL"],
     summary: "SELECT 句に * を使う問い合わせを検出します。",
     rationale:
       "表に列を足しただけで転送量と受け側の構造が変わります。" +
@@ -129,12 +123,13 @@ const RULES = [
 ];
 
 const INVENTORY = [
-  { id: 1, path: "bms/SYKMAP1.bms", name: "SYKMAP1.bms", type: "BMS", codepage: "Shift_JIS", byteSize: 1140, findingCount: 0 },
-  { id: 2, path: "cobol/SYK001.cbl", name: "SYK001.cbl", type: "PROGRAM", codepage: "Shift_JIS", byteSize: 4200, findingCount: 1 },
-  { id: 3, path: "cobol/SYK002.cbl", name: "SYK002.cbl", type: "PROGRAM", codepage: "Shift_JIS", byteSize: 3800, findingCount: 1 },
-  { id: 4, path: "copybook/SYKCPY1.cpy", name: "SYKCPY1.cpy", type: "COPYBOOK", codepage: null, byteSize: 640, findingCount: 0 },
-  { id: 5, path: "jcl/SYKD010.jcl", name: "SYKD010.jcl", type: "JCL", codepage: "Shift_JIS", byteSize: 900, findingCount: 0 },
-  { id: 6, path: "encoding/SYKENC1_CP930.cbl", name: "SYKENC1_CP930.cbl", type: "PROGRAM", codepage: "IBM930", byteSize: 1200, findingCount: 0 },
+  { id: 1, path: "bms/SYKMAP1.bms", name: "SYKMAP1.bms", type: "BMS", codepage: "Shift_JIS", findingCount: 0 },
+  { id: 2, path: "cobol/SYK001.cbl", name: "SYK001.cbl", type: "PROGRAM", codepage: "Shift_JIS", findingCount: 1 },
+  { id: 3, path: "cobol/SYK002.cbl", name: "SYK002.cbl", type: "PROGRAM", codepage: "Shift_JIS", findingCount: 1 },
+  { id: 4, path: "copybook/SYKCPY1.cpy", name: "SYKCPY1.cpy", type: "COPYBOOK", codepage: null, findingCount: 0 },
+  { id: 5, path: "jcl/SYKD010.jcl", name: "SYKD010.jcl", type: "JCL", codepage: "Shift_JIS", findingCount: 0 },
+  { id: 6, path: "encoding/SYKENC1_CP930.cbl", name: "SYKENC1_CP930.cbl", type: "PROGRAM", codepage: "IBM930", findingCount: 0 },
+  { id: 7, path: "ddl/SYKTAB.sql", name: "SYKTAB.sql", type: "SQL", codepage: "UTF-8", findingCount: 0 },
 ];
 
 /*
@@ -294,16 +289,12 @@ function lineMapRows(genFile, offset) {
     [9, 2],
     [10, 3],
     [11, 4],
-  ].map(([cobolLine, genLine], index) => ({
-    id: index + 1,
+  ].map(([cobolLine, genLine]) => ({
     cobolLineStart: cobolLine,
     cobolLineEnd: cobolLine,
     genFile,
     genLineStart: genLine + offset,
     genLineEnd: genLine + offset,
-    kind: "1:1",
-    note: "",
-    anchorId: `A${index + 1}`,
   }));
 }
 
@@ -364,7 +355,6 @@ let settings = {
   copybookPaths: [],
   // Empty, so the fix write-out falls back to the directory beside the project file.
   fixOutDir: "",
-  lastInputDir: "",
   paneSizes: {},
 };
 let rulesFile = { version: 2, rules: {}, custom: [] };
@@ -380,17 +370,33 @@ function engineResult(subcommand, outputs, summary) {
   };
 }
 
+/** The scope each lint was asked for, so a check can tell the two run commands apart. */
+const lintScopes = [];
+
 const api = {
   run: (invocation) => {
     switch (invocation.subcommand) {
+      // A finished run always prints its summary; without one the renderer treats it as a crash.
       case "scan":
-        return Promise.resolve(engineResult("scan", { db: DB_PATH }));
-      case "lint":
-        return Promise.resolve(engineResult("lint", { sarif: LINT_SARIF }));
-      case "sql-lint":
-        return Promise.resolve(engineResult("sql-lint", { sarif: SQL_SARIF }));
+        return Promise.resolve(
+          engineResult("scan", { db: DB_PATH }, { findingCount: 0, dbFile: DB_PATH, exitCode: 0 }),
+        );
+      case "lint": {
+        lintScopes.push(invocation.request.scope ?? null);
+        const scoped = invocation.request.scope !== undefined;
+        const sarif = scoped ? SCOPE_SARIF : LINT_SARIF;
+        const sqlSarif = scoped ? SCOPE_SQL_SARIF : SQL_SARIF;
+        return Promise.resolve(
+          engineResult(
+            "lint",
+            { sarif, sqlSarif },
+            { findingCount: 0, sarifFile: sarif, sqlSarifFile: sqlSarif, exitCode: 0 },
+          ),
+        );
+      }
       default:
-        return Promise.resolve(engineResult(invocation.subcommand));
+        // Every other subcommand finishes too, so the views that read what it wrote go ahead.
+        return Promise.resolve(engineResult(invocation.subcommand, {}, { exitCode: 0 }));
     }
   },
   cancel: () => Promise.resolve(undefined),
@@ -400,7 +406,6 @@ const api = {
         text: CP930_TEXT,
         codepage: "x-IBM930",
         detected: false,
-        soSiPresent: true,
         lines: CP930_LINES,
         stamp: stampOf(request.path),
         error: "",
@@ -410,7 +415,6 @@ const api = {
       text: request.path.includes("SYKCPY1") ? COPYBOOK_TEXT : COBOL_TEXT,
       codepage: "Shift_JIS",
       detected: true,
-      soSiPresent: false,
       lines: [],
       stamp: stampOf(request.path),
       error: "",
@@ -420,8 +424,6 @@ const api = {
     Promise.resolve({
       written: true,
       path: `C:/smoke/assets/${request.path}`,
-      changedLineFrom: 1,
-      changedLineTo: 1,
       reparseErrors: [],
       error: "",
       exitCode: 0,
@@ -437,7 +439,8 @@ const api = {
   validateRules: () => Promise.resolve({ ok: true, errors: [], parsed: { rules: RULES, ruleErrors: [] } }),
 
   readInventory: () => Promise.resolve(INVENTORY),
-  readSarif: (path) => Promise.resolve(path === SQL_SARIF ? SQL_FINDINGS : FINDINGS),
+  readSarif: (path) =>
+    Promise.resolve(path === SQL_SARIF || path === SCOPE_SQL_SARIF ? SQL_FINDINGS : FINDINGS),
   readGraph: () => Promise.resolve(GRAPH),
   readCopyExpansion: () => Promise.resolve(COPY_EXPANSION),
   readFixDiff: (request) =>
@@ -455,6 +458,8 @@ const api = {
       db: DB_PATH,
       sarif: LINT_SARIF,
       sqlSarif: SQL_SARIF,
+      scopedSarif: SCOPE_SARIF,
+      scopedSqlSarif: SCOPE_SQL_SARIF,
       copyExpansion: "C:\\smoke\\data\\cobol-insight-copy-expansion.json",
       rules: RULES_PATH,
     }),
@@ -485,12 +490,6 @@ const api = {
     rulesFile = file;
     return Promise.resolve(undefined);
   },
-
-  versions: {
-    chrome: process.versions.chrome,
-    node: process.versions.node,
-    electron: process.versions.electron,
-  },
 };
 
 contextBridge.exposeInMainWorld("cobolInsight", api);
@@ -501,4 +500,5 @@ contextBridge.exposeInMainWorld("cobolInsight", api);
  */
 contextBridge.exposeInMainWorld("cobolInsightSmoke", {
   rulesFile: () => rulesFile,
+  lintScopes: () => lintScopes,
 });

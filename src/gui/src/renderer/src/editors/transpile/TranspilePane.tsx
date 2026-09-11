@@ -4,12 +4,14 @@ import type {
   TranspileGeneratedFile,
   TranspileLanguage,
 } from "../../../../shared/ipc";
-import { api, errorMessage } from "../../api";
+import { api, engineFailure, errorMessage } from "../../api";
 import { text } from "../../i18n/text";
 import { useProject } from "../../state/projectStore";
 import { useSettings } from "../../state/settingsStore";
+import { sourceTabId } from "../../state/workbenchStore";
 import { artifactSubdir } from "../../model/artifactPaths";
 import { cobolLineFor, entriesOf, fileOf, generatedLineFor, languagesOf } from "../../model/lineMap";
+import { openDocument } from "../../model/openDocuments";
 import { languageIdFor } from "../../vendor/monarch";
 import { SideBySide } from "./SideBySide";
 
@@ -35,6 +37,13 @@ const GENERATED_LANGUAGE_ID: Readonly<Record<TranspileLanguage, string>> = {
   python: "python",
   java: "java",
 };
+
+/**
+ * The `translate` request the output directory was last built from, so switching back to a tab
+ * already translated in this run reads the existing files instead of launching the engine again.
+ * Module-level: every open transpile tab shares one output directory.
+ */
+let translateReadyFor = "";
 
 /**
  * One asset's translation, beside the COBOL it came from.
@@ -68,23 +77,38 @@ export function TranspilePane({ path }: TranspilePaneProps): ReactElement {
     }
     let cancelled = false;
     setLoad({ status: "loading" });
+    const key = `${project.runId}|${outDir}|${copybookPaths.join("|")}`;
     void (async () => {
       try {
-        await api().run({
-          subcommand: "translate",
-          request: {
-            inputDir,
-            copybookPaths: [...copybookPaths],
-            db: dbPath,
-            language: "both",
-            outDir,
-          },
-        });
-        const decoded = await api().decode({ baseDir: inputDir, path, db: dbPath });
+        if (key !== translateReadyFor) {
+          const finished = await api().run({
+            subcommand: "translate",
+            request: {
+              inputDir,
+              copybookPaths: [...copybookPaths],
+              db: dbPath,
+              language: "both",
+              outDir,
+            },
+          });
+          const crashed = engineFailure(finished);
+          if (crashed !== null) {
+            // The out directory still holds the previous run's translation, which reading it now
+            // would present as this one's. The key is left as it was, so a later mount tries again.
+            throw new Error(crashed);
+          }
+          translateReadyFor = key;
+        }
+        // The source editor already decoded this asset when its tab was opened; reading that spares
+        // a second engine launch for text this view only shows, never edits.
+        const opened = openDocument(sourceTabId(path));
+        const decoded = opened !== null ? null : await api().decode({ baseDir: inputDir, path, db: dbPath });
+        const cobolText = opened?.text ?? decoded?.text ?? "";
+        const decodeError = opened !== null ? "" : (decoded?.error ?? "");
         const artifacts = await api().readTranspile({ outDir, dbPath, cobolRelPath: path });
         if (cancelled) return;
-        if (decoded.error !== "") {
-          setLoad({ status: "error", message: decoded.error });
+        if (decodeError !== "") {
+          setLoad({ status: "error", message: decodeError });
           return;
         }
         setLoad(
@@ -93,7 +117,7 @@ export function TranspilePane({ path }: TranspilePaneProps): ReactElement {
             : {
                 status: "ready",
                 artifacts: {
-                  cobol: decoded.text,
+                  cobol: cobolText,
                   files: artifacts.files,
                   lineMap: artifacts.lineMap,
                 },
@@ -106,7 +130,7 @@ export function TranspilePane({ path }: TranspilePaneProps): ReactElement {
     return () => {
       cancelled = true;
     };
-  }, [inputDir, dbPath, outDir, path, copybookPaths]);
+  }, [inputDir, dbPath, outDir, path, copybookPaths, project.runId]);
 
   const artifacts = load.status === "ready" ? load.artifacts : null;
   const offered = useMemo(

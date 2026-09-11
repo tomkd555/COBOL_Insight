@@ -1,0 +1,283 @@
+[
+  {
+    "kind": "DECLARE_TABLE",
+    "startLine": 31,
+    "endLine": 37,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "declaredTable": "SYKDB.ZAIKOSHUKEI",
+    "declaredColumns": [
+      {
+        "name": "SHUKEI_YM",
+        "type": "CHAR(6)",
+        "nullable": false
+      },
+      {
+        "name": "SHOHIN_CD",
+        "type": "CHAR(8)",
+        "nullable": false
+      },
+      {
+        "name": "SOKO_CD",
+        "type": "CHAR(4)",
+        "nullable": false
+      },
+      {
+        "name": "ZAIKO_SU",
+        "type": "DECIMAL(7, 0)",
+        "nullable": false
+      },
+      {
+        "name": "HIKIATE_SU",
+        "type": "DECIMAL(7, 0)",
+        "nullable": false
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "BEGIN_DECLARE_SECTION",
+    "startLine": 39,
+    "endLine": 39,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "END_DECLARE_SECTION",
+    "startLine": 48,
+    "endLine": 48,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "HOST-在庫数量",
+        "mangledName": "HV1"
+      }
+    ],
+    "referencedTables": [
+      "SYKDB.ZAIKOSHUKEI"
+    ],
+    "startLine": 66,
+    "endLine": 69,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "HOST-在庫数量"
+    ],
+    "tableAccess": {
+      "SYKDB.ZAIKOSHUKEI": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "ZAIKO_SU"
+      }
+    ],
+    "selectList": [
+      "ZAIKO_SU"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "UPDATE",
+    "hostVariables": [
+      {
+        "originalName": "HOST-引当数量",
+        "mangledName": "HV1"
+      }
+    ],
+    "referencedTables": [
+      "SYKDB.ZAIKOSHUKEI"
+    ],
+    "startLine": 76,
+    "endLine": 79,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "tableAccess": {
+      "SYKDB.ZAIKOSHUKEI": "U"
+    },
+    "columnRefs": [
+      {
+        "column": "HIKIATE_SU"
+      }
+    ],
+    "setPairs": [
+      {
+        "column": "HIKIATE_SU",
+        "value": ":HOST-引当数量"
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "HOST-集計年月",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "HOST-商品コード",
+        "mangledName": "HV2"
+      }
+    ],
+    "referencedTables": [
+      "SYKDB.ZAIKOSHUKEI"
+    ],
+    "startLine": 85,
+    "endLine": 89,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "HOST-集計年月"
+    ],
+    "tableAccess": {
+      "SYKDB.ZAIKOSHUKEI": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "SHUKEI_YMD"
+      },
+      {
+        "column": "SHOHIN_CD"
+      }
+    ],
+    "selectList": [
+      "SHUKEI_YMD"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "INSERT",
+    "hostVariables": [
+      {
+        "originalName": "HOST-集計年月",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "HOST-商品コード",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "HOST-倉庫コード",
+        "mangledName": "HV3"
+      },
+      {
+        "originalName": "HOST-在庫数量",
+        "mangledName": "HV4"
+      },
+      {
+        "originalName": "HOST-引当数量",
+        "mangledName": "HV5"
+      }
+    ],
+    "referencedTables": [
+      "SYKDB.ZAIKOSHUKEI"
+    ],
+    "startLine": 95,
+    "endLine": 100,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "tableAccess": {
+      "SYKDB.ZAIKOSHUKEI": "C"
+    },
+    "insertValues": [
+      ":HOST-集計年月",
+      ":HOST-商品コード",
+      ":HOST-倉庫コード",
+      ":HOST-在庫数量",
+      ":HOST-引当数量"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "GET_DIAGNOSTICS",
+    "hostVariables": [
+      {
+        "originalName": "HOST-更新行数",
+        "mangledName": "HV1"
+      }
+    ],
+    "startLine": 101,
+    "endLine": 103,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

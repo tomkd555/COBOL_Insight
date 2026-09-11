@@ -7,18 +7,24 @@ import { sourceTab, useWorkbenchDispatch } from "../../state/workbenchStore";
 import {
   DEPTH_LIMITS,
   INITIAL_GRAPH_FILTER,
+  indexGraph,
   nodeKindCounts,
   toggleKind,
   visibleNodeIds,
   withDepth,
   type GraphFilter,
 } from "../../model/graphFilter";
-import { buildGraphElements, NODE_KINDS, isGraphNodeKind } from "../../model/graphLayout";
+import {
+  buildGraphElements,
+  NODE_KINDS,
+  isGraphNodeKind,
+  nodeKindStyles,
+} from "../../model/graphLayout";
 import { useResolvedTheme } from "../../state/useTheme";
 import { nodeDetail } from "../../model/graphDetail";
 import { buildTrace, flattenTrace, initialExpanded, type TraceNode } from "../../model/traceTree";
 import { GraphCanvas, type GraphCanvasHandle } from "./GraphCanvas";
-import { GraphDetailPane } from "./GraphDetailPane";
+import { GraphDetailPane, NodeSwatch } from "./GraphDetailPane";
 import { TraceTree } from "./TraceTree";
 
 /** How the call graph stands. "error" is kept apart from an empty graph on purpose. */
@@ -39,9 +45,9 @@ const EMPTY_GRAPH: GraphData = { nodes: [], edges: [], paragraphs: [], paragraph
  * The call-graph editor: the execution-order tree on the left, the drawing in the middle and the
  * selected node's calls on the right.
  *
- * The data is what scan already wrote into the project file; the `call-graph` subcommand is only
- * needed for the SVG and PNG exports, which this view does not offer. Selection is shared between
- * the tree and the canvas in both directions, so the keyboard reaches everything the mouse does.
+ * The data is what scan already wrote into the project file; this view launches no subcommand of
+ * its own. Selection is shared between the tree and the canvas in both directions, so the keyboard
+ * reaches everything the mouse does.
  */
 export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
   const theme = useResolvedTheme();
@@ -55,17 +61,24 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [layoutRunning, setLayoutRunning] = useState(false);
+  // Typing moves this at once; the filter (and the walk it triggers) follows 150ms later, so a fast
+  // typist does not re-walk the graph on every keystroke.
+  const [searchInput, setSearchInput] = useState(INITIAL_GRAPH_FILTER.search);
 
   const dbPath = project.dbPath;
+  const inputDir = project.inputDir;
+  // The project file holds every folder ever scanned, so the graph is read for this one alone; and
+  // it is read again after each run, which is when the folder's own graph has changed.
+  const runId = project.runId;
   useEffect(() => {
-    if (dbPath === null) {
+    if (dbPath === null || inputDir === null) {
       setState({ status: "idle" });
       return;
     }
     let cancelled = false;
     setState({ status: "loading" });
     api()
-      .readGraph(dbPath)
+      .readGraph(dbPath, inputDir)
       .then((data) => {
         if (!cancelled) {
           setState({ status: "ready", data });
@@ -79,7 +92,7 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
     return () => {
       cancelled = true;
     };
-  }, [dbPath]);
+  }, [dbPath, inputDir, runId]);
 
   const data = state.status === "ready" ? state.data : EMPTY_GRAPH;
   const inventory = artifactItems(project.inventory);
@@ -100,15 +113,24 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
     }
   }, [focusLabel, data, state.status]);
 
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      setFilter((current) => (current.search === searchInput ? current : { ...current, search: searchInput }));
+    }, 150);
+    return () => window.clearTimeout(id);
+  }, [searchInput]);
+
   const roots = useMemo(() => buildTrace(data, inventory), [data, inventory]);
   useEffect(() => {
     setExpanded(initialExpanded(roots));
   }, [roots]);
 
   const rows = useMemo(() => flattenTrace(roots, expanded), [roots, expanded]);
-  const visibleIds = useMemo(() => visibleNodeIds(data, filter), [data, filter]);
+  const graphIndex = useMemo(() => indexGraph(data), [data]);
+  const visibleIds = useMemo(() => visibleNodeIds(graphIndex, filter), [graphIndex, filter]);
   const elements = useMemo(() => buildGraphElements(data, visibleIds), [data, visibleIds]);
-  const counts = useMemo(() => nodeKindCounts(data), [data]);
+  const counts = useMemo(() => nodeKindCounts(graphIndex, filter), [graphIndex, filter]);
+  const kindStyles = useMemo(() => nodeKindStyles(theme), [theme]);
   const detail = useMemo(
     () => (selectedNodeId === null ? null : nodeDetail(data, selectedNodeId, inventory)),
     [data, selectedNodeId, inventory],
@@ -117,6 +139,19 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
     () => data.nodes.filter((node) => isGraphNodeKind(node.type)).length,
     [data],
   );
+
+  /** The focused node's label, so the "clear focus" button can name what it would clear. */
+  const focusedLabel = useMemo(
+    () => data.nodes.find((node) => String(node.id) === filter.focusId)?.label ?? null,
+    [data, filter.focusId],
+  );
+  const [lastFocusLabel, setLastFocusLabel] = useState<string | null>(null);
+  useEffect(() => {
+    if (focusedLabel !== null) {
+      setLastFocusLabel(focusedLabel);
+    }
+  }, [focusedLabel]);
+  const clearFocusLabel = focusedLabel ?? lastFocusLabel;
 
   const openAsset = (path: string, line: number | null): void => {
     dispatch({ type: "OPEN_TAB", tab: sourceTab(path, line) });
@@ -162,92 +197,106 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
   return (
     <div className="ci-graph" data-testid="graph-editor">
       <div className="ci-graph__toolbar">
-        <input
-          type="search"
-          className="ci-input"
-          placeholder={text.graph.search}
-          aria-label={text.graph.search}
-          value={filter.search}
-          onChange={(event) => setFilter({ ...filter, search: event.target.value })}
-          data-testid="graph-search"
-        />
-        <label className="ci-graph__depth">
-          {text.graph.depth}
+        <span className="ci-graph__group">
           <input
-            type="range"
-            min={DEPTH_LIMITS.min}
-            max={DEPTH_LIMITS.max}
-            step={1}
-            value={filter.depth}
-            aria-label={text.graph.depthLabel}
-            onChange={(event) => setFilter(withDepth(filter, Number(event.target.value)))}
-            data-testid="graph-depth"
+            type="search"
+            className="ci-input"
+            placeholder={text.graph.search}
+            aria-label={text.graph.search}
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            data-testid="graph-search"
           />
-          <span>
-            {filter.depth}/{DEPTH_LIMITS.max}
+        </span>
+        <span className="ci-graph__group">
+          <label className="ci-graph__depth">
+            {text.graph.depth}
+            <input
+              type="range"
+              min={DEPTH_LIMITS.min}
+              max={DEPTH_LIMITS.max}
+              step={1}
+              value={filter.depth}
+              aria-label={text.graph.depthLabel}
+              onChange={(event) => setFilter(withDepth(filter, Number(event.target.value)))}
+              data-testid="graph-depth"
+            />
+            <span>
+              {filter.depth}/{DEPTH_LIMITS.max}
+            </span>
+          </label>
+          <button
+            type="button"
+            className="ci-button"
+            disabled={filter.focusId === null}
+            onClick={() => {
+              setFilter({ ...filter, focusId: null });
+              setSelectedNodeId(null);
+              setSelectedRowId(null);
+            }}
+            data-testid="graph-recenter"
+          >
+            {clearFocusLabel === null
+              ? text.graph.clearFocusNone
+              : text.graph.clearFocus(clearFocusLabel)}
+          </button>
+        </span>
+        <span className="ci-graph__group">
+          <button
+            type="button"
+            className="ci-button ci-button--quiet"
+            aria-label={text.graph.zoomOut}
+            title={text.graph.zoomOut}
+            onClick={() => canvasRef.current?.zoomBy(1 / 1.2)}
+            data-testid="graph-zoom-out"
+          >
+            <span className="codicon codicon-zoom-out" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="ci-button ci-button--quiet"
+            aria-label={text.graph.zoomIn}
+            title={text.graph.zoomIn}
+            onClick={() => canvasRef.current?.zoomBy(1.2)}
+            data-testid="graph-zoom-in"
+          >
+            <span className="codicon codicon-zoom-in" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="ci-button"
+            onClick={() => canvasRef.current?.fit()}
+            data-testid="graph-fit"
+          >
+            {text.graph.fit}
+          </button>
+        </span>
+        <span className="ci-graph__group">
+          <span className="ci-graph__count" data-testid="graph-count">
+            {text.graph.nodeCount(visibleIds.size, drawableCount)}
           </span>
-        </label>
-        <button
-          type="button"
-          className="ci-button"
-          disabled={filter.focusId === null}
-          onClick={() => {
-            setFilter({ ...filter, focusId: null });
-            setSelectedNodeId(null);
-            setSelectedRowId(null);
-          }}
-          data-testid="graph-recenter"
-        >
-          {text.graph.clearFocus}
-        </button>
-        <button
-          type="button"
-          className="ci-button ci-button--quiet"
-          aria-label={text.graph.zoomOut}
-          title={text.graph.zoomOut}
-          onClick={() => canvasRef.current?.zoomBy(1 / 1.2)}
-          data-testid="graph-zoom-out"
-        >
-          <span className="codicon codicon-zoom-out" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          className="ci-button ci-button--quiet"
-          aria-label={text.graph.zoomIn}
-          title={text.graph.zoomIn}
-          onClick={() => canvasRef.current?.zoomBy(1.2)}
-          data-testid="graph-zoom-in"
-        >
-          <span className="codicon codicon-zoom-in" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          className="ci-button"
-          onClick={() => canvasRef.current?.fit()}
-          data-testid="graph-fit"
-        >
-          {text.graph.fit}
-        </button>
-        <span className="ci-graph__count" data-testid="graph-count">
-          {text.graph.nodeCount(visibleIds.size, drawableCount)}
         </span>
       </div>
 
-      {/* A kind the project has none of is not offered, as the legend already omits it. */}
+      {/* A kind the project has none of is not offered. Its swatch is the legend for the kind. */}
       <div className="ci-chips" role="group" aria-label={text.graph.kinds}>
-        {NODE_KINDS.filter((kind) => counts[kind] > 0).map((kind) => (
-          <button
-            key={kind}
-            type="button"
-            className={`ci-chip${filter.kinds[kind] ? " ci-chip--on" : ""}`}
-            aria-pressed={filter.kinds[kind]}
-            onClick={() => setFilter(toggleKind(filter, kind))}
-            data-testid={`graph-kind-${kind}`}
-          >
-            {text.graph.nodeKind[kind]}
-            <span className="ci-chip__count">{counts[kind]}</span>
-          </button>
-        ))}
+        {NODE_KINDS.filter((kind) => counts[kind] > 0).map((kind) => {
+          const style = kindStyles.find((candidate) => candidate.kind === kind);
+          return (
+            <button
+              key={kind}
+              type="button"
+              className={`ci-chip${filter.kinds[kind] ? " ci-chip--on" : ""}`}
+              aria-pressed={filter.kinds[kind]}
+              onClick={() => setFilter(toggleKind(filter, kind))}
+              data-testid={`graph-kind-${kind}`}
+            >
+              {style === undefined ? null : <NodeSwatch style={style} />}
+              {text.graph.nodeKind[kind]}
+              <span className="ci-chip__count">{counts[kind]}</span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="ci-graph__body">
@@ -273,7 +322,7 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
             onLayoutRunning={setLayoutRunning}
           />
         </div>
-        <GraphDetailPane detail={detail} theme={theme} counts={counts} onOpenAsset={openAsset} />
+        <GraphDetailPane detail={detail} theme={theme} onOpenAsset={openAsset} />
       </div>
     </div>
   );

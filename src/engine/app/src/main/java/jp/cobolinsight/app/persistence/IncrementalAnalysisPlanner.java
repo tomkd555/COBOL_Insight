@@ -7,10 +7,11 @@ import java.util.Set;
 
 /**
  * Determines the set of source IDs that need reanalysis by comparing source content hashes.
- * The dependency scope is limited to two kinds: "the program that imports this copybook" and
- * "the JCL that calls this program." Each target source's node is assumed to be registered as
- * exactly one entry under the NODE.id = SOURCE.id convention, and the two dependency kinds are
- * distinguished by the CALL_EDGE.kind value.
+ * The dependency scope is limited to three kinds: "the program that imports this copybook",
+ * "the JCL that expands this PROC or INCLUDE member" and "the JCL that calls this program."
+ * Each target source's node is assumed to be registered as exactly one entry under the
+ * NODE.id = SOURCE.id convention, and the dependency kinds are distinguished by the
+ * CALL_EDGE.kind value.
  */
 public final class IncrementalAnalysisPlanner {
 
@@ -18,6 +19,8 @@ public final class IncrementalAnalysisPlanner {
     public static final String COPY_EDGE_KIND = "COPY";
     /** The CALL_EDGE.kind value representing a calling-JCL -> program execution dependency. */
     public static final String EXECUTION_EDGE_KIND = "EXECUTION";
+    /** The CALL_EDGE.kind value representing a PROC or INCLUDE member -> calling-JCL dependency. */
+    public static final String INCLUDE_EDGE_KIND = "INCLUDE";
 
     private final PersistenceDao dao;
 
@@ -47,7 +50,7 @@ public final class IncrementalAnalysisPlanner {
     public Set<Long> dependentsOf(long sourceId) {
         Set<Long> dependents = new LinkedHashSet<>();
         for (CallEdgeRecord edge : dao.findEdgesFrom(sourceId)) {
-            if (COPY_EDGE_KIND.equals(edge.kind())) {
+            if (COPY_EDGE_KIND.equals(edge.kind()) || INCLUDE_EDGE_KIND.equals(edge.kind())) {
                 dependents.add(edge.toNode());
             }
         }

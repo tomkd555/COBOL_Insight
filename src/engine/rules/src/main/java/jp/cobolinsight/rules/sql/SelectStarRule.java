@@ -24,8 +24,9 @@ public final class SelectStarRule implements Rule {
             .summary("SELECT 句に * を使う問い合わせを検出します。")
             .rationale("表に列を足しただけで転送量と受け側の構造が変わります。"
                     + "必要のない列まで読むため入出力も増えます。")
-            .detection("埋込みSQL文の SELECT 句に * を書いたものを検出します。"
-                    + "カーソル宣言の中の SELECT 句も対象です。")
+            .detection("SQL 文の SELECT 句に * を書いたものを検出します。"
+                    + "カーソル宣言の中の SELECT 句も対象です。"
+                    + "COBOL の埋込みSQLと、SQL スクリプトの文の双方を対象とします。")
             .remedy("必要な列を明示して並べてください。")
             .example("""
                     SELECT * FROM CUSTOMER WHERE ID = :WS-ID
@@ -34,7 +35,7 @@ public final class SelectStarRule implements Rule {
                     """)
             .severity(Severity.MEDIUM)
             .commands(Command.SQL_LINT)
-            .targets(AssetKind.COBOL)
+            .targets(AssetKind.COBOL, AssetKind.SQL)
             .needs(Needs.SQL)
             .build();
 
@@ -47,6 +48,10 @@ public final class SelectStarRule implements Rule {
     public List<Finding> evaluate(AnalysisContext context) {
         List<Finding> findings = new ArrayList<>();
         for (SqlStatementModel statement : context.sqlStatements()) {
+            if (!statement.isFullyAnalysed()) {
+                // A degraded statement carries no structure signals; there is nothing to read.
+                continue;
+            }
             if (statement.structureSignals().selectStar()) {
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         "SELECT * で全列を取得しています。"

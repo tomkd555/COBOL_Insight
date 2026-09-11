@@ -1,0 +1,63 @@
+[
+  {
+    "jobName": "CJ212",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "CJ CNTL RD",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID",
+      "RESTART": "STEP020"
+    },
+    "syschk": {
+      "ddName": "SYSCHK",
+      "line": 4,
+      "datasetName": "FLW.CJ212.CHKPT",
+      "dataset": {
+        "name": "FLW.CJ212.CHKPT"
+      },
+      "dispositionText": "(OLD,KEEP)",
+      "disposition": {
+        "status": "OLD",
+        "normal": "KEEP",
+        "raw": "(OLD,KEEP)"
+      },
+      "parameters": {
+        "DSN": "FLW.CJ212.CHKPT",
+        "DISP": "(OLD,KEEP)"
+      }
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 13,
+        "ddStatements": [
+          {
+            "ddName": "PRTOUT",
+            "line": 17,
+            "sysout": "A",
+            "parameters": {
+              "SYSOUT": "A",
+              "CNTL": "*.CTL1"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 18,
+        "condition": "COND=(4,LT)",
+        "parameters": {
+          "COND": "(4,LT)",
+          "RD": "R"
+        }
+      }
+    ]
+  }
+]

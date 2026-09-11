@@ -1,0 +1,173 @@
+[
+  {
+    "jobName": "CJ422",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "DFSRRC00 IMS BMP",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "diagnostics": [
+      {
+        "ruleId": "jcl-syntax",
+        "line": 9,
+        "message": "9 行の JCL 文のパラメーター PARM を解析できませんでした。値は原文のまま保持します。"
+      }
+    ],
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "DFSRRC00",
+        "line": 9,
+        "parm": "(DLI,CCP008,PSB001,7,0000,,0,,N,0,T,,,,,)",
+        "parameters": {
+          "PARM": "(DLI,CCP008,PSB001,7,0000,,0,,N,0,T,,,,,)"
+        },
+        "utility": {
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "DFSRESLB": "READ",
+            "DFSVSAMP": "READ",
+            "IMS": "READ",
+            "SYSPRINT": "WRITE",
+            "SYSUDUMP": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 11,
+            "datasetName": "IMS.PROD.SDFSRESL",
+            "dataset": {
+              "name": "IMS.PROD.SDFSRESL"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "IMS.PROD.SDFSRESL",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "STEPLIB",
+            "line": 12,
+            "concatIndex": 1,
+            "datasetName": "CCP.PROD.LOADLIB",
+            "dataset": {
+              "name": "CCP.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CCP.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "IEFRDER",
+            "line": 13,
+            "dummy": true,
+            "parameters": {
+              "DUMMY": ""
+            }
+          },
+          {
+            "ddName": "DFSRESLB",
+            "line": 14,
+            "datasetName": "IMS.PROD.SDFSRESL",
+            "dataset": {
+              "name": "IMS.PROD.SDFSRESL"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "IMS.PROD.SDFSRESL",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "DFSVSAMP",
+            "line": 15,
+            "datasetName": "IMS.PROD.VSAMPARM",
+            "dataset": {
+              "name": "IMS.PROD.VSAMPARM"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "IMS.PROD.VSAMPARM",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "IMS",
+            "line": 16,
+            "datasetName": "IMS.PROD.PSBLIB",
+            "dataset": {
+              "name": "IMS.PROD.PSBLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "IMS.PROD.PSBLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "IMS",
+            "line": 17,
+            "concatIndex": 1,
+            "datasetName": "IMS.PROD.DBDLIB",
+            "dataset": {
+              "name": "IMS.PROD.DBDLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "IMS.PROD.DBDLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 18,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSUDUMP",
+            "line": 19,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

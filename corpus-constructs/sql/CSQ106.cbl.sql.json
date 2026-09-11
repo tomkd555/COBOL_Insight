@@ -1,0 +1,235 @@
+[
+  {
+    "kind": "BEGIN_DECLARE_SECTION",
+    "startLine": 17,
+    "endLine": 17,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "END_DECLARE_SECTION",
+    "startLine": 47,
+    "endLine": 47,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "hostVariables": [
+      {
+        "originalName": "WS-MEISAI-NO",
+        "mangledName": "HV1"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.MEISAI"
+    ],
+    "startLine": 55,
+    "endLine": 62,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-MEISAI",
+        "forReadOnly": false,
+        "forFetchOnly": true,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-MEISAI",
+    "tableAccess": {
+      "CSQDB.MEISAI": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "GYOBAN"
+      },
+      {
+        "column": "SURYO"
+      },
+      {
+        "column": "BIKO"
+      },
+      {
+        "column": "MEISAI_NO"
+      },
+      {
+        "column": "GYOBAN"
+      }
+    ],
+    "selectList": [
+      "GYOBAN",
+      "SURYO",
+      "BIKO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": true,
+    "dynamic": false
+  },
+  {
+    "kind": "COMMIT",
+    "startLine": 69,
+    "endLine": 69,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 76,
+    "endLine": 76,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-MEISAI",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 82,
+    "endLine": 82,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-MEISAI",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "WS-ARR-GYOBAN",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-ARR-SURYO",
+        "mangledName": "HV2",
+        "indicatorName": "WS-ARR-SURYO-IND"
+      },
+      {
+        "originalName": "WS-ARR-BIKO",
+        "mangledName": "HV3",
+        "indicatorName": "WS-ARR-BIKO-IND"
+      }
+    ],
+    "startLine": 92,
+    "endLine": 97,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-MEISAI",
+    "intoTargets": [
+      "WS-ARR-GYOBAN",
+      "WS-ARR-SURYO",
+      "WS-ARR-BIKO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false,
+    "rowsetSize": 5
+  },
+  {
+    "kind": "INSERT",
+    "hostVariables": [
+      {
+        "originalName": "WS-MEISAI-NO",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-INS-GYOBAN",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "WS-INS-SURYO",
+        "mangledName": "HV3"
+      },
+      {
+        "originalName": "WS-INS-BIKO",
+        "mangledName": "HV4",
+        "indicatorName": "WS-INS-BIKO-IND"
+      },
+      {
+        "originalName": "WS-INS-N",
+        "mangledName": "HV5"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.MEISAI"
+    ],
+    "startLine": 137,
+    "endLine": 144,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "DEGRADED",
+    "diagnostic": "Db2 文法が受け付けませんでした: no viable alternative at input 'INSERT INTO CSQDB.MEISAI (MEISAI_NO, GYOBAN, SURYO, BIKO) VALUES (:WS-MEISAI-NO, :WS-INS-GYOBAN, :WS-INS-SURYO, :WS-INS-BIKO :WS-INS-BIKO-IND) FOR :WS-INS-N ROWS'",
+    "tableAccess": {
+      "CSQDB.MEISAI": "C"
+    },
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false,
+    "rowsetHostVariable": "WS-INS-N"
+  }
+]

@@ -1,0 +1,393 @@
+[
+  {
+    "kind": "BEGIN_DECLARE_SECTION",
+    "startLine": 17,
+    "endLine": 17,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "END_DECLARE_SECTION",
+    "startLine": 26,
+    "endLine": 26,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "hostVariables": [
+      {
+        "originalName": "WS-FROM-YMD",
+        "mangledName": "HV1"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.KOKYAKU"
+    ],
+    "startLine": 33,
+    "endLine": 39,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-KOKYAKU",
+        "forReadOnly": false,
+        "forFetchOnly": true,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-KOKYAKU",
+    "tableAccess": {
+      "CSQDB.KOKYAKU": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "KOKYAKU_NO"
+      },
+      {
+        "column": "KOKYAKU_MEI"
+      },
+      {
+        "column": "DENWA_BANGO"
+      },
+      {
+        "column": "TOROKU_YMD"
+      }
+    ],
+    "selectList": [
+      "KOKYAKU_NO",
+      "KOKYAKU_MEI",
+      "DENWA_BANGO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "COMMIT",
+    "startLine": 47,
+    "endLine": 47,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-KOKYAKU-MEI",
+        "mangledName": "HV1",
+        "indicatorName": "WS-KOKYAKU-MEI-IND"
+      },
+      {
+        "originalName": "WS-DENWA-BANGO",
+        "mangledName": "HV2",
+        "indicatorName": "WS-DENWA-BANGO-IND"
+      },
+      {
+        "originalName": "WS-KOKYAKU-NO",
+        "mangledName": "HV3"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.KOKYAKU"
+    ],
+    "startLine": 58,
+    "endLine": 64,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "WS-KOKYAKU-MEI",
+      "WS-DENWA-BANGO"
+    ],
+    "tableAccess": {
+      "CSQDB.KOKYAKU": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "KOKYAKU_MEI"
+      },
+      {
+        "column": "DENWA_BANGO"
+      },
+      {
+        "column": "KOKYAKU_NO"
+      }
+    ],
+    "selectList": [
+      "KOKYAKU_MEI",
+      "DENWA_BANGO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-KOKYAKU-MEI",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-DENWA-BANGO",
+        "mangledName": "HV2",
+        "indicatorName": "WS-DENWA-BANGO-IND"
+      },
+      {
+        "originalName": "WS-KOKYAKU-NO",
+        "mangledName": "HV3"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.KOKYAKU"
+    ],
+    "startLine": 70,
+    "endLine": 76,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "WS-KOKYAKU-MEI",
+      "WS-DENWA-BANGO"
+    ],
+    "tableAccess": {
+      "CSQDB.KOKYAKU": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "KOKYAKU_MEI"
+      },
+      {
+        "column": "DENWA_BANGO"
+      },
+      {
+        "column": "KOKYAKU_NO"
+      }
+    ],
+    "selectList": [
+      "KOKYAKU_MEI",
+      "DENWA_BANGO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 82,
+    "endLine": 82,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-KOKYAKU",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 88,
+    "endLine": 88,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-KOKYAKU",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "WS-KOKYAKU-NO",
+        "mangledName": "HV1",
+        "indicatorName": "WS-KOKYAKU-NO-IND"
+      },
+      {
+        "originalName": "WS-KOKYAKU-MEI",
+        "mangledName": "HV2",
+        "indicatorName": "WS-KOKYAKU-MEI-IND"
+      },
+      {
+        "originalName": "WS-DENWA-BANGO",
+        "mangledName": "HV3",
+        "indicatorName": "WS-DENWA-BANGO-IND"
+      }
+    ],
+    "startLine": 98,
+    "endLine": 103,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-KOKYAKU",
+    "intoTargets": [
+      "WS-KOKYAKU-NO",
+      "WS-KOKYAKU-MEI",
+      "WS-DENWA-BANGO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "UPDATE",
+    "hostVariables": [
+      {
+        "originalName": "WS-FROM-YMD",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-KOKYAKU-NO",
+        "mangledName": "HV2"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.KOKYAKU"
+    ],
+    "startLine": 117,
+    "endLine": 121,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "tableAccess": {
+      "CSQDB.KOKYAKU": "U"
+    },
+    "columnRefs": [
+      {
+        "column": "TOROKU_YMD"
+      },
+      {
+        "column": "KOKYAKU_NO"
+      }
+    ],
+    "setPairs": [
+      {
+        "column": "TOROKU_YMD",
+        "value": ":WS-FROM-YMD"
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "UPDATE",
+    "hostVariables": [
+      {
+        "originalName": "WS-TOROKU-YMD",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-KOKYAKU-NO",
+        "mangledName": "HV2"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.KOKYAKU"
+    ],
+    "startLine": 128,
+    "endLine": 132,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "tableAccess": {
+      "CSQDB.KOKYAKU": "U"
+    },
+    "columnRefs": [
+      {
+        "column": "TOROKU_YMD"
+      },
+      {
+        "column": "KOKYAKU_NO"
+      }
+    ],
+    "setPairs": [
+      {
+        "column": "TOROKU_YMD",
+        "value": ":WS-TOROKU-YMD"
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

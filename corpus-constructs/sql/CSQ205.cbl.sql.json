@@ -1,0 +1,374 @@
+[
+  {
+    "kind": "DECLARE_TABLE",
+    "file": "corpus-constructs/sql/CSD202.cpy",
+    "startLine": 9,
+    "endLine": 15,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "declaredTable": "CSQDB.CHUMON",
+    "declaredColumns": [
+      {
+        "name": "CHUMON_NO",
+        "type": "CHAR(10)",
+        "nullable": false
+      },
+      {
+        "name": "SHOHIN_CD",
+        "type": "CHAR(8)",
+        "nullable": false
+      },
+      {
+        "name": "SURYO",
+        "type": "INTEGER",
+        "nullable": false
+      },
+      {
+        "name": "CHUMON_YMD",
+        "type": "CHAR(8)",
+        "nullable": false
+      },
+      {
+        "name": "BIKO",
+        "type": "CHAR(30)",
+        "nullable": true
+      }
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "DECLARE_CURSOR",
+    "referencedTables": [
+      "CSQDB.CHUMON"
+    ],
+    "startLine": 40,
+    "endLine": 47,
+    "structureSignals": {
+      "selectStar": false,
+      "cursor": {
+        "cursorName": "CSR-SCR",
+        "forReadOnly": true,
+        "forFetchOnly": false,
+        "forUpdate": false
+      },
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-SCR",
+    "tableAccess": {
+      "CSQDB.CHUMON": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "CHUMON_NO"
+      },
+      {
+        "column": "SHOHIN_CD"
+      },
+      {
+        "column": "SURYO"
+      },
+      {
+        "column": "CHUMON_NO"
+      }
+    ],
+    "selectList": [
+      "CHUMON_NO",
+      "SHOHIN_CD",
+      "SURYO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": true,
+    "dynamic": false
+  },
+  {
+    "kind": "OPEN",
+    "startLine": 48,
+    "endLine": 48,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-SCR",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "CHUMON-NO",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "SHOHIN-CD",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "SURYO",
+        "mangledName": "HV3"
+      }
+    ],
+    "startLine": 53,
+    "endLine": 56,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-SCR",
+    "intoTargets": [
+      "CHUMON-NO",
+      "SHOHIN-CD",
+      "SURYO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "CHUMON-NO",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "SHOHIN-CD",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "SURYO",
+        "mangledName": "HV3"
+      }
+    ],
+    "startLine": 65,
+    "endLine": 68,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-SCR",
+    "intoTargets": [
+      "CHUMON-NO",
+      "SHOHIN-CD",
+      "SURYO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "CHUMON-NO",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "SHOHIN-CD",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "SURYO",
+        "mangledName": "HV3"
+      }
+    ],
+    "startLine": 77,
+    "endLine": 80,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-SCR",
+    "intoTargets": [
+      "CHUMON-NO",
+      "SHOHIN-CD",
+      "SURYO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "CHUMON-NO",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "SHOHIN-CD",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "SURYO",
+        "mangledName": "HV3"
+      }
+    ],
+    "startLine": 89,
+    "endLine": 92,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-SCR",
+    "intoTargets": [
+      "CHUMON-NO",
+      "SHOHIN-CD",
+      "SURYO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "CHUMON-NO",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "SHOHIN-CD",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "SURYO",
+        "mangledName": "HV3"
+      }
+    ],
+    "startLine": 101,
+    "endLine": 104,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-SCR",
+    "intoTargets": [
+      "CHUMON-NO",
+      "SHOHIN-CD",
+      "SURYO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "FETCH",
+    "hostVariables": [
+      {
+        "originalName": "WS-TBL-NO",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-TBL-SHOHIN",
+        "mangledName": "HV2"
+      },
+      {
+        "originalName": "WS-TBL-SURYO",
+        "mangledName": "HV3"
+      }
+    ],
+    "startLine": 113,
+    "endLine": 117,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-SCR",
+    "intoTargets": [
+      "WS-TBL-NO",
+      "WS-TBL-SHOHIN",
+      "WS-TBL-SURYO"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false,
+    "rowsetSize": 10
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 127,
+    "endLine": 127,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-SCR",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "CLOSE",
+    "startLine": 135,
+    "endLine": 135,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "cursorName": "CSR-SCR",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

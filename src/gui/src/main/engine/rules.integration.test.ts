@@ -100,7 +100,6 @@ describe.skipIf(!ready)("the engine CLI, run for real against a rule file", () =
     expect(catalog.ruleErrors, catalog.ruleErrors.join(" | ")).toEqual([]);
     const disabled = catalog.rules.find((rule) => rule.id === DISABLED_RULE);
     expect(disabled?.enabled).toBe(false);
-    expect(disabled?.defaultEnabled).toBe(true);
 
     const custom = catalog.rules.find((rule) => rule.id === CUSTOM_RULE.id);
     expect(custom?.source).toBe("user");

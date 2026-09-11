@@ -61,9 +61,9 @@ public final class DynamicSqlTaintRule implements Rule {
                             EXEC SQL EXECUTE STMT USING :WS-INPUT END-EXEC.
                             """)
                     .severity(Severity.HIGH)
-                    .commands(Command.LINT, Command.REPORT)
+                    .commands(Command.LINT)
                     .targets(AssetKind.COBOL)
-                    .needs(Needs.SEMANTIC, Needs.CFG, Needs.DATAFLOW)
+                    .needs(Needs.CFG, Needs.DATAFLOW)
                     .build();
 
     @Override

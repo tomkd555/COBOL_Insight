@@ -1,0 +1,80 @@
+[
+  {
+    "jobName": "CJ106",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ01",
+      "PROGRAMMER": "CJ ゴロウ",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PROC",
+        "target": "CJPR01",
+        "line": 13
+      },
+      {
+        "name": "STEP010.STEP1",
+        "execKind": "PGM",
+        "target": "CCP006",
+        "line": 9,
+        "procStepName": "STEP1",
+        "utility": {
+          "ddRoles": {
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSOUT",
+            "line": 10,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PROC",
+        "target": "CJPR01",
+        "line": 15,
+        "condition": "COND=(4,LT,STEP010.STEP1)",
+        "parameters": {
+          "COND": "(4,LT,STEP010.STEP1)"
+        }
+      },
+      {
+        "name": "STEP020.STEP1",
+        "execKind": "PGM",
+        "target": "CCP006",
+        "line": 9,
+        "condition": "COND=(4,LT,STEP010.STEP1)",
+        "procStepName": "STEP1",
+        "parameters": {
+          "COND": "(4,LT,STEP010.STEP1)"
+        },
+        "utility": {
+          "ddRoles": {
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSOUT",
+            "line": 10,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

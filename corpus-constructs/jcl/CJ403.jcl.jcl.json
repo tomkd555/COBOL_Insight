@@ -1,0 +1,109 @@
+[
+  {
+    "jobName": "CJ403",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "TSO HOUSEKEEPING CMDS",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IKJEFT01",
+        "line": 12,
+        "parameters": {
+          "DYNAMNBR": "20"
+        },
+        "utility": {
+          "programRuns": [
+            {
+              "program": "CCP006",
+              "parms": "PARM1,PARM2",
+              "library": "CCP.PROD.LOADLIB"
+            }
+          ],
+          "datasetUses": [
+            {
+              "dataset": "CJT.D260910.WORK.INPUT",
+              "access": "READ"
+            },
+            {
+              "dataset": "CJT.D260909.WORK.OLD",
+              "access": "DELETE"
+            }
+          ],
+          "ddRoles": {
+            "INFILE": "READ",
+            "STEPLIB": "READ",
+            "SYSTSPRT": "WRITE",
+            "SYSPRINT": "WRITE",
+            "SYSUDUMP": "WRITE",
+            "SYSTSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 13,
+            "datasetName": "CCP.PROD.LOADLIB",
+            "dataset": {
+              "name": "CCP.PROD.LOADLIB"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "CCP.PROD.LOADLIB",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSTSPRT",
+            "line": 14,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 15,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSUDUMP",
+            "line": 16,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSTSIN",
+            "line": 17,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  ALLOCATE DA('CJT.D260910.WORK.INPUT') FI(INFILE) SHR",
+              "  DELETE 'CJT.D260909.WORK.OLD'",
+              "  FREE FI(INFILE)",
+              "  LISTCAT ENTRIES('CJT.D260910.WORK.INPUT') ALL",
+              "  CALL 'CCP.PROD.LOADLIB(CCP006)' 'PARM1,PARM2'"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

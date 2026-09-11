@@ -1,0 +1,114 @@
+[
+  {
+    "kind": "BEGIN_DECLARE_SECTION",
+    "startLine": 24,
+    "endLine": 24,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "END_DECLARE_SECTION",
+    "startLine": 34,
+    "endLine": 34,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-KENSU-1",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "BUSHO-CD OF WS-SHAIN-REC",
+        "mangledName": "HV2"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.SHAIN"
+    ],
+    "startLine": 47,
+    "endLine": 52,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "WS-KENSU-1"
+    ],
+    "tableAccess": {
+      "CSQDB.SHAIN": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "BUSHO_CD"
+      }
+    ],
+    "selectList": [
+      "COUNT(*)"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "WS-KENSU-2",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "WS-BUSHO-TBL",
+        "mangledName": "HV2"
+      }
+    ],
+    "referencedTables": [
+      "CSQDB.SHAIN"
+    ],
+    "startLine": 60,
+    "endLine": 65,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "DEGRADED",
+    "diagnostic": "Db2 文法が受け付けませんでした: no viable alternative at input 'SELECT COUNT(*) INTO :WS-KENSU-2 FROM CSQDB.SHAIN WHERE BUSHO_CD = :WS-BUSHO-TBL(1)'",
+    "tableAccess": {
+      "CSQDB.SHAIN": "R"
+    },
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

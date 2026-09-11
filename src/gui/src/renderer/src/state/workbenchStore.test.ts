@@ -106,6 +106,20 @@ describe("tabs", () => {
     expect(state.drafts).toEqual({});
   });
 
+  it("holds the explorer's selection and drops it with the folder", () => {
+    const selected = apply(initialWorkbenchState, {
+      type: "SELECT",
+      selection: { path: "cobol", kind: "folder" },
+    });
+    expect(selected.selection).toEqual({ path: "cobol", kind: "folder" });
+    // Selecting the same row again changes nothing, so what is keyed on the state stays put.
+    expect(
+      workbenchReducer(selected, { type: "SELECT", selection: { path: "cobol", kind: "folder" } }),
+    ).toBe(selected);
+    // That path names nothing in the folder being opened.
+    expect(workbenchReducer(selected, { type: "CLOSE_ALL_TABS" }).selection).toBeNull();
+  });
+
   it("wraps around at either end when stepping", () => {
     const open = apply(
       initialWorkbenchState,
@@ -189,17 +203,6 @@ describe("layout", () => {
     expect(apply(initialWorkbenchState, { type: "SHOW_PANEL", view: "problems" }).panelVisible).toBe(
       false,
     );
-  });
-
-  it("counts only finished resizes, which is what triggers a save", () => {
-    const state = apply(
-      initialWorkbenchState,
-      { type: "SET_SIDE_WIDTH", width: 300 },
-      { type: "SET_SIDE_WIDTH", width: 301 },
-      { type: "COMMIT_SIZE" },
-    );
-    expect(state.sizeCommitCount).toBe(1);
-    expect(state.sideWidth).toBe(301);
   });
 
   it("clamps restored sizes to their minimum and keeps the current one where none was stored", () => {

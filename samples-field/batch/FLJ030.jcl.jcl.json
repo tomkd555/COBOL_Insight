@@ -1,0 +1,137 @@
+[
+  {
+    "jobName": "FLJ030",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "FL0001",
+      "PROGRAMMER": "FL 月次バッチ検証",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "jcllib": [
+      "FL.PROD.PROCLIB"
+    ],
+    "joblib": [
+      {
+        "ddName": "JOBLIB",
+        "line": 12,
+        "datasetName": "FL.PROD.LOADLIB",
+        "dataset": {
+          "name": "FL.PROD.LOADLIB"
+        },
+        "dispositionText": "SHR",
+        "disposition": {
+          "status": "SHR",
+          "raw": "SHR"
+        },
+        "parameters": {
+          "DSN": "FL.PROD.LOADLIB",
+          "DISP": "SHR"
+        }
+      }
+    ],
+    "jes2Cards": [
+      "/*JOBPARM LINES=9999"
+    ],
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "FLB010",
+        "line": 15,
+        "utility": {
+          "ddRoles": {
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSOUT",
+            "line": 16,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP020",
+        "execKind": "PGM",
+        "target": "FLB010",
+        "line": 19,
+        "condition": "COND=(4,LT,STEP999)",
+        "parameters": {
+          "COND": "(4,LT,STEP999)"
+        },
+        "utility": {
+          "ddRoles": {
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSOUT",
+            "line": 20,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP030",
+        "execKind": "PGM",
+        "target": "FLB010",
+        "line": 23,
+        "condition": "COND=(0,NE)",
+        "parameters": {
+          "COND": "(0,NE)"
+        },
+        "utility": {
+          "ddRoles": {
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSOUT",
+            "line": 24,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      },
+      {
+        "name": "STEP040",
+        "execKind": "PGM",
+        "target": "FLB010",
+        "line": 28,
+        "condition": "COND=(0,EQ)",
+        "parameters": {
+          "COND": "(0,EQ)"
+        },
+        "utility": {
+          "ddRoles": {
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSOUT",
+            "line": 29,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

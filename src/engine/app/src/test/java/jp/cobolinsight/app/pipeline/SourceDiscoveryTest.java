@@ -102,6 +102,44 @@ class SourceDiscoveryTest {
                 result.files().get(0).evidence());
     }
 
+    /** The same for an SQL extension: a .sql file holding COBOL or JCL is taken as what it holds. */
+    @Test
+    void contentDecidesTheKindOfAnSqlExtension() throws IOException {
+        Path assets = tempDir.resolve("assets");
+        write(assets.resolve("A.sql"), COBOL);
+        write(assets.resolve("B.sql"), JCL);
+        write(assets.resolve("C.sql"), "-- 口座マスタ。\nCREATE TABLE CSDB.CSQKOZA\n"
+                + "    ( KOZA_NO CHAR(10) NOT NULL\n    );\n");
+
+        SourceDiscovery.Result result = SourceDiscovery.discover(assets);
+
+        assertEquals(AssetKind.COBOL, kindOf(result, "A.sql"), "内容を採ること");
+        assertEquals(AssetKind.JCL, kindOf(result, "B.sql"), "内容を採ること");
+        assertEquals(AssetKind.SQL, kindOf(result, "C.sql"));
+        assertEquals(List.of(
+                        new SourceDiscovery.KindMismatch("A.sql", AssetKind.SQL, AssetKind.COBOL),
+                        new SourceDiscovery.KindMismatch("B.sql", AssetKind.SQL, AssetKind.JCL)),
+                result.mismatches());
+    }
+
+    /** A SPUFI member: a card image whose sequence number sits in columns 73-80. */
+    @Test
+    void spufiExtensionIsTakenAsAnSqlScript() throws IOException {
+        Path assets = tempDir.resolve("assets");
+        write(assets.resolve("Q.spufi"), card("SELECT COUNT(*)", "00000100") + "\n"
+                + card("  FROM CSDB.CSQKOZA;", "00000200") + "\n");
+
+        SourceDiscovery.Result result = SourceDiscovery.discover(assets);
+
+        assertEquals(AssetKind.SQL, kindOf(result, "Q.spufi"));
+        assertEquals(SourceDiscovery.Evidence.CONTENT, result.files().get(0).evidence());
+        assertEquals(List.of(), result.mismatches());
+    }
+
+    private static String card(String code, String sequence) {
+        return code + " ".repeat(72 - code.length()) + sequence;
+    }
+
     @Test
     void unknownExtensionIsCollectedWhenTheContentDecides() throws IOException {
         Path assets = tempDir.resolve("assets");

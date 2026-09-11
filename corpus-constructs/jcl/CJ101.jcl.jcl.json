@@ -1,0 +1,39 @@
+[
+  {
+    "jobName": "CJ101",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ01,DEPT05,D250911",
+      "PROGRAMMER": "CJ タロウ",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID",
+      "REGION": "0M",
+      "TIME": "1440"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "CCP006",
+        "line": 9,
+        "utility": {
+          "ddRoles": {
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSOUT",
+            "line": 10,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

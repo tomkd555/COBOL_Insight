@@ -7,16 +7,17 @@ import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.CompoundStatement;
 import jp.cobolinsight.core.semantic.ControlKind;
 import jp.cobolinsight.core.semantic.GoToStatement;
+import jp.cobolinsight.core.semantic.NestedBranches;
 import jp.cobolinsight.core.semantic.PerformRelation;
 import jp.cobolinsight.core.semantic.Procedure;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.semantic.StatementBlock;
 import jp.cobolinsight.core.source.SourceRange;
+import jp.cobolinsight.core.sql.WheneverClause;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -45,7 +46,6 @@ public final class CfgBuilder {
     private final CobolSemanticModel model;
     private final List<CfgNode> nodes = new ArrayList<>();
     private final Map<CfgNode, LinkedHashSet<CfgNode>> successors = new LinkedHashMap<>();
-    private final Map<Statement, CfgNode> byStatement = new IdentityHashMap<>();
     private final List<CfgNode> terminators = new ArrayList<>();
     private final List<PendingGoTo> gotos = new ArrayList<>();
     private final Map<SourceRange, CfgNode> performNodeByRange = new HashMap<>();
@@ -131,7 +131,7 @@ public final class CfgBuilder {
 
         Map<CfgNode, List<CfgNode>> edges = new LinkedHashMap<>();
         successors.forEach((node, set) -> edges.put(node, List.copyOf(set)));
-        return new ControlFlowGraph(model.programId(), nodes, entry, exit, edges, byStatement);
+        return new ControlFlowGraph(model.programId(), nodes, entry, exit, edges);
     }
 
     /** Head node of the first procedure at or after index that has statements. If none, the exit node. */
@@ -168,8 +168,27 @@ public final class CfgBuilder {
                 terminators.add(node);
                 return new Chain(node, List.of());
             }
-            if ("PERFORM".equals(simple.verb())) {
+            String verb = simple.verb();
+            if ("PERFORM".equals(verb) || "SORT".equals(verb) || "MERGE".equals(verb)) {
+                // A SORT or MERGE performs its INPUT/OUTPUT PROCEDUREs; the mapper records them
+                // as PERFORM relations on the statement's own range.
                 performNodeByRange.put(simple.range(), node);
+            }
+            if ("EXEC SQL".equals(verb)) {
+                // WHENEVER ... GO TO/PERFORM x: the precompiler branches to x after every later
+                // SQL statement. One edge from the WHENEVER itself keeps x reachable without
+                // pretending to know which statement raises the condition.
+                WheneverClause.branchOf(simple.text()).ifPresent(branch ->
+                        gotos.add(new PendingGoTo(node, List.of(branch.target()))));
+            } else {
+                // READ ... AT END GO TO x, INVALID KEY GO TO x, ON SIZE ERROR GO TO x, and the
+                // PROCEED TO target of an ALTER: a conditional branch that also falls through.
+                List<String> nested = new ArrayList<>(NestedBranches.goToTargets(simple.text()));
+                nested.addAll(NestedBranches.alterTargets(simple.text()));
+                nested.addAll(NestedBranches.handleTargets(simple.text()));
+                if (!nested.isEmpty()) {
+                    gotos.add(new PendingGoTo(node, nested));
+                }
             }
             return new Chain(node, List.of(node));
         }
@@ -246,9 +265,6 @@ public final class CfgBuilder {
         CfgNode node = new CfgNode(nextId++, kind, statement, procedureName);
         nodes.add(node);
         successors.put(node, new LinkedHashSet<>());
-        if (statement != null) {
-            byStatement.put(statement, node);
-        }
         return node;
     }
 

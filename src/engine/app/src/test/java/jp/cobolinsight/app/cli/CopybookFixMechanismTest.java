@@ -1,7 +1,6 @@
 package jp.cobolinsight.app.cli;
 
 import jp.cobolinsight.app.EngineWiring;
-import jp.cobolinsight.app.fix.UnifiedDiffFormatter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -25,8 +24,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * rules (R004/R017/R018) are tied to the semantic model's sourceFile (= the program body), the
  * samples never produce a fix that originates from a copybook. So this test demonstrates that the
  * mechanism is in place through importing-program resolution against the real samples, and a
- * synthesized copybook fix applied in present-only mode (does not rewrite the original, presents
- * the diff and lists the importers).
+ * synthesized copybook fix applied in present-only mode (does not rewrite the original, lists the
+ * importers instead).
  */
 class CopybookFixMechanismTest {
 
@@ -89,7 +88,7 @@ class CopybookFixMechanismTest {
                 originalText, fixedText, fixedText.getBytes(StandardCharsets.UTF_8),
                 List.of("FILE STATUS 検査を挿入する"), true, importers);
 
-        FixApplyCommand.ApplyOutcome outcome = FixApplyCommand.applyFixes(
+        FixCommand.ApplyOutcome outcome = FixCommand.applyFixes(
                 List.of(copybookFix), out, EngineWiring.reparseVerifier(), List.of());
 
         // Present-only: not written to the output destination, and not listed among the written programs.
@@ -98,17 +97,11 @@ class CopybookFixMechanismTest {
                 "コピー句は出力先へ書き出されないこと");
         // Aggregated with the list of importing programs attached.
         assertEquals(1, outcome.copybookFixes().size());
-        FixApplyCommand.CopybookFix reported = outcome.copybookFixes().get(0);
+        FixCommand.CopybookFix reported = outcome.copybookFixes().get(0);
         assertEquals("copybook/SYKCPY1.cpy", reported.relPath());
         assertEquals(importers, reported.importers());
         // The original copybook is unchanged.
         assertArrayEquals(originalBytes, Files.readAllBytes(originalCopybook),
                 "原本コピー句は書き換えないこと");
-
-        // Diff presentation: a unified diff containing the inserted line can be computed.
-        List<String> diff = new UnifiedDiffFormatter()
-                .unifiedDiff(copybookFix.relPath(), originalText, fixedText);
-        assertTrue(diff.stream().anyMatch(line -> line.equals("+" + insertedLine)),
-                "コピー句の差分に挿入行が現れること: " + diff);
     }
 }

@@ -55,9 +55,8 @@ class MainCommandTest {
         try (var database = jp.cobolinsight.app.persistence.PersistenceDatabase.open(databaseFile)) {
             var dao = new jp.cobolinsight.app.persistence.PersistenceDao(database.connection());
             var source = dao.findSourceByPath(Paths.rootOf(assets), "cobol/SYKENC1_SJIS.cbl").orElseThrow();
-            var info = dao.findEncodingInfo(source.id()).orElseThrow();
-            assertTrue(info.manualOverride(), "CLIフラグの手動指定が自動判別を上書きすること");
-            assertEquals("windows-31j", info.detectedCharset());
+            assertEquals("windows-31j", source.codepage(),
+                    "CLIフラグの手動指定が自動判別を上書きすること");
         }
     }
 
@@ -84,6 +83,33 @@ class MainCommandTest {
         String stderr = captured.toString(StandardCharsets.UTF_8);
         assertEquals("エラー: ファイルが見つかりません: missing.cbl。処理を中止しました。"
                 + System.lineSeparator(), stderr);
+    }
+
+    /**
+     * What the walk dropped goes to standard error, as it does for every other subcommand. The
+     * summary JSON carries the same files, but a reader of the console sees nothing of it.
+     */
+    @Test
+    void scanReportsUndecidedFilesOnStandardError() throws IOException {
+        Path assets = tempDir.resolve("undecided-assets");
+        Files.createDirectories(assets);
+        Files.writeString(assets.resolve("NOTES.dat"), "これは資産ではありません。\n",
+                StandardCharsets.UTF_8);
+        Path databaseFile = tempDir.resolve("undecided.db");
+
+        PrintStream original = System.err;
+        ByteArrayOutputStream captured = new ByteArrayOutputStream();
+        try {
+            System.setErr(new PrintStream(captured, true, StandardCharsets.UTF_8));
+            new CommandLine(new Main()).execute("scan", assets.toString(),
+                    "--db", databaseFile.toString());
+        } finally {
+            System.setErr(original);
+        }
+
+        String stderr = captured.toString(StandardCharsets.UTF_8);
+        assertTrue(stderr.contains("警告: ") && stderr.contains("NOTES.dat"),
+                () -> "種別を判別できなかったファイルを標準エラーへ書くこと: " + stderr);
     }
 
     @Test

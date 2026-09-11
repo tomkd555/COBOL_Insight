@@ -11,7 +11,7 @@ column 8 onward, excluding the indicator area in column 7) is written as-is on e
 
 ## 1. Asset composition
 
-There are 20 assets under analysis. The breakdown is: 3 JCL, 13 COBOL programs (9 under
+There are 23 assets under analysis. The breakdown is: 4 JCL, 15 COBOL programs (11 under
 `cobol/` and 4 under `encoding/`), 3 copybooks, and 1 BMS map. The transaction definition
 table under `cics/` and this document itself are not source, so they are not included in
 this count. Scanning does not depend on folder shape; the type is determined from the
@@ -24,6 +24,7 @@ source content.
 | SYKD010.jcl | Order data validation and registration, daily batch (STEP010: SYK001, STEP020: SYK002) |
 | SYKD020.jcl | Stock update and allocation confirmation, daily batch (STEP010: SYK006, STEP020: SYK007 via the in-stream PROC SYKPRC01) |
 | SYKD030.jcl | Order data error-record reprocessing batch (for reruns. STEP010: SYK001, STEP020: SYK002) |
+| SYKD040.jcl | Stock-summary recalculation batch (STEP010: SYK010, STEP020: SYK011, STEP030: the in-stream PROC SYKPRC02, STEP040: the PROC SYKPRC99, whose member is not in the folder). Carries the seeded JCL defects of R050, R051 and R053 |
 
 ### 1.2 COBOL (samples/cobol/)
 
@@ -38,6 +39,8 @@ source content.
 | SYK007.cbl | Db2 program | Stock allocation rate calculation and allocation quantity determination (SELECT INTO, UPDATE) |
 | SYK008.cbl | CICS program | Order number input screen processing (pseudo-conversation; RECEIVE MAP/SEND MAP of map SYKM01, XCTL to SYK009) |
 | SYK009.cbl | CICS program | XCTL target from SYK008 (confirmation message formatting) |
+| SYK010.cbl | Db2 program | Stock-summary query and update (DECLARE TABLE, SELECT INTO, UPDATE, INSERT). Writes the processing log to SYKLOG, whose DD statement SYKD040 STEP010 omits |
+| SYK011.cbl | Db2 program | Stock-summary cursor processing. Five cursors, one per cursor-order defect |
 
 SYK008.cbl and SYK009.cbl are online programs started as CICS transactions, and are not
 executed as steps of a batch JCL. Consequently, there is no JCL corresponding to either
@@ -83,8 +86,13 @@ verification results" of this document.
 
 ## 2. List of injected defects
 
-12 defect types, 18 instances in total, were injected. Counts per type are recorded in
-"3. Breakdown by defect type".
+22 defect types, 36 instances in total, are listed here; the first 18 were injected when the
+folder was written. Counts per type are recorded in "3. Breakdown by defect type". Two further instances (No. 19 and 20) were not injected: they
+were found in the injected programs when R018 was widened to SELECT INTO/FETCH and lint began
+to read JCL (2026-09), and they are real by the rules' own definitions, so they are listed here.
+No. 21 to 36 were injected into SYKD040.jcl, SYK010.cbl and SYK011.cbl together with those
+three files, one per check of the JCL and SQL rules R050 to R059 (2026-09). R058 is off by
+default and is covered by a unit test of the rules module instead of by a row here.
 
 | No. | File | Line | Defect type | Description |
 |---|---|---|---|---|
@@ -106,6 +114,24 @@ verification results" of this document.
 | 16 | SYK008.cbl | 38 | Unchecked CICS response code (RESP/RESP2) | The `EXEC CICS RECEIVE MAP('SYKM01') MAPSET('SYKMAP1') INTO(WS-受注入力マップ)` (lines 34-38) inside 0000-メイン処理 (lines 33-44) has no RESP or RESP2 clause and never checks the response code of the map receive. Even if RECEIVE MAP terminates abnormally, the following 1000-受注番号検査 (lines 46-52) still executes. |
 | 17 | SYK008.cbl | 56 | Reference to undefined BMS map | The map name `SYKM99`, referenced by `EXEC CICS SEND MAP('SYKM99') MAPSET('SYKMAP1')` (lines 55-61) inside 2000-エラーメッセージ表示 (lines 54-72), does not match map SYKM01 defined in mapset SYKMAP1 (samples/bms/SYKMAP1.bms). No map SYKM99 exists in that mapset. |
 | 18 | SYK009.cbl | 21 | Pseudo-conversation broken by missing CICS RETURN | After control passes to SYK009 via SYK008's `EXEC CICS XCTL PROGRAM('SYK009')` (SYK008.cbl line 76), SYK009 formats a message in 0000-メイン処理 (lines 19-21) and terminates with `GOBACK` at line 21. The program never contains an EXEC CICS RETURN statement, so control for the pseudo-conversational transaction SYK8 is never correctly returned to CICS. |
+| 19 | SYK007.cbl | 73 | Unchecked SQLCODE | After the `EXEC SQL SELECT SOKO_NM INTO :HOST-倉庫名` in 2000-在庫照会処理 (lines 69-73), SQLCODE is never checked. When no row matches (SQLCODE +100), `HOST-倉庫名` keeps the value of the previous record and processing continues with it. |
+| 20 | SYKD020.jcl | 31 | Missing COND on a later step | STEP020 (line 31) runs the in-stream PROC SYKPRC01 with neither a COND parameter nor an enclosing IF, so it executes even after STEP010 (SYK006) ends abnormally, and SYK007 works on an extract that was never completed. |
+| 21 | SYKD040.jcl | 1 | Operator parameter left on the JOB card | The JOB card carries `RESTART=STEP020`, written on its continuation line 2 and reported at the JOB card itself, line 1, which is the position the job model holds. Every step up to STEP020 is skipped, so SYK010 never runs and STEP020 works on the summary rows of the previous run. The level is WARNING: the job runs and does less than the member describes, rather than failing. |
+| 22 | SYKD040.jcl | 20 | Undefined reference (symbol) | `PARM='&MODE'` on STEP010 names a symbol that no SET of the job, no PROC default and no system symbol gives a value to. The symbol reaches the step unreplaced and the job ends with a JCL error. |
+| 23 | SYKD040.jcl | 23 | Duplicate DD name in one step | STEP010 writes `//SYSOUT DD SYSOUT=*` on line 22 and `//SYSOUT DD SYSOUT=A` on line 23. The program opens the first of the two, so the class A the second line asks for is never used. |
+| 24 | SYKD040.jcl | 31 | Undefined reference (PROC override) | `//BADSTEP.SYSIN DD DUMMY` overrides a step named BADSTEP, which the in-stream PROC SYKPRC02 does not have: its only step is PRTSTEP. The override is left undone. |
+| 25 | SYKD040.jcl | 33 | Undefined reference (PROC member) | STEP040 runs `EXEC SYKPRC99`, whose member is in no PROCLIB of the folder. The resolver records the miss on the job (`missingMembers`), the step stays unexpanded, and nothing inside it is analysed. The level is NOTE: the miss marks the edge of what was analysed rather than an error in the JCL. |
+| 26 | SYKD040.jcl | 28 | Undefined reference (referback) | `//BACKREF DD DSN=*.STEP999.OUT1` under STEP020 points at a step STEP999 and a DD OUT1 that the job does not define. The dataset name is never resolved. It stands under STEP020 rather than under STEP040, whose PROC member is missing: a reference under a call whose member was never read may be answered by that member, so R050 leaves those alone. |
+| 27 | SYK010.cbl | 16 | DD of a SELECT the step does not allocate | `SELECT SYKLOG ASSIGN TO SYKLOG` (line 16) names DD SYKLOG, and STEP010 of SYKD040.jcl allocates STEPLIB and SYSOUT only. The `OPEN OUTPUT SYKLOG` at line 61 fails with an I/O status of 35. |
+| 28 | SYK010.cbl | 66 | SELECT INTO not narrowed to one row | The `SELECT ZAIKO_SU INTO :HOST-在庫数量 FROM SYKDB.ZAIKOSHUKEI` in 2000-在庫集計照会 (lines 66-69) carries no WHERE clause, no aggregate and no FETCH FIRST 1 ROW ONLY. A second matching row makes it fail with SQLCODE -811 and leaves the host variable unset. |
+| 29 | SYK010.cbl | 76 | UPDATE with no WHERE | The `UPDATE SYKDB.ZAIKOSHUKEI SET HIKIATE_SU = :HOST-引当数量` in 3000-引当数量更新 (lines 76-79) has no WHERE clause, so the allocated quantity of every row of the summary table is overwritten with the one product's value. |
+| 30 | SYK010.cbl | 85 | Column outside the table's declaration | The SELECT in 4000-集計年月照会 (lines 85-89) reads `SHUKEI_YMD`, while the DECLARE TABLE at lines 31-37 declares `SHUKEI_YM`. The precompile passes and the BIND fails with SQLCODE -206. |
+| 31 | SYK010.cbl | 95 | INSERT with no column list | The INSERT in 5000-集計行追加 (lines 95-100) names no columns, so its five values are matched to the table's columns by position. Adding a column to ZAIKOSHUKEI moves every value one place along. |
+| 32 | SYK011.cbl | 51 | Cursor FETCHed without an OPEN | In 2000-準備照会 the `OPEN CSR-JUNBI` at line 49 stands inside the `IF WS-処理区分 = '1'` at line 48, and the FETCH at lines 51-53 runs whatever the branch decided. On the branch that skips the OPEN the FETCH fails with SQLCODE -501. |
+| 33 | SYK011.cbl | 73 | Cursor OPENed twice | In 3000-再開照会 CSR-SAIKAI is opened at line 66 and again at line 73 with no CLOSE and no synchronisation point in between. The second OPEN fails with SQLCODE -502. |
+| 34 | SYK011.cbl | 77 | Cursor declared and never OPENed | 4000-明細宣言 declares CSR-MEISAI (lines 77-82) and nothing in the program opens it. The query never runs, so the rows it was written to read are never read. |
+| 35 | SYK011.cbl | 93 | FETCH after a ROLLBACK | In 5000-取消後照会 the ROLLBACK at line 92 closes every cursor of the unit of work, WITH HOLD included, and the FETCH of CSR-TORIKESHI at lines 93-95 follows it. It fails with SQLCODE -501. |
+| 36 | SYK011.cbl | 113 | Positioned UPDATE on a read-only cursor | CSR-KOSHIN is declared FOR READ ONLY (lines 102-107) and the UPDATE at lines 113-117 names `WHERE CURRENT OF CSR-KOSHIN`. It fails with SQLCODE -510. |
 
 ## 3. Breakdown by defect type
 
@@ -115,7 +141,7 @@ verification results" of this document.
 | Truncation on MOVE | 2 | 2, 5 |
 | Subscript that can exceed OCCURS bounds | 2 | 3, 13 |
 | Unchecked file status | 2 | 4, 6 |
-| Unchecked SQLCODE | 2 | 12, 15 |
+| Unchecked SQLCODE | 3 | 12, 15, 19 |
 | GO TO into a PERFORM THRU range | 1 | 7 |
 | Unreachable code | 1 | 11 |
 | Unused variable or paragraph | 2 | 8, 10 |
@@ -123,7 +149,17 @@ verification results" of this document.
 | Unchecked CICS response code (RESP/RESP2) | 1 | 16 |
 | Reference to undefined BMS map | 1 | 17 |
 | Pseudo-conversation broken by missing CICS RETURN | 1 | 18 |
-| Total | 18 | - |
+| Missing COND on a later step | 1 | 20 |
+| Operator parameter left on the JOB card | 1 | 21 |
+| Undefined reference in JCL | 4 | 22, 24, 25, 26 |
+| Duplicate DD name in one step | 1 | 23 |
+| DD of a SELECT the step does not allocate | 1 | 27 |
+| SELECT INTO not narrowed to one row | 1 | 28 |
+| UPDATE with no WHERE | 1 | 29 |
+| Column outside the table's declaration | 1 | 30 |
+| INSERT with no column list | 1 | 31 |
+| Cursor used out of order | 5 | 32, 33, 34, 35, 36 |
+| Total | 36 | - |
 
 ## 4. JCL -> program -> subroutine -> dataset call relationships (ground truth)
 
@@ -179,6 +215,36 @@ the `&CYCLE` portion of the dataset names below is replaced with `250718` at run
   - Input/output: `SYKV.ORDER.MASTER` (DD name ORDMSTR, line 29) = the same VSAM KSDS
     master updated by STEP020 of SYKD010.jcl.
 
+### 4.4 SYKD040.jcl (stock-summary recalculation batch)
+
+- In-stream PROC SYKPRC02 (defined at lines 14-18, runs PGM=SYK005)
+- STEP010 (line 20, EXEC PGM=SYK010, PARM='&MODE')
+  - Allocates STEPLIB (line 21) and SYSOUT (lines 22 and 23) only. DD SYKLOG, which the
+    program's SELECT names, is not there: seeded defect No. 27.
+  - Performs SELECT INTO, UPDATE and INSERT against the Db2 table `SYKDB.ZAIKOSHUKEI`
+    (stock-summary table), which the program also declares with a DECLARE TABLE. The INSERT is
+    followed by a GET DIAGNOSTICS rather than by an SQLCODE test (lines 101-103): R018 and the
+    declarative `checked-after` form both count that as the check, so no row is expected there
+    and `CheckedAfterRuleAcceptanceTest` holds the two to the same lines.
+- STEP020 (line 25, EXEC PGM=SYK011, COND=(4,LT,STEP010))
+  - Allocates STEPLIB, SYSOUT and BACKREF; SYK011 opens no file.
+  - Drives five cursors over `SYKDB.ZAIKOSHUKEI`, one per seeded cursor defect
+    (No. 32 to 36).
+  - DD BACKREF (line 28) names `*.STEP999.OUT1`, a step the job does not define: seeded
+    defect No. 26. Nothing resolves the referback, so the DD names no data set at all and the
+    graph draws neither a node nor an edge for it; STEP020 reaches only SYKDB.ZAIKOSHUKEI
+    through SYK011. The text the DD was written as is kept in its JCL_DD row, which records
+    what the JCL states.
+- STEP030 (line 30, EXEC SYKPRC02,CYCLE=&CYCLE,COND=(4,LT,STEP010))
+  - Runs the in-stream PROC SYKPRC02, whose step PRTSTEP starts PGM=SYK005 (line 15). The
+    expanded step is therefore named STEP030.PRTSTEP.
+  - The override on line 31 names a step BADSTEP the PROC does not have: seeded defect
+    No. 24.
+- STEP040 (line 33, EXEC SYKPRC99,COND=(4,LT,STEP010))
+  - The PROC member SYKPRC99 is in no library of the folder, so the step stays unexpanded
+    and is no node of the call graph: seeded defect No. 25. It carries no DD of its own,
+    because R050 leaves a reference under an unread member alone.
+
 ## 5. Program call relationships (CALL) list
 
 | Caller | Call style | Callee | Location |
@@ -189,6 +255,9 @@ the `&CYCLE` portion of the dataset names below is replaced with `250718` at run
 
 Parameter passing via LINKAGE SECTION and USING exists in each of the subprograms SYK003
 (line 26), SYK004 (line 29), and SYK005 (line 22).
+
+SYK010 and SYK011 CALL nothing; SYK005 is reached from SYKD040 only as the program of the
+PROC step STEP030.PRTSTEP.
 
 ## 6. Copybook usage
 
@@ -235,7 +304,7 @@ revised.
 
 ## 8. Known incidental findings (not included in the ground-truth defect list)
 
-This section is reference information separate from the 18 intentional defects listed in
+This section is reference information separate from the 36 intentional defects listed in
 "2. List of injected defects". These are things that a strict code analysis could flag,
 but they stem from common COBOL practice or from notational properties, and are not
 intentional defects.

@@ -1,0 +1,47 @@
+[
+  {
+    "jobName": "CJ102",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ02",
+      "PROGRAMMER": "CJ ハナコ",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID",
+      "TIME": "(,30)",
+      "PRTY": "9",
+      "USER": "CJUSR01",
+      "GROUP": "CJGRP01",
+      "SCHENV": "CJSCENV1",
+      "LINES": "(20,WARNING)",
+      "BYTES": "(2000,WARNING)",
+      "JOBRC": "LASTRC",
+      "MEMLIMIT": "2G",
+      "CCSID": "1047"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "CCP007",
+        "line": 16,
+        "utility": {
+          "ddRoles": {
+            "SYSOUT": "WRITE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSOUT",
+            "line": 17,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

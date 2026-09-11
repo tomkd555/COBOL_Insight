@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactElement } from "react";
 import type * as monacoApi from "monaco-editor/editor/editor.api";
+import { text } from "../../i18n/text";
 import { monacoEditor } from "../../vendor/monacoEditor";
 import { registerLanguages } from "../../vendor/monacoLanguages";
 import { CODE_FONT } from "../../vendor/monarch";
@@ -180,7 +181,8 @@ export function SideBySide({
   return (
     <div className="ci-sidebyside">
       <div className="ci-sidebyside__pane">
-        <span className="ci-sidebyside__label">{leftLabel}</span>
+        {/* The tab already names the asset; this pane is always the source, whichever file is open. */}
+        <span className="ci-sidebyside__label">{text.sourceView.editor}</span>
         <div className="ci-sidebyside__code" ref={leftHost} data-testid="transpile-cobol" />
       </div>
       <div className="ci-sidebyside__pane">

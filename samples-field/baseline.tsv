@@ -1,0 +1,15 @@
+# Accepted findings on samples-field/ that are not seeded defects. Every row is a false positive
+# judged not worth changing the rule for; the reason names what the rule would need. "*" in place
+# of file:line accepts every finding of that rule. FieldSamplesAcceptanceTest and
+# RuleEvaluationReportTest fail on a finding in neither this file nor expected-findings.tsv, and on
+# a row that no longer fires.
+ruleId	file:line	reason
+R008	*	R008 is off by default; RuleEvaluationReportTest forces it on. Its 90 findings on this folder are PERFORMs without THRU, the house style of every program here, and no defect. Accepted wholesale as in corpus/baseline.tsv.
+R005	batch/FLB010.cbl:234	WS-IX steps by one on every pass of 2300-SHUKEI and the loop stops on WS-SHUKEI-END, which the paragraph sets once WS-IX passes WS-MAX-MEISAI (30). The exit is a flag, not a bound on WS-IX, so the interval analysis keeps the PICTURE range of WS-IX; narrowing it would need the flag's meaning.
+R005	batch/FLB030.cbl:164	WS-IX is capped at 100 by the IF that guards its increment (IF WS-IX < 100 ADD 1 TO WS-IX). The interval analysis does not narrow on branches, the same limit as CRP001:163 in corpus/baseline.tsv.
+R005	batch/FLB030.cbl:165	Same guarded increment of WS-IX, at the second subscripted MOVE of the paragraph.
+R048	batch/FLB020.cbl:242	CALL WS-PGM-NAME resolves through the VALUE clause to FLS020, the same resolution the linker's own note at this line already records. FLS020 is a real subprogram kept outside the folder on purpose, not a misspelling; no source of it belongs in this folder.
+R058	*	R058 is off by default; RuleEvaluationReportTest forces it on. Its 14 findings on this folder are the SCHEMA.TABLE spelling every Db2 statement here uses, which is this folder's house style and not a defect. Accepted wholesale as in corpus/baseline.tsv.
+R052	batch/FLB010.cbl:21	FLJ030 exists to exercise R046 and R047: it runs FLB010 four times with a SYSOUT DD and nothing else, so none of the program's data DDs are there. True by the rule's reading, and the fix belongs to whoever wants FLJ030 to be a runnable job rather than a COND fixture.
+R052	batch/FLB010.cbl:24	The same skeletal FLJ030 STEP010, at the SELECT of NYUOUT.
+R053	batch/FLJ020.jcl:1	RESTART=STEP010 is written into FLJ020 on purpose — the README lists it among the job's features and the job's own comment says it restarts from the last run's cut-off. True by the rule's reading, and there before the rule existed, so it is accepted rather than seeded.

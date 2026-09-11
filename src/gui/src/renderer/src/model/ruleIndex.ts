@@ -1,12 +1,12 @@
 /**
  * An index over the rule catalog the engine returned, so a finding can be resolved to its rule in
- * constant time. Rule names, categories and prose live only in the engine; this holds no wording of
- * its own beyond the placeholder used for an id the catalog does not know.
+ * constant time. Rule names, categories and prose live only in the engine; the only names held
+ * outside it are those of the engine's own diagnostics, which no rule describes.
  */
 
 import type { RuleCatalogEntry } from "../../../shared/ipc";
 import { text } from "../i18n/text";
-import { severityOf, type Severity } from "./severity";
+import { severityOf, severityOfLevel, type Severity } from "./severity";
 
 /** The rule id the engine uses for a parse failure; the catalog does not list it. */
 export const REPARSE_RULE_ID = "parse-failure";
@@ -41,18 +41,21 @@ export function buildRuleIndex(entries: readonly RuleCatalogEntry[]): RuleIndex 
   return { entries: [...entries], byId };
 }
 
+/** The names of the engine's own finding ids, which are diagnostics rather than rules. */
+const DIAGNOSTIC_NAMES: Readonly<Record<string, string>> = text.diagnostic;
+
 /**
- * The rule for an id. A finding whose rule the catalog does not know still has to be shown, so it
- * falls back to a medium-severity entry whose name is the id itself — except for the write-back's
- * own verification, which is not a rule the engine lists and is named for what it is.
+ * The rule for an id. The engine's own diagnostics are not rules and the catalog lists none of
+ * them, so they are named here and graded from the SARIF level the finding carries — the only
+ * grading such a finding has. An id that is neither is shown under the id itself.
  */
-export function ruleOf(index: RuleIndex, id: string): IndexedRule {
+export function ruleOf(index: RuleIndex, id: string, level?: string): IndexedRule {
   return (
     index.byId.get(id) ?? {
       id,
-      name: id === REPARSE_RULE_ID ? text.source.save : id,
+      name: DIAGNOSTIC_NAMES[id] ?? id,
       category: "",
-      severity: "medium",
+      severity: severityOfLevel(level),
       hasFix: false,
     }
   );

@@ -43,7 +43,7 @@ class DisabledRuleAcrossCommandsTest {
                   "id": "U900",
                   "name": "常に一致する検査",
                   "category": "試験",
-                  "commands": ["LINT", "SQL_LINT", "REPORT", "FIX", "SCAN"],
+                  "commands": ["LINT", "SQL_LINT", "FIX"],
                   "targets": ["COBOL"],
                   "match": { "kind": "line", "regex": "PROGRAM-ID" },
                   "message": "PROGRAM-ID 行に一致した"
@@ -97,33 +97,18 @@ class DisabledRuleAcrossCommandsTest {
         return switch (command) {
             case LINT -> count(LintRunner.run(new LintRunner.Options(
                     SAMPLES, COPYBOOKS, Map.of(), ruleSet)).findings(), ruleId);
-            case SQL_LINT -> count(SqlAdviseRunner.run(new SqlAdviseRunner.Options(
-                    SAMPLES, COPYBOOKS, Map.of(), ruleSet)).findings(), ruleId);
-            case REPORT -> count(ReportRunner.run(new ReportRunner.Options(
-                    SAMPLES, scannedDatabase(), COPYBOOKS, Map.of(), ruleSet)).lintFindings(),
-                    ruleId);
-            // fix preview: the findings a fix is produced from, before the diff is rendered.
+            case SQL_LINT -> count(LintRunner.run(new LintRunner.Options(
+                    SAMPLES, COPYBOOKS, Map.of(), ruleSet)).sqlFindings(), ruleId);
+            // fix: the findings a fix is produced from, before the fixed sources are written.
             case FIX -> {
                 SourceSet s = Pipelines.fix(SAMPLES, COPYBOOKS, Map.of(), ruleSet);
                 yield count(s.ruleFindings(Command.FIX), ruleId);
             }
-            // scan keeps no rule finding of its own; what a rule changes there is the exit code,
-            // which is 0 for this corpus until a rule reports against it.
-            case SCAN -> Pipelines.scan(SAMPLES, tempDir.resolve(ruleSet.hashCode() + ".db"),
-                    COPYBOOKS, Map.of(), ruleSet).summary().exitCode();
         };
     }
 
     private static long count(List<Finding> findings, String ruleId) {
         return findings.stream().filter(finding -> finding.ruleId().equals(ruleId)).count();
-    }
-
-    private Path scannedDatabase() {
-        Path databaseFile = tempDir.resolve("report.db");
-        if (!Files.isRegularFile(databaseFile)) {
-            Pipelines.scan(SAMPLES, databaseFile, COPYBOOKS, Map.of());
-        }
-        return databaseFile;
     }
 
     /** The corpus scans clean, so the exit code is a usable signal that a scan rule fired. */

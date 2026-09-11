@@ -93,6 +93,27 @@ class BmsSyntaxFixtureTest {
     }
 
     @Test
+    void アセンブラ命令とハイフン付きの値を受理する() {
+        BmsParseResult result = parse(
+                "         PRINT NOGEN",
+                "         TITLE 'FLM010 契約照会'",
+                cont("FLM010   DFHMSD TYPE=&SYSPARM,MODE=INOUT,LANG=COBOL,TIOAPFX=YES,"),
+                "               CTRL=(FREEKB,FRSET),STORAGE=AUTO,TERM=3270-2",
+                "FLM01    DFHMDI SIZE=(24,80),LINE=1,COLUMN=1",
+                "         DFHMDF POS=(1,2),LENGTH=12,ATTRB=(ASKIP,BRT),INITIAL='契約番号入力'",
+                "KEIYNO   DFHMDF POS=(3,14),LENGTH=10,ATTRB=(UNPROT,IC),PICIN='X(10)'",
+                "         DFHMSD TYPE=FINAL",
+                "         END");
+
+        assertTrue(result.errors().isEmpty(), "エラーなし: " + result.errors());
+        assertEquals("FLM010", result.mapsets().get(0).name());
+        BmsMap map = result.mapsets().get(0).maps().get(0);
+        assertEquals(2, map.fields().size());
+        assertNull(map.fields().get(0).name());
+        assertEquals("KEIYNO", map.fields().get(1).name());
+    }
+
+    @Test
     void TYPE_FINALのDFHMSDは新しいマップセットを作らない() {
         BmsParseResult result = parse(
                 "SET1     DFHMSD TYPE=MAP",

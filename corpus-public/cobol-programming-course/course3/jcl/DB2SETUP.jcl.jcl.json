@@ -1,0 +1,184 @@
+[
+  {
+    "jobName": "DB2SETUP",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "1",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "JOBSTEP",
+        "execKind": "PGM",
+        "target": "IEBCOPY",
+        "line": 6,
+        "utility": {
+          "ddRoles": {
+            "DB2JCL": "READ",
+            "JCL": "WRITE",
+            "DB2CBL": "READ",
+            "CBL": "WRITE",
+            "SYSPRINT": "WRITE",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "SYSPRINT",
+            "line": 7,
+            "sysout": "A",
+            "parameters": {
+              "SYSOUT": "A"
+            }
+          },
+          {
+            "ddName": "JCL",
+            "line": 8,
+            "datasetName": "&SYSUID..JCL",
+            "dataset": {
+              "name": "&SYSUID..JCL"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSNAME": "&SYSUID..JCL",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "DB2JCL",
+            "line": 9,
+            "datasetName": "ZOS.PUBLIC.DB2.JCL",
+            "dataset": {
+              "name": "ZOS.PUBLIC.DB2.JCL"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSNAME": "ZOS.PUBLIC.DB2.JCL",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "CBL",
+            "line": 10,
+            "datasetName": "&SYSUID..CBL",
+            "dataset": {
+              "name": "&SYSUID..CBL"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSNAME": "&SYSUID..CBL",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "DB2CBL",
+            "line": 11,
+            "datasetName": "ZOS.PUBLIC.DB2.CBL",
+            "dataset": {
+              "name": "ZOS.PUBLIC.DB2.CBL"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSNAME": "ZOS.PUBLIC.DB2.CBL",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSUT3",
+            "line": 12,
+            "parameters": {
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(1))"
+            }
+          },
+          {
+            "ddName": "SYSUT4",
+            "line": 13,
+            "parameters": {
+              "UNIT": "SYSDA",
+              "SPACE": "(TRK,(1))"
+            }
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 14,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "COPYOPER   COPY    OUTDD=JCL,INDD=DB2JCL",
+              "           SELECT  MEMBER=((CBLDB21C,,R),                              X",
+              "                           (CBLDB21R,,R),                              X",
+              "                           (CBLDB22C,,R),                              X",
+              "                           (CBLDB22R,,R),                              X",
+              "                           (CBLDB23C,,R),                              X",
+              "                           (CBLDB23R,,R),                              X",
+              "                           (CRETBL,,R),                                X",
+              "                           (DBRMLIB,,R),                               X",
+              "                           (LOADTBL,,R),                               X",
+              "                           (SELTBL,,R),                                X",
+              "                           ($README,,R))",
+              "COPYOPER   COPY    OUTDD=CBL,INDD=DB2CBL",
+              "           SELECT  MEMBER=((CBLDB21,,R),                               X",
+              "                           (CBLDB22,,R),                               X",
+              "                           (CBLDB23,,R),                               X",
+              "                           ($README,,R))"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "DBRMLIB",
+        "execKind": "PGM",
+        "target": "IEFBR14",
+        "line": 33,
+        "utility": {
+          "ddRoles": {
+            "DBRMLIB": "CREATE"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "DBRMLIB",
+            "line": 34,
+            "datasetName": "&SYSUID..DBRMLIB",
+            "dataset": {
+              "name": "&SYSUID..DBRMLIB"
+            },
+            "dispositionText": "(,CATLG)",
+            "disposition": {
+              "status": "NEW",
+              "normal": "CATLG",
+              "raw": "(,CATLG)"
+            },
+            "parameters": {
+              "DSN": "&SYSUID..DBRMLIB",
+              "DISP": "(,CATLG)",
+              "UNIT": "3390",
+              "VOL": "SER=DB2004",
+              "SPACE": "(CYL,(1,1))",
+              "DCB": "(RECFM=FB,LRECL=80,BLKSIZE=4000,DSORG=PO)",
+              "DSNTYPE": "LIBRARY"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

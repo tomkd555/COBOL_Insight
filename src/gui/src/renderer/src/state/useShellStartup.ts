@@ -6,7 +6,7 @@
  * its own, and none of them has anything to do with what is drawn.
  */
 
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { api, errorMessage } from "../api";
 import { useProjectDispatch } from "./projectStore";
 import {
@@ -14,13 +14,18 @@ import {
   useWorkbench,
   useWorkbenchDispatch,
 } from "./workbenchStore";
-import { toAppSettings, useSettings, useSettingsDispatch } from "./settingsStore";
+import { useSettings, useSettingsDispatch } from "./settingsStore";
 import { useRulesDispatch } from "./rulesStore";
 
 /** How a failure reaches the user. The shell passes its toast function. */
 export type Notify = (message: string, failed?: boolean) => void;
 
-export function useShellStartup(notify: Notify): void {
+export interface ShellStartup {
+  /** Writes the current pane sizes to the settings file. Called once a resize drag ends. */
+  persistPaneSizes: () => void;
+}
+
+export function useShellStartup(notify: Notify): ShellStartup {
   const projectDispatch = useProjectDispatch();
   const workbench = useWorkbench();
   const workbenchDispatch = useWorkbenchDispatch();
@@ -79,25 +84,22 @@ export function useShellStartup(notify: Notify): void {
   }, [projectDispatch, rulesDispatch, notify]);
 
   /**
-   * Save when a resize finishes rather than on every pixel of a drag, and never before the stored
-   * settings have been read, which would erase them on start-up.
+   * Writes the current pane sizes once a resize drag ends, rather than on every pixel dragged. Never
+   * before the stored settings have been read, which would erase them on start-up.
    */
-  useEffect(() => {
+  const persistPaneSizes = useCallback((): void => {
     if (!settings.restored) {
       return;
     }
     api()
       .writeSettings({
-        ...toAppSettings(settings),
         paneSizes: {
-          ...settings.paneSizes,
           [PANE_SIZE_KEYS.side]: workbench.sideWidth,
           [PANE_SIZE_KEYS.panel]: workbench.panelHeight,
         },
       })
       .catch((error: unknown) => notify(errorMessage(error), true));
-    // The commit count and the chosen folder are the triggers; the sizes are read at that moment,
-    // so listing them here would save on every pixel of a drag.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workbench.sizeCommitCount, settings.restored, settings.lastInputDir]);
+  }, [settings, workbench.sideWidth, workbench.panelHeight, notify]);
+
+  return { persistPaneSizes };
 }

@@ -47,13 +47,19 @@ class ReportCommandTest {
     void reportWritesHtmlAndTextAndExitsWithWarningFromSqlAdvice() throws IOException {
         Path dir = assets();
         Path db = tempDir.resolve("proj.db");
+        Path sarif = tempDir.resolve("report.sarif");
+        Path sqlSarif = tempDir.resolve("report-sql.sarif");
         Path html = tempDir.resolve("report.html");
         Path text = tempDir.resolve("report.txt");
 
         new CommandLine(new Main()).execute("scan", dir.toString(), "--db", db.toString());
+        new CommandLine(new Main()).execute("lint", dir.toString(),
+                "--sarif", sarif.toString(), "--sql-sarif", sqlSarif.toString());
 
-        int exitCode = new CommandLine(new Main()).execute("report", dir.toString(),
-                "--db", db.toString(), "--html", html.toString(), "--text", text.toString());
+        int exitCode = new CommandLine(new Main()).execute("report",
+                "--db", db.toString(), "--sarif", sarif.toString(),
+                "--sql-sarif", sqlSarif.toString(),
+                "--html", html.toString(), "--text", text.toString());
 
         assertEquals(1, exitCode, "SQL指摘 S004(中→警告)を含むため終了コード1であること");
         assertTrue(Files.exists(html), "HTMLレポートが書き出されること");
@@ -68,5 +74,34 @@ class ReportCommandTest {
         String textReport = Files.readString(text, StandardCharsets.UTF_8);
         assertTrue(textReport.contains("呼出関係の要約"), "テキストに呼出関係の要約節があること");
         assertTrue(textReport.contains("S004"), "テキストに SQL指摘 S004 が載ること");
+    }
+
+    /**
+     * The inventory comes from the whole-folder scan either way, so a report built on a scoped
+     * lint reads as an estate that is largely clean unless it says which part was analysed.
+     */
+    @Test
+    void aReportOfAScopedLintNamesTheRangeItCovers() throws IOException {
+        Path dir = assets();
+        Path db = tempDir.resolve("scoped.db");
+        Path sarif = tempDir.resolve("scoped.sarif");
+        Path sqlSarif = tempDir.resolve("scoped-sql.sarif");
+        Path html = tempDir.resolve("scoped.html");
+        Path text = tempDir.resolve("scoped.txt");
+
+        new CommandLine(new Main()).execute("scan", dir.toString(), "--db", db.toString());
+        new CommandLine(new Main()).execute("lint", dir.toString(),
+                "--sarif", sarif.toString(), "--sql-sarif", sqlSarif.toString(),
+                "--scope", "cobol");
+        new CommandLine(new Main()).execute("report",
+                "--db", db.toString(), "--sarif", sarif.toString(),
+                "--sql-sarif", sqlSarif.toString(),
+                "--html", html.toString(), "--text", text.toString());
+
+        String note = "この結果の指摘は cobol の範囲だけを解析したものです。";
+        assertTrue(Files.readString(html, StandardCharsets.UTF_8).contains(note),
+                "HTML が解析した範囲を述べること");
+        assertTrue(Files.readString(text, StandardCharsets.UTF_8).contains(note),
+                "テキストが解析した範囲を述べること");
     }
 }

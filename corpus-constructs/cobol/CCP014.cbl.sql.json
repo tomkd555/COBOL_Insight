@@ -1,0 +1,83 @@
+[
+  {
+    "kind": "BEGIN_DECLARE_SECTION",
+    "startLine": 17,
+    "endLine": 17,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "END_DECLARE_SECTION",
+    "startLine": 20,
+    "endLine": 20,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": false,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": false,
+    "hasOrderBy": false,
+    "dynamic": false
+  },
+  {
+    "kind": "SELECT_INTO",
+    "hostVariables": [
+      {
+        "originalName": "HOST-CCP-VAL",
+        "mangledName": "HV1"
+      },
+      {
+        "originalName": "HOST-CCP-KEY",
+        "mangledName": "HV2"
+      }
+    ],
+    "referencedTables": [
+      "CCPDB.CCPTAB"
+    ],
+    "startLine": 25,
+    "endLine": 31,
+    "structureSignals": {
+      "selectStar": false,
+      "hasFetchFirst": true,
+      "hasOptimizeFor": false,
+      "hasWithUr": false
+    },
+    "analysis": "FULL",
+    "intoTargets": [
+      "HOST-CCP-VAL"
+    ],
+    "tableAccess": {
+      "CCPDB.CCPTAB": "R"
+    },
+    "columnRefs": [
+      {
+        "column": "CCP_VAL"
+      },
+      {
+        "column": "CCP_KEY"
+      }
+    ],
+    "selectList": [
+      "CCP_VAL"
+    ],
+    "withHold": false,
+    "forUpdate": false,
+    "hasWhere": true,
+    "hasOrderBy": false,
+    "dynamic": false
+  }
+]

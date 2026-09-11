@@ -1,0 +1,127 @@
+[
+  {
+    "jobName": "CJ405",
+    "line": 1,
+    "parameters": {
+      "ACCOUNT": "CJ0001",
+      "PROGRAMMER": "DSNTEP2 BATCH SPUFI",
+      "CLASS": "A",
+      "MSGCLASS": "X",
+      "MSGLEVEL": "(1,1)",
+      "NOTIFY": "&SYSUID"
+    },
+    "steps": [
+      {
+        "name": "STEP010",
+        "execKind": "PGM",
+        "target": "IKJEFT01",
+        "line": 10,
+        "parameters": {
+          "DYNAMNBR": "20"
+        },
+        "utility": {
+          "programRuns": [
+            {
+              "program": "DSNTEP2",
+              "plan": "DSNTEP2",
+              "library": "DB2P.SDSNLOAD"
+            }
+          ],
+          "tableUses": [
+            {
+              "table": "SCHEMA.TBL",
+              "access": "READ"
+            },
+            {
+              "table": "SCHEMA.TBL",
+              "access": "UPDATE"
+            }
+          ],
+          "ddRoles": {
+            "STEPLIB": "READ",
+            "SYSTSPRT": "WRITE",
+            "SYSPRINT": "WRITE",
+            "SYSUDUMP": "WRITE",
+            "SYSTSIN": "READ",
+            "SYSIN": "READ"
+          }
+        },
+        "ddStatements": [
+          {
+            "ddName": "STEPLIB",
+            "line": 11,
+            "datasetName": "DB2P.SDSNLOAD",
+            "dataset": {
+              "name": "DB2P.SDSNLOAD"
+            },
+            "dispositionText": "SHR",
+            "disposition": {
+              "status": "SHR",
+              "raw": "SHR"
+            },
+            "parameters": {
+              "DSN": "DB2P.SDSNLOAD",
+              "DISP": "SHR"
+            }
+          },
+          {
+            "ddName": "SYSTSPRT",
+            "line": 12,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSPRINT",
+            "line": 13,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSUDUMP",
+            "line": 14,
+            "sysout": "*",
+            "parameters": {
+              "SYSOUT": "*"
+            }
+          },
+          {
+            "ddName": "SYSTSIN",
+            "line": 15,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  DSN SYSTEM(DB2P)",
+              "  RUN PROGRAM(DSNTEP2) PLAN(DSNTEP2) LIB('DB2P.SDSNLOAD')",
+              "  END"
+            ]
+          },
+          {
+            "ddName": "SYSIN",
+            "line": 20,
+            "parameters": {
+              "*": ""
+            },
+            "inStreamData": [
+              "  SELECT KEIYAKU_NO, ZANDAKA           -- current balance",
+              "    FROM SCHEMA.TBL",
+              "   WHERE HANBAITEN_CD = 'H0001';",
+              "  UPDATE SCHEMA.TBL",
+              "     SET ZANDAKA = ZANDAKA - 1000,",
+              "         KOSHIN_YMD = '20260910'",
+              "   WHERE KEIYAKU_NO = 'K0000000001';",
+              "  SELECT COUNT(*)",
+              "    -- number of unprocessed rows",
+              "    FROM SCHEMA.TBL",
+              "   WHERE SHORI_KBN = '0';"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]
