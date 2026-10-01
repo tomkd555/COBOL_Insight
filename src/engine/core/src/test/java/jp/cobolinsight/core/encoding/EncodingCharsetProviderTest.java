@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** Verifies conversion to engine-api's CharsetProvider SPI. */
 class EncodingCharsetProviderTest {
 
-    private static final Path SAMPLES = Path.of("..", "..", "..", "samples", "encoding");
+    private static final Path SAMPLES = Path.of("..", "..", "..", "samples", "seeded", "encoding");
 
     private final EncodingCharsetProvider provider = new EncodingCharsetProvider();
 

@@ -41,7 +41,7 @@ class MainCommandTest {
 
     @Test
     void codepageFlagOverridesDetection() throws IOException {
-        Path samples = Path.of("..", "..", "..", "samples").toAbsolutePath().normalize();
+        Path samples = Path.of("..", "..", "..", "samples", "seeded").toAbsolutePath().normalize();
         Path assets = tempDir.resolve("assets-sjis");
         Files.createDirectories(assets.resolve("cobol"));
         Files.copy(samples.resolve("encoding").resolve("SYKENC1_SJIS.cbl"),

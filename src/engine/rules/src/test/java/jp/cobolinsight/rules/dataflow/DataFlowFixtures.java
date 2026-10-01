@@ -36,7 +36,7 @@ import java.util.stream.Stream;
  */
 final class DataFlowFixtures {
 
-    static final Path SAMPLES = Path.of("..", "..", "..", "samples").toAbsolutePath().normalize();
+    static final Path SAMPLES = Path.of("..", "..", "..", "samples", "seeded").toAbsolutePath().normalize();
 
     private static AnalysisContext samplesContext;
 

@@ -93,7 +93,7 @@ class ParseRateReportTest {
      * @param scriptDegraded the most statements of an SQL script the Db2 grammar may read only in
      *                       part. The two of corpus-constructs are the CREATE TABLE statements of
      *                       ddl/CSL501.sql that carry GENERATED ALWAYS AS IDENTITY, which the
-     *                       grammar does not take (corpus-constructs/README.md).
+     *                       grammar does not take (samples/corpus-constructs/README.md).
      * @param jclFiles the fewest JCL files the walk may find, which is what catches a file that
      *                 stops being classified as JCL at all
      * @param jclWithModel the fewest of them that may produce a job model
@@ -105,7 +105,7 @@ class ParseRateReportTest {
      * @param undecided the most files the classifier may leave of no kind, which is the other way
      *                  a file drops out of the walk without failing
      * @param cobolFailed the most COBOL files that may be lost whole. The one of corpus-constructs
-     *                    is sql/CSQ308.cbl (corpus-constructs/README.md); the four of corpus-public
+     *                    is sql/CSQ308.cbl (samples/corpus-constructs/README.md); the four of corpus-public
      *                    are the programs parse-report.md names.
      * @param jclStatementsLost the most JCL statements the parser may fail to read
      * @param jclParametersRaw the most parameters it may keep as raw text, its statement read
@@ -214,8 +214,8 @@ class ParseRateReportTest {
     /** The corpus folders, plus whatever COBOL_INSIGHT_BENCH_DIR names when it names something. */
     private static List<Folder> folders() {
         List<Folder> folders = new ArrayList<>(List.of(
-                new Folder("corpus-constructs", REPO.resolve("corpus-constructs")),
-                new Folder("corpus-public", REPO.resolve("corpus-public"))));
+                new Folder("corpus-constructs", REPO.resolve("samples/corpus-constructs")),
+                new Folder("corpus-public", REPO.resolve("samples/corpus-public"))));
         String bench = System.getenv("COBOL_INSIGHT_BENCH_DIR");
         if (bench != null && !bench.isBlank()) {
             folders.add(new Folder("bench", Path.of(bench).toAbsolutePath().normalize()));
@@ -363,7 +363,7 @@ class ParseRateReportTest {
      * With neither folder on disk nothing was measured, so nothing is written.
      */
     private static Path reportFile() {
-        for (String name : List.of("corpus-public", "corpus-constructs")) {
+        for (String name : List.of("samples/corpus-public", "samples/corpus-constructs")) {
             Path dir = REPO.resolve(name);
             if (Files.isDirectory(dir)) {
                 return dir.resolve("parse-report.md");

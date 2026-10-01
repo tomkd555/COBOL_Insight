@@ -7,7 +7,7 @@
  * starting. What the engine makes of the same file is reported back through RuleCatalog.ruleErrors.
  *
  * A custom rule is carried across as it was written, with only its id checked. The engine is the
- * validator (docs/rules.md); coercing the definitions here would either drop fields a newer engine
+ * validator; coercing the definitions here would either drop fields a newer engine
  * understands or rewrite an author's rule into one that means something else — an empty
  * `excludeRegex`, for instance, excludes every line.
  */

@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Verifies the expected byte layout of SYKCPY1.cpy. SYK003 expands SYKCPY1 into the LINKAGE SECTION
- * unmodified. The ground truth is samples/expected-results.md and the record-layout resolution rules
+ * unmodified. The ground truth is samples/seeded/expected-results.md and the record-layout resolution rules
  * (order number@0 / order date@10 / YMD REDEFINES@10 / customer@18 / total amount@24 len6 / detail
  * count@30 len2 / detail line@32 element 22 x10 / process kind@252, total length 253).
  */

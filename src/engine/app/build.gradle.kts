@@ -31,12 +31,9 @@ tasks.test {
     // fixtures, the committed snapshots and the expected-findings and baseline tables alike. None
     // of it is on the test classpath, so without these an edit confined to ground truth leaves the
     // task UP-TO-DATE and the measurement that has to read it never runs.
-    for (folder in listOf("samples", "samples-field", "corpus", "corpus-public",
-            "corpus-constructs")) {
-        inputs.dir(rootProject.layout.projectDirectory.dir(folder))
-            .withPropertyName(folder)
-            .withPathSensitivity(PathSensitivity.RELATIVE)
-    }
+    inputs.dir(rootProject.layout.projectDirectory.dir("samples"))
+        .withPropertyName("samples")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 // The zip and tar the application plugin would add to `build` are not shipped: release/ is the one

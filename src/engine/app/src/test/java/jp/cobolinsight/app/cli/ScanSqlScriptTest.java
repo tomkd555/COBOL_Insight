@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Verification of scanning SQL scripts, over {@code corpus-constructs/ddl}: a DDL member, a member
+ * Verification of scanning SQL scripts, over {@code samples/corpus-constructs/ddl}: a DDL member, a member
  * holding a native SQL PL procedure, a function and a trigger, and a SPUFI member.
  *
  * <p>The folder is the ground truth of what a script contributes — a table with its column count, a
@@ -38,7 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ScanSqlScriptTest {
 
     private static final Path DDL =
-            Path.of("..", "..", "..", "corpus-constructs", "ddl").toAbsolutePath().normalize();
+            Path.of("..", "..", "..", "samples", "corpus-constructs", "ddl").toAbsolutePath().normalize();
 
     private static ScanOutcome outcome;
     private static Path databaseFile;

@@ -14,7 +14,7 @@ public final class RemovedRules {
      * rules gave the same advice, and a function on the left of a comparison reported the same
      * predicate twice. S005 and S006 were dropped: they fired on every SELECT and on every cursor
      * declaration respectively, which over samples and corpus came to four and two findings for no
-     * defect at all. See {@code corpus/rule-hits.md}.
+     * defect at all. See {@code samples/corpus/rule-hits.md}.
      */
     private static final Set<String> IDS = Set.of("S003", "S005", "S006");
 

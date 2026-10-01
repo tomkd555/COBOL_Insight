@@ -31,13 +31,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * How a PROC member reaches the job that expands it: the INCLUDE edge that records the expansion,
  * the reanalysis that edge buys, and the {@code --proc-path} directories searched on top of the
- * asset folder. samples-field/batch is the fixture: FLJ010 and FLJ020 both expand FLP010, whose
+ * asset folder. samples/field/batch is the fixture: FLJ010 and FLJ020 both expand FLP010, whose
  * first step runs FLB010.
  */
 class ScanProcMemberTest {
 
     private static final Path BATCH =
-            Path.of("..", "..", "..", "samples-field", "batch").toAbsolutePath().normalize();
+            Path.of("..", "..", "..", "samples", "field", "batch").toAbsolutePath().normalize();
 
     @TempDir
     Path tempDir;

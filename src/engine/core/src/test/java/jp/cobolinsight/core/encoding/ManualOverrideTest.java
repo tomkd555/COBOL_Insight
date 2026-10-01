@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ManualOverrideTest {
 
     private static final Path UTF8_SAMPLE =
-            Path.of("..", "..", "..", "samples", "encoding", "SYKENC1_UTF8.cbl");
+            Path.of("..", "..", "..", "samples", "seeded", "encoding", "SYKENC1_UTF8.cbl");
 
     private final SourceDecoder decoder = new SourceDecoder();
 

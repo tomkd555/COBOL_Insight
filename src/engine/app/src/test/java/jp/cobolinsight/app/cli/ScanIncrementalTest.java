@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /** Verifies incremental analysis driven by content hashing (only changed members are reanalyzed). */
 class ScanIncrementalTest {
 
-    private static final Path SAMPLES = Path.of("..", "..", "..", "samples").toAbsolutePath().normalize();
+    private static final Path SAMPLES = Path.of("..", "..", "..", "samples", "seeded").toAbsolutePath().normalize();
 
     @TempDir
     Path tempDir;

@@ -105,7 +105,7 @@ class RulesRunnerTest {
 
     /**
      * With no configuration, every rule is enabled except the ones disabled by default. R008 is
-     * disabled by default as a result of measurement (corpus/rule-hits.md) and R058 because what it
+     * disabled by default as a result of measurement (samples/corpus/rule-hits.md) and R058 because what it
      * reports is a site convention; those two alone show as disabled with no rules file present.
      */
     @Test

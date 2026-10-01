@@ -197,7 +197,7 @@ const COBOL_TEXT = [
 
 /*
  * One EBCDIC CP930 asset, copied from what the engine actually returns for
- * samples/encoding/SYKENC1_CP930.cbl: the text, and the byte-column boundaries of every line.
+ * samples/seeded/encoding/SYKENC1_CP930.cbl: the text, and the byte-column boundaries of every line.
  *
  * The boundaries are the point of the fixture. Line 3 holds double-byte characters, and CP930 wraps
  * a double-byte run in shift-out and shift-in bytes, so byte column 73 — where the identification

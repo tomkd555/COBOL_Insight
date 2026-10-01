@@ -30,7 +30,7 @@ import jp.cobolinsight.core.spi.JclMemberResolver;
 import jp.cobolinsight.core.spi.ParseOutcome;
 
 /**
- * The sample assertions come from samples/expected-results.md section 4. Every line number is a
+ * The sample assertions come from samples/seeded/expected-results.md section 4. Every line number is a
  * line of the sample file as written; no preprocessed work file exists any more.
  */
 class MapaJclParserTest {
@@ -64,13 +64,13 @@ class MapaJclParserTest {
     }
 
     private static JclJobModel parseSample(String fileName) throws IOException {
-        Path file = REPO_ROOT.resolve("samples").resolve("jcl").resolve(fileName);
+        Path file = REPO_ROOT.resolve("samples").resolve("seeded").resolve("jcl").resolve(fileName);
         return parsed(decodedSource(file));
     }
 
     /** One of the constructs benchmark's files, read from disk as it stands. */
     private static Path construct(String fileName) {
-        return REPO_ROOT.resolve("corpus-constructs").resolve("jcl").resolve(fileName);
+        return REPO_ROOT.resolve("samples/corpus-constructs").resolve("jcl").resolve(fileName);
     }
 
     private static JclStep step(JclJobModel job, String name) {
@@ -382,7 +382,7 @@ class MapaJclParserTest {
     }
 
     /**
-     * corpus-constructs/jcl/CJ203.jcl as it stands on disk: two steps of continued DD statements,
+     * samples/corpus-constructs/jcl/CJ203.jcl as it stands on disk: two steps of continued DD statements,
      * one of them written with a DCB referback the grammar does not accept. Reading the file whole
      * loses every statement around it, and reading each statement on its own used to lose the
      * statement itself; with the parameter put aside the DD keeps its dataset name.
@@ -708,9 +708,9 @@ class MapaJclParserTest {
     void bothPathsBuildTheSameModel() throws IOException {
         int compared = 0;
         int fellBack = 0;
-        for (Path directory : List.of(REPO_ROOT.resolve("samples"),
-                REPO_ROOT.resolve("samples-field"), REPO_ROOT.resolve("corpus"),
-                REPO_ROOT.resolve("corpus-constructs"), REPO_ROOT.resolve("corpus-public"))) {
+        for (Path directory : List.of(REPO_ROOT.resolve("samples/seeded"),
+                REPO_ROOT.resolve("samples/field"), REPO_ROOT.resolve("samples/corpus"),
+                REPO_ROOT.resolve("samples/corpus-constructs"), REPO_ROOT.resolve("samples/corpus-public"))) {
             Map<Path, JclMemberResolver> libraries = new java.util.HashMap<>();
             for (Path file : jclFilesUnder(directory)) {
                 DecodedSource source = decodedSource(file);

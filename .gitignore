@@ -6,7 +6,6 @@ build/
 .idea/
 *.iml
 
-
 # Node(Electron GUI)
 node_modules/
 
@@ -19,6 +18,7 @@ node_modules/
 # CLIの既定出力先(リポジトリ直下のみ)
 /cobol-insight.db
 /cobol-insight-report.txt
+/cobol-insight-report.html
 
 # GUIの開発起動がengineを走らせたときの出力先(カレントがsrc/guiになる)
 /src/gui/cobol-insight.db

@@ -33,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class DisabledRuleAcrossCommandsTest {
 
     private static final Path SAMPLES =
-            Path.of("..", "..", "..", "samples").toAbsolutePath().normalize();
+            Path.of("..", "..", "..", "samples", "seeded").toAbsolutePath().normalize();
 
     private static final List<Path> COPYBOOKS = List.of(SAMPLES.resolve("copybook"));
 

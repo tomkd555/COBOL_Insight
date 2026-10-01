@@ -317,7 +317,7 @@ class JclStatementsTest {
     /** An XMIT statement transmits a payload the delimiter it names ends, JCL though it looks. */
     @Test
     void readsTheXmitPayloadOfCj503() throws IOException {
-        Path file = REPO.resolve("corpus-constructs").resolve("jcl").resolve("CJ503.jcl");
+        Path file = REPO.resolve("samples/corpus-constructs").resolve("jcl").resolve("CJ503.jcl");
         List<Statement> statements = JclStatements.of(Files.readString(file,
                 StandardCharsets.UTF_8));
 
@@ -343,7 +343,7 @@ class JclStatementsTest {
     /** A job group is one statement from JOBGROUP to ENDGROUP, not five of them. */
     @Test
     void readsAJobGroupAsOneStatement() throws IOException {
-        Path file = REPO.resolve("corpus-constructs").resolve("jcl").resolve("CJ505.jcl");
+        Path file = REPO.resolve("samples/corpus-constructs").resolve("jcl").resolve("CJ505.jcl");
         List<Statement> statements = JclStatements.of(Files.readString(file,
                 StandardCharsets.UTF_8));
 

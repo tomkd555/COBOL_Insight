@@ -36,7 +36,7 @@ import java.util.Optional;
  */
 final class SqlAdviceFixtures {
 
-    static final Path SAMPLES = Path.of("..", "..", "..", "samples").toAbsolutePath().normalize();
+    static final Path SAMPLES = Path.of("..", "..", "..", "samples", "seeded").toAbsolutePath().normalize();
     private static final String SYNTHETIC_FILE = "synthetic.cbl";
     private static final Db2zSqlParser SQL_PARSER = new Db2zSqlParser();
 
@@ -75,7 +75,7 @@ final class SqlAdviceFixtures {
                 Optional.empty(), Map.of());
     }
 
-    /** Parses samples/cobol/<name>.cbl with the real parser and collects the SqlStatementModel of its embedded SQL. */
+    /** Parses samples/seeded/cobol/<name>.cbl with the real parser and collects the SqlStatementModel of its embedded SQL. */
     static List<SqlStatementModel> samplesSqlModels(String cobolBaseName) {
         Path file = SAMPLES.resolve("cobol").resolve(cobolBaseName);
         String text = readText(file);
@@ -140,7 +140,7 @@ final class SqlAdviceFixtures {
                 Optional.empty(), Map.of(ControlFlowGraphs.class, new ControlFlowGraphs(graphs)));
     }
 
-    /** The program samples/cobol/&lt;name&gt;.cbl as the real parser reads it. */
+    /** The program samples/seeded/cobol/&lt;name&gt;.cbl as the real parser reads it. */
     static CobolSemanticModel samplesProgram(String cobolBaseName) {
         Path file = SAMPLES.resolve("cobol").resolve(cobolBaseName);
         String text = readText(file);

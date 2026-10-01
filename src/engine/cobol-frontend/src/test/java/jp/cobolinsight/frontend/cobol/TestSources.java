@@ -19,8 +19,8 @@ import java.util.concurrent.ConcurrentHashMap;
 final class TestSources {
 
     static final Path REPO_ROOT = findRepoRoot();
-    static final Path COBOL_DIR = REPO_ROOT.resolve("samples").resolve("cobol");
-    static final List<Path> COPYBOOK_PATHS = List.of(REPO_ROOT.resolve("samples").resolve("copybook"));
+    static final Path COBOL_DIR = REPO_ROOT.resolve("samples").resolve("seeded").resolve("cobol");
+    static final List<Path> COPYBOOK_PATHS = List.of(REPO_ROOT.resolve("samples").resolve("seeded").resolve("copybook"));
 
     private static final Map<String, ParseOutcome<CobolSemanticModel>> CACHE = new ConcurrentHashMap<>();
 

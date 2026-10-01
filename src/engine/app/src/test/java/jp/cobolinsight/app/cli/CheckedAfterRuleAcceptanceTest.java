@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class CheckedAfterRuleAcceptanceTest {
 
     private static final Path SAMPLES =
-            Path.of("..", "..", "..", "samples").toAbsolutePath().normalize();
+            Path.of("..", "..", "..", "samples", "seeded").toAbsolutePath().normalize();
 
     /** R018 expressed with match.kind = checked-after: the boundary is the next EXEC SQL. */
     private static final String RULES = """

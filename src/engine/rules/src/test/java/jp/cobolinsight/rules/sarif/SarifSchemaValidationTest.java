@@ -48,7 +48,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  */
 class SarifSchemaValidationTest {
 
-    private static final Path SAMPLES = Path.of("..", "..", "..", "samples").toAbsolutePath().normalize();
+    private static final Path SAMPLES = Path.of("..", "..", "..", "samples", "seeded").toAbsolutePath().normalize();
 
     private static Schema loadSchema() {
         InputStream in = SarifSchemaValidationTest.class

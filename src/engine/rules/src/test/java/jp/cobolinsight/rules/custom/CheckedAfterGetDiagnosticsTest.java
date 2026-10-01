@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * A {@code checked-after} rule over {@code EXEC SQL} has to read a following GET DIAGNOSTICS as the
  * check, the way the built-in R018 does; the acceptance test that holds the declarative form to
- * R018 line for line over {@code samples/} rests on it. The recognition is tied to the subject verb,
+ * R018 line for line over {@code samples/seeded/} rests on it. The recognition is tied to the subject verb,
  * so a rule written over READ still reports: after a READ the diagnostics area says nothing.
  */
 class CheckedAfterGetDiagnosticsTest {

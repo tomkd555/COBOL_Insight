@@ -77,11 +77,12 @@ class SqlModelSnapshotTest {
 
     /** The asset folders measured, each walked as its own source set. */
     private static final List<String> FOLDERS =
-            List.of("corpus-constructs", "samples-field", "samples", "corpus", "corpus-public");
+            List.of("samples/corpus-constructs", "samples/field", "samples/seeded", "samples/corpus",
+                    "samples/corpus-public");
 
     /** A program that holds an EXEC SQL block and still produces no statement, and why. */
     private static final Map<String, String> WITHOUT_A_MODEL = Map.of(
-            "corpus-constructs/sql/CSQ308.cbl",
+            "samples/corpus-constructs/sql/CSQ308.cbl",
             "Che4z stops on \"Variable WS-CLOB-FILE-NAME is not defined\", "
                     + "so the program reaches no SQL parse at all");
 

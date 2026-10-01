@@ -38,7 +38,7 @@ import java.util.stream.Stream;
  */
 public final class CfgFixtures {
 
-    static final Path SAMPLES = Path.of("..", "..", "..", "samples").toAbsolutePath().normalize();
+    static final Path SAMPLES = Path.of("..", "..", "..", "samples", "seeded").toAbsolutePath().normalize();
 
     private static AnalysisContext samplesContext;
 
@@ -107,7 +107,7 @@ public final class CfgFixtures {
         return samplesContext;
     }
 
-    /** Returns the model whose sourceFile matches samples/cobol/<name>.cbl. */
+    /** Returns the model whose sourceFile matches samples/seeded/cobol/<name>.cbl. */
     static String samplesFile(String cobolBaseName) {
         return SAMPLES.resolve("cobol").resolve(cobolBaseName).toString();
     }

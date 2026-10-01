@@ -19,13 +19,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Checks lint findings against samples/expected-findings.tsv, the machine-readable form of
- * samples/expected-results.md section 2. R017 is path-sensitive and may report extra true
+ * Checks lint findings against samples/seeded/expected-findings.tsv, the machine-readable form of
+ * samples/seeded/expected-results.md section 2. R017 is path-sensitive and may report extra true
  * positives, so only containment of the expected set is asserted for it.
  */
 class ExpectedFindingsAcceptanceTest {
 
-    private static final Path SAMPLES = Path.of("..", "..", "..", "samples").toAbsolutePath().normalize();
+    private static final Path SAMPLES = Path.of("..", "..", "..", "samples", "seeded").toAbsolutePath().normalize();
     /** Rules whose detected set may be a superset of the expected set (see R017 note above). */
     private static final Set<String> SUPERSET_TOLERATED = Set.of("R017");
 

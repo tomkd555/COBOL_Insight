@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class TranspileCommandTest {
 
-    private static final Path SAMPLES = Path.of("..", "..", "..", "samples").toAbsolutePath().normalize();
+    private static final Path SAMPLES = Path.of("..", "..", "..", "samples", "seeded").toAbsolutePath().normalize();
 
     @TempDir
     Path tempDir;

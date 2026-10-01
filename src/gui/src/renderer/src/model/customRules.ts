@@ -14,7 +14,7 @@
 
 import type { CustomMatch, CustomRule } from "../../../shared/rulesFile";
 
-/** `U` followed by 1 to 15 of the characters the engine accepts (docs/rules.md). */
+/** `U` followed by 1 to 15 of the characters the engine accepts. */
 const ID_PATTERN = /^U[0-9A-Za-z_-]{1,15}$/;
 
 /** The severities a custom rule can declare. */

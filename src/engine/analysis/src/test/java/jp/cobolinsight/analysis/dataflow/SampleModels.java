@@ -24,9 +24,9 @@ final class SampleModels {
             "SYK006.cbl", "SYK007.cbl", "SYK008.cbl", "SYK009.cbl");
 
     private static final Path REPO_ROOT = findRepoRoot();
-    private static final Path COBOL_DIR = REPO_ROOT.resolve("samples").resolve("cobol");
+    private static final Path COBOL_DIR = REPO_ROOT.resolve("samples").resolve("seeded").resolve("cobol");
     private static final List<Path> COPYBOOK_PATHS =
-            List.of(REPO_ROOT.resolve("samples").resolve("copybook"));
+            List.of(REPO_ROOT.resolve("samples").resolve("seeded").resolve("copybook"));
 
     private static final Map<String, CobolSemanticModel> CACHE = new ConcurrentHashMap<>();
 

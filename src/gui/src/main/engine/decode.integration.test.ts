@@ -27,7 +27,7 @@ import { saveSource, type SaveDeps, type SaveFileSystem } from "./save";
 /** app.getAppPath() equivalent: this file sits at src/gui/src/main/engine. */
 const APP_ROOT = resolve(__dirname, "..", "..", "..");
 const REPO_ROOT = resolve(APP_ROOT, "..", "..");
-const FIXTURES = join(REPO_ROOT, "samples", "encoding");
+const FIXTURES = join(REPO_ROOT, "samples", "seeded", "encoding");
 const INSTALL_DIR = join(APP_ROOT, "..", "engine", "app", "build", "install", "app");
 const JAVA_HOME = process.env["JAVA_HOME"];
 

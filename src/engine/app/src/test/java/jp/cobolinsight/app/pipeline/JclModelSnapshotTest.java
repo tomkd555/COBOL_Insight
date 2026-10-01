@@ -71,8 +71,8 @@ class JclModelSnapshotTest {
     private static final String SUFFIX = ".jcl.json";
 
     /** The asset folders measured, each walked as its own source set. */
-    private static final List<String> FOLDERS = List.of("corpus-constructs/jcl", "samples",
-            "samples-field/batch", "corpus", "corpus-public");
+    private static final List<String> FOLDERS = List.of("samples/corpus-constructs/jcl", "samples/seeded",
+            "samples/field/batch", "samples/corpus", "samples/corpus-public");
 
     /** Only there because {@link SourceSet.Options} takes a database path; no step here writes one. */
     private static final Path UNUSED_DATABASE =
@@ -84,7 +84,7 @@ class JclModelSnapshotTest {
      * the file starts parsing again fails the test just as its absence does.
      *
      * <p>A file is named the way the failure messages name it, the folder first:
-     * {@code samples/jcl/X.jcl}.
+     * {@code samples/seeded/jcl/X.jcl}.
      */
     private static final Map<String, String> WITHOUT_A_MODEL = Map.of();
 
@@ -197,16 +197,16 @@ class JclModelSnapshotTest {
     void aStaleEntryInWithoutAModelFails() {
         Set<String> files = Set.of("jcl/READS.jcl", "jcl/DOES-NOT-PARSE.jcl");
         Set<String> withAModel = Set.of("jcl/READS.jcl");
-        assertEquals(List.of(), staleExclusions("samples", "JCL file", files, withAModel,
-                Set.of("samples/jcl/DOES-NOT-PARSE.jcl", "corpus/jcl/ELSEWHERE.jcl")));
+        assertEquals(List.of(), staleExclusions("samples/seeded", "JCL file", files, withAModel,
+                Set.of("samples/seeded/jcl/DOES-NOT-PARSE.jcl", "samples/corpus/jcl/ELSEWHERE.jcl")));
         assertEquals(
-                List.of("samples/jcl/GONE.jcl is named in WITHOUT_A_MODEL and is no JCL file of "
-                                + "samples",
-                        "samples/jcl/READS.jcl is named in WITHOUT_A_MODEL and is a JCL file with "
+                List.of("samples/seeded/jcl/GONE.jcl is named in WITHOUT_A_MODEL and is no JCL file of "
+                                + "samples/seeded",
+                        "samples/seeded/jcl/READS.jcl is named in WITHOUT_A_MODEL and is a JCL file with "
                                 + "a model again"),
-                staleExclusions("samples", "JCL file", files, withAModel,
-                        new LinkedHashSet<>(List.of("samples/jcl/GONE.jcl",
-                                "samples/jcl/READS.jcl"))));
+                staleExclusions("samples/seeded", "JCL file", files, withAModel,
+                        new LinkedHashSet<>(List.of("samples/seeded/jcl/GONE.jcl",
+                                "samples/seeded/jcl/READS.jcl"))));
     }
 
     /** Every JCL file of a source set, by its path under the folder. */

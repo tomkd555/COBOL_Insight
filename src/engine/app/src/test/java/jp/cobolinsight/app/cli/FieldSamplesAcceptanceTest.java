@@ -39,16 +39,16 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Acceptance test over {@code samples-field/}, the field-style asset set, with the rule set that
+ * Acceptance test over {@code samples/field/}, the field-style asset set, with the rule set that
  * ships. Every finding on the folder is classified: a seeded defect in
  * {@code expected-findings.tsv} or an accepted false positive in {@code baseline.tsv}. A finding in
  * neither, an expected row that does not fire, and a baseline row that no longer fires all fail.
  * The call graph and the decoding of the three {@code FLENC1} renditions are pinned as well; the
- * ground truth is written up in {@code samples-field/README.md}.
+ * ground truth is written up in {@code samples/field/README.md}.
  */
 class FieldSamplesAcceptanceTest {
 
-    private static final Path FIELD = Path.of("..", "..", "..", "samples-field").toAbsolutePath().normalize();
+    private static final Path FIELD = Path.of("..", "..", "..", "samples", "field").toAbsolutePath().normalize();
     private static final List<Path> COPYBOOKS = List.of(FIELD.resolve("batch"), FIELD.resolve("online"));
 
     /**

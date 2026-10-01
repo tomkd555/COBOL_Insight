@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** Verifies the conversion into engine-api's BMS map model. */
 class BmsModelMapperTest {
 
-    private static final Path SYKMAP1 = Path.of("..", "..", "..", "samples", "bms", "SYKMAP1.bms");
+    private static final Path SYKMAP1 = Path.of("..", "..", "..", "samples", "seeded", "bms", "SYKMAP1.bms");
 
     @Test
     void sykmap1IsMappedToEngineApiModel() throws IOException {

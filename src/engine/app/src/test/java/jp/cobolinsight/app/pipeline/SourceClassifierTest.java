@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SourceClassifierTest {
 
     private static final Path SAMPLES =
-            Path.of("..", "..", "..", "samples").toAbsolutePath().normalize();
+            Path.of("..", "..", "..", "samples", "seeded").toAbsolutePath().normalize();
 
     private static byte[] sample(String relPath) {
         try {
@@ -80,7 +80,7 @@ class SourceClassifierTest {
 
     @Test
     void commentOnlyProgramIdIsNotEvidence() {
-        // Same shape as the comment lines in samples/cobol/SYK001.cbl. If a line whose column 7
+        // Same shape as the comment lines in samples/seeded/cobol/SYK001.cbl. If a line whose column 7
         // is * were treated as body text, comments alone would make it pass as COBOL.
         byte[] content = utf8("""
                       *================================================*

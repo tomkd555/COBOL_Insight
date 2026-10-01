@@ -15,8 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * R055 on the seeded fixture samples/cobol/SYK011.cbl, which carries one cursor per defect kind, on
- * samples/cobol/SYK006.cbl, whose cursor is used in order, and on synthetic programs for what the
+ * R055 on the seeded fixture samples/seeded/cobol/SYK011.cbl, which carries one cursor per defect kind, on
+ * samples/seeded/cobol/SYK006.cbl, whose cursor is used in order, and on synthetic programs for what the
  * fixture does not carry: WITH HOLD against a cursor a COMMIT closes, the SYNCPOINT of a CICS
  * program, a ROLLBACK no OPEN reaches, a cursor nothing in the program opens, a column outside the
  * cursor's FOR UPDATE OF list and one qualified with the UPDATE's correlation name, a positioned

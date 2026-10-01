@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class PackagedImageCharsetTest {
 
     private static final Path IMAGE_EXE = Path.of("build", "jpackage", "app-image", "COBOLInsight", "COBOLInsight.exe");
-    private static final Path SAMPLES = Path.of("..", "..", "..", "samples").toAbsolutePath().normalize();
+    private static final Path SAMPLES = Path.of("..", "..", "..", "samples", "seeded").toAbsolutePath().normalize();
 
     static boolean imageExists() {
         return Files.exists(IMAGE_EXE);

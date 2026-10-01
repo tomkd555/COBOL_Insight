@@ -34,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class DecodeCommandTest {
 
-    private static final Path SAMPLES = Path.of("..", "..", "..", "samples", "encoding")
+    private static final Path SAMPLES = Path.of("..", "..", "..", "samples", "seeded", "encoding")
             .toAbsolutePath().normalize();
 
     @TempDir

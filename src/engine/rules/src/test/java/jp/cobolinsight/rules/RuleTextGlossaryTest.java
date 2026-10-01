@@ -14,7 +14,7 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Keeps every user-visible rule string on the vocabulary of docs/rule-text.md. The scan reads the
+ * Keeps every user-visible rule string on the glossary below. The scan reads the
  * sources as text because finding messages, code-flow labels and fix descriptions are composed
  * inside evaluate(), and most rules never fire on the samples; a runtime scan would miss them.
  * Comments and Javadoc are English, so a Japanese term found anywhere in a scanned file is user
@@ -65,7 +65,7 @@ class RuleTextGlossaryTest {
             Ban.word("可能性がある", "〜得ます"),
             Ban.word("条件コード", "戻りコード"),
             // A 常体 sentence ending before 「。」 or before the colon that introduces a list;
-            // every field is 敬体 (docs/rule-text.md, Register). ます・です・ました・でした・
+            // every field is 敬体. ます・です・ました・でした・
             // ください are the 敬体 endings that share a final kana.
             new Ban(Pattern.compile(
                     "(?:(?<!ま)(?<!で)す|(?<!まし)(?<!でし)た|(?<!くださ)い|[るだむくつぬぶぐ])[。:：]"),
@@ -84,7 +84,7 @@ class RuleTextGlossaryTest {
                 }
             }
         }
-        assertEquals(List.of(), violations, "rule text outside docs/rule-text.md");
+        assertEquals(List.of(), violations, "rule text outside the glossary");
     }
 
     private static void scan(Path file, List<String> violations) throws IOException {

@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class FixSamplesAcceptanceTest {
 
-    private static final Path SAMPLES = Path.of("..", "..", "..", "samples").toAbsolutePath().normalize();
+    private static final Path SAMPLES = Path.of("..", "..", "..", "samples", "seeded").toAbsolutePath().normalize();
 
     /** Area B starting column of the inserted statement. The body starts after 11 blank columns
      * (sequence-number area 6 digits + indicator area 1 digit + area A 4 digits). */

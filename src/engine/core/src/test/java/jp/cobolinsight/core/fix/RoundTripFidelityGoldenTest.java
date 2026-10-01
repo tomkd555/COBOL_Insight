@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 class RoundTripFidelityGoldenTest {
 
-    private static final Path SAMPLES = Path.of("..", "..", "..", "samples");
+    private static final Path SAMPLES = Path.of("..", "..", "..", "samples", "seeded");
 
     private final SourceDecoder decoder = new SourceDecoder();
     private final ByteSpliceApplier applier = new ByteSpliceApplier();

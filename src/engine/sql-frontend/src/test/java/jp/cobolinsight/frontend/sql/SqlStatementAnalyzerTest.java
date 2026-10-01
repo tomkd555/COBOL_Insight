@@ -27,7 +27,7 @@ class SqlStatementAnalyzerTest {
 
     private static String readSample(String fileName) throws IOException {
         return Files.readString(
-                Path.of("..", "..", "..", "samples", "cobol", fileName), StandardCharsets.UTF_8);
+                Path.of("..", "..", "..", "samples", "seeded", "cobol", fileName), StandardCharsets.UTF_8);
     }
 
     private static Set<String> dataNames(SqlAnalysisResult result) {

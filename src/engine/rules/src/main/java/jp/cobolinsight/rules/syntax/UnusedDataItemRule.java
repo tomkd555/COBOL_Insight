@@ -29,7 +29,7 @@ import java.util.regex.Pattern;
  * statement in the PROCEDURE DIVISION. Items in the LINKAGE SECTION and FILE SECTION are
  * excluded, and so are items that come from a copybook: a copybook is a layout shared by
  * many programs, and a program that uses part of it is the norm (the field measurement in
- * corpus/rule-hits.md had 35 of 37 hits on copybook items). An item's owning section is
+ * samples/corpus/rule-hits.md had 35 of 37 hits on copybook items). An item's owning section is
  * judged from the section-header lines of the original source text (SourceTextIndex). When
  * a group item's name is referenced, its descendants are also treated as used; when a
  * descendant's name is referenced, its ancestors are also treated as used; an item that

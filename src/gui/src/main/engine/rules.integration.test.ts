@@ -32,7 +32,7 @@ const ready =
 const engineSpawn: EngineSpawn = (command, args, options) =>
   spawn(command, args, { env: options.env, cwd: options.cwd }) as unknown as EngineProcess;
 
-/** The rule switched off, chosen because docs/rules.md uses it as the worked example. */
+/** The rule switched off, chosen as the worked example. */
 const DISABLED_RULE = "R008";
 
 const CUSTOM_RULE = {

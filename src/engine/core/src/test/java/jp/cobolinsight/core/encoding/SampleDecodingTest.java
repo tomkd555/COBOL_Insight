@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SampleDecodingTest {
 
     /** The test's working directory is directly under the module, so this is anchored two levels up, at the repository root. */
-    private static final Path SAMPLES = Path.of("..", "..", "..", "samples", "encoding");
+    private static final Path SAMPLES = Path.of("..", "..", "..", "samples", "seeded", "encoding");
 
     private final SourceDecoder decoder = new SourceDecoder();
 

@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class Sykmap1BmsParseTest {
 
-    private static final Path SYKMAP1 = Path.of("..", "..", "..", "samples", "bms", "SYKMAP1.bms");
+    private static final Path SYKMAP1 = Path.of("..", "..", "..", "samples", "seeded", "bms", "SYKMAP1.bms");
 
     @Test
     void sykmap1の階層モデルが期待結果と一致する() throws IOException {

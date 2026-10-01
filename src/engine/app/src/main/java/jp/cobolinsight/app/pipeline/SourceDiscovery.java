@@ -164,7 +164,7 @@ public final class SourceDiscovery {
      * these criteria are treated as unknown and judged by content.
      *
      * <p>.md is dropped because prose that merely contains the word PROGRAM-ID must not turn into an
-     * analysis target. {@code samples/expected-results.md} is a real example: a document describing an
+     * analysis target. {@code samples/seeded/expected-results.md} is a real example: a document describing an
      * asset, written with COBOL terms in its body, is placed in the asset folder. Since a document is
      * not any kind of asset, it is treated as outside the candidates rather than as unclassifiable.
      */

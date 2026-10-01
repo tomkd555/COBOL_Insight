@@ -36,7 +36,7 @@ class BuiltinRulesTest {
     }
 
     /**
-     * A built-in rule is on unless the measurement in {@code corpus/rule-hits.md} showed it to be
+     * A built-in rule is on unless the measurement in {@code samples/corpus/rule-hits.md} showed it to be
      * noise, or what it reports is a site convention rather than a defect (R058). Pinning the list
      * here keeps a rule from being switched off in passing.
      */

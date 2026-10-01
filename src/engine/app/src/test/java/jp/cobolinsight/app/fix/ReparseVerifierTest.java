@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class ReparseVerifierTest {
 
-    private static final Path SAMPLES = Path.of("..", "..", "..", "samples");
+    private static final Path SAMPLES = Path.of("..", "..", "..", "samples", "seeded");
 
     private final ReparseVerifier verifier = EngineWiring.reparseVerifier();
 
