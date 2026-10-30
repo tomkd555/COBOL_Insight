@@ -9,6 +9,7 @@ import jp.cobolinsight.core.semantic.GoToStatement;
 import jp.cobolinsight.core.semantic.PerformRelation;
 import jp.cobolinsight.core.semantic.Procedure;
 import jp.cobolinsight.core.semantic.ProcedureKind;
+import jp.cobolinsight.core.semantic.ProcedureMap;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.spi.ParseOutcome;
@@ -199,6 +200,166 @@ class StatementAndRelationMappingTest {
         assertEquals(7, implicit.range().start().line());
         assertEquals(8, implicit.range().end().line(),
                 "暗黙の段落は先頭の段落見出しの手前で終わること");
+    }
+
+    private static CobolSemanticModel inlineModel(String fileName, String source) {
+        ParseOutcome<CobolSemanticModel> outcome = new Che4zCobolParser().parse(
+                TestSources.fromText(TestSources.REPO_ROOT.resolve(fileName).toString(), source),
+                List.of());
+        return outcome.value().orElseThrow(() -> new AssertionError(
+                fileName + " のパースが失敗した: " + outcome.failureFinding().orElse(null)));
+    }
+
+    private static final String CALL_PHRASES = """
+                   IDENTIFICATION DIVISION.
+                   PROGRAM-ID. CALLPHR.
+                   DATA DIVISION.
+                   WORKING-STORAGE SECTION.
+                   01  WS-AREA  PIC X(10).
+                   PROCEDURE DIVISION.
+                   MAIN-PARA.
+                       CALL 'SUBA' ON EXCEPTION PERFORM ERR-A END-CALL
+                       CALL 'SUBB' USING WS-AREA
+                           NOT ON EXCEPTION PERFORM ERR-B
+                       END-CALL
+                       CALL 'SUBC' ON OVERFLOW PERFORM ERR-C END-CALL
+                       GOBACK.
+                   ERR-A.
+                       EXIT.
+                   ERR-B.
+                       EXIT.
+                   ERR-C.
+                       EXIT.
+            """;
+
+    @Test
+    void aPerformWrittenInAPhraseOfACallIsAPerformRelation() {
+        CobolSemanticModel model = inlineModel("CALLPHR.cbl", CALL_PHRASES);
+
+        assertEquals(List.of("MAIN-PARA ERR-A @8", "MAIN-PARA ERR-B @10", "MAIN-PARA ERR-C @12"),
+                model.performs().stream().map(p -> p.fromProcedure() + " "
+                        + p.targetProcedure() + " @" + p.range().start().line()).toList());
+        assertEquals(List.of("SUBA", "SUBB", "SUBC"),
+                model.calls().stream().map(CallRelation::target).toList());
+    }
+
+    private static final String CALL_THEN_CICS = """
+                   IDENTIFICATION DIVISION.
+                   PROGRAM-ID. CALLCICS.
+                   DATA DIVISION.
+                   WORKING-STORAGE SECTION.
+                   01  WS-PGM   PIC X(8).
+                   01  WS-AREA  PIC X(10).
+                   PROCEDURE DIVISION.
+                   MAIN-PARA.
+                       CALL WS-PGM USING WS-AREA
+                       EXEC CICS LINK PROGRAM('CICSPGM1')
+                            COMMAREA(WS-AREA) LENGTH(10)
+                       END-EXEC
+                       CALL 'SUBPGM1' USING WS-AREA
+                       EXEC CICS XCTL PROGRAM(WS-PGM)
+                       END-EXEC
+                       GOBACK.
+            """;
+
+    /** Che4z reads an EXEC block after a CALL with no period as one more argument of the CALL. */
+    @Test
+    void execBlocksAfterACallWithNoPeriodAreStatementsOfTheirOwn() {
+        CobolSemanticModel model = inlineModel("CALLCICS.cbl", CALL_THEN_CICS);
+        List<Statement> statements = model.procedures().get(0).statements();
+
+        assertEquals(List.of("CALL @9-9", "EXEC CICS @10-12", "CALL @13-13", "EXEC CICS @14-15",
+                "GOBACK @16-16"), statements.stream().map(s -> ((SimpleStatement) s).verb() + " @"
+                        + s.range().start().line() + "-" + s.range().end().line()).toList());
+        assertEquals("CALL WS-PGM USING WS-AREA", ((SimpleStatement) statements.get(0)).text());
+        assertEquals(List.of("CICS_LINK @10", "CICS_XCTL @14"), model.embeddedBlocks().stream()
+                .map(b -> b.kind() + " @" + b.range().start().line()).toList());
+        assertEquals(List.of(statements.get(0).range(), statements.get(2).range()),
+                model.calls().stream().map(CallRelation::range).toList(),
+                "a CALL relation keeps the range of its statement");
+    }
+
+    private static final String IN_A_PHRASE = """
+                   IDENTIFICATION DIVISION.
+                   PROGRAM-ID. PHRASES.
+                   ENVIRONMENT DIVISION.
+                   INPUT-OUTPUT SECTION.
+                   FILE-CONTROL.
+                       SELECT F1 ASSIGN TO F1.
+                   DATA DIVISION.
+                   FILE SECTION.
+                   FD  F1.
+                   01  F1-REC       PIC X(10).
+                   WORKING-STORAGE SECTION.
+                   01  WS-X         PIC 9.
+                   PROCEDURE DIVISION.
+                   MAIN-PARA.
+                       READ F1 AT END EXEC CICS LINK PROGRAM('P1') END-EXEC
+                       END-READ
+                       READ F1 AT END CALL 'SUBX' END-CALL END-READ
+                       GO TO A-PARA B-PARA DEPENDING ON WS-X.
+                   A-PARA.
+                       EXIT.
+                   B-PARA.
+                       EXIT.
+            """;
+
+    /** What a phrase writes is mapped as the statement it would be, and DEPENDING ON is kept. */
+    @Test
+    void aBlockOrCallInAPhraseAndTheDependingOnItemAreMapped() {
+        CobolSemanticModel model = inlineModel("PHRASES.cbl", IN_A_PHRASE);
+
+        assertEquals(List.of("CICS_LINK @15"), model.embeddedBlocks().stream()
+                .map(b -> b.kind() + " @" + b.range().start().line()).toList());
+        assertEquals(List.of("SUBX @17"), model.calls().stream()
+                .map(c -> c.target() + " @" + c.range().start().line()).toList());
+        GoToStatement goTo = (GoToStatement) model.procedures().get(0).statements().get(2);
+        assertEquals(Optional.of("WS-X"), goTo.dependingOn());
+        assertEquals(List.of("A-PARA", "B-PARA"), goTo.targets());
+    }
+
+    /** An EXEC SQL written in an AT END phrase is a block, and the READ holds it. */
+    @Test
+    void anSqlBlockInAPhraseBelongsToTheStatementThatWritesIt() {
+        CobolSemanticModel model = inlineModel("SQLPHR.cbl", IN_A_PHRASE
+                .replace("PROGRAM-ID. PHRASES.", "PROGRAM-ID. SQLPHR.")
+                .replace("READ F1 AT END EXEC CICS LINK PROGRAM('P1') END-EXEC",
+                        "READ F1 AT END EXEC SQL ROLLBACK END-EXEC"));
+
+        assertEquals(List.of("SQL @15 EXEC SQL ROLLBACK END-EXEC"), model.embeddedBlocks()
+                .stream().map(b -> b.kind() + " @" + b.range().start().line() + " "
+                        + b.text().replaceAll("\\s+", " ").trim()).toList());
+        Statement read = model.procedures().get(0).statements().get(0);
+        assertEquals("READ", ((SimpleStatement) read).verb());
+        assertEquals(model.embeddedBlocks(), new ProcedureMap(model).blocksOf(read));
+    }
+
+    private static final String QUALIFIED = """
+                   IDENTIFICATION DIVISION.
+                   PROGRAM-ID. QUALPGM.
+                   PROCEDURE DIVISION.
+                   SECT-A SECTION.
+                   A-START.
+                       PERFORM P1 OF SECT-B
+                       PERFORM P1 IN SECT-B THRU P2 OF SECT-B
+                       GO TO P1 IN SECT-B.
+                   SECT-B SECTION.
+                   P1.
+                       EXIT.
+                   P2.
+                       EXIT.
+            """;
+
+    @Test
+    void aQualifiedProcedureNameKeepsItsSection() {
+        CobolSemanticModel model = inlineModel("QUALPGM.cbl", QUALIFIED);
+
+        assertEquals(List.of("P1 OF Optional[SECT-B] THRU Optional.empty",
+                        "P1 OF Optional[SECT-B] THRU Optional[SECT-B]"),
+                model.performs().stream().map(p -> p.targetProcedure() + " OF "
+                        + p.targetSection() + " THRU " + p.thruSection()).toList());
+        GoToStatement goTo = (GoToStatement) model.procedures().get(1).statements().get(2);
+        assertEquals(List.of(Optional.of("SECT-B")), goTo.targetSections());
     }
 
     @Test

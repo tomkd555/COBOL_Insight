@@ -23,7 +23,8 @@
 .ci-modal {
   position: fixed;
   inset: 0;
-  z-index: 10;
+  /* Above the editor's own layers: its scrollbar sits at 11. */
+  z-index: 100;
   overflow: auto;
 }
 
@@ -60,7 +61,7 @@
   overflow: hidden;
 }
 
-/* The same chrome as .ci-input, so the query row reads as a field rather than a heading; the rule
+/* The same chrome as .ci-input, so the query row reads as a field; the rule
    below it separates the query from the results list underneath. */
 .ci-palette__input {
   width: 100%;
@@ -90,13 +91,14 @@
 
 .ci-palette__item--active {
   background: var(--ci-bg-selected);
-  box-shadow: inset 3px 0 0 var(--color-primary);
+  box-shadow: inset 2px 0 0 var(--color-primary);
   color: var(--color-foreground);
 }
 
 .ci-palette__category {
   flex: 0 0 auto;
   color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
 }
 
 .ci-palette__item--active .ci-palette__category {
@@ -119,17 +121,21 @@
 
 .ci-modal__dialog {
   position: relative;
-  margin: 20vh auto 0;
+  /* The margin and the height together stay inside the window, so the actions are never cut off. */
+  margin: 10vh auto 0;
   width: max-content;
-  min-width: 440px;
+  min-width: min(440px, 90vw);
   max-width: min(720px, 90vw);
-  max-height: 88vh;
+  max-height: 80vh;
   padding: var(--ci-space-4);
   background: var(--color-surface);
   border: 1px solid var(--ci-border-strong);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-  overflow: auto;
+  /* The title and the actions keep their place; what lies between them scrolls. */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   animation: ci-overlay-in var(--duration-base) var(--ease-standard);
 }
 
@@ -157,12 +163,18 @@
 }
 
 .ci-modal__body {
+  min-height: 0;
+  /* Room for the focus ring of a control at the edge, which the scrolling box would cut. */
+  margin: calc(-1 * var(--ci-space-1));
+  padding: var(--ci-space-1);
+  overflow: auto;
   color: var(--color-foreground);
+  word-break: auto-phrase;
 }
 
 .ci-modal__actions {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--ci-space-2);
   margin-top: var(--ci-space-4);
@@ -180,13 +192,13 @@
   display: flex;
   flex-direction: column;
   gap: var(--ci-space-2);
-  z-index: 20;
+  z-index: 110;
   max-width: min(420px, 80vw);
 }
 
 /*
  * The toast is the one surface with nothing to bridge from: it appears where nothing was. It rises
- * the short way it will fall back, so the eye is carried to it rather than surprised by it.
+ * the short way it will fall back, so the eye is carried to it.
  */
 .ci-toast {
   display: flex;
@@ -225,10 +237,18 @@
 }
 
 .ci-toast__close {
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
   background: transparent;
   border: none;
+  border-radius: var(--radius-sm);
   color: var(--color-muted-foreground);
   cursor: pointer;
+}
+
+.ci-toast__close:hover {
+  background: var(--ci-bg-hover);
 }
 
 /* ---------------------------------------------------------------- strips */

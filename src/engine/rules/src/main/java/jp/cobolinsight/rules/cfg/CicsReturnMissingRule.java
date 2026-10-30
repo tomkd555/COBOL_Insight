@@ -80,8 +80,7 @@ public final class CicsReturnMissingRule implements Rule {
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         model.programId() + " は EXEC CICS RETURN を持たずに終端します。"
                                 + "疑似会話の制御が CICS に戻りません。",
-                        new SourcePosition(model.sourceFile(), terminal.range().start().line(), 1,
-                                SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                        CfgSupport.at(terminal.range())));
             }
         }
         return findings;

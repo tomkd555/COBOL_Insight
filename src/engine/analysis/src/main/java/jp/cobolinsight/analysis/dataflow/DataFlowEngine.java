@@ -66,7 +66,7 @@ public final class DataFlowEngine {
         Map<CfgNode, Set<String>> liveOut = liveness(cfg, defUseByNode);
         Map<CfgNode, Map<String, ValueInterval>> intervalIn = IntervalAnalysis.run(cfg, model);
 
-        return new ProgramDataFlowFacts(model.programId(), cfg.nodes(), defUseByNode, reachingIn,
+        return new ProgramDataFlowFacts(model.programId(), model.sourceFile(), cfg.nodes(), defUseByNode, reachingIn,
                 externalTaintIn, sensitiveTaintIn, liveOut, intervalIn);
     }
 

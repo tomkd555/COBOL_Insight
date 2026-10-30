@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { SaveResult } from "../../../shared/ipc";
 import { isStale, saveOutcomeOf, showsReparseErrors } from "./save";
 import { REPARSE_RULE_ID } from "./ruleIndex";
+import { text } from "../i18n/text";
 
 function result(overrides: Partial<SaveResult> = {}): SaveResult {
   return {
@@ -15,8 +16,11 @@ function result(overrides: Partial<SaveResult> = {}): SaveResult {
 }
 
 describe("showsReparseErrors", () => {
-  it("holds for a COBOL program and for nothing else", () => {
+  it("is true for a COBOL program", () => {
     expect(showsReparseErrors("PROGRAM")).toBe(true);
+  });
+
+  it("is false for other asset types", () => {
     // A copybook, JCL or BMS cannot be parsed on its own, so its reparse errors say nothing.
     expect(showsReparseErrors("COPYBOOK")).toBe(false);
     expect(showsReparseErrors("JCL")).toBe(false);
@@ -25,19 +29,47 @@ describe("showsReparseErrors", () => {
 });
 
 describe("saveOutcomeOf", () => {
-  it("reports a refused write as a failure and names the engine's reason", () => {
+  it("reports a refused write as a failure", () => {
     const outcome = saveOutcomeOf(
       "cobol/A.cbl",
       "PROGRAM",
       result({ written: false, exitCode: 2, error: "Shift_JIS へ変換できない文字があります。" }),
     );
     expect(outcome.kind).toBe("failed");
+  });
+
+  it("names the engine's reason in the failure message", () => {
+    const outcome = saveOutcomeOf(
+      "cobol/A.cbl",
+      "PROGRAM",
+      result({ written: false, exitCode: 2, error: "Shift_JIS へ変換できない文字があります。" }),
+    );
     expect(outcome.message).toContain("Shift_JIS へ変換できない文字");
   });
 
   it("reports a refused write with no reason as a complete sentence", () => {
     const outcome = saveOutcomeOf("cobol/A.cbl", "PROGRAM", result({ written: false, exitCode: 2 }));
     expect(outcome.message).toBe("「cobol/A.cbl」を保存できませんでした。");
+  });
+
+  it("reports saved with a warning when the reparse check failed after the write", () => {
+    const outcome = saveOutcomeOf(
+      "cobol/A.cbl",
+      "PROGRAM",
+      result({ written: true, exitCode: 2, error: "構文解析を完了できませんでした。" }),
+    );
+    expect(outcome).toEqual({
+      kind: "saved",
+      message: text.save.checkFailed("cobol/A.cbl", "構文解析を完了できませんでした。"),
+      diagnostics: [],
+    });
+  });
+
+  it("reports unchanged with no message when the file needed no write", () => {
+    expect(saveOutcomeOf("cobol/A.cbl", "PROGRAM", result({ written: false, exitCode: 0 }))).toEqual({
+      kind: "unchanged",
+      message: null,
+    });
   });
 
   it("treats a clean write as saved with nothing to report", () => {
@@ -92,5 +124,9 @@ describe("isStale", () => {
 
   it("is false with no current stamp, leaving the engine to report why", () => {
     expect(isStale(decoded, null)).toBe(false);
+  });
+
+  it("is false while the tab's own stamp is unknown after a failed stat", () => {
+    expect(isStale(null, { mtimeMs: 1001, byteSize: 40 })).toBe(false);
   });
 });

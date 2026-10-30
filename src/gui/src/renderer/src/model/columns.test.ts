@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   AREA_CLASS,
+  COLS_LINE,
   UNREACHABLE,
   areaRanges,
   boundariesOf,
@@ -20,6 +21,15 @@ import {
  *              12-13 '注', 14 shift-in                                  (14 bytes)
  */
 const DBCS_LINE = "000100* 受注";
+
+describe("COLS_LINE", () => {
+  it("spans 80 columns with a mark every fifth column", () => {
+    expect(COLS_LINE).toHaveLength(80);
+    expect(COLS_LINE.slice(0, 20)).toBe("----+----1----+----2");
+    expect(COLS_LINE[71]).toBe("-");
+    expect(COLS_LINE.slice(74)).toBe("+----8");
+  });
+});
 
 describe("editorCodepageOf", () => {
   it("takes the aliases the rest of the tool accepts", () => {
@@ -41,8 +51,11 @@ describe("byteLengthOf", () => {
     expect(byteLengthOf("000100 MOVE A TO B.", "UTF-8")).toBe(19);
   });
 
-  it("counts a double-byte character as two in Shift_JIS and three in UTF-8", () => {
+  it("counts a double-byte character as two bytes in Shift_JIS", () => {
     expect(byteLengthOf(DBCS_LINE, "Shift_JIS")).toBe(12);
+  });
+
+  it("counts a double-byte character as three bytes in UTF-8", () => {
     expect(byteLengthOf(DBCS_LINE, "UTF-8")).toBe(14);
   });
 
@@ -51,9 +64,12 @@ describe("byteLengthOf", () => {
     expect(byteLengthOf(DBCS_LINE, "IBM930")).toBe(14);
   });
 
-  it("counts half-width katakana as one byte in CP930 and two in CP939", () => {
+  it("counts half-width katakana as one byte in Shift_JIS and CP930", () => {
     expect(byteLengthOf("ｱｲ", "Shift_JIS")).toBe(2);
     expect(byteLengthOf("ｱｲ", "IBM930")).toBe(2);
+  });
+
+  it("shifts half-width katakana into double bytes in CP939", () => {
     // CP939's single-byte half is Latin, so katakana has to be shifted into the double-byte half.
     expect(byteLengthOf("ｱｲ", "IBM939")).toBe(6);
   });
@@ -78,7 +94,7 @@ describe("charOffsetAtByteColumn", () => {
     expect(charOffsetAtByteColumn("AB", 4, "UTF-8")).toBe(UNREACHABLE);
   });
 
-  it("takes the column the line break falls on as the position past the last character", () => {
+  it("treats the line-break column as the position past the last character", () => {
     // decode counts the line break in a line's byte length, so the column just past the content is
     // reachable; an exactly 72-byte line reports the start of its empty identification area.
     expect(charOffsetAtByteColumn("AB", 3, "UTF-8")).toBe(2);
@@ -134,7 +150,7 @@ describe("areaRanges", () => {
     expect(indicator?.endColumn).toBe(8);
   });
 
-  it("marks columns 73 to 80 as the identification area and the rest as overflow", () => {
+  it("marks columns 73 to 80 as the identification area", () => {
     const identification = ranges.find((range) => range.className === AREA_CLASS.identification);
     expect(identification).toEqual({
       line: 1,
@@ -142,6 +158,9 @@ describe("areaRanges", () => {
       endColumn: 81,
       className: AREA_CLASS.identification,
     });
+  });
+
+  it("marks the columns past 80 as overflow", () => {
     const overflow = ranges.find((range) => range.className === AREA_CLASS.overflow);
     expect(overflow).toEqual({
       line: 1,

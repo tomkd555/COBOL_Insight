@@ -24,7 +24,7 @@ import { resolveSourceFile, type RealPathResolver } from "../fs/pathGuard";
 /** The filesystem decoding needs: the boundary check plus the scratch file. */
 export interface DecodeFileSystem extends RealPathResolver {
   readText(absPath: string): Promise<string>;
-  /** Removes a file; an absent file is not an error. */
+  /** Removes a file; removing an absent file succeeds. */
   remove(absPath: string): Promise<void>;
 }
 
@@ -65,7 +65,7 @@ export function parseDecodeJson(text: string): DecodeResult {
 /**
  * Decodes one file inside an allowed base directory. A failure to start the engine, a non-zero exit
  * with no result file, or unreadable JSON all come back as a result whose `error` is set, so the
- * screen can report why nothing is shown rather than showing an empty file.
+ * screen can report why nothing is shown, where an empty result would read as an empty file.
  */
 export async function decodeSource(
   deps: DecodeDeps,
@@ -107,6 +107,15 @@ function asText(value: unknown): string {
 
 function asInt(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+/**
+ * The stamp of a file as Node's stat reports it, in the engine's terms. The engine reads the time as
+ * whole milliseconds (Files.getLastModifiedTime(..).toMillis()), and NTFS gives Node a fraction of
+ * one, so the time is cut to its whole milliseconds; the two stamps of one file are then equal.
+ */
+export function stampOf(stats: { mtimeMs: number; size: number }): SourceStamp {
+  return { mtimeMs: Math.floor(stats.mtimeMs), byteSize: stats.size };
 }
 
 function asStamp(value: unknown): SourceStamp {

@@ -51,6 +51,10 @@ public final class Main implements Runnable {
      */
     static CommandLine commandLine() {
         CommandLine cmd = new CommandLine(new Main());
+        // An argument that starts with @ is the value as written, such as an asset folder named
+        // @2024, for every subcommand: picocli would otherwise read the arguments out of a file of
+        // that name.
+        cmd.setExpandAtFiles(false);
         cmd.setExecutionExceptionHandler((ex, commandLine, parseResult) -> {
             System.err.println("エラー: " + Failures.describe(ex) + "。処理を中止しました。");
             return ExitCodes.ERRORS;

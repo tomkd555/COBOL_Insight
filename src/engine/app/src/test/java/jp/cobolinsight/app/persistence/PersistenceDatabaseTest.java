@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -67,7 +69,7 @@ class PersistenceDatabaseTest {
         }
 
         try (PersistenceDatabase db = PersistenceDatabase.open(dbFile)) {
-            assertEquals(5, userVersion(db), "the version-3 file was left for a plain open to upgrade");
+            assertEquals(6, userVersion(db), "the version-3 file was left for a plain open to upgrade");
         }
     }
 
@@ -91,6 +93,41 @@ class PersistenceDatabaseTest {
 
         try (PersistenceDatabase db = PersistenceDatabase.open(dbFile)) {
             assertEquals(EXPECTED_TABLES, tableNames(db));
+        }
+    }
+
+    /**
+     * A file of version 5, whose PARAGRAPH has neither kind nor section, is rebuilt as version 6
+     * on open: the tables of version 6, with those columns, and none of the old rows.
+     */
+    @Test
+    void aVersion5FileIsRebuiltAsVersion6(@TempDir Path dir) throws SQLException {
+        Path dbFile = dir.resolve("insight.db");
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile);
+                Statement st = connection.createStatement()) {
+            st.execute("CREATE TABLE SOURCE (id INTEGER PRIMARY KEY, path TEXT)");
+            st.execute("INSERT INTO SOURCE(id, path) VALUES (1, 'OLD.cbl')");
+            st.execute("CREATE TABLE PARAGRAPH (id INTEGER PRIMARY KEY, program_id INTEGER,"
+                    + " name TEXT, start_line INTEGER, end_line INTEGER)");
+            st.execute("PRAGMA user_version = 5");
+        }
+
+        try (PersistenceDatabase db = PersistenceDatabase.open(dbFile)) {
+            assertEquals(6, userVersion(db));
+            assertEquals(EXPECTED_TABLES, tableNames(db));
+            List<String> columns = new ArrayList<>();
+            try (Statement st = db.connection().createStatement();
+                    var rs = st.executeQuery("PRAGMA table_info(PARAGRAPH)")) {
+                while (rs.next()) {
+                    columns.add(rs.getString("name"));
+                }
+            }
+            assertTrue(columns.containsAll(List.of("kind", "section_name")), columns::toString);
+            try (Statement st = db.connection().createStatement();
+                    var rs = st.executeQuery("SELECT COUNT(*) FROM SOURCE")) {
+                rs.next();
+                assertEquals(0, rs.getInt(1));
+            }
         }
     }
 

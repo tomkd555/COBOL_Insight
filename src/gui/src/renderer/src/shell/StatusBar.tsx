@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { text } from "../i18n/text";
 import { artifactCount, useProject, useProjectDispatch } from "../state/projectStore";
-import { activeTabOf, useWorkbench, useWorkbenchDispatch } from "../state/workbenchStore";
+import { activeTabOf, draftOf, useWorkbench, useWorkbenchDispatch } from "../state/workbenchStore";
 import { useEditorStatus } from "../state/editorStatusStore";
 import { CODEPAGES, codepageLabel } from "../../../shared/codepage";
 
@@ -23,6 +23,9 @@ export function StatusBar(): ReactElement {
   const status = useEditorStatus();
   const active = activeTabOf(workbench);
   const sourcePath = active?.kind === "source" ? active.path : null;
+  // The edits were typed against the text one codepage gave; read again under another, the same
+  // edits would be written into different bytes. So the switch waits for a save or a discard.
+  const unsaved = active !== null && draftOf(workbench, active.id) !== null;
   const lintAndSql = findingCount(artifactCount(project.findings), artifactCount(project.sqlFindings));
   // The problems panel also lists the save-time reparse findings; the count must match what it shows.
   const findings = lintAndSql === null ? null : lintAndSql + project.saveFindings.length;
@@ -36,7 +39,8 @@ export function StatusBar(): ReactElement {
           onClick={() => dispatch({ type: "SHOW_PANEL", view: "problems" })}
           data-testid="status-findings"
         >
-          <span className="codicon codicon-warning" aria-hidden="true" />
+          {/* The total of every severity, so its glyph is the one that belongs to none of them. */}
+          <span className="codicon codicon-issues" aria-hidden="true" />
           {text.status.findings} {findings}
           {text.status.unit}
         </button>
@@ -55,7 +59,11 @@ export function StatusBar(): ReactElement {
         <select
           className="ci-statusbar__item ci-statusbar__item--button"
           aria-label={text.command.reopenWithEncoding}
-          title={text.command.reopenWithEncoding}
+          title={unsaved ? text.status.codepageAfterSave : text.command.reopenWithEncoding}
+          // A disabled control is passed over by the pointer's tooltip for some users and by the Tab
+          // key for all, so the reason is also its description.
+          aria-description={unsaved ? text.status.codepageAfterSave : undefined}
+          disabled={unsaved}
           value={project.codepageOverrides[sourcePath] ?? ""}
           onChange={(event) =>
             projectDispatch({

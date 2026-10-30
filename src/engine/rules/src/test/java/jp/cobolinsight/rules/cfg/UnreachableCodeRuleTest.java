@@ -6,6 +6,8 @@ import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -87,6 +89,120 @@ class UnreachableCodeRuleTest {
             "           MOVE 2 TO WS-D.",
             "");
 
+    /** P1 is a paragraph of SECT-A and of SECT-B; only SECT-B's is performed, from inside SECT-B. */
+    private static final String SAME_NAME_IN_TWO_SECTIONS = String.join("\n",
+            /*  1 */ "       IDENTIFICATION DIVISION.",
+            /*  2 */ "       PROGRAM-ID. FIX011E.",
+            /*  3 */ "       PROCEDURE DIVISION.",
+            /*  4 */ "       MAIN-SECT SECTION.",
+            /*  5 */ "       MAIN-START.",
+            /*  6 */ "           PERFORM SECT-B",
+            /*  7 */ "           STOP RUN.",
+            /*  8 */ "       SECT-A SECTION.",
+            /*  9 */ "       P1.",
+            /* 10 */ "           DISPLAY 'A'.",
+            /* 11 */ "       SECT-B SECTION.",
+            /* 12 */ "       B-START.",
+            /* 13 */ "           PERFORM P1",
+            /* 14 */ "           STOP RUN.",
+            /* 15 */ "       P1.",
+            /* 16 */ "           DISPLAY 'B'.",
+            "");
+
+    @Test
+    void aNameTwoSectionsDefineReachesOnlyTheParagraphItResolvesTo() {
+        assertEquals(List.of(9), run("FIX011E.cbl", SAME_NAME_IN_TWO_SECTIONS).stream()
+                .map(f -> f.location().line()).toList(),
+                "the PERFORM inside SECT-B reaches SECT-B's P1, and SECT-A's P1 stays unused");
+    }
+
+    /** A GO TO of another program names its own paragraph, whatever this program calls its own. */
+    @Test
+    void aGoToOfAnotherProgramReachesNothingHere() {
+        String jumping = String.join("\n",
+                "       IDENTIFICATION DIVISION.",
+                "       PROGRAM-ID. FIX011G.",
+                "       PROCEDURE DIVISION.",
+                "       0000-MAIN.",
+                "           GO TO 9000-DEAD.",
+                "       9000-DEAD.",
+                "           STOP RUN.",
+                "");
+        CobolSemanticModel unused = CfgFixtures.parse(tempDir, "FIX011B.cbl", UNUSED_PARAGRAPH);
+        CobolSemanticModel other = CfgFixtures.parse(tempDir, "FIX011G.cbl", jumping);
+        List<Finding> findings = new UnreachableCodeRule().evaluate(CfgFixtures.context(
+                List.of(unused, other),
+                Map.of(unused.sourceFile(), UNUSED_PARAGRAPH, other.sourceFile(), jumping)));
+
+        assertEquals(List.of(unused.sourceFile() + ":10"), findings.stream()
+                .map(f -> f.location().file() + ":" + f.location().line()).toList());
+    }
+
+    /**
+     * Two files declare PROGRAM-ID FIX011J with different bodies. Each is analysed on its own
+     * graph, so each reports the statement after its own GOBACK, in its own file.
+     */
+    @Test
+    void twoFilesOfOneProgramIdEachHaveTheirOwnGraph() throws IOException {
+        Path first = Files.createDirectories(tempDir.resolve("first"));
+        Path second = Files.createDirectories(tempDir.resolve("second"));
+        String one = AFTER_GOBACK.replace("FIX011.", "FIX011J.");
+        String other = String.join("\n",
+                /*  1 */ "       IDENTIFICATION DIVISION.",
+                /*  2 */ "       PROGRAM-ID. FIX011J.",
+                /*  3 */ "       DATA DIVISION.",
+                /*  4 */ "       WORKING-STORAGE SECTION.",
+                /*  5 */ "       01  WS-D PIC 9(01).",
+                /*  6 */ "       PROCEDURE DIVISION.",
+                /*  7 */ "       0000-MAIN.",
+                /*  8 */ "           MOVE 1 TO WS-D",
+                /*  9 */ "           MOVE 2 TO WS-D",
+                /* 10 */ "           GOBACK",
+                /* 11 */ "           MOVE 3 TO WS-D",
+                /* 12 */ "           MOVE 4 TO WS-D.",
+                "");
+        CobolSemanticModel a = CfgFixtures.parse(first, "FIX011J.cbl", one);
+        CobolSemanticModel b = CfgFixtures.parse(second, "FIX011J.cbl", other);
+
+        List<Finding> findings = new UnreachableCodeRule().evaluate(CfgFixtures.context(
+                List.of(a, b), Map.of(a.sourceFile(), one, b.sourceFile(), other)));
+
+        assertEquals(List.of(a.sourceFile() + ":12", b.sourceFile() + ":11",
+                        b.sourceFile() + ":12"),
+                findings.stream().map(f -> f.location().file() + ":" + f.location().line())
+                        .toList());
+    }
+
+    /**
+     * The statement named as the one control leaves at is taken from the dead statement's own
+     * file: the copybook's GOBACK at its line 4; the program's DISPLAY on its own line 4 stays
+     * out of the message.
+     */
+    @Test
+    void theLeavingStatementIsTakenFromTheDeadStatementsOwnFile() throws IOException {
+        Path copybooks = Files.createDirectories(tempDir.resolve("cpy"));
+        Files.writeString(copybooks.resolve("ENDS.cpy"), String.join("\n",
+                "      * 1", "      * 2", "      * 3",
+                "           GOBACK",
+                "           DISPLAY 'DEAD'.", ""));
+        String text = String.join("\n",
+                /*  1 */ "       IDENTIFICATION DIVISION.",
+                /*  2 */ "       PROGRAM-ID. FIX011L.",
+                /*  3 */ "       PROCEDURE DIVISION.",
+                /*  4 */ "       P1. DISPLAY 'A'",
+                /*  5 */ "           COPY ENDS.",
+                "");
+        CobolSemanticModel model = CfgFixtures.parse(tempDir, "FIX011L.cbl", text, copybooks);
+        List<Finding> findings = new UnreachableCodeRule().evaluate(
+                CfgFixtures.context(List.of(model), Map.of(model.sourceFile(), text)));
+
+        assertEquals(1, findings.size(), findings::toString);
+        assertEquals("ENDS.cpy:5", Path.of(findings.get(0).location().file()).getFileName()
+                + ":" + findings.get(0).location().line());
+        assertTrue(findings.get(0).message().contains("GOBACK 文（4行）"),
+                findings.get(0).message());
+    }
+
     private List<Finding> run(String fileName, String text) {
         CobolSemanticModel model = CfgFixtures.parse(tempDir, fileName, text);
         return new UnreachableCodeRule()
@@ -110,15 +226,69 @@ class UnreachableCodeRuleTest {
     }
 
     /**
-     * A PERFORM inside a conditional clause does not become a call edge in the CFG, so the
-     * paragraph's body still reports as unreachable. What this test checks is the separate
-     * "paragraph is never referenced" judgment, which must not fire here.
+     * A PERFORM written in a NOT INVALID KEY phrase is a call edge of the CFG and a reference to
+     * its paragraph, so the paragraph is used and its statement reachable.
      */
     @Test
     void countsAPerformInsideAnIoClauseAsAReference() {
-        assertTrue(run("FIX011C.cbl", PERFORMED_FROM_AN_IO_CLAUSE).stream()
-                        .noneMatch(f -> f.message().contains("3210-UPDATE")),
-                "NOT INVALID KEY の中の PERFORM も参照として数えること");
+        assertEquals(List.of(), run("FIX011C.cbl", PERFORMED_FROM_AN_IO_CLAUSE));
+    }
+
+    /**
+     * Control that falls into a THRU range from the paragraph before it goes on past the range's
+     * end; control that a GO TO inside the range takes to the range's end returns to the PERFORM.
+     */
+    @Test
+    void theEndOfARangeStopsOnlyTheFlowInsideTheRange() {
+        String fallsIn = String.join("\n",
+                /*  1 */ "       IDENTIFICATION DIVISION.",
+                /*  2 */ "       PROGRAM-ID. FIX011H.",
+                /*  3 */ "       PROCEDURE DIVISION.",
+                /*  4 */ "       MAIN-PARA.",
+                /*  5 */ "           PERFORM A-PARA THRU A-EXIT.",
+                /*  6 */ "       A-PARA.",
+                /*  7 */ "           DISPLAY 'A'.",
+                /*  8 */ "       A-EXIT.",
+                /*  9 */ "           EXIT.",
+                /* 10 */ "       NEXT-PARA.",
+                /* 11 */ "           DISPLAY 'N'",
+                /* 12 */ "           STOP RUN.",
+                "");
+        assertEquals(List.of(), run("FIX011H.cbl", fallsIn));
+
+        String jumpsToTheEnd = String.join("\n",
+                /*  1 */ "       IDENTIFICATION DIVISION.",
+                /*  2 */ "       PROGRAM-ID. FIX011I.",
+                /*  3 */ "       PROCEDURE DIVISION.",
+                /*  4 */ "       MAIN-PARA.",
+                /*  5 */ "           PERFORM A-PARA THRU A-EXIT",
+                /*  6 */ "           STOP RUN.",
+                /*  7 */ "       A-PARA.",
+                /*  8 */ "           GO TO A-EXIT.",
+                /*  9 */ "       A-EXIT.",
+                /* 10 */ "           EXIT.",
+                /* 11 */ "       NEXT-PARA.",
+                /* 12 */ "           DISPLAY 'N'.",
+                "");
+        assertEquals(List.of(11), run("FIX011I.cbl", jumpsToTheEnd).stream()
+                .map(f -> f.location().line()).toList());
+
+        // Control falls into P1 from P0, so the GO TO of P1 carries it on to P2 and past it.
+        String fallsInThenJumps = String.join("\n",
+                /*  1 */ "       IDENTIFICATION DIVISION.",
+                /*  2 */ "       PROGRAM-ID. FIX011K.",
+                /*  3 */ "       PROCEDURE DIVISION.",
+                /*  4 */ "       P0.",
+                /*  5 */ "           PERFORM P1 THRU P2.",
+                /*  6 */ "       P1.",
+                /*  7 */ "           GO TO P2.",
+                /*  8 */ "       P2.",
+                /*  9 */ "           DISPLAY 'P2'.",
+                /* 10 */ "       P3.",
+                /* 11 */ "           DISPLAY 'P3'",
+                /* 12 */ "           STOP RUN.",
+                "");
+        assertEquals(List.of(), run("FIX011K.cbl", fallsInThenJumps));
     }
 
     /**

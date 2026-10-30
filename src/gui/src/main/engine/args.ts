@@ -67,13 +67,13 @@ export function buildEngineArgs(invocation: EngineInvocation): string[] {
       return ["fix", ...common(r), ...opt("--out", r.outDir)];
     }
     case "rules": {
-      // Neither call takes an asset folder, so `common` does not apply. The output is always JSON,
+      // Neither call takes an asset folder, so `common` is left out. The output is always JSON,
       // which is the shape the screens read.
       const r = invocation.request;
       return ["rules", ...opt("--rules", r.rulesFile)];
     }
     case "save": {
-      // The only subcommand that takes the file to write directly rather than an asset folder.
+      // The only subcommand that takes the file to write directly, where the others take an asset folder.
       const r = invocation.request;
       return [
         "save",

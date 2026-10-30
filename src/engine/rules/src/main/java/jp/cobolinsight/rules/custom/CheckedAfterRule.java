@@ -103,8 +103,7 @@ final class CheckedAfterRule implements Rule {
                     : CfgSupport.forwardHasMatch(cfg, node, boundary, this::isCheck);
             if (!checked) {
                 findings.add(Finding.of(meta.id(), meta.defaultSeverity().toLevel(), message,
-                        new SourcePosition(model.sourceFile(), statement.range().end().line(), 1,
-                                SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                        CfgSupport.at(statement.range(), statement.range().end().line())));
             }
         }
     }

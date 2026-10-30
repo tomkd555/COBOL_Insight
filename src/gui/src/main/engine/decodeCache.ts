@@ -13,8 +13,8 @@
  * Entries are evicted least-recently-used. A JavaScript Map iterates in insertion order, so
  * re-inserting on a hit is all the ordering the eviction needs.
  *
- * What is stored is the pending decode rather than its result, so two requests for the same file
- * that arrive before the first has finished share one JVM launch instead of racing each other.
+ * What is stored is the pending decode, so two requests for the same file that arrive before the
+ * first has finished share one JVM launch, and two decodes of one file never race each other.
  */
 
 import type { DecodeResult, DecodeSourceRequest, SourceStamp } from "../../shared/ipc";
@@ -83,7 +83,7 @@ export function createCachedDecode(
     }
 
     // The pending decode goes in before it is awaited, so a second request for the same file joins
-    // this one rather than launching a second JVM.
+    // this one and launches no second JVM.
     const pending = deps.decode(request);
     entries.set(key, pending);
     let result: DecodeResult;

@@ -38,6 +38,8 @@ const api: CobolInsightApi = {
   readSarif: (path: string) => ipcRenderer.invoke(CHANNELS.artifactSarif, path),
   readGraph: (dbPath: string, root: string) =>
     ipcRenderer.invoke(CHANNELS.artifactGraph, dbPath, root),
+  readProgramFlow: (dbPath: string, root: string, relPath: string) =>
+    ipcRenderer.invoke(CHANNELS.artifactProgramFlow, dbPath, root, relPath),
   readCopyExpansion: (path: string) => ipcRenderer.invoke(CHANNELS.artifactCopyExpansion, path),
   readFixDiff: (request: FixDiffRequest) => ipcRenderer.invoke(CHANNELS.artifactFixDiff, request),
   readTranspile: (request: TranspileRequest) => ipcRenderer.invoke(CHANNELS.artifactTranspile, request),

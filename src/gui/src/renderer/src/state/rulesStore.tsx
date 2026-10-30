@@ -3,8 +3,8 @@
  *
  * The file is shared: the rules view toggles built-in rules in it while the custom-rule editor
  * rewrites its `custom` array, and both write the same file. The editor's two panes — the form and
- * the raw JSON — are two views of one value, so the text and the definitions are kept in step here
- * rather than in either pane.
+ * the raw JSON — are two views of one value, so the text and the definitions are kept in step here,
+ * above both panes.
  *
  * What is in effect is not stored: that comes from the engine's catalogue in projectStore.
  */
@@ -20,12 +20,14 @@ import {
 import type { RulesValidation } from "../../../shared/ipc";
 import type { CustomRule, RulesFile } from "../../../shared/rulesFile";
 import { emptyRulesFile } from "../../../shared/rulesFile";
-import { parse, serialise } from "../model/customRules";
+import { localProblems, parse, serialise } from "../model/customRules";
 
 /** Which pane of the custom-rule editor is showing. */
 export type CustomRulePane = "form" | "raw";
 
 export interface RulesState {
+  /** Whether the file has been read. Until then the store holds an empty one, which nothing may write. */
+  readonly loaded: boolean;
   /** The file as it was last read or written. */
   readonly file: RulesFile;
   /** The custom rules being edited. */
@@ -46,6 +48,7 @@ export interface RulesState {
 }
 
 export const initialRulesState: RulesState = {
+  loaded: false,
   file: emptyRulesFile(),
   draft: [],
   raw: "[]",
@@ -77,6 +80,7 @@ export function rulesReducer(state: RulesState, action: RulesAction): RulesState
     case "LOAD":
       return {
         ...state,
+        loaded: true,
         file: action.file,
         draft: action.file.custom,
         raw: serialise(action.file.custom),
@@ -132,6 +136,13 @@ export function rulesReducer(state: RulesState, action: RulesAction): RulesState
 /** Whether the custom rules on screen differ from the ones in the file. */
 export function isCustomDirty(state: RulesState): boolean {
   return state.dirty;
+}
+
+/** Whether 保存 has something to write: an edit that reads as JSON and passes the form's own checks. */
+export function customSavable(state: RulesState): boolean {
+  return (
+    state.loaded && state.dirty && state.rawError === null && localProblems(state.draft).length === 0
+  );
 }
 
 const StateContext = createContext<RulesState | null>(null);

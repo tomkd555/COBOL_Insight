@@ -64,4 +64,34 @@ class PerformThruInterruptGoToRuleTest {
         assertEquals(List.of(), run("FIX007B.cbl", ENTERS_AT_THE_ENTRY),
                 "入口段落へ飛ぶ GO TO は割り込みではない");
     }
+
+    /**
+     * A qualified THRU range of three paragraphs in WORK-SECT. The GO TO P-2 IN WORK-SECT of
+     * OTHER-SECT enters its middle; the GO TO P-2 OF OTHER-SECT of MAIN-SECT goes to a paragraph
+     * outside the range, and the GO TO inside the range stays in it.
+     */
+    @Test
+    void namesResolveBySectionAndQualifier() {
+        String text = String.join("\n",
+                /*  1 */ "       IDENTIFICATION DIVISION.",
+                /*  2 */ "       PROGRAM-ID. FIX007C.",
+                /*  3 */ "       PROCEDURE DIVISION.",
+                /*  4 */ "       MAIN-SECT SECTION.",
+                /*  5 */ "       M-START.",
+                /*  6 */ "           PERFORM P-1 OF WORK-SECT THRU P-3 OF WORK-SECT",
+                /*  7 */ "           GO TO P-2 OF OTHER-SECT.",
+                /*  8 */ "       OTHER-SECT SECTION.",
+                /*  9 */ "       P-2.",
+                /* 10 */ "           GO TO P-2 IN WORK-SECT.",
+                /* 11 */ "       WORK-SECT SECTION.",
+                /* 12 */ "       P-1.",
+                /* 13 */ "           GO TO P-3.",
+                /* 14 */ "       P-2.",
+                /* 15 */ "           DISPLAY 'P2'.",
+                /* 16 */ "       P-3.",
+                /* 17 */ "           EXIT.",
+                "");
+        assertEquals(List.of(10), run("FIX007C.cbl", text).stream()
+                .map(f -> f.location().line()).toList());
+    }
 }

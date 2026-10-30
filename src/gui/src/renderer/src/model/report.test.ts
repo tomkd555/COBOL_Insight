@@ -6,9 +6,14 @@ import {
   reportArtifactPaths,
   reportFileName,
   reportPathOf,
+  reportPreviewHtml,
+  reportOutdated,
   reportReducer,
+  type ReportPalette,
   type ReportState,
 } from "./report";
+
+const BASIS = { runId: 3, writes: 1 };
 
 describe("reportArtifactPaths", () => {
   it("writes beside the project file", () => {
@@ -39,6 +44,7 @@ describe("reportReducer", () => {
       format: "html",
       content: "<h1>x</h1>",
       path: "r.html",
+      basis: BASIS,
     });
     expect(ready).toMatchObject({ status: "ready", format: "html", content: "<h1>x</h1>" });
   });
@@ -57,6 +63,7 @@ describe("reportReducer", () => {
       format: "html",
       content: "stale",
       path: "r.html",
+      basis: BASIS,
     });
     expect(late).toBe(second);
   });
@@ -68,38 +75,125 @@ describe("deriveReportView", () => {
     format: "html",
     content: "<h1>x</h1>",
     path: "r.html",
+    basis: BASIS,
   };
 
   it("asks for an analysis before anything else", () => {
-    expect(deriveReportView("empty", null, null, INITIAL_REPORT_STATE)).toEqual({
+    expect(deriveReportView(false, null, null, INITIAL_REPORT_STATE)).toEqual({
       kind: "no-project",
     });
-    expect(deriveReportView("results", "C:/assets", null, INITIAL_REPORT_STATE)).toEqual({
+    expect(deriveReportView(false, "C:/assets", null, INITIAL_REPORT_STATE)).toEqual({
       kind: "no-project",
     });
   });
 
-  it("waits while the analysis or the report is running", () => {
-    expect(deriveReportView("running", "C:/assets", "p.db", INITIAL_REPORT_STATE)).toEqual({
-      kind: "generating",
+  it("waits for the analysis while it or the scan after a save runs", () => {
+    expect(deriveReportView(true, "C:/assets", "p.db", INITIAL_REPORT_STATE)).toEqual({
+      kind: "waiting",
     });
+    expect(deriveReportView(true, "C:/assets", "p.db", ready)).toEqual({ kind: "waiting" });
+  });
+
+  it("returns generating for its own run whether or not the engine is busy", () => {
     expect(
-      deriveReportView("results", "C:/assets", "p.db", { status: "generating", format: "html" }),
+      deriveReportView(true, "C:/assets", "p.db", { status: "generating", format: "html" }),
+    ).toEqual({ kind: "generating" });
+    expect(
+      deriveReportView(false, "C:/assets", "p.db", { status: "generating", format: "html" }),
     ).toEqual({ kind: "generating" });
   });
 
-  it("distinguishes not generated, failed and ready", () => {
-    expect(deriveReportView("results", "C:/assets", "p.db", INITIAL_REPORT_STATE)).toEqual({
+  it("returns not-generated for the initial state", () => {
+    expect(deriveReportView(false, "C:/assets", "p.db", INITIAL_REPORT_STATE)).toEqual({
       kind: "not-generated",
     });
+  });
+
+  it("returns failed with the message for a failed run", () => {
     expect(
-      deriveReportView("results", "C:/assets", "p.db", {
+      deriveReportView(false, "C:/assets", "p.db", {
         status: "failed",
         format: "html",
         message: "boom",
       }),
     ).toEqual({ kind: "failed", message: "boom" });
-    expect(deriveReportView("results", "C:/assets", "p.db", ready)).toEqual({ kind: "ready" });
+  });
+
+  it("returns ready for a generated report", () => {
+    expect(deriveReportView(false, "C:/assets", "p.db", ready)).toEqual({ kind: "ready" });
+  });
+});
+
+describe("reportOutdated", () => {
+  const ready: ReportState = {
+    status: "ready",
+    format: "text",
+    content: "x",
+    path: "r.txt",
+    basis: BASIS,
+  };
+
+  it("holds the report current while neither the epoch nor the writes moved", () => {
+    expect(reportOutdated(ready, BASIS)).toBe(false);
+  });
+
+  it("marks the report built from earlier content after a later run or scan", () => {
+    expect(reportOutdated(ready, { ...BASIS, runId: BASIS.runId + 1 })).toBe(true);
+  });
+
+  it("marks the report built from earlier content after a later save", () => {
+    expect(reportOutdated(ready, { ...BASIS, writes: BASIS.writes + 1 })).toBe(true);
+  });
+
+  it("marks nothing while no report is on hand", () => {
+    expect(reportOutdated(INITIAL_REPORT_STATE, { runId: 9, writes: 9 })).toBe(false);
+  });
+});
+
+describe("reportPreviewHtml", () => {
+  const palette: ReportPalette = {
+    background: "oklch(19% 0.01 250)",
+    foreground: "oklch(92% 0.006 250)",
+    surface: "oklch(23% 0.012 250)",
+    mutedForeground: "oklch(68% 0.014 250)",
+    border: "oklch(42% 0.014 250)",
+    destructive: "oklch(74% 0.19 27)",
+    accent: "oklch(72% 0.15 80)",
+  };
+  const html = "<html><head><style>body { color: #1a1a1a; }</style></head><body><h1>x</h1></body></html>";
+
+  it("shows the report as generated under the light theme", () => {
+    expect(reportPreviewHtml(html, "light", palette)).toBe(html);
+  });
+
+  it("adds the dark sheet after the report's own rules under the dark theme", () => {
+    const dark = reportPreviewHtml(html, "dark", palette);
+    expect(dark.indexOf("color-scheme: dark")).toBeGreaterThan(dark.indexOf("#1a1a1a"));
+    expect(dark.indexOf("color-scheme: dark")).toBeLessThan(dark.indexOf("</head>"));
+    expect(dark.endsWith("<body><h1>x</h1></body></html>")).toBe(true);
+  });
+
+  it("puts the sheet before an upper-case closing head tag", () => {
+    const upper = "<HTML><HEAD><STYLE>body { color: #1a1a1a; }</STYLE></HEAD><BODY><H1>x</H1></BODY></HTML>";
+
+    const dark = reportPreviewHtml(upper, "dark", palette);
+
+    expect(dark.indexOf("color-scheme: dark")).toBeGreaterThan(dark.indexOf("#1a1a1a"));
+    expect(dark.indexOf("color-scheme: dark")).toBeLessThan(dark.indexOf("</HEAD>"));
+    expect(dark.endsWith("<BODY><H1>x</H1></BODY></HTML>")).toBe(true);
+  });
+
+  it("writes the sheet in the colours the caller passes", () => {
+    const dark = reportPreviewHtml(html, "dark", palette);
+    expect(dark).toContain(`body { background: ${palette.background}; color: ${palette.foreground}; }`);
+    expect(dark).toContain(`td.lv-error { color: ${palette.destructive}; }`);
+  });
+
+  it("appends the sheet at the end when the text has no head", () => {
+    const shown = reportPreviewHtml("<!DOCTYPE html><h1>x</h1>", "dark", palette);
+
+    expect(shown.startsWith("<!DOCTYPE html><h1>x</h1><style>")).toBe(true);
+    expect(shown.endsWith("</style>")).toBe(true);
   });
 });
 

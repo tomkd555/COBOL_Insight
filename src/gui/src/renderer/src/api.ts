@@ -24,9 +24,12 @@ export function api(): CobolInsightApi {
   return published;
 }
 
+/** What Electron puts in front of the message of an error thrown in main. */
+const REMOTE_PREFIX = /^Error invoking remote method '[^']*': (?:[A-Za-z]*Error: )?/;
+
 /** The message of a rejected call, in a form a screen can show. */
 export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  return (error instanceof Error ? error.message : String(error)).replace(REMOTE_PREFIX, "");
 }
 
 /** How many lines of the engine's stderr stand as a failed run's reason. */

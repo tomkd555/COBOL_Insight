@@ -2,7 +2,7 @@
  * The persisted settings, as the renderer holds them.
  *
  * Restoring checks the stored values against the vocabulary the renderer knows: a severity or a
- * codepage the interface no longer offers is dropped rather than kept as a value nothing can select.
+ * codepage the interface no longer offers is dropped, because nothing can select it.
  * The file format itself is normalised in shared/settings.
  */
 

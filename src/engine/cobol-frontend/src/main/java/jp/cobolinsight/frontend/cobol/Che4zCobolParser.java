@@ -21,6 +21,9 @@ import java.util.Map;
  * {@link CobolParser} implementation that calls the patched Che4z directly as a library.
  * Builds a normalized semantic model from Che4z's AST/symbol information plus CST capture.
  * A per-file failure (parse exception or error diagnostic) is returned as ParseOutcome.Failure.
+ *
+ * <p>One instance is one run: the copybooks its analyses read are read once while it parses one
+ * program after another, and a new instance reads them afresh.
  */
 public final class Che4zCobolParser implements CobolParser {
 
@@ -46,13 +49,16 @@ public final class Che4zCobolParser implements CobolParser {
             "this DB2 statement is allowed only in ",
             "Db2 variable declaration is only allowed in DATA DIVISION");
 
+    /** The copybooks this parser's analyses share: one parser is one pass over a set of programs. */
+    private final Che4zRuntime.CopybookCacheScope scope = new Che4zRuntime.CopybookCacheScope();
+
     @Override
     public ParseOutcome<CobolSemanticModel> parse(DecodedSource source,
             List<Path> copybookSearchPaths) {
         String uri = Paths.get(source.path()).toUri().toString();
         try {
             Che4zRuntime.Analysis analysis =
-                    Che4zRuntime.instance().analyze(uri, source.text(), copybookSearchPaths);
+                    Che4zRuntime.instance().analyze(uri, source.text(), copybookSearchPaths, scope);
             List<Finding> errors = errors(analysis.result(), source, uri);
             if (!errors.isEmpty()) {
                 Che4zRuntime.Analysis retry =
@@ -102,7 +108,7 @@ public final class Che4zCobolParser implements CobolParser {
      * <p>The masked copy keeps the layout of the original, so the ranges Che4z reports still point
      * at the real SQL: the caller reads the block texts out of the original text.</p>
      */
-    private static Che4zRuntime.Analysis retryWithMaskedSql(DecodedSource source, String uri,
+    private Che4zRuntime.Analysis retryWithMaskedSql(DecodedSource source, String uri,
             List<Path> copybookSearchPaths, List<Finding> errors) {
         List<EmbeddedSqlRanges.Block> blocks = EmbeddedSqlRanges.scan(source.text());
         boolean anyInBlock = false;
@@ -121,7 +127,7 @@ public final class Che4zCobolParser implements CobolParser {
         }
         String masked = EmbeddedSqlRanges.mask(source.text(), blocks);
         return masked == null ? null
-                : Che4zRuntime.instance().analyze(uri, masked, copybookSearchPaths);
+                : Che4zRuntime.instance().analyze(uri, masked, copybookSearchPaths, scope);
     }
 
     /**

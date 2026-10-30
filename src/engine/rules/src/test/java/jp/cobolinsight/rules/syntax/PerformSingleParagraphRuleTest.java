@@ -65,17 +65,20 @@ class PerformSingleParagraphRuleTest {
             /* 15 */ "           MOVE 2 TO WS-DUMMY.",
             "");
 
+    /**
+     * 3000-SUB is a paragraph of section 0000-MAIN and a section too. Written in 0000-MAIN, the
+     * name means the paragraph of that section, which is where the control flow graph and the
+     * stored paragraph flow send the PERFORM.
+     */
     @Test
-    void skipsPerformWhoseTargetNameIsBothParagraphAndSection() {
+    void aNameThatIsBothParagraphAndSectionMeansTheParagraphOfItsOwnSection() {
         CobolSemanticModel model = Fixtures.parse(tempDir, "FIX008B.cbl", AMBIGUOUS);
 
         List<Finding> findings = new PerformSingleParagraphRule()
                 .evaluate(Fixtures.context(List.of(model),
                         Map.of(model.sourceFile(), AMBIGUOUS)));
 
-        assertEquals(List.of(), findings,
-                "段落とセクションの両方に存在する名前は遷移先種別が曖昧なため"
-                        + "判定を保留する(誤検出よりも未検出を選ぶ)こと");
+        assertEquals(List.of(9), findings.stream().map(f -> f.location().line()).toList());
     }
 
     @Test

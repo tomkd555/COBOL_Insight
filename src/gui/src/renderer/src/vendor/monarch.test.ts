@@ -10,6 +10,7 @@ import {
   languageIdFor,
   type MonarchRule,
 } from "./monarch";
+import { SEQUENCE_COLUMNS } from "../model/columns";
 import { registerLanguages, type LanguageRegistrationTarget } from "./monacoLanguages";
 
 /**
@@ -26,10 +27,10 @@ function firstMatch(rules: readonly MonarchRule[], line: string): MonarchRule | 
   });
 }
 
-describe("the COBOL fixed-format grammar", () => {
+describe("cobolLanguage", () => {
   const rules = cobolLanguage().tokenizer["root"];
 
-  it("holds the reserved words, the division words and the figurative constants apart", () => {
+  it("lists no keyword among the figurative constants", () => {
     const language = cobolLanguage();
     expect(language.keywords).toContain("PERFORM");
     expect(language.divisions).toContain("PROCEDURE");
@@ -58,6 +59,13 @@ describe("the COBOL fixed-format grammar", () => {
     expect(firstMatch(rules, "0001")?.[1]).toBe("sequence");
   });
 
+  it("takes the width of the sequence area from the column model", () => {
+    const sequence = "0".repeat(SEQUENCE_COLUMNS);
+    expect(firstMatch(rules, `${sequence}D DISPLAY X.`)?.[1]).toEqual(["sequence", "debug"]);
+    expect(firstMatch(rules, sequence)?.[1]).toBe("sequence");
+    expect(firstMatch(rules, `${sequence}0D`)?.[1]).toEqual(["sequence", "indicator"]);
+  });
+
   it("accepts a full-width user-defined name as one word", () => {
     const word = rules.find(([, action]) => typeof action === "object" && "cases" in action);
     expect(word?.[0].exec("受注番号")?.[0]).toBe("受注番号");
@@ -69,7 +77,7 @@ describe("the COBOL fixed-format grammar", () => {
   });
 });
 
-describe("the JCL grammar", () => {
+describe("jclLanguage", () => {
   const rules = jclLanguage().tokenizer["root"];
 
   it("reads //* as a comment statement", () => {
@@ -98,7 +106,7 @@ describe("the JCL grammar", () => {
   });
 });
 
-describe("the BMS grammar", () => {
+describe("bmsLanguage", () => {
   const rules = bmsLanguage().tokenizer["root"];
 
   it("reads an asterisk in column 1 as a comment", () => {
@@ -115,17 +123,20 @@ describe("the BMS grammar", () => {
 });
 
 describe("languageIdFor", () => {
-  it("picks the language from the extension and falls back to COBOL", () => {
+  it("picks the language from the extension", () => {
     expect(languageIdFor("jcl/SYKD010.jcl")).toBe(LANGUAGE_ID.jcl);
     expect(languageIdFor("bms/SYKMAP1.bms")).toBe(LANGUAGE_ID.bms);
     expect(languageIdFor("data/rules.json")).toBe(LANGUAGE_ID.json);
     expect(languageIdFor("cobol/SYK001.cbl")).toBe(LANGUAGE_ID.cobol);
     expect(languageIdFor("copybook/SYKCPY1.cpy")).toBe(LANGUAGE_ID.cobol);
+  });
+
+  it("falls back to COBOL without an extension", () => {
     expect(languageIdFor("NOEXTENSION")).toBe(LANGUAGE_ID.cobol);
   });
 });
 
-describe("the JSON grammar", () => {
+describe("jsonLanguage", () => {
   const rules = jsonLanguage().tokenizer["root"];
 
   it("tells a member name from a string value by the colon that follows it", () => {
@@ -145,7 +156,7 @@ describe("the JSON grammar", () => {
   });
 });
 
-describe("the theme", () => {
+describe("cobolInsightTheme", () => {
   it("colours every token the grammars emit", () => {
     for (const theme of ["dark", "light"] as const) {
       const tokens = new Set(cobolInsightTheme(theme).rules.map((rule) => rule.token));
@@ -157,7 +168,7 @@ describe("the theme", () => {
 });
 
 describe("registerLanguages", () => {
-  it("registers each language once and defines the theme", () => {
+  it("registers the languages and defines both themes once", () => {
     const target: LanguageRegistrationTarget = {
       languages: { register: vi.fn(), setMonarchTokensProvider: vi.fn() },
       editor: { defineTheme: vi.fn() },

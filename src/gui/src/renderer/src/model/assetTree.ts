@@ -7,7 +7,7 @@
 import type { AssetInventoryItem, SarifFinding } from "../../../shared/ipc";
 
 /**
- * The asset-kind filter value. Held as a code rather than a display name: storing the display name
+ * The asset-kind filter value. Held as a code: storing the display name
  * would break the filter the moment the wording changed.
  */
 export type AssetTypeCode = "cobol" | "copybook" | "jcl" | "bms" | "sql" | "other";

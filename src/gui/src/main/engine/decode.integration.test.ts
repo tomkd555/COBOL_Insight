@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { copyFile, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdtemp, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -9,7 +9,7 @@ import type { DecodeResult } from "../../shared/ipc";
 import { boundariesOf, editorCodepageOf } from "../../renderer/src/model/columns";
 import { resolveEngineLaunch } from "./launch";
 import { runEngine, type EngineProcess, type EngineSpawn } from "./run";
-import { decodeSource, type DecodeDeps, type DecodeFileSystem } from "./decode";
+import { decodeSource, stampOf, type DecodeDeps, type DecodeFileSystem } from "./decode";
 import { saveSource, type SaveDeps, type SaveFileSystem } from "./save";
 
 /**
@@ -104,6 +104,14 @@ describe.skipIf(!ready)("decoding and saving the EBCDIC fixtures, for real", () 
     }
   }, 240_000);
 
+  it("stamps a decoded file as the stat channel stamps it", async () => {
+    for (const file of FILES) {
+      expect(decoded.get(file.name)?.stamp, file.name).toEqual(
+        stampOf(await stat(join(FIXTURES, file.name))),
+      );
+    }
+  });
+
   it("decodes all four codepages to the same text", () => {
     for (const file of FILES) {
       const result = decoded.get(file.name);
@@ -159,7 +167,7 @@ describe.skipIf(!ready)("decoding and saving the EBCDIC fixtures, for real", () 
     }
   });
 
-  it("writes one line back and leaves every other line's bytes untouched", async () => {
+  it("changes only the bytes of the edited line on save", async () => {
     const dir = await mkdtemp(join(tmpdir(), "ci-save-"));
     try {
       const name = "SYKENC1_SJIS.cbl";
@@ -184,6 +192,8 @@ describe.skipIf(!ready)("decoding and saving the EBCDIC fixtures, for real", () 
           fs: saveFs,
           tempFile: () => scratch("edited"),
           dbPath: join(dir, "unused.db"),
+          // The request names no expected stamp, so the save never asks for one.
+          stat: async () => null,
           run: (request) =>
             runEngine({ spawn: engineSpawn, env: process.env }, launch(), {
               subcommand: "save",

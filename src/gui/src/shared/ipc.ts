@@ -143,7 +143,7 @@ export interface EngineResult {
   subcommand: EngineSubcommand;
   /**
    * The engine encodes finding severity in its exit code (0 = clean, 1 = warnings, 2 = errors), so a
-   * non-zero code is not a failed run. -1 means the process was killed and reported no code.
+   * run that ends with 1 or 2 has still completed. -1 means the process was killed and reported no code.
    */
   exitCode: number;
   /** The trailing summary JSON line of stdout, or null when there is none. */
@@ -170,7 +170,7 @@ export interface DecodedLine {
    *
    * A column landing inside a double-byte character does not split it: the boundary is the first
    * character starting at or after that byte. The line terminator is one of the characters searched,
-   * so an exactly 72-byte line reports the position just past its text for column 73 rather than -1;
+   * so an exactly 72-byte line reports the position just past its text for column 73;
    * only a final line that ends without a terminator reports -1 there. The columns are counted in the
    * original encoding's bytes and the answer is a UTF-16 offset into the decoded text, so the two
    * coincide only on a line of single-byte characters.
@@ -188,7 +188,7 @@ export interface DecodeResult {
   text: string;
   /** The codepage actually used. */
   codepage: string;
-  /** Whether the codepage was detected rather than given. */
+  /** Whether the codepage came from detection; false when the request named it. */
   detected: boolean;
   lines: DecodedLine[];
   stamp: SourceStamp;
@@ -218,8 +218,9 @@ export interface SaveReparseError {
 /**
  * The save summary.
  *
- * exitCode 0 means written (or nothing changed), 1 means written but the reparse found problems
- * (the write is not rolled back), 2 means not written. Copybooks, JCL and BMS cannot be parsed on
+ * exitCode 0 means written, or, with `written` false, that the disk already held the text; 1 means
+ * written but the reparse found problems (the write is not rolled back); 2 means refused, or written
+ * with a failed reparse check, and `written` says which. Copybooks, JCL and BMS cannot be parsed on
  * their own and therefore always report 1.
  */
 export interface SaveResult {
@@ -227,9 +228,14 @@ export interface SaveResult {
   /** Absolute path of the original that was written (separators normalised to /). */
   path: string;
   reparseErrors: SaveReparseError[];
-  /** Why the write was refused. Empty when it was not. */
+  /** Why the write was refused, or why the reparse check after a write failed. Empty otherwise. */
   error: string;
   exitCode: number;
+  /**
+   * True when the original no longer carried the request's `expectedStamp` once the save's turn came:
+   * nothing was written, and the screen asks the user what to do with the draft.
+   */
+  stale?: boolean;
 }
 
 /** Request to write edited text back over an original inside an allowed base directory. */
@@ -240,6 +246,12 @@ export interface SaveSourceRequest {
   editedText: string;
   codepage?: string;
   copybookPaths?: string[];
+  /**
+   * The stamp the editor holds for the original. Main compares it with the file's stamp once the
+   * save's turn has come and writes only while the two agree. Absent when the user chose to overwrite
+   * or when the editor holds no known stamp.
+   */
+  expectedStamp?: SourceStamp;
 }
 
 /* ------------------------------------------------------------------ rules */
@@ -385,15 +397,60 @@ export interface GraphData {
   paragraphEdges: GraphParagraphEdge[];
 }
 
+/** One section or paragraph of the program under view (PARAGRAPH table). */
+export interface FlowParagraph {
+  id: number;
+  name: string;
+  /** SECTION or PARAGRAPH. */
+  kind: string;
+  /** The section a paragraph belongs to; null for a section and for a paragraph outside any. */
+  sectionName: string | null;
+  startLine: number;
+  endLine: number;
+}
+
+/** One flow leaving a paragraph of the program under view (PARAGRAPH_EDGE table). */
+export interface FlowEdge {
+  from: number;
+  /** Resolved target PARAGRAPH.id; null for a call of another program and for an unknown name. */
+  to: number | null;
+  /** The paragraph name, or the program name for CALL and XCTL (a data name where the call is dynamic). */
+  toName: string;
+  /** PERFORM, GOTO, FALLTHROUGH, CALL (CALL and CICS LINK: returns) or XCTL (does not return). */
+  kind: string;
+  /** The end of a PERFORM … THRU range; null when there is none or its name is unknown. */
+  thru: number | null;
+  thruName: string | null;
+  line: number | null;
+  /** Order among the flows leaving one paragraph (1-based). */
+  seq: number;
+  /** For CALL and XCTL, the asset holding the called program; null when no asset declares it. */
+  toPath: string | null;
+}
+
+/** The paragraphs of one program in definition order, and the flows between them. */
+export interface ProgramFlow {
+  paragraphs: FlowParagraph[];
+  edges: FlowEdge[];
+}
+
 /** One expanded line of a COPY statement. */
 export interface CopyExpansionLine {
   /** Line number inside the copybook (1-based). */
   copybookLine: number;
   /** Text after REPLACING; comment lines, the sequence area and the identification area are blank. */
   text: string;
+  /**
+   * The copybook the line comes from where a nested COPY brought it in, written as the expansion's
+   * own path is; null for a line of the expansion's own copybook. `copybookLine` counts in it.
+   */
+  copybookPath: string | null;
 }
 
-/** One COPY statement expanded inline. Nested COPY and implicit copybooks are out of scope. */
+/**
+ * One COPY statement expanded inline, with the lines its nested COPY statements bring in. Code the
+ * parser inserts itself (SQLCA, say) stays outside the expansion.
+ */
 export interface CopyExpansion {
   copyStatementLine: number;
   copybookName: string;
@@ -483,14 +540,14 @@ export interface EngineOutputPaths {
   /** Kept apart from `sarif`: lint writes both files in one run and must not have one overwrite the other. */
   readonly sqlSarif: string;
   /**
-   * Where a scoped lint writes instead of `sarif` and `sqlSarif`. A scoped run reports only the
+   * Where a scoped lint writes, leaving `sarif` and `sqlSarif` as they are. A scoped run reports only the
    * assets its scope covers, so letting it write the whole-folder pair would leave the report —
    * which is generated from those two files — covering one asset while naming the whole folder.
    */
   readonly scopedSarif: string;
   readonly scopedSqlSarif: string;
   readonly copyExpansion: string;
-  /** The rule configuration file. Not an engine artefact — the GUI writes it, the engine reads it. */
+  /** The rule configuration file, written by the GUI and read by the engine. */
   readonly rules: string;
 }
 
@@ -499,7 +556,7 @@ export interface ImportSourceRequest {
   inputDir: string;
   /** Destination folder as a path relative to the asset folder; "" means the asset folder itself. */
   destDir: string;
-  /** File name. A copybook that does not already end in .cpy gets the extension added. */
+  /** File name as typed; the blanks around it are dropped. */
   fileName: string;
   lines: string[];
   overwrite: boolean;
@@ -549,6 +606,8 @@ export interface CobolInsightApi {
   readSarif(path: string): Promise<SarifFinding[]>;
   /** The call graph of one asset folder, selected by the same root as the inventory. */
   readGraph(dbPath: string, root: string): Promise<GraphData>;
+  /** The paragraphs and flows of one program, named by its path relative to the asset folder. */
+  readProgramFlow(dbPath: string, root: string, relPath: string): Promise<ProgramFlow>;
   readCopyExpansion(path: string): Promise<CopyExpansionData>;
   readFixDiff(request: FixDiffRequest): Promise<FixDiff>;
   readTranspile(request: TranspileRequest): Promise<TranspileArtifacts>;
@@ -581,6 +640,7 @@ export const CHANNELS = {
   artifactInventory: "artifact:inventory",
   artifactSarif: "artifact:sarif",
   artifactGraph: "artifact:graph",
+  artifactProgramFlow: "artifact:program-flow",
   artifactCopyExpansion: "artifact:copy-expansion",
   artifactFixDiff: "artifact:fix-diff",
   artifactTranspile: "artifact:transpile",

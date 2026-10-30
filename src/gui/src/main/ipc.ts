@@ -1,4 +1,11 @@
-import { app, dialog, ipcMain } from "electron";
+import {
+  BrowserWindow,
+  app,
+  dialog,
+  ipcMain,
+  type OpenDialogOptions,
+  type SaveDialogOptions,
+} from "electron";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readFile, stat, writeFile } from "node:fs/promises";
@@ -25,13 +32,15 @@ import type { AppSettings } from "../shared/settings";
 import type { RulesFile } from "../shared/rulesFile";
 import { runEngine, type EngineProcess, type EngineSpawn, type RunEngineDeps } from "./engine/run";
 import { resolveEngineLaunch, type EngineLaunch } from "./engine/launch";
-import { decodeSource } from "./engine/decode";
+import { decodeSource, stampOf } from "./engine/decode";
 import { createCachedDecode } from "./engine/decodeCache";
 import { saveSource } from "./engine/save";
+import { createEngineTurns } from "./engine/turns";
 import { listRules, validateRules, type RulesDeps } from "./engine/rules";
 import { readInventory } from "./artifacts/inventory";
 import { parseSarif } from "./artifacts/sarif";
 import { readGraph } from "./artifacts/graph";
+import { readProgramFlow } from "./artifacts/programFlow";
 import { parseCopyExpansion } from "./artifacts/copyExpansion";
 import { buildFixDiff } from "./artifacts/fixDiff";
 import { readGeneratedFiles, readLineMap } from "./artifacts/transpile";
@@ -39,7 +48,13 @@ import { resolveSourceFile } from "./fs/pathGuard";
 import { importSource } from "./fs/importSource";
 import { dirExists, selectFolder } from "./fs/selectFolder";
 import { SETTINGS_FILE_NAME, readSettings, writeSettings } from "./fs/settings";
-import { RULES_FILE_NAME, readRulesFile, writeRulesFile } from "./fs/rulesFile";
+import {
+  RULES_FILE_NAME,
+  ownRulesPath,
+  readRulesFile,
+  withOwnRulesFile,
+  writeRulesFile,
+} from "./fs/rulesFile";
 import {
   decodeFileSystem,
   directoryStat,
@@ -76,7 +91,7 @@ function outputPaths(): EngineOutputPaths {
     scopedSarif: join(dir, "cobol-insight-scope.sarif"),
     scopedSqlSarif: join(dir, "cobol-insight-scope-sql.sarif"),
     copyExpansion: join(dir, COPY_EXPANSION_FILE_NAME),
-    // Not an engine artefact but a file the GUI writes; it lives here so its path is decided once.
+    // A file the GUI writes; it lives here so its path is decided once.
     rules: join(dir, RULES_FILE_NAME),
   };
 }
@@ -98,8 +113,9 @@ function currentLaunch(): EngineLaunch {
 }
 
 /**
- * The engine currently running. Only one runs at a time; cancellation and shutdown both need it.
- * Write-back and decode are not registered here and are therefore not cancellable.
+ * The engine launch a cancel stops: the analysis stage, or a view's own run. Cancellation and
+ * shutdown both need it. Write-back, decode, and the listing and validation of rules launch through
+ * invokeUninterrupted and stay outside this slot.
  */
 let runningEngine: EngineProcess | null = null;
 
@@ -128,27 +144,40 @@ function invoke(invocation: EngineInvocation): Promise<EngineResult> {
 }
 
 /**
- * A launch that is not registered for cancellation. Cancelling means stopping an analysis; killing
- * the child midway through a write-back would leave half a file in the original.
+ * A launch that stays outside the cancel registration. Cancelling means stopping an analysis; killing
+ * the child midway through a write-back would leave half a file in the original. Decode and the rules
+ * launches use it too, so a cancel always reaches the analysis stage it was meant for.
  */
 function invokeUninterrupted(invocation: EngineInvocation): Promise<EngineResult> {
   return runEngine(engineDeps(), currentLaunch(), invocation);
 }
 
 /**
- * Runs saves one at a time. The engine's save reads the original and writes it back, so overlapping
- * saves would have the later run read a state the earlier one had not yet written, losing one edit.
+ * Orders the scans, the saves and the reads of the project file, which touch the asset folder and the
+ * project file (engine/turns.ts): a save waits for every scan asked for before it, a scan waits for
+ * the saves, the scans and the reads asked for before it, and a read waits for the scans asked for
+ * before it. Saves run one at a time, because the engine's save reads the original and writes it back
+ * and two overlapping saves would lose one edit. A translation writes the project file too, so it
+ * takes a scan's turn; an import writes into the asset folder, so it takes a save's; the report and
+ * the COPY expansion table are read in a read's turn. A cancel releases the scans still waiting; one
+ * already started keeps everything asked for after it waiting until it ends.
  */
-let savePending: Promise<unknown> = Promise.resolve();
+const turns = createEngineTurns();
 
-function queueSave<T>(task: () => Promise<T>): Promise<T> {
-  // A failed save still lets the queue advance; only its own caller sees that failure.
-  const next = savePending.then(task, task);
-  savePending = next.then(
-    () => undefined,
-    () => undefined,
-  );
-  return next;
+/**
+ * What a scan that a cancel released from its wait resolves to: exit code -1 and no summary, as
+ * runEngine reports for a killed process, with empty output and empty `outputs`, since nothing was
+ * launched.
+ */
+function killedResult(invocation: EngineInvocation): EngineResult {
+  return {
+    subcommand: invocation.subcommand,
+    exitCode: -1,
+    summary: null,
+    stdout: "",
+    stderr: "",
+    outputs: {},
+  };
 }
 
 /**
@@ -170,8 +199,7 @@ async function locateSourceFile(
 ): Promise<{ realPath: string; stamp: SourceStamp } | null> {
   try {
     const realPath = await resolveSourceFile(decodeFileSystem, request.baseDir, request.path);
-    const stats = await stat(realPath);
-    return { realPath, stamp: { mtimeMs: stats.mtimeMs, byteSize: stats.size } };
+    return { realPath, stamp: stampOf(await stat(realPath)) };
   } catch {
     // An absent or out-of-bounds file is simply "no stamp"; no caller needs a finer distinction.
     return null;
@@ -180,7 +208,8 @@ async function locateSourceFile(
 
 /**
  * The cached decode. One cache serves the whole session: reopening an unchanged file costs a map
- * lookup rather than another JVM launch.
+ * lookup. A changed file, another codepage or another project file is a new key, and a scan empties
+ * the cache.
  */
 const cachedDecode = createCachedDecode({
   locate: (request) => locateSourceFile(request),
@@ -199,12 +228,28 @@ export function settingsPath(): string {
   return join(app.getPath("userData"), SETTINGS_FILE_NAME);
 }
 
+/**
+ * The rule file the handlers read and write. Throws unless the renderer named the file main lists
+ * in the output paths, so the rule channels reach that one file.
+ */
+function ownRules(path: string): string {
+  return ownRulesPath(path, outputPaths().rules);
+}
+
+/** An engine request held to main's own rule file (fs/rulesFile.ts). */
+function withOwnRules<T>(request: T): T {
+  return withOwnRulesFile(request, outputPaths().rules);
+}
+
 /** What the rules calls need: a scratch file for candidate text, and the engine subcommand. */
 function rulesDeps(): RulesDeps {
   return {
     fs: rulesFileSystem,
     tempFile: () => tempPath("rules"),
-    run: (request) => invoke({ subcommand: "rules", request }),
+    // Outside the cancel registration: a rules listing or validation run during an analysis would
+    // take the analysis's place in `runningEngine`, and a cancel would then stop it and leave the
+    // analysis running.
+    run: (request) => invokeUninterrupted({ subcommand: "rules", request }),
   };
 }
 
@@ -213,20 +258,42 @@ function rulesDeps(): RulesDeps {
  *
  * The paths the artefact handlers receive are values the renderer carried over from a previous run's
  * EngineResult.outputs. Decoding, the write-back, stat and the import instead receive paths the user
- * chose on screen, and each of those goes through the pathGuard boundary check.
+ * chose on screen, and each of those goes through the pathGuard boundary check. The rule-file read
+ * and write, and every request carrying `rulesFile`, are held to main's own rule file through
+ * ownRulesPath.
  */
 export function registerIpc(): void {
-  ipcMain.handle(CHANNELS.engineRun, async (_event, invocation: EngineInvocation) => {
-    const result = await invoke(invocation);
+  ipcMain.handle(CHANNELS.engineRun, async (_event, requested: EngineInvocation) => {
+    // The write-back and the decode have channels of their own, which hold their paths to the asset
+    // folder; through this one they would run on whatever paths the request names.
+    if (requested.subcommand === "save" || requested.subcommand === "decode") {
+      throw new Error(`「${requested.subcommand}」はこの経路では実行できません。`);
+    }
+    const invocation = {
+      ...requested,
+      request: withOwnRules(requested.request),
+    } as EngineInvocation;
+    // The report reads the project file, so it takes a read's turn.
+    if (invocation.subcommand === "report") {
+      return turns.read(() => invoke(invocation));
+    }
+    if (invocation.subcommand !== "scan" && invocation.subcommand !== "translate") {
+      return invoke(invocation);
+    }
+    const result = await turns.scan(
+      () => invoke(invocation),
+      () => killedResult(invocation),
+    );
+    // A scan records each file's codepage afresh. The cache key cannot tell that apart — the bytes
+    // and the stamp are unchanged and the renderer sends no codepage — so the entries are dropped.
     if (invocation.subcommand === "scan") {
-      // A scan records each file's codepage afresh. The cache key cannot tell that apart — the bytes
-      // and the stamp are unchanged and the renderer sends no codepage — so the entries are dropped.
       cachedDecode.clear();
     }
     return result;
   });
 
   ipcMain.handle(CHANNELS.engineCancel, () => {
+    turns.cancel();
     stopRunningEngine();
   });
 
@@ -235,12 +302,13 @@ export function registerIpc(): void {
   );
 
   ipcMain.handle(CHANNELS.engineSave, (_event, request: SaveSourceRequest) =>
-    queueSave(() =>
+    turns.save(() =>
       saveSource(
         {
           fs: saveFileSystem,
           tempFile: () => tempPath("edited"),
           dbPath: outputPaths().db,
+          stat: async (statRequest) => (await locateSourceFile(statRequest))?.stamp ?? null,
           run: (saveRequest) => invokeUninterrupted({ subcommand: "save", request: saveRequest }),
         },
         request,
@@ -249,23 +317,29 @@ export function registerIpc(): void {
   );
 
   ipcMain.handle(CHANNELS.engineRules, (_event, request: RulesRequest) =>
-    listRules(rulesDeps(), request),
+    listRules(rulesDeps(), withOwnRules(request)),
   );
   ipcMain.handle(CHANNELS.engineValidateRules, (_event, raw: string) =>
     validateRules(rulesDeps(), raw),
   );
 
   ipcMain.handle(CHANNELS.artifactInventory, (_event, dbPath: string, root: string) =>
-    withDatabase(dbPath, (db) => readInventory(db, root)),
+    turns.read(() => withDatabase(dbPath, (db) => readInventory(db, root))),
   );
   ipcMain.handle(CHANNELS.artifactSarif, async (_event, path: string) =>
     parseSarif(await readFile(path, "utf-8")),
   );
   ipcMain.handle(CHANNELS.artifactGraph, (_event, dbPath: string, root: string) =>
-    withDatabase(dbPath, (db) => readGraph(db, root)),
+    turns.read(() => withDatabase(dbPath, (db) => readGraph(db, root))),
   );
-  ipcMain.handle(CHANNELS.artifactCopyExpansion, async (_event, path: string) =>
-    parseCopyExpansion(await readFile(path, "utf-8")),
+  ipcMain.handle(
+    CHANNELS.artifactProgramFlow,
+    (_event, dbPath: string, root: string, relPath: string) =>
+      turns.read(() => withDatabase(dbPath, (db) => readProgramFlow(db, root, relPath))),
+  );
+  // A scan rewrites the COPY expansion table, so its read takes a read's turn.
+  ipcMain.handle(CHANNELS.artifactCopyExpansion, (_event, path: string) =>
+    turns.read(async () => parseCopyExpansion(await readFile(path, "utf-8"))),
   );
   ipcMain.handle(CHANNELS.artifactFixDiff, async (_event, request: FixDiffRequest) => {
     const [original, fixed] = await Promise.all([
@@ -277,8 +351,8 @@ export function registerIpc(): void {
   ipcMain.handle(
     CHANNELS.artifactTranspile,
     async (_event, request: TranspileRequest): Promise<TranspileArtifacts> => {
-      const lineMap = await withDatabase(request.dbPath, (db) =>
-        readLineMap(db, request.cobolRelPath),
+      const lineMap = await turns.read(() =>
+        withDatabase(request.dbPath, (db) => readLineMap(db, request.cobolRelPath)),
       );
       const files = await readGeneratedFiles(generatedFileSystem, request.outDir, lineMap);
       return { files, lineMap };
@@ -290,8 +364,13 @@ export function registerIpc(): void {
   );
 
   ipcMain.handle(CHANNELS.fsOutputPaths, () => outputPaths());
-  ipcMain.handle(CHANNELS.fsSelectFolder, () =>
-    selectFolder(() => dialog.showOpenDialog({ properties: ["openDirectory"] })),
+  // The dialogs are parented to the window that asked, so they stay in front of it and block it.
+  ipcMain.handle(CHANNELS.fsSelectFolder, (event) =>
+    selectFolder(() => {
+      const owner = BrowserWindow.fromWebContents(event.sender);
+      const options: OpenDialogOptions = { properties: ["openDirectory"] };
+      return owner === null ? dialog.showOpenDialog(options) : dialog.showOpenDialog(owner, options);
+    }),
   );
   ipcMain.handle(CHANNELS.fsDirExists, (_event, path: string) => dirExists(directoryStat, path));
   ipcMain.handle(
@@ -299,14 +378,20 @@ export function registerIpc(): void {
     async (_event, request: StatRequest): Promise<SourceStamp | null> =>
       (await locateSourceFile(request))?.stamp ?? null,
   );
+  // An import writes into the asset folder, so it takes a save's turn and never lands while a scan
+  // lists the folder.
   ipcMain.handle(CHANNELS.fsImportSource, (_event, request: ImportSourceRequest) =>
-    importSource(importFileSystem, request),
+    turns.save(() => importSource(importFileSystem, request)),
   );
   // A copy of a generated report. The original artefact stays where the engine wrote it.
   ipcMain.handle(
     CHANNELS.fsSaveAs,
-    async (_event, request: SaveAsRequest): Promise<string | null> => {
-      const chosen = await dialog.showSaveDialog({ defaultPath: request.fileName });
+    async (event, request: SaveAsRequest): Promise<string | null> => {
+      const owner = BrowserWindow.fromWebContents(event.sender);
+      const options: SaveDialogOptions = { defaultPath: request.fileName };
+      const chosen = await (owner === null
+        ? dialog.showSaveDialog(options)
+        : dialog.showSaveDialog(owner, options));
       if (chosen.canceled || chosen.filePath === undefined || chosen.filePath === "") {
         return null;
       }
@@ -320,9 +405,9 @@ export function registerIpc(): void {
     await writeSettings(userDataFileSystem, settingsPath(), settings);
   });
   ipcMain.handle(CHANNELS.rulesRead, (_event, path: string) =>
-    readRulesFile(userDataFileSystem, path),
+    readRulesFile(userDataFileSystem, ownRules(path)),
   );
   ipcMain.handle(CHANNELS.rulesWrite, async (_event, path: string, file: RulesFile) => {
-    await writeRulesFile(userDataFileSystem, path, file);
+    await writeRulesFile(userDataFileSystem, ownRules(path), file);
   });
 }

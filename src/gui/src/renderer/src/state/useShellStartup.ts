@@ -61,12 +61,16 @@ export function useShellStartup(notify: Notify): ShellStartup {
       .outputPaths()
       .then(async (paths) => {
         projectDispatch({ type: "SET_OUTPUT_PATHS", paths });
-        const [file, catalog] = await Promise.all([
-          api().readRules(paths.rules),
-          api().rules({ rulesFile: paths.rules }),
-        ]);
+        // The listing starts at once and the file is loaded without waiting for it: the listing
+        // launches the engine, which takes seconds and can fail, and the rule editor must hold the
+        // file before anything can be saved from it.
+        const listing = api().rules({ rulesFile: paths.rules });
+        listing.catch(() => undefined);
+        const file = await api().readRules(paths.rules);
         if (cancelled) return;
         rulesDispatch({ type: "LOAD", file });
+        const catalog = await listing;
+        if (cancelled) return;
         projectDispatch({
           type: "SET_RULES",
           entries: catalog.rules,
@@ -84,7 +88,7 @@ export function useShellStartup(notify: Notify): ShellStartup {
   }, [projectDispatch, rulesDispatch, notify]);
 
   /**
-   * Writes the current pane sizes once a resize drag ends, rather than on every pixel dragged. Never
+   * Writes the current pane sizes once a resize drag ends, so a drag costs one write. Never
    * before the stored settings have been read, which would erase them on start-up.
    */
   const persistPaneSizes = useCallback((): void => {

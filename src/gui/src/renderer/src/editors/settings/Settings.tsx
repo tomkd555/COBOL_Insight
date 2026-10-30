@@ -53,10 +53,10 @@ function blurOnEnter(event: KeyboardEvent<HTMLInputElement>): void {
 /**
  * The settings screen. Every control applies as it is changed, as VS Code's own settings do, so the
  * screen has no save button and no unsaved state. A text field applies when it is left (or on
- * Enter), not on every keystroke: a path is not a value until it is typed out, and the file on disk
- * is written once per change rather than once per character.
+ * Enter): a path becomes a value once it is typed out, and the file on disk is written once per
+ * change.
  *
- * A copybook path that is not a directory is reported but still applied: the folder may be about to
+ * A copybook path that names no directory is reported but still applied: the folder may be about to
  * be created. A fix output directory inside the asset folder is the one value that is refused — the
  * write-out must not land among the originals — and the stored setting keeps its last value.
  */
@@ -143,7 +143,7 @@ export function Settings({ notify }: SettingsEditorProps): ReactElement {
   return (
     <div className="ci-settings" data-testid="settings">
       <fieldset className="ci-form">
-        <legend className="ci-form__legend">{text.settings.theme}</legend>
+        <legend className="ci-form__legend ci-form__label">{text.settings.theme}</legend>
         <div className="ci-chips" role="radiogroup" aria-label={text.settings.theme}>
           {THEME_CHOICES.map((choice) => (
             <label key={choice} className={`ci-chip${draft.theme === choice ? " ci-chip--on" : ""}`}>
@@ -180,7 +180,7 @@ export function Settings({ notify }: SettingsEditorProps): ReactElement {
       </label>
 
       <fieldset className="ci-form">
-        <legend className="ci-form__legend">{text.settings.copybookPaths}</legend>
+        <legend className="ci-form__legend ci-form__label">{text.settings.copybookPaths}</legend>
         {draft.copybookPaths.map((path, index) => (
           <div className="ci-settings__path" key={index}>
             <input
@@ -211,7 +211,8 @@ export function Settings({ notify }: SettingsEditorProps): ReactElement {
             >
               <span className="codicon codicon-trash" aria-hidden="true" />
             </button>
-            {/* A note, not an error: the folder may be about to be created, and the path applies. */}
+            {/* A note in the muted tone, below the weight of an error: the folder may be about to be
+                created, and the path applies. */}
             {missing.includes(path.trim()) ? (
               <span className="ci-form__note">{text.settings.copybookMissing}</span>
             ) : null}

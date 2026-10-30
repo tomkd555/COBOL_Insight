@@ -6,7 +6,7 @@
   box-sizing: border-box;
 }
 
-/* Form controls and scrollbars follow the theme, not the OS. */
+/* Form controls and scrollbars follow the theme the application is in. */
 :root {
   color-scheme: light;
 }
@@ -30,7 +30,7 @@ body {
   line-height: var(--ci-line);
   /*
    * The window never scrolls as a whole; each region scrolls on its own. Combined with the shell's
-   * min-width being a preference rather than a floor, this is what keeps a 200% zoom from producing
+   * min-width being a preference that gives way, this is what keeps a 200% zoom from producing
    * a horizontal scrollbar alongside the vertical ones (WCAG 1.4.10).
    */
   overflow: hidden;
@@ -66,7 +66,7 @@ textarea {
 }
 
 .ci-button {
-  height: 28px;
+  height: 32px;
   padding: 0 var(--ci-space-3);
   background: var(--color-surface);
   border: 1px solid var(--ci-border-strong);
@@ -106,6 +106,15 @@ textarea {
   color: color-mix(in oklch, var(--color-foreground) 25%, var(--color-muted-foreground));
 }
 
+/* The generic hover tint would replace the fill and leave the light label on a light ground. */
+.ci-button--primary:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--color-primary) 86%, var(--color-foreground));
+}
+
+.ci-button--danger:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--color-destructive) 86%, var(--color-foreground));
+}
+
 .ci-button--danger {
   background: var(--color-destructive);
   border-color: var(--color-destructive);
@@ -118,8 +127,8 @@ textarea {
   color: var(--color-muted-foreground);
 }
 
-/* A destructive action that is not the dialog's answer: it reads as destructive without competing
-   with the primary for the eye. */
+/* A destructive action beside the dialog's answer and never the answer itself: it reads as
+   destructive without competing with the primary for the eye. */
 .ci-button--danger-quiet {
   background: var(--color-surface);
   border-color: var(--color-destructive);
@@ -135,9 +144,23 @@ textarea {
   border-color: transparent;
 }
 
+.ci-button--quiet:disabled {
+  background: transparent;
+  border-color: transparent;
+}
+
+/* A toolbar action drawn as its glyph alone. */
+.ci-button--icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+
 .ci-input,
 .ci-select {
-  height: 28px;
+  height: 32px;
   min-width: 0;
   padding: 0 var(--ci-space-2);
   background: var(--color-surface);
@@ -167,5 +190,5 @@ kbd {
   border: 1px solid var(--ci-border-strong);
   border-radius: var(--ci-radius);
   font-family: var(--ci-font-code);
-  font-size: var(--ci-size-sm);
+  font-size: 0.9em;
 }

@@ -6,8 +6,6 @@
  * and the tab shows whichever of the two the button asked for.
  */
 
-import type { AnalysisMode } from "../state/projectStore";
-
 export type ReportFormat = "html" | "text";
 
 /** The engine's default report file names (ReportCommand's defaultValue). */
@@ -23,6 +21,50 @@ const DEFAULT_DB_FILE = "cobol-insight.db";
  * absent, so the report is placed in an opaque origin and cannot reach the renderer's DOM.
  */
 export const REPORT_SANDBOX = "";
+
+/** The colours the dark preview sheet is written with, as CSS colour values of the document's theme. */
+export interface ReportPalette {
+  readonly background: string;
+  readonly foreground: string;
+  readonly surface: string;
+  readonly mutedForeground: string;
+  readonly border: string;
+  readonly destructive: string;
+  readonly accent: string;
+}
+
+/**
+ * The dark theme's rules for the report's own markup (the engine's ReportRenderer.css), drawn in the
+ * given palette. The report is a document in its own right and is written light; this sheet goes
+ * into the preview alone.
+ */
+function darkPreviewStyle(palette: ReportPalette): string {
+  return `<style>
+:root { color-scheme: dark; }
+body { background: ${palette.background}; color: ${palette.foreground}; }
+h1 { border-bottom-color: ${palette.mutedForeground}; }
+th, td { border-color: ${palette.border}; }
+th { background: ${palette.surface}; }
+td.lv-error { color: ${palette.destructive}; }
+td.lv-warning, p.scope { color: ${palette.accent}; }
+td.lv-note, p.none { color: ${palette.mutedForeground}; }
+</style>`;
+}
+
+/**
+ * The HTML the preview frame shows: the report as generated, with the dark sheet added last in its
+ * head under the dark theme, or after everything in a document that closes no head, so the document
+ * type stays the first thing in it. The file on disk and the copy written out stay as the engine made them.
+ * The palette is read by the caller from the document's theme variables; the light theme ignores it.
+ */
+export function reportPreviewHtml(content: string, theme: "light" | "dark", palette: ReportPalette): string {
+  if (theme === "light") {
+    return content;
+  }
+  const sheet = darkPreviewStyle(palette);
+  const head = content.search(/<\/head>/i);
+  return head < 0 ? content + sheet : content.slice(0, head) + sheet + content.slice(head);
+}
 
 export interface ReportPaths {
   readonly db: string;
@@ -48,6 +90,15 @@ export function reportFileName(format: ReportFormat): string {
   return format === "html" ? HTML_FILE_NAME : TEXT_FILE_NAME;
 }
 
+/**
+ * What a report was generated from: the artefact epoch (ProjectState.runId) and the count of asset
+ * writes (ProjectState.staleWrites) at the moment it was asked for.
+ */
+export interface ReportBasis {
+  readonly runId: number;
+  readonly writes: number;
+}
+
 export type ReportState =
   | { readonly status: "idle" }
   | { readonly status: "generating"; readonly format: ReportFormat }
@@ -56,6 +107,7 @@ export type ReportState =
       readonly format: ReportFormat;
       readonly content: string;
       readonly path: string;
+      readonly basis: ReportBasis;
     }
   | { readonly status: "failed"; readonly format: ReportFormat; readonly message: string };
 
@@ -63,7 +115,7 @@ export const INITIAL_REPORT_STATE: ReportState = { status: "idle" };
 
 export type ReportAction =
   | { type: "GENERATE"; format: ReportFormat }
-  | { type: "READY"; format: ReportFormat; content: string; path: string }
+  | { type: "READY"; format: ReportFormat; content: string; path: string; basis: ReportBasis }
   | { type: "FAILED"; format: ReportFormat; message: string };
 
 /**
@@ -77,7 +129,13 @@ export function reportReducer(state: ReportState, action: ReportAction): ReportS
       return { status: "generating", format: action.format };
     case "READY":
       return state.status === "generating" && state.format === action.format
-        ? { status: "ready", format: action.format, content: action.content, path: action.path }
+        ? {
+            status: "ready",
+            format: action.format,
+            content: action.content,
+            path: action.path,
+            basis: action.basis,
+          }
         : state;
     case "FAILED":
       return state.status === "generating" && state.format === action.format
@@ -94,18 +152,26 @@ export function reportReducer(state: ReportState, action: ReportAction): ReportS
 export type ReportView =
   | { readonly kind: "no-project" }
   | { readonly kind: "generating" }
+  | { readonly kind: "waiting" }
   | { readonly kind: "failed"; readonly message: string }
   | { readonly kind: "not-generated" }
   | { readonly kind: "ready" };
 
+/**
+ * @param busy whether an analysis runs or the scan after a save is due or running
+ *   (projectStore engineBusy); the tab then waits for it.
+ */
 export function deriveReportView(
-  mode: AnalysisMode,
+  busy: boolean,
   inputDir: string | null,
   dbPath: string | null,
   report: ReportState,
 ): ReportView {
-  if (report.status === "generating" || mode === "running") {
+  if (report.status === "generating") {
     return { kind: "generating" };
+  }
+  if (busy) {
+    return { kind: "waiting" };
   }
   if (inputDir === null || dbPath === null) {
     return { kind: "no-project" };
@@ -114,4 +180,15 @@ export function deriveReportView(
     return { kind: "failed", message: report.message };
   }
   return report.status === "ready" ? { kind: "ready" } : { kind: "not-generated" };
+}
+
+/**
+ * Whether the report on hand was generated before a later save, scan or run: the epoch or the count
+ * of writes has moved since it was asked for.
+ */
+export function reportOutdated(report: ReportState, now: ReportBasis): boolean {
+  return (
+    report.status === "ready" &&
+    (report.basis.runId !== now.runId || report.basis.writes !== now.writes)
+  );
 }

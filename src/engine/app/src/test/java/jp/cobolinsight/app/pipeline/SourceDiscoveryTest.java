@@ -241,6 +241,27 @@ class SourceDiscoveryTest {
         assertEquals(List.of("A.cbl"), relPaths(SourceDiscovery.discover(assets)));
     }
 
+    /**
+     * A name starting with a dot is left out, a file and a folder alike, whatever it holds: a
+     * valid COBOL program so named, and the programs of a folder so named, stay out of the asset
+     * list. The temporary files of a save are named so (SaveInProgressTest).
+     */
+    @Test
+    void aNameStartingWithADotIsLeftOut() throws IOException {
+        Path assets = tempDir.resolve("assets");
+        write(assets.resolve("A.cbl"), COBOL);
+        write(assets.resolve("lib").resolve("B.cpy"), COPYBOOK);
+        SourceDiscovery.Result without = SourceDiscovery.discover(assets);
+
+        write(assets.resolve(".HELPER.cbl"), COBOL);
+        write(assets.resolve(".work").resolve("C.cbl"), COBOL);
+        write(assets.resolve("lib").resolve(".D.cpy"), COPYBOOK);
+        SourceDiscovery.Result with = SourceDiscovery.discover(assets);
+
+        assertEquals(List.of("A.cbl", "lib/B.cpy"), relPaths(with));
+        assertEquals(without, with);
+    }
+
     /** Guard against a depth limit being introduced. Also collects assets deeper than 11 levels. */
     @Test
     void assetsDeeperThanTenLevelsAreCollected() throws IOException {

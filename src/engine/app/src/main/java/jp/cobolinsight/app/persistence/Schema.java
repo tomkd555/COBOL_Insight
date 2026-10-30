@@ -4,7 +4,7 @@ package jp.cobolinsight.app.persistence;
 final class Schema {
 
     /** The schema version recorded in the database file's user_version. */
-    static final int VERSION = 5;
+    static final int VERSION = 6;
 
     static final String[] CREATE_STATEMENTS = {
             """
@@ -31,6 +31,8 @@ final class Schema {
                 id INTEGER PRIMARY KEY,
                 program_id INTEGER NOT NULL REFERENCES PROGRAM(id) ON DELETE CASCADE,
                 name TEXT NOT NULL,
+                kind TEXT NOT NULL DEFAULT 'PARAGRAPH' CHECK (kind IN ('SECTION','PARAGRAPH')),
+                section_name TEXT,
                 start_line INTEGER NOT NULL,
                 end_line INTEGER NOT NULL
             )
@@ -43,7 +45,9 @@ final class Schema {
                 from_paragraph INTEGER NOT NULL REFERENCES PARAGRAPH(id) ON DELETE CASCADE,
                 to_paragraph INTEGER REFERENCES PARAGRAPH(id) ON DELETE CASCADE,
                 to_name TEXT NOT NULL,
-                kind TEXT NOT NULL CHECK (kind IN ('PERFORM','GOTO','FALLTHROUGH')),
+                thru_paragraph INTEGER REFERENCES PARAGRAPH(id) ON DELETE CASCADE,
+                thru_name TEXT,
+                kind TEXT NOT NULL CHECK (kind IN ('PERFORM','GOTO','FALLTHROUGH','CALL','XCTL')),
                 line INTEGER,
                 seq INTEGER NOT NULL
             )

@@ -5,13 +5,14 @@ import jp.cobolinsight.core.semantic.ControlKind;
 import jp.cobolinsight.core.semantic.EmbeddedBlock;
 import jp.cobolinsight.core.semantic.GoToStatement;
 import jp.cobolinsight.core.semantic.Procedure;
+import jp.cobolinsight.core.semantic.ProcedureNames;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.semantic.StatementBlock;
 import jp.cobolinsight.core.source.SourceRange;
-import jp.cobolinsight.transpile.emit.Identifiers;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -31,17 +32,30 @@ public final class ProcedureModelBuilder {
 
     private final OperandParser parser;
     private final SourceSlicer slicer;
+    private final MethodNames methods;
 
     public ProcedureModelBuilder(ProgramSymbols symbols,
-            Map<SourceRange, EmbeddedBlock> embeddedByRange, SourceSlicer slicer) {
-        this.parser = new OperandParser(symbols, embeddedByRange, slicer);
+            Map<SourceRange, EmbeddedBlock> embeddedByRange, SourceSlicer slicer,
+            MethodNames methods) {
+        this.parser = new OperandParser(symbols, embeddedByRange, slicer, methods);
         this.slicer = slicer;
+        this.methods = methods;
     }
 
+    /**
+     * The procedures {@code methods} was built from, each as the method it names, followed by
+     * the method of each THRU range a GO TO inside it keeps from running procedure by procedure
+     * (see {@link #rangeCall}).
+     */
     public List<ProcedureIr> build(List<Procedure> procedures) {
         GotoStructurer structurer = new GotoStructurer(procedures, parser, this::convert);
+        Map<String, OperandParser.RangeCall> rangeCalls = new HashMap<>();
+        List<ProcedureIr> rangeMethods = new ArrayList<>();
+        parser.rangeCalls(range -> rangeCall(range, procedures, structurer, rangeCalls,
+                rangeMethods));
         List<ProcedureIr> result = new ArrayList<>();
-        for (Procedure procedure : procedures) {
+        for (int i = 0; i < procedures.size(); i++) {
+            Procedure procedure = procedures.get(i);
             List<ProcStmt> body = null;
             if (GotoStructurer.containsGoTo(procedure)) {
                 body = structurer.structure(procedure);
@@ -49,10 +63,48 @@ public final class ProcedureModelBuilder {
             if (body == null) {
                 body = buildStatements(procedure.statements());
             }
-            result.add(new ProcedureIr(procedure.name(), Identifiers.sanitize(procedure.name()),
-                    body, procedure.range()));
+            result.add(new ProcedureIr(procedure.name(), methods.of(i), body, procedure.range()));
         }
+        result.addAll(rangeMethods);
         return result;
+    }
+
+    /**
+     * How a PERFORM runs the THRU range of two procedures or more. Each procedure's method returns
+     * at its end, so calling them one by one runs the range as COBOL does while no GO TO in it
+     * jumps: then this is null. A GO TO in the range is a jump COBOL takes within it, past the
+     * procedures between, and the range becomes one method of its own whose body
+     * {@link GotoStructurer#structureRange} builds, shared by every PERFORM of that range. A range
+     * that cannot be structured so is called procedure by procedure, with a note.
+     */
+    private OperandParser.RangeCall rangeCall(ProcedureNames.Range range,
+            List<Procedure> procedures, GotoStructurer structurer,
+            Map<String, OperandParser.RangeCall> known, List<ProcedureIr> rangeMethods) {
+        boolean jumps = false;
+        for (int i = range.from(); i <= range.to(); i++) {
+            jumps |= GotoStructurer.containsGoTo(procedures.get(i));
+        }
+        if (!jumps) {
+            return null;
+        }
+        String key = range.from() + ":" + range.to();
+        OperandParser.RangeCall call = known.get(key);
+        if (call != null) {
+            return call;
+        }
+        String method = methods.ofRange(range.from(), range.to());
+        // Taken before the body is built, so a PERFORM of the same range inside it finds it.
+        known.put(key, new OperandParser.RangeCall(method, false));
+        List<ProcStmt> body = structurer.structureRange(range.from(), range.to());
+        if (body == null) {
+            call = new OperandParser.RangeCall(null, true);
+            known.put(key, call);
+            return call;
+        }
+        Procedure first = procedures.get(range.from());
+        rangeMethods.add(new ProcedureIr(first.name() + " THRU "
+                + procedures.get(range.to()).name(), method, body, first.range()));
+        return known.get(key);
     }
 
     private List<ProcStmt> buildStatements(List<Statement> statements) {

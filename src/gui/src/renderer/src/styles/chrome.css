@@ -56,7 +56,9 @@
 }
 
 .ci-titlebar__name {
+  margin: 0;
   color: var(--color-foreground);
+  font-size: inherit;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -66,18 +68,24 @@
   align-items: center;
   gap: var(--ci-space-1);
   min-width: 0;
-  height: 28px;
+  height: 32px;
   padding: 0 var(--ci-space-2);
   background: transparent;
   border: 1px solid var(--ci-border-strong);
   border-radius: var(--ci-radius);
-  color: var(--color-muted-foreground);
+  color: var(--color-foreground);
   cursor: pointer;
   transition: background-color var(--duration-fast) var(--ease-standard);
 }
 
 .ci-titlebar__folder:hover:not(:disabled) {
   background: var(--ci-bg-hover);
+}
+
+.ci-titlebar__folder:disabled {
+  border-color: var(--color-border);
+  color: var(--color-muted-foreground);
+  cursor: default;
 }
 
 .ci-titlebar__folder-path {
@@ -95,7 +103,7 @@
   white-space: nowrap;
 }
 
-/* What the run button will analyse. A long path is cut rather than pushing the buttons off. */
+/* What the run button will analyse. A long path is cut, so the buttons keep their place. */
 .ci-titlebar__target {
   overflow: hidden;
   min-width: 0;
@@ -162,6 +170,13 @@
   color: var(--color-foreground);
 }
 
+/* The editor in front, on its launcher: the same rule in the edge colour, since the primary one
+   belongs to the side-bar view above. */
+.ci-activitybar__item--front {
+  border-left-color: var(--ci-border-strong);
+  color: var(--color-foreground);
+}
+
 .ci-activitybar__item:disabled {
   color: var(--color-muted-foreground);
   cursor: default;
@@ -200,15 +215,34 @@
 
 /* ---------------------------------------------------------------- split handles */
 
+/* The line itself is the border of the side bar or the panel beside it; the handle shows only while
+   it is pointed at or dragged. Its hit area reaches past its 1px on both sides. */
 .ci-split {
+  position: relative;
   flex: 0 0 var(--ci-split-size);
-  background: var(--ci-border-strong);
+  background: transparent;
   cursor: col-resize;
   transition: background-color var(--duration-fast) var(--ease-standard);
 }
 
+.ci-split::before {
+  content: "";
+  position: absolute;
+  inset: 0 calc(-1 * var(--ci-space-1));
+  z-index: 1;
+}
+
 .ci-split--horizontal {
   cursor: row-resize;
+}
+
+.ci-split--horizontal::before {
+  inset: calc(-1 * var(--ci-space-1)) 0;
+}
+
+/* An inward ring on a 1px handle would draw nothing. */
+.ci-split:focus-visible {
+  outline-offset: 0;
 }
 
 .ci-split:hover,
@@ -239,8 +273,8 @@
 }
 
 /*
- * A thin scrollbar, not the chevron pair the platform can draw: at 200% zoom the ::scroll-button
- * pseudo-elements this used to carry rendered in a band above the tab row instead of inside it.
+ * A thin scrollbar. The chevron pair the platform can draw was dropped: at 200% zoom the
+ * ::scroll-button pseudo-elements rendered in a band above the tab row, outside it.
  * Native horizontal scrolling needs no affordance beyond the browser's own bar.
  */
 .ci-tabs {
@@ -251,12 +285,7 @@
   border-bottom: 1px solid var(--color-border);
   overflow-x: auto;
   overflow-y: hidden;
-  /* Keyboard left/right and scroll-into-view still reach every tab; only the bar itself is hidden. */
-  scrollbar-width: none;
-}
-
-.ci-tabs::-webkit-scrollbar {
-  display: none;
+  scrollbar-width: thin;
 }
 
 /* No tab, no strip: the welcome view is not headed by an empty band. */
@@ -275,8 +304,10 @@
   flex: 0 0 auto;
   min-width: 120px;
   max-width: 240px;
+  /* A scrollbar adds its height to the strip; the tabs keep theirs. */
+  min-height: var(--ci-tab-height);
   border-right: 1px solid var(--color-border);
-  border-top: 1px solid transparent;
+  border-top: 2px solid transparent;
   color: var(--color-muted-foreground);
 }
 
@@ -385,10 +416,11 @@
 }
 
 .ci-panel__tab {
+  min-height: 24px;
   padding: var(--ci-space-2) var(--ci-space-3);
   background: transparent;
   border: none;
-  border-bottom: 1px solid transparent;
+  border-bottom: 2px solid transparent;
   color: var(--color-muted-foreground);
   cursor: pointer;
   white-space: nowrap;
@@ -443,6 +475,7 @@
 }
 
 .ci-statusbar__item--button {
+  min-height: 24px;
   padding: 0 var(--ci-space-1);
   background: transparent;
   border: none;

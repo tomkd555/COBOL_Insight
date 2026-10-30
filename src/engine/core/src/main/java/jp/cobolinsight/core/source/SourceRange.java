@@ -17,4 +17,18 @@ public record SourceRange(SourcePosition start, SourcePosition end) {
             throw new IllegalArgumentException("end must not precede start: " + start + " -> " + end);
         }
     }
+
+    /**
+     * Whether {@code inner} lies inside this range: the same file, starting at or after this
+     * range's start and ending at or before its end.
+     */
+    public boolean contains(SourceRange inner) {
+        return start.file().equals(inner.start().file())
+                && compare(inner.start(), start) >= 0 && compare(inner.end(), end) <= 0;
+    }
+
+    private static int compare(SourcePosition a, SourcePosition b) {
+        return a.line() != b.line() ? Integer.compare(a.line(), b.line())
+                : Integer.compare(a.column(), b.column());
+    }
 }

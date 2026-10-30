@@ -32,7 +32,8 @@ export function EditorTabs({ onRequestClose }: EditorTabsProps): ReactElement {
 
   // A strip wider than the group scrolls; the selected tab is brought into view when it changes.
   useEffect(() => {
-    const selected = stripRef.current?.querySelector<HTMLElement>('[aria-selected="true"]');
+    // The whole tab, close button included, so the button is never left cut off at the edge.
+    const selected = stripRef.current?.querySelector<HTMLElement>(".ci-tab--active");
     // jsdom has no scrollIntoView; the guard keeps the shell tests running.
     if (selected !== null && selected !== undefined && typeof selected.scrollIntoView === "function") {
       selected.scrollIntoView({ inline: "nearest", block: "nearest" });

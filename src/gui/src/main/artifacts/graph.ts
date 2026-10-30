@@ -61,6 +61,10 @@ const PARAGRAPH_QUERY = `
    ORDER BY g.source_id, p.start_line, p.id
 `;
 
+/**
+ * The flows between paragraphs. A call of another program leaving a paragraph (CALL, XCTL) is for
+ * the trace of one program (programFlow); here those calls are already drawn as program edges.
+ */
 const PARAGRAPH_EDGE_QUERY = `
   SELECT program_source_id AS programSourceId,
          from_paragraph AS fromParagraph,
@@ -71,6 +75,7 @@ const PARAGRAPH_EDGE_QUERY = `
          seq AS seq
     FROM PARAGRAPH_EDGE
    WHERE program_source_id IN (${ROOT_SOURCES})
+     AND kind IN ('PERFORM', 'GOTO', 'FALLTHROUGH')
    ORDER BY program_source_id, from_paragraph, seq, id
 `;
 

@@ -16,7 +16,7 @@ describe("buildTrace", () => {
     expect(ROOTS.map((root) => [root.kind, root.label])).toEqual([["job", "SYKD010"]]);
   });
 
-  it("orders the steps by seq, not by the order the edges were read in", () => {
+  it("orders the steps by seq, whatever order the edges were read in", () => {
     expect(ROOTS[0].children.map((step) => step.label)).toEqual(["STEP010", "STEP020"]);
   });
 
@@ -36,7 +36,7 @@ describe("buildTrace", () => {
     ]);
   });
 
-  it("chains the paragraphs by FALLTHROUGH and lists each one once", () => {
+  it("lists each paragraph once, in FALLTHROUGH order", () => {
     const program = ROOTS[0].children[0].children[0];
     expect(program.children.map((paragraph) => paragraph.label)).toEqual([
       "MAIN-PROC",
@@ -44,7 +44,7 @@ describe("buildTrace", () => {
     ]);
   });
 
-  it("orders the branches of a paragraph by seq and opens them at their target", () => {
+  it("orders a paragraph's branches by seq, each with its target line", () => {
     const main = ROOTS[0].children[0].children[0].children[0];
     expect(main.children.map((branch) => [branch.kind, branch.label, branch.line])).toEqual([
       ["perform", "READ-ORDER", 91],
@@ -78,7 +78,7 @@ describe("buildTrace", () => {
     expect(repeat?.children).toEqual([]);
   });
 
-  it("marks a branch whose target could not be resolved rather than dropping it", () => {
+  it("keeps a branch with an unresolved target, marked unresolved", () => {
     const roots = buildTrace(
       {
         ...GRAPH,
@@ -93,46 +93,46 @@ describe("buildTrace", () => {
     const branch = roots.find((root) => root.label === "SYK001")?.children[0].children[0];
     expect([branch?.kind, branch?.label]).toEqual(["unresolved", "WS-TARGET"]);
   });
-});
 
-describe("a program whose PERFORMs fan out", () => {
-  /**
-   * Every paragraph performs the next one twice, so each level doubles the one above it. Twenty-five
-   * paragraphs are 2^24 rows if the descent is left to run; the budget is what makes this finish.
-   */
-  function fanOut(depth: number): GraphData {
-    const paragraphs = Array.from({ length: depth }, (_unused, index) => ({
-      id: 100 + index,
-      programSourceId: SYK001_ID,
-      name: `P${index}`,
-      startLine: 10 + index,
-      endLine: 10 + index,
-    }));
-    const paragraphEdges = paragraphs.slice(0, -1).flatMap((paragraph, index) =>
-      [1, 2].map((seq) => ({
+  describe("a program whose PERFORMs fan out", () => {
+    /**
+     * Every paragraph performs the next one twice, so each level doubles the one above it. Twenty-five
+     * paragraphs are 2^24 rows if the descent is left to run; the budget is what makes this finish.
+     */
+    function fanOut(depth: number): GraphData {
+      const paragraphs = Array.from({ length: depth }, (_unused, index) => ({
+        id: 100 + index,
         programSourceId: SYK001_ID,
-        from: paragraph.id,
-        to: paragraphs[index + 1].id,
-        toName: paragraphs[index + 1].name,
-        kind: "PERFORM",
-        line: paragraph.startLine,
-        seq,
-      })),
-    );
-    return { ...GRAPH, edges: [], paragraphs, paragraphEdges };
-  }
+        name: `P${index}`,
+        startLine: 10 + index,
+        endLine: 10 + index,
+      }));
+      const paragraphEdges = paragraphs.slice(0, -1).flatMap((paragraph, index) =>
+        [1, 2].map((seq) => ({
+          programSourceId: SYK001_ID,
+          from: paragraph.id,
+          to: paragraphs[index + 1].id,
+          toName: paragraphs[index + 1].name,
+          kind: "PERFORM",
+          line: paragraph.startLine,
+          seq,
+        })),
+      );
+      return { ...GRAPH, edges: [], paragraphs, paragraphEdges };
+    }
 
-  function countNodes(nodes: readonly TraceNode[]): number {
-    return nodes.reduce((total, node) => total + 1 + countNodes(node.children), 0);
-  }
+    function countNodes(nodes: readonly TraceNode[]): number {
+      return nodes.reduce((total, node) => total + 1 + countNodes(node.children), 0);
+    }
 
-  it("builds a tree bounded by the budget instead of doubling at every level", () => {
-    const roots = buildTrace(fanOut(25), INVENTORY);
-    const program = roots.find((root) => root.label === "SYK001");
-    expect(program?.children[0].label).toBe("P0");
-    // The level that spends the last of the budget still finishes its own row, so the count lands
-    // just above it rather than exactly on it.
-    expect(countNodes(roots)).toBeLessThanOrEqual(TRACE_NODE_BUDGET + 100);
+    it("bounds the tree by the node budget", () => {
+      const roots = buildTrace(fanOut(25), INVENTORY);
+      const program = roots.find((root) => root.label === "SYK001");
+      expect(program?.children[0].label).toBe("P0");
+      // The level that spends the last of the budget still finishes its own row, so the count lands
+      // just above it.
+      expect(countNodes(roots)).toBeLessThanOrEqual(TRACE_NODE_BUDGET + 100);
+    });
   });
 });
 

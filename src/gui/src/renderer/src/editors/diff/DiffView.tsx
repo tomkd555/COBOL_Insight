@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactElement } from "react";
 import type * as monacoApi from "monaco-editor/editor/editor.api";
+import { RULER_COLUMNS } from "../../model/columns";
 import { monacoEditor } from "../../vendor/monacoEditor";
 import { registerLanguages } from "../../vendor/monacoLanguages";
 import { CODE_FONT } from "../../vendor/monarch";
@@ -41,13 +42,19 @@ export function DiffView({ original, modified, languageId, ariaLabel }: DiffView
       readOnly: true,
       originalEditable: false,
       renderSideBySide: true,
+      // Below this width Monaco draws one column with both texts in it; the fix view's heading row
+      // changes at the same width (styles/editor.css, the `fix` container).
+      renderSideBySideInlineBreakpoint: 900,
       // The original (left) is what a reader already knows; the fix (right) is what they came for.
       splitViewDefaultRatio: 0.6,
       minimap: { enabled: false },
       // Five digits so the body's left edge does not move between assets, and the same column rulers
       // as SourceEditor so a diff pane reads against the fixed-format columns it is showing.
       lineNumbersMinChars: 5,
-      rulers: [6, 7, 11, 72],
+      // The diff's marks for a removed and an added line are drawn in this strip; at its default
+      // width they touch the sequence number the line starts with.
+      lineDecorationsWidth: 24,
+      rulers: [...RULER_COLUMNS],
       wordWrap: "off",
       folding: false,
       contextmenu: false,

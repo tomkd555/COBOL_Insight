@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseRuleCatalog } from "./ruleCatalog";
 
 describe("parseRuleCatalog", () => {
-  it("reads the metadata, the prose and the V2 fields the engine now supplies", () => {
+  it("reads the rule fields and the rule errors of the catalog", () => {
     const catalog = parseRuleCatalog({
       rules: [
         {

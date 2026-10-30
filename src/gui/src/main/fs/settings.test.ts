@@ -27,7 +27,7 @@ describe("readSettings", () => {
     await expect(readSettings(memory(), PATH)).resolves.toEqual(emptyAppSettings());
   });
 
-  it("returns the empty settings rather than failing on an empty or corrupt file", async () => {
+  it("resolves to the empty settings on an empty or corrupt file", async () => {
     await expect(readSettings(memory({ [PATH]: "" }), PATH)).resolves.toEqual(emptyAppSettings());
     await expect(readSettings(memory({ [PATH]: "{oops" }), PATH)).resolves.toEqual(emptyAppSettings());
   });
@@ -68,15 +68,21 @@ describe("writeSettings", () => {
     await expect(readSettings(fs, PATH)).resolves.toEqual(settings);
   });
 
-  it("stamps the current version and ends the file with a newline", async () => {
+  it("stamps the current version", async () => {
     const fs = memory();
     await writeSettings(fs, PATH, emptyAppSettings());
     const text = fs.files.get(PATH) ?? "";
     expect(JSON.parse(text).version).toBe(APP_SETTINGS_VERSION);
+  });
+
+  it("ends the file with a newline", async () => {
+    const fs = memory();
+    await writeSettings(fs, PATH, emptyAppSettings());
+    const text = fs.files.get(PATH) ?? "";
     expect(text.endsWith("\n")).toBe(true);
   });
 
-  it("merges a partial write over what is already stored, leaving the rest untouched", async () => {
+  it("merges a partial write over the stored settings", async () => {
     const fs = memory();
     await writeSettings(fs, PATH, { paneSizes: { side: 320, panel: 240 } });
     await writeSettings(fs, PATH, { severityThreshold: "high" });

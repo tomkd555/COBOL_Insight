@@ -315,7 +315,8 @@ public final class GotoNormalizer {
             }
         }
 
-        return new ControlFlowGraph(cfg.programId(), nodes, cfg.entry(), cfg.exit(), successors);
+        return new ControlFlowGraph(cfg.programId(), cfg.sourceFile(), nodes, cfg.entry(),
+                cfg.exit(), successors);
     }
 
     // --- Tarjan's strongly connected components (iterative implementation, deterministic) ---

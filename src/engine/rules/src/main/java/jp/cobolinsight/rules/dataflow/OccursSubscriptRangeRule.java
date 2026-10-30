@@ -29,6 +29,7 @@ import java.util.Set;
 
 import jp.cobolinsight.rules.dataflow.DataFlowSupport.Section;
 import jp.cobolinsight.rules.dataflow.DataFlowSupport.TableRef;
+import jp.cobolinsight.rules.cfg.CfgSupport;
 
 /**
  * R005 Subscript/index out of the OCCURS range. Detects, at a subscript reference node into an
@@ -129,8 +130,7 @@ public final class OccursSubscriptRangeRule implements Rule {
                                 ref.tableName() + " の添字が OCCURS " + max + " の範囲を"
                                         + (exceeds ? "超え得ます" : "下回り得ます")
                                         + "。表の外の記憶域を参照します。",
-                                new SourcePosition(model.sourceFile(), line, 1,
-                                        SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                                CfgSupport.at(statement.range(), line)));
                     }
                     break;
                 }

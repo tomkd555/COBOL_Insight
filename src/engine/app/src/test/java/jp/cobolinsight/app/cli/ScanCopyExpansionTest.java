@@ -83,6 +83,89 @@ class ScanCopyExpansionTest {
         assertTrue(text.contains("\"copybookLine\":7"));
     }
 
+    /** A line a nested COPY brought in names its copybook, relative to the asset folder. */
+    @Test
+    void aNestedCopybookLineCarriesItsOwnPath() throws IOException {
+        Path assets = tempDir.resolve("nested");
+        Files.createDirectories(assets.resolve("copy"));
+        Files.writeString(assets.resolve("copy/OUTER.cpy"), String.join("\n",
+                "           DISPLAY 'OUTER'.",
+                "           COPY INNER.",
+                "           DISPLAY 'AFTER'.", ""), StandardCharsets.UTF_8);
+        Files.writeString(assets.resolve("copy/INNER.cpy"),
+                "           DISPLAY 'INNER'.\n", StandardCharsets.UTF_8);
+        Files.writeString(assets.resolve("NESTPGM.cbl"), String.join("\n",
+                "       IDENTIFICATION DIVISION.",
+                "       PROGRAM-ID.  NESTPGM.",
+                "       PROCEDURE DIVISION.",
+                "       MAIN-PARA.",
+                "           COPY OUTER.",
+                "           STOP RUN.", ""), StandardCharsets.UTF_8);
+
+        String json = Pipelines.scan(assets, tempDir.resolve("nested.db"), List.of(), Map.of())
+                .copyExpansions().toJson();
+
+        assertTrue(json.contains("{\"copybookLine\":1,\"text\":\"           DISPLAY 'INNER'.\","
+                + "\"copybookPath\":\"copy/INNER.cpy\"}"), json);
+        assertTrue(json.contains("{\"copybookLine\":3,\"text\":\"           DISPLAY 'AFTER'.\"}"),
+                json);
+    }
+
+    /**
+     * Where a COPY stands on a line shared with others: two COPY statements on one line, a COPY
+     * after code, and a second COPY after a copybook of two lines. Each COPY has one expansion
+     * standing on its line, its lines in copybook order.
+     */
+    @Test
+    void eachCopyOfALineSharedWithOthersHasItsOwnExpansion() throws IOException {
+        Path assets = tempDir.resolve("shared-lines");
+        Files.createDirectories(assets);
+        Files.writeString(assets.resolve("FIRST.cpy"), "           DISPLAY 'FIRST'.\n",
+                StandardCharsets.UTF_8);
+        Files.writeString(assets.resolve("SECOND.cpy"), "           DISPLAY 'SECOND'.\n",
+                StandardCharsets.UTF_8);
+        Files.writeString(assets.resolve("TWO.cpy"),
+                "           DISPLAY 'T1'.\n           DISPLAY 'T2'.\n", StandardCharsets.UTF_8);
+        Files.writeString(assets.resolve("ONE.cpy"), "           DISPLAY 'O1'.\n",
+                StandardCharsets.UTF_8);
+        for (String[] program : new String[][] {
+                {"TWOCOPY", "           COPY FIRST. COPY SECOND."},
+                {"MIDCOPY", "           DISPLAY 'A' COPY FIRST."},
+                {"TRAIL", "           DISPLAY 'A' COPY TWO. DISPLAY 'B' COPY ONE."}}) {
+            Files.writeString(assets.resolve(program[0] + ".cbl"), String.join("\n",
+                    "       IDENTIFICATION DIVISION.",
+                    "       PROGRAM-ID.  " + program[0] + ".",
+                    "       PROCEDURE DIVISION.",
+                    "       MAIN-PARA.",
+                    program[1],
+                    "           STOP RUN.", ""), StandardCharsets.UTF_8);
+        }
+
+        ScanOutcome outcome = Pipelines.scan(assets, tempDir.resolve("shared-lines.db"),
+                List.of(), Map.of());
+        String json = outcome.copyExpansions().toJson();
+
+        assertEquals(0, outcome.summary().exitCode(), outcome.summary().toJson("db", null));
+        assertTrue(json.contains("\"expansions\":[" + expansion("FIRST", "'FIRST'") + ","
+                + expansion("SECOND", "'SECOND'") + "]"), json);
+        assertTrue(json.contains("\"expansions\":[" + expansion("FIRST", "'FIRST'") + "]"),
+                json);
+        assertTrue(json.contains("\"expansions\":[" + expansion("TWO", "'T1'", "'T2'") + ","
+                + expansion("ONE", "'O1'") + "]"), json);
+    }
+
+    /** The JSON of one expansion at line 5 whose copybook lines DISPLAY the values given. */
+    private static String expansion(String copybook, String... displayed) {
+        StringBuilder lines = new StringBuilder();
+        for (int i = 0; i < displayed.length; i++) {
+            lines.append(i == 0 ? "" : ",").append("{\"copybookLine\":").append(i + 1)
+                    .append(",\"text\":\"           DISPLAY ").append(displayed[i])
+                    .append(".\"}");
+        }
+        return "{\"copyStatementLine\":5,\"copybookName\":\"" + copybook
+                + "\",\"copybookPath\":\"" + copybook + ".cpy\",\"lines\":[" + lines + "]}";
+    }
+
     @Test
     void summaryOmitsTheKeyWhenNoFileIsRequested() {
         ScanOutcome.Summary summary = new ScanOutcome.Summary(List.of(), List.of(), List.of(), 0, 0);

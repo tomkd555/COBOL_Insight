@@ -6,6 +6,8 @@ import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.PerformRelation;
 import jp.cobolinsight.core.semantic.Procedure;
 import jp.cobolinsight.core.semantic.ProcedureKind;
+import jp.cobolinsight.core.semantic.ProcedureMap;
+import jp.cobolinsight.core.semantic.ProcedureNames;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
@@ -14,11 +16,7 @@ import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.spi.AnalysisContext;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * R008 PERFORM naming a single paragraph directly. Detects places where a PERFORM
@@ -63,22 +61,16 @@ public final class PerformSingleParagraphRule implements Rule {
     public List<Finding> evaluate(AnalysisContext context) {
         List<Finding> findings = new ArrayList<>();
         for (CobolSemanticModel model : context.cobolPrograms()) {
-            Map<String, ProcedureKind> kindByName = new HashMap<>();
-            Set<String> ambiguousNames = new HashSet<>();
-            for (Procedure procedure : model.procedures()) {
-                String name = CobolTexts.upper(procedure.name());
-                ProcedureKind previous = kindByName.putIfAbsent(name, procedure.kind());
-                if (previous != null && previous != procedure.kind()) {
-                    ambiguousNames.add(name);
-                }
-            }
+            List<Procedure> procedures = model.procedures();
+            ProcedureNames names = new ProcedureNames(procedures);
+            ProcedureMap procedureMap = new ProcedureMap(model);
             for (PerformRelation perform : model.performs()) {
                 if (perform.thruProcedure().isPresent()) {
                     continue;
                 }
-                String target = CobolTexts.upper(perform.targetProcedure());
-                if (ambiguousNames.contains(target)
-                        || kindByName.get(target) != ProcedureKind.PARAGRAPH) {
+                int target = names.rangeOf(perform, procedureMap.sectionOf(perform))
+                        .map(ProcedureNames.Range::from).orElse(-1);
+                if (target < 0 || procedures.get(target).kind() != ProcedureKind.PARAGRAPH) {
                     continue;
                 }
                 findings.add(Finding.of("R008", Severity.MEDIUM.toLevel(),

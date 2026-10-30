@@ -5,12 +5,27 @@ import {
   NOT_AN_ARRAY,
   emptyCustomRule,
   engineErrorsFor,
+  formEdited,
+  idOf,
   localProblems,
+  type CustomRuleProblemCode,
 } from "../../model/customRules";
-import { isCustomDirty, useRulesDispatch, useRulesState } from "../../state/rulesStore";
+import { customSavable, useRulesDispatch, useRulesState } from "../../state/rulesStore";
 import { useRules } from "../../state/useRules";
 import { CustomRuleForm } from "./CustomRuleForm";
 import type { Notify } from "../../state/useShellStartup";
+
+/** The field each local problem is about, for the JSON pane, where no field stands beside its note. */
+const PROBLEM_FIELD: Readonly<Record<CustomRuleProblemCode, string>> = {
+  idFormat: text.customRules.fieldId,
+  idDuplicate: text.customRules.fieldId,
+  nameRequired: text.customRules.fieldName,
+  messageRequired: text.customRules.fieldMessage,
+  regexRequired: text.customRules.fieldRegex,
+  verbRequired: text.customRules.fieldVerb,
+  afterVerbRequired: text.customRules.fieldAfterVerb,
+  dataItemRequired: text.customRules.fieldDataItem,
+};
 
 export interface CustomRulesProps {
   notify: Notify;
@@ -19,7 +34,7 @@ export interface CustomRulesProps {
 /**
  * The custom-rule editor: a form and the raw JSON of the `custom` array, over one value.
  *
- * The raw pane is a plain text area rather than a code editor. What it holds is a short JSON
+ * The raw pane is a plain text area. What it holds is a short JSON
  * fragment, and the round trip with the form is the point of the screen; syntax colouring would add
  * a second editor to keep in step with it for no gain.
  *
@@ -32,13 +47,13 @@ export function CustomRules({ notify }: CustomRulesProps): ReactElement {
   const { saveCustomRules, validateCustomRules } = useRules(notify);
 
   const problems = useMemo(() => localProblems(rules.draft), [rules.draft]);
-  const dirty = isCustomDirty(rules);
+  const savable = customSavable(rules);
   const engineErrors = rules.validation?.errors ?? [];
 
   const replace = (index: number, rule: CustomRule): void => {
     dispatch({
       type: "SET_DRAFT",
-      draft: rules.draft.map((current, at) => (at === index ? rule : current)),
+      draft: rules.draft.map((current, at) => (at === index ? formEdited(rule) : current)),
     });
   };
 
@@ -72,8 +87,10 @@ export function CustomRules({ notify }: CustomRulesProps): ReactElement {
           </button>
           <button
             type="button"
-            className="ci-button ci-button--primary"
-            disabled={rules.rawError !== null || !dirty}
+            // The screen's filled button while there is something to save; otherwise the title
+            // bar's 解析 is (shell/TitleBar.tsx).
+            className={`ci-button${savable ? " ci-button--primary" : ""}`}
+            disabled={!savable}
             onClick={saveCustomRules}
             data-testid="custom-save"
           >
@@ -110,6 +127,23 @@ export function CustomRules({ notify }: CustomRulesProps): ReactElement {
         </div>
       )}
 
+      {/* The form shows each problem under its field; the JSON pane has no field to put it under. */}
+      {rules.pane === "raw" && rules.rawError === null && problems.length > 0 ? (
+        <div className="ci-strip ci-strip--error" role="status" data-testid="custom-problems">
+          <ul className="ci-strip__list">
+            {problems.map((problem) => (
+              <li key={`${problem.index}-${problem.code}`}>
+                {text.customRules.problemAt(
+                  problem.id === "" ? text.customRules.ruleAt(problem.index + 1) : problem.id,
+                  PROBLEM_FIELD[problem.code],
+                  text.customRules.problem[problem.code],
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {rules.pane === "raw" ? (
         <textarea
           className="ci-custom__raw"
@@ -127,7 +161,7 @@ export function CustomRules({ notify }: CustomRulesProps): ReactElement {
                 key={index}
                 rule={rule}
                 problems={problems.filter((problem) => problem.index === index)}
-                engineErrors={engineErrorsFor(engineErrors, rule.id ?? "")}
+                engineErrors={engineErrorsFor(engineErrors, idOf(rule))}
                 onChange={(next) => replace(index, next)}
                 onRemove={() =>
                   dispatch({
@@ -142,7 +176,10 @@ export function CustomRules({ notify }: CustomRulesProps): ReactElement {
             type="button"
             className="ci-button"
             onClick={() =>
-              dispatch({ type: "SET_DRAFT", draft: [...rules.draft, emptyCustomRule(rules.draft)] })
+              dispatch({
+                type: "SET_DRAFT",
+                draft: [...rules.draft, formEdited(emptyCustomRule(rules.draft))],
+              })
             }
             data-testid="custom-add"
           >

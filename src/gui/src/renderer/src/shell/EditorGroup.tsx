@@ -11,6 +11,8 @@ import { ReportEditor } from "../editors/report/ReportEditor";
 import { Settings } from "../editors/settings/Settings";
 import { FixDiff } from "../editors/diff/FixDiff";
 import { TranspilePane } from "../editors/transpile/TranspilePane";
+import { text } from "../i18n/text";
+import { ErrorBoundary } from "../ui/ErrorBoundary";
 
 export interface EditorGroupProps {
   onRequestClose: (id: string) => void;
@@ -28,7 +30,7 @@ export interface EditorGroupProps {
  * welcome view, so the area is never blank.
  *
  * Only the selected tab's body is rendered. That is why the unsaved text lives in the workbench
- * store rather than inside an editor, which would lose it on every switch.
+ * store, because an editor would lose it on every switch.
  *
  * The source editor is rendered as the same element for every source tab, so switching between two
  * assets keeps one Monaco instance and changes only its model — which is what carries the undo stack
@@ -44,7 +46,7 @@ export function EditorGroup({
   const workbench = useWorkbench();
   const active = activeTabOf(workbench);
 
-  /** Picks the editor for a tab. Every kind is covered; an uncovered one is a bug, not a screen. */
+  /** Picks the editor for a tab. Every kind is covered; an uncovered one is a bug. */
   const editorFor = (tab: WorkbenchTab): ReactElement => {
     if (tab.kind === "source" && tab.path !== null) {
       return <SourceEditor path={tab.path} line={tab.line} onShowFix={onShowFix} />;
@@ -84,7 +86,9 @@ export function EditorGroup({
           aria-labelledby={`tabheader-${active.id}`}
           data-testid={`tabpanel-${active.id}`}
         >
-          {editorFor(active)}
+          <ErrorBoundary resetKey={active.id} message={text.editor.failed}>
+            {editorFor(active)}
+          </ErrorBoundary>
         </div>
       )}
     </section>

@@ -10,10 +10,11 @@ import jp.cobolinsight.core.semantic.GoToStatement;
 import jp.cobolinsight.core.semantic.NestedBranches;
 import jp.cobolinsight.core.semantic.PerformRelation;
 import jp.cobolinsight.core.semantic.Procedure;
+import jp.cobolinsight.core.semantic.ProcedureMap;
+import jp.cobolinsight.core.semantic.ProcedureNames;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.semantic.StatementBlock;
-import jp.cobolinsight.core.source.SourceRange;
 import jp.cobolinsight.core.sql.WheneverClause;
 
 import java.util.ArrayList;
@@ -23,6 +24,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
+import java.util.regex.Pattern;
 
 /**
  * Builds a control flow graph from the normalized semantic model. Edges are created for the
@@ -40,7 +43,12 @@ public final class CfgBuilder {
     private record Chain(CfgNode first, List<CfgNode> ends) {
     }
 
-    private record PendingGoTo(CfgNode node, List<String> targets) {
+    /**
+     * A branch to resolve once every procedure has its chain. {@code section} is the section of
+     * the statement that branches; {@code qualifiers} runs parallel to {@code targets}.
+     */
+    private record PendingGoTo(CfgNode node, Optional<String> section, List<String> targets,
+            List<Optional<String>> qualifiers) {
     }
 
     private final CobolSemanticModel model;
@@ -48,11 +56,24 @@ public final class CfgBuilder {
     private final Map<CfgNode, LinkedHashSet<CfgNode>> successors = new LinkedHashMap<>();
     private final List<CfgNode> terminators = new ArrayList<>();
     private final List<PendingGoTo> gotos = new ArrayList<>();
-    private final Map<SourceRange, CfgNode> performNodeByRange = new HashMap<>();
+    /** Which statement writes each PERFORM relation, as {@link ProcedureMap} assigns them. */
+    private final ProcedureMap procedureMap;
+    /**
+     * The PERFORM relations each statement node makes, in model order: a PERFORM statement's own,
+     * the INPUT and OUTPUT PROCEDURE of a SORT or MERGE, and a PERFORM written in a phrase of the
+     * statement. Each relation belongs to one node, so the two statements a COPY member included
+     * twice gives the same range each keep their own.
+     */
+    private final Map<CfgNode, List<PerformRelation>> performsByNode = new LinkedHashMap<>();
+    /** The section of each node in {@link #performsByNode}. */
+    private final Map<CfgNode, Optional<String>> sectionByPerformNode = new HashMap<>();
+    /** The section of the procedure whose statements are being built. */
+    private Optional<String> currentSection = Optional.empty();
     private int nextId;
 
     private CfgBuilder(CobolSemanticModel model) {
         this.model = model;
+        this.procedureMap = new ProcedureMap(model);
     }
 
     public static ControlFlowGraph build(CobolSemanticModel model) {
@@ -64,15 +85,13 @@ public final class CfgBuilder {
         List<Procedure> procedures = model.procedures();
         List<Chain> chains = new ArrayList<>();
         for (Procedure procedure : procedures) {
+            currentSection = ProcedureNames.sectionOf(procedure);
             chains.add(buildSeq(procedure.statements(), procedure.name()));
         }
         CfgNode exit = newNode(CfgNodeKind.EXIT, null, "");
 
-        // Procedure name -> index in definition order (first occurrence wins for duplicate names)
-        Map<String, Integer> indexByName = new LinkedHashMap<>();
-        for (int i = 0; i < procedures.size(); i++) {
-            indexByName.putIfAbsent(upper(procedures.get(i).name()), i);
-        }
+        // A name resolves the way the stored paragraph flow resolves it: see ProcedureNames.
+        ProcedureNames names = new ProcedureNames(procedures);
 
         // entry -> first executable statement. End of a paragraph -> start of the next paragraph
         // (fall-through). End of the last paragraph -> exit.
@@ -87,43 +106,43 @@ public final class CfgBuilder {
         // Before drawing PERFORM call/return edges, record each PERFORM statement node's
         // sequential successor (the return point).
         Map<CfgNode, List<CfgNode>> returnPointsByPerform = new LinkedHashMap<>();
-        for (CfgNode node : performNodeByRange.values()) {
+        for (CfgNode node : performsByNode.keySet()) {
             returnPointsByPerform.put(node, List.copyOf(successorsOf(node)));
         }
 
         for (PendingGoTo pending : gotos) {
-            for (String target : pending.targets()) {
-                Integer index = indexByName.get(upper(target));
-                if (index != null) {
+            for (int t = 0; t < pending.targets().size(); t++) {
+                int index = names.indexOf(pending.targets().get(t), pending.qualifiers().get(t),
+                        pending.section());
+                if (index >= 0) {
                     addEdge(pending.node(), effectiveEntry(chains, index, exit));
                 }
             }
         }
 
-        for (PerformRelation perform : model.performs()) {
-            CfgNode node = performNodeByRange.get(perform.range());
-            if (node == null) {
-                continue;
-            }
-            Integer target = indexByName.get(upper(perform.targetProcedure()));
-            Integer thru = perform.thruProcedure().map(name -> indexByName.get(upper(name)))
-                    .orElse(target);
-            if (target == null || thru == null || thru < target) {
-                continue;
-            }
-            addEdge(node, effectiveEntry(chains, target, exit));
-            List<CfgNode> returnPoints = new ArrayList<>(returnPointsByPerform.get(node));
-            if (isUntilPerform(node)) {
-                // PERFORM ... UNTIL represents an iteration that, after returning, loops back
-                // to its own node (the condition check)
-                returnPoints.add(node);
-            }
-            for (CfgNode end : chains.get(thru).ends()) {
-                for (CfgNode point : returnPoints) {
-                    addEdge(end, point);
+        performsByNode.forEach((node, performs) -> {
+            Optional<String> section = sectionByPerformNode.get(node);
+            for (PerformRelation perform : performs) {
+                Optional<ProcedureNames.Range> range = names.rangeOf(perform, section);
+                if (range.isEmpty()) {
+                    continue;
+                }
+                int target = range.get().from();
+                int thru = range.get().to();
+                addEdge(node, effectiveEntry(chains, target, exit));
+                List<CfgNode> returnPoints = new ArrayList<>(returnPointsByPerform.get(node));
+                if (isUntilPerform(node, perform)) {
+                    // PERFORM ... UNTIL represents an iteration that, after returning, loops back
+                    // to its own node (the condition check)
+                    returnPoints.add(node);
+                }
+                for (CfgNode end : rangeEnds(chains, target, thru)) {
+                    for (CfgNode point : returnPoints) {
+                        addEdge(end, point);
+                    }
                 }
             }
-        }
+        });
 
         for (CfgNode terminator : terminators) {
             addEdge(terminator, exit);
@@ -131,7 +150,21 @@ public final class CfgBuilder {
 
         Map<CfgNode, List<CfgNode>> edges = new LinkedHashMap<>();
         successors.forEach((node, set) -> edges.put(node, List.copyOf(set)));
-        return new ControlFlowGraph(model.programId(), nodes, entry, exit, edges);
+        return new ControlFlowGraph(model.programId(), model.sourceFile(), nodes, entry, exit,
+                edges);
+    }
+
+    /**
+     * The reach points at the end of a performed range: those of its last procedure that has
+     * statements, since a procedure with none passes control straight on.
+     */
+    private static List<CfgNode> rangeEnds(List<Chain> chains, int from, int to) {
+        for (int i = to; i >= from; i--) {
+            if (chains.get(i).first() != null) {
+                return chains.get(i).ends();
+            }
+        }
+        return List.of();
     }
 
     /** Head node of the first procedure at or after index that has statements. If none, the exit node. */
@@ -169,40 +202,49 @@ public final class CfgBuilder {
                 return new Chain(node, List.of());
             }
             String verb = simple.verb();
-            if ("PERFORM".equals(verb) || "SORT".equals(verb) || "MERGE".equals(verb)) {
-                // A SORT or MERGE performs its INPUT/OUTPUT PROCEDUREs; the mapper records them
-                // as PERFORM relations on the statement's own range.
-                performNodeByRange.put(simple.range(), node);
+            List<PerformRelation> performs = procedureMap.performsOf(simple);
+            if (!performs.isEmpty()) {
+                performsByNode.put(node, performs);
+                sectionByPerformNode.put(node, currentSection);
             }
             if ("EXEC SQL".equals(verb)) {
                 // WHENEVER ... GO TO/PERFORM x: the precompiler branches to x after every later
                 // SQL statement. One edge from the WHENEVER itself keeps x reachable without
                 // pretending to know which statement raises the condition.
                 WheneverClause.branchOf(simple.text()).ifPresent(branch ->
-                        gotos.add(new PendingGoTo(node, List.of(branch.target()))));
+                        gotos.add(new PendingGoTo(node, currentSection,
+                                List.of(branch.target()), List.of(Optional.empty()))));
             } else {
-                // READ ... AT END GO TO x, INVALID KEY GO TO x, ON SIZE ERROR GO TO x, and the
-                // PROCEED TO target of an ALTER: a conditional branch that also falls through.
-                List<String> nested = new ArrayList<>(NestedBranches.goToTargets(simple.text()));
-                nested.addAll(NestedBranches.alterTargets(simple.text()));
-                nested.addAll(NestedBranches.handleTargets(simple.text()));
+                // READ ... AT END GO TO x, INVALID KEY GO TO x, ON SIZE ERROR GO TO x, the
+                // PROCEED TO target of an ALTER and a HANDLE label: a conditional branch that
+                // also falls through.
+                List<NestedBranches.Branch> nested = NestedBranches.allBranches(simple.text());
                 if (!nested.isEmpty()) {
-                    gotos.add(new PendingGoTo(node, nested));
+                    gotos.add(new PendingGoTo(node, currentSection,
+                            nested.stream().map(NestedBranches.Branch::target).toList(),
+                            nested.stream().map(NestedBranches.Branch::section).toList()));
                 }
             }
             return new Chain(node, List.of(node));
         }
         if (statement instanceof GoToStatement goTo) {
             if (!goTo.targets().isEmpty()) {
-                gotos.add(new PendingGoTo(node, goTo.targets()));
+                gotos.add(new PendingGoTo(node, currentSection, goTo.targets(),
+                        goTo.targetSections()));
             }
-            // An unconditional GO TO with a single target does not fall through. DEPENDING ON
-            // (multiple targets) falls through when none of the conditions is met.
-            boolean conditional = goTo.targets().size() > 1 || goTo.dependingOn().isPresent();
-            return new Chain(node, conditional ? List.of(node) : List.of());
+            return new Chain(node, fallsThrough(goTo) ? List.of(node) : List.of());
         }
         CompoundStatement compound = (CompoundStatement) statement;
         List<CfgNode> ends = new ArrayList<>();
+        if (runsOnce(compound)) {
+            // An inline PERFORM with no UNTIL, VARYING or TIMES runs its body once, in sequence.
+            Chain bodyChain = buildSeq(compound.blocks().get(0).statements(), procedureName);
+            if (bodyChain.first() == null) {
+                return new Chain(node, List.of(node));
+            }
+            addEdge(node, bodyChain.first());
+            return new Chain(node, bodyChain.ends());
+        }
         if (compound.kind() == ControlKind.LOOP) {
             StatementBlock body = compound.blocks().get(0);
             Chain bodyChain = buildSeq(body.statements(), procedureName);
@@ -218,11 +260,8 @@ public final class CfgBuilder {
         // Branch (IF/EVALUATE). A branch without ELSE/WHEN OTHER has a path that takes none of
         // the arms, so the branch node itself is added to the post-execution reach points and
         // falls through to what follows.
-        boolean exhaustive = false;
+        boolean exhaustive = isExhaustive(compound);
         for (StatementBlock block : compound.blocks()) {
-            if ("ELSE".equals(block.label()) || "OTHER".equals(block.label())) {
-                exhaustive = true;
-            }
             Chain blockChain = buildSeq(block.statements(), procedureName);
             if (blockChain.first() == null) {
                 if (!ends.contains(node)) {
@@ -240,8 +279,10 @@ public final class CfgBuilder {
     }
 
     /**
-     * Whether this statement terminates execution. For EXIT, only EXIT PROGRAM is a terminator;
-     * EXIT PARAGRAPH and the like fall through.
+     * Whether this statement terminates execution: STOP, GOBACK, EXIT PROGRAM, and the EXEC CICS
+     * RETURN (with or without TRANSID) and XCTL that hand control back to CICS or to another
+     * program for good. A RETURN or XCTL written with RESP, RESP2 or NOHANDLE comes back to the
+     * next statement when it fails, so it goes on. EXIT PARAGRAPH and the like fall through.
      *
      * <p>Made public because the scan that derives flow between paragraphs needs the same
      * judgment. Encoding the same COBOL semantics in two places risks fixing only one of them.
@@ -251,15 +292,86 @@ public final class CfgBuilder {
         if ("STOP".equals(verb) || "GOBACK".equals(verb)) {
             return true;
         }
+        if ("EXEC CICS".equals(verb)) {
+            String command = CICS_COMMAND.matcher(statement.text()).replaceFirst("$1");
+            // With RESP, RESP2 or NOHANDLE a RETURN or XCTL that fails comes back to the next
+            // statement, which then reads the response.
+            return (command.equalsIgnoreCase("RETURN") || command.equalsIgnoreCase("XCTL"))
+                    && !COMES_BACK_ON_FAILURE.matcher(statement.text()).find();
+        }
         return "EXIT".equals(verb)
                 && statement.text().toUpperCase(Locale.ROOT).contains("PROGRAM");
     }
 
-    /** Whether a paragraph PERFORM has a UNTIL clause. The semantic model does not decompose the clause, so this checks the statement text. */
-    private boolean isUntilPerform(CfgNode node) {
-        return node.statement().orElseThrow() instanceof SimpleStatement simple
-                && simple.text().toUpperCase(Locale.ROOT).contains("UNTIL");
+    /** The options under which a failing CICS command returns control to the program. */
+    private static final Pattern COMES_BACK_ON_FAILURE = Pattern.compile(
+            "(?i)(?<![\\p{L}\\p{N}-])(?:RESP2?\\s*\\(|NOHANDLE(?![\\p{L}\\p{N}-]))");
+
+    /** The first word after EXEC CICS, which names the command. */
+    private static final Pattern CICS_COMMAND =
+            Pattern.compile("(?is)^\\s*EXEC\\s+CICS\\s+([\\p{L}\\p{N}-]+).*$");
+
+    /**
+     * Whether control can leave the end of the statements to what follows them: the rule the
+     * graph's chains follow, for a reader that needs the answer without the graph, such as the
+     * stored paragraph flow's fall-through rows. It gives the reachability the graph gives:
+     * statements after the first one that cannot complete are unreachable, and control leaves
+     * only through what precedes them. A statement that cannot complete is a terminator
+     * ({@link #isTerminator}), a GO TO that {@link #fallsThrough(GoToStatement)} denies, an
+     * exhaustive branch none of whose arms completes, or a PERFORM that runs its body once and
+     * whose body cannot complete. A loop completes, and so does an empty list.
+     */
+    public static boolean canCompleteNormally(List<Statement> statements) {
+        for (Statement statement : statements) {
+            boolean completes = switch (statement) {
+                case SimpleStatement simple -> !isTerminator(simple);
+                case GoToStatement goTo -> fallsThrough(goTo);
+                case CompoundStatement compound -> runsOnce(compound)
+                        ? canCompleteNormally(compound.blocks().get(0).statements())
+                        : compound.kind() == ControlKind.LOOP
+                        || !isExhaustive(compound)
+                        || compound.blocks().stream()
+                                .anyMatch(block -> canCompleteNormally(block.statements()));
+            };
+            if (!completes) {
+                return false;
+            }
+        }
+        return true;
     }
+
+    /**
+     * Whether a GO TO can go on to the next statement. One with a single target cannot; a
+     * DEPENDING ON goes on when none of its targets is chosen.
+     */
+    public static boolean fallsThrough(GoToStatement goTo) {
+        return goTo.targets().size() > 1 || goTo.dependingOn().isPresent();
+    }
+
+    /** Whether a loop is an inline PERFORM with no UNTIL, VARYING or TIMES: its condition is empty. */
+    private static boolean runsOnce(CompoundStatement compound) {
+        return compound.kind() == ControlKind.LOOP && compound.conditionText().isBlank();
+    }
+
+    /** Whether a branch takes one of its arms on every path: it has an ELSE or a WHEN OTHER. */
+    private static boolean isExhaustive(CompoundStatement branch) {
+        return branch.blocks().stream()
+                .anyMatch(block -> "ELSE".equals(block.label()) || "OTHER".equals(block.label()));
+    }
+
+    /**
+     * Whether the relation is the PERFORM statement itself with a UNTIL clause. The semantic
+     * model does not decompose the clause, so this checks the statement text for UNTIL as a word
+     * of its own; a procedure name such as WAIT-UNTIL-READY holds no clause.
+     */
+    private static boolean isUntilPerform(CfgNode node, PerformRelation perform) {
+        return node.statement().orElseThrow() instanceof SimpleStatement simple
+                && "PERFORM".equals(simple.verb()) && simple.range().equals(perform.range())
+                && UNTIL.matcher(simple.text()).find();
+    }
+
+    private static final Pattern UNTIL =
+            Pattern.compile("(?i)(?<![\\p{L}\\p{N}-])UNTIL(?![\\p{L}\\p{N}-])");
 
     private CfgNode newNode(CfgNodeKind kind, Statement statement, String procedureName) {
         CfgNode node = new CfgNode(nextId++, kind, statement, procedureName);
@@ -274,9 +386,5 @@ public final class CfgBuilder {
 
     private LinkedHashSet<CfgNode> successorsOf(CfgNode node) {
         return successors.get(node);
-    }
-
-    private static String upper(String s) {
-        return s.toUpperCase(Locale.ROOT);
     }
 }

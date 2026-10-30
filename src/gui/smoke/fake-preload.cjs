@@ -36,7 +36,7 @@ const RULES = [
     hasFix: false,
     source: "builtin",
     enabled: true,
-    commands: ["LINT", "REPORT"],
+    commands: ["LINT"],
     targets: ["COBOL"],
     summary: "値を設定する前に参照し得るデータ項目を検出します。",
     rationale:
@@ -47,7 +47,7 @@ const RULES = [
       "ファイル節の項目・集団項目・PROCEDURE DIVISION USING の引数・" +
       "特殊レジスタと、入出力状態や CICS の応答コードのように実行系が暗黙に" +
       "設定する項目は対象外です。",
-    remedy: "宣言に VALUE 句を置くか、参照の前に INITIALIZE・MOVE で値を設定してください。",
+    remedy: "宣言に VALUE 句を書くか、参照の前に INITIALIZE・MOVE で値を設定してください。",
     badExample: [
       "01  WS-COUNT  PIC 9(4).",
       '    IF WS-FLG = "Y"',
@@ -73,7 +73,7 @@ const RULES = [
     hasFix: true,
     source: "builtin",
     enabled: true,
-    commands: ["FIX", "LINT", "REPORT"],
+    commands: ["FIX", "LINT"],
     targets: ["COBOL"],
     summary:
       "結果が受け取り側項目のけた数を超え得るのに ON SIZE ERROR 句を持たない算術文を検出します。",
@@ -132,6 +132,20 @@ const INVENTORY = [
   { id: 7, path: "ddl/SYKTAB.sql", name: "SYKTAB.sql", type: "SQL", codepage: "UTF-8", findingCount: 0 },
 ];
 
+/** A report in the engine's shape: a title, the totals, and one table of findings. */
+const REPORT_HTML = [
+  "<!DOCTYPE html><html lang=\"ja\"><head><meta charset=\"utf-8\"><title>COBOL Insight 解析レポート</title></head><body>",
+  "<h1>COBOL Insight 解析レポート</h1>",
+  "<h2>集計</h2>",
+  "<table><tr><th>資産</th><td>7</td></tr><tr><th>指摘</th><td>3</td></tr></table>",
+  "<h2>指摘</h2>",
+  "<table><tr><th>ルール</th><th>資産</th><th>行</th><th>内容</th></tr>",
+  "<tr><td>R004</td><td>cobol/SYK001.cbl</td><td>10</td><td>WS-RESULT への COMPUTE 文に ON SIZE ERROR 句がありません。</td></tr>",
+  "<tr><td>R001</td><td>cobol/SYK002.cbl</td><td>9</td><td>WK-ORDER-ID を未設定のまま参照しています。</td></tr>",
+  "<tr><td>S001</td><td>cobol/SYK001.cbl</td><td>9</td><td>SELECT * で全列を取得しています。</td></tr></table>",
+  "</body></html>",
+].join("");
+
 /*
  * The findings each rule composes, written the way the engine writes them: R004 names the receiving
  * item and the verb, and R001 names the item, the statements that do set it, and its declaration,
@@ -153,18 +167,19 @@ const FINDINGS = [
     level: "error",
     message:
       "WK-ORDER-ID を未設定のまま参照しています。" +
-      "値を設定する 20行 を通らない経路があります（宣言 12行）。",
+      "値を設定する 10行 を通らない経路があります（宣言 4行）。",
+    // Every line lies within the first 11 lines of COBOL_TEXT, so a row and each related line open on it.
     file: "cobol/SYK002.cbl",
-    startLine: 24,
+    startLine: 9,
     startColumn: 12,
     related: [
-      { file: "cobol/SYK002.cbl", line: 12, label: "宣言（VALUE 句がなく初期値は不定）" },
+      { file: "cobol/SYK002.cbl", line: 4, label: "宣言（VALUE 句がなく初期値は不定）" },
       {
         file: "cobol/SYK002.cbl",
-        line: 20,
+        line: 10,
         label: "WK-ORDER-ID に値を設定する文（この文を通らない経路がある）",
       },
-      { file: "cobol/SYK002.cbl", line: 24, label: "未設定のまま参照する箇所" },
+      { file: "cobol/SYK002.cbl", line: 9, label: "未設定のまま参照する箇所" },
     ],
   },
 ];
@@ -175,25 +190,82 @@ const SQL_FINDINGS = [
     level: "warning",
     message: "SELECT * で全列を取得しています。表の構造の変更に弱く、不要な列まで転送します。",
     file: "cobol/SYK001.cbl",
-    startLine: 30,
+    startLine: 9,
     startColumn: 12,
   },
 ];
 
 /** Fixed-format 80-column COBOL, with a full-width comment line, a COPY statement and DBCS text. */
 const COBOL_TEXT = [
-  "000100 IDENTIFICATION DIVISION.                                        SYK00110",
-  "000200 PROGRAM-ID. SYK001.                                             SYK00120",
-  "000300 DATA DIVISION.                                                  SYK00130",
-  "000400 WORKING-STORAGE SECTION.                                        SYK00140",
-  "000500     COPY SYKCPY1.                                               SYK00150",
-  "000600* 受注データを検査する（全角の注記行）                           SYK00160",
-  "000700 PROCEDURE DIVISION.                                             SYK00170",
-  "000800 MAIN-PROC.                                                      SYK00180",
-  "000900     DISPLAY 'PLEASE COPY THIS TEXT'.                            SYK00190",
-  "001000     MOVE 受注番号 TO WK-ORDER-ID.                               SYK00200",
-  "001100     STOP RUN.                                                   SYK00210",
+  "000100 IDENTIFICATION DIVISION.                                         SYK00110",
+  "000200 PROGRAM-ID. SYK001.                                              SYK00120",
+  "000300 DATA DIVISION.                                                   SYK00130",
+  "000400 WORKING-STORAGE SECTION.                                         SYK00140",
+  "000500     COPY SYKCPY1.                                                SYK00150",
+  "000600* 受注データを検査する（全角の注記行）                            SYK00160",
+  "000700 PROCEDURE DIVISION.                                              SYK00170",
+  "000800 MAIN-PROC.                                                       SYK00180",
+  "000900     DISPLAY 'PLEASE COPY THIS TEXT'.                             SYK00190",
+  "001000     MOVE 受注番号 TO WK-ORDER-ID.                                SYK00200",
+  "001100     STOP RUN.                                                    SYK00210",
+  // What the outline, the folding and the paragraph trace are drawn from: a section, a PERFORM
+  // through a range, a GO TO, two statement blocks and a run of comment lines.
+  ...[
+    " SUB-SECT SECTION.",
+    " SUB-PROC.",
+    "     PERFORM CHECK-PROC THRU CHECK-EXIT.",
+    "     IF WK-ORDER-ID = SPACE",
+    "         GO TO SUB-EXIT",
+    "     END-IF.",
+    " CHECK-PROC.",
+    "* CHECK THE ORDER ID",
+    "* AND ITS LENGTH",
+    "     EVALUATE TRUE",
+    "         WHEN WK-ORDER-ID NUMERIC",
+    "             CONTINUE",
+    "     END-EVALUATE.",
+    " CHECK-EXIT.",
+    "     EXIT.",
+    " SUB-EXIT.",
+    "     EXIT.",
+  ].map((body, index) => {
+    const number = index + 12;
+    return `${String(number * 100).padStart(6, "0")}${body.padEnd(66)}SYK00${number + 10}0`;
+  }),
 ].join("\n");
+
+/**
+ * The paragraphs and flows of the first asset, as a scan of COBOL_TEXT would record them: the lines
+ * are the ones its headers and statements stand on.
+ */
+const PROGRAM_FLOW = {
+  paragraphs: [
+    { id: 1, name: "MAIN-PROC", kind: "PARAGRAPH", sectionName: null, startLine: 8, endLine: 11 },
+    { id: 2, name: "SUB-SECT", kind: "SECTION", sectionName: null, startLine: 12, endLine: 28 },
+    { id: 3, name: "SUB-PROC", kind: "PARAGRAPH", sectionName: "SUB-SECT", startLine: 13, endLine: 17 },
+    { id: 4, name: "CHECK-PROC", kind: "PARAGRAPH", sectionName: "SUB-SECT", startLine: 18, endLine: 24 },
+    { id: 5, name: "CHECK-EXIT", kind: "PARAGRAPH", sectionName: "SUB-SECT", startLine: 25, endLine: 26 },
+    { id: 6, name: "SUB-EXIT", kind: "PARAGRAPH", sectionName: "SUB-SECT", startLine: 27, endLine: 28 },
+  ],
+  edges: [
+    ["FALLTHROUGH", 2, 3, "SUB-PROC", null, null, null, 1],
+    ["PERFORM", 3, 4, "CHECK-PROC", 5, "CHECK-EXIT", 14, 1],
+    ["GOTO", 3, 6, "SUB-EXIT", null, null, 16, 2],
+    ["FALLTHROUGH", 3, 4, "CHECK-PROC", null, null, null, 3],
+    ["FALLTHROUGH", 4, 5, "CHECK-EXIT", null, null, null, 1],
+    ["FALLTHROUGH", 5, 6, "SUB-EXIT", null, null, null, 1],
+  ].map(([kind, from, to, toName, thru, thruName, line, seq]) => ({
+    from,
+    to,
+    toName,
+    kind,
+    thru,
+    thruName,
+    line,
+    seq,
+    toPath: null,
+  })),
+};
 
 /*
  * One EBCDIC CP930 asset, copied from what the engine actually returns for
@@ -201,8 +273,8 @@ const COBOL_TEXT = [
  *
  * The boundaries are the point of the fixture. Line 3 holds double-byte characters, and CP930 wraps
  * a double-byte run in shift-out and shift-in bytes, so byte column 73 — where the identification
- * area starts — falls on character 53, not on character 73 as it would in a line of single-byte
- * characters. Anything that counted characters instead of bytes would put the decoration elsewhere.
+ * area starts — falls on character 53; a line of single-byte characters would put it on character
+ * 73. Anything that counted characters would put the decoration elsewhere.
  */
 const CP930_PATH = "encoding/SYKENC1_CP930.cbl";
 
@@ -253,6 +325,7 @@ const COPY_EXPANSION = {
           lines: COPYBOOK_TEXT.split("\n").map((text, index) => ({
             copybookLine: index + 1,
             text,
+            copybookPath: null,
           })),
         },
       ],
@@ -316,7 +389,7 @@ const GRAPH = {
   ],
   edges: [
     // The two steps are listed out of execution order on purpose: the screen has to order them by
-    // seq, not by the order they were read in.
+    // seq, whatever order they were read in.
     { from: GRAPH_ID_BASE + 1, to: GRAPH_ID_BASE + 3, kind: "EXECUTION", resolution: "CONSTANT", seq: 2, line: 30 },
     { from: GRAPH_ID_BASE + 1, to: GRAPH_ID_BASE + 2, kind: "EXECUTION", resolution: "CONSTANT", seq: 1, line: 20 },
     { from: GRAPH_ID_BASE + 2, to: 2, kind: "EXECUTION", resolution: "CONSTANT", seq: 1, line: 20 },
@@ -394,6 +467,11 @@ const api = {
           ),
         );
       }
+      case "fix":
+        // The summary lists what the run wrote out, as the engine's `fix apply` does.
+        return Promise.resolve(
+          engineResult("fix", {}, { exitCode: 0, writtenFiles: ["cobol/SYK001.cbl"] }),
+        );
       default:
         // Every other subcommand finishes too, so the views that read what it wrote go ahead.
         return Promise.resolve(engineResult(invocation.subcommand, {}, { exitCode: 0 }));
@@ -442,6 +520,8 @@ const api = {
   readSarif: (path) =>
     Promise.resolve(path === SQL_SARIF || path === SCOPE_SQL_SARIF ? SQL_FINDINGS : FINDINGS),
   readGraph: () => Promise.resolve(GRAPH),
+  readProgramFlow: (_dbPath, _root, relPath) =>
+    Promise.resolve(relPath === "cobol/SYK001.cbl" ? PROGRAM_FLOW : { paragraphs: [], edges: [] }),
   readCopyExpansion: () => Promise.resolve(COPY_EXPANSION),
   readFixDiff: (request) =>
     Promise.resolve({
@@ -451,7 +531,7 @@ const api = {
       fixedText: COBOL_TEXT.replace("STOP RUN.", "GOBACK.  "),
     }),
   readTranspile: () => Promise.resolve(TRANSPILE),
-  readReport: () => Promise.resolve("<h1>COBOL Insight 解析レポート</h1>"),
+  readReport: () => Promise.resolve(REPORT_HTML),
 
   outputPaths: () =>
     Promise.resolve({
@@ -476,8 +556,24 @@ const api = {
     touched.set(path, (touched.get(path) ?? 0) + 1);
     return Promise.resolve(undefined);
   },
-  importSource: (request) =>
-    Promise.resolve({ status: "written", relPath: request.fileName, lineCount: request.lines.length }),
+  importSource: (request) => {
+    // The file is in the folder from here on, so the scan that follows the import lists it.
+    if (!INVENTORY.some((item) => item.path === request.fileName)) {
+      INVENTORY.push({
+        id: INVENTORY.length + 1,
+        path: request.fileName,
+        name: request.fileName,
+        type: "PROGRAM",
+        codepage: "Shift_JIS",
+        findingCount: 0,
+      });
+    }
+    return Promise.resolve({
+      status: "written",
+      relPath: request.fileName,
+      lineCount: request.lines.length,
+    });
+  },
   saveAs: (request) => Promise.resolve(`C:\\smoke\\${request.fileName}`),
 
   readSettings: () => Promise.resolve(settings),

@@ -67,7 +67,7 @@ describe("filterFindings", () => {
     ]);
   });
 
-  it("sorts rule ids naturally rather than as text", () => {
+  it("sorts rule ids in natural order", () => {
     const rows = filterFindings(merged, INDEX, { ...initialFindingFilter, sort: "rule" });
     // R010 must follow R002, which a plain string sort would get wrong.
     expect(rows.map((row) => row.finding.ruleId)).toEqual(["R001", "R002", "R010", "S001"]);
@@ -86,7 +86,7 @@ describe("filterFindings", () => {
     expect(rows.some((row) => row.severity === "high")).toBe(false);
   });
 
-  it("searches the message, the rule id, the rule name and the file", () => {
+  it("searches the message, the rule name and the file", () => {
     const rows = mergeFindings([finding("R001", "a.cbl", 1, "桁あふれの恐れ")], []);
     expect(filterFindings(rows, INDEX, { ...initialFindingFilter, text: "桁あふれ" })).toHaveLength(1);
     expect(filterFindings(rows, INDEX, { ...initialFindingFilter, text: "name of r001" })).toHaveLength(1);
@@ -111,18 +111,28 @@ describe("filterFindings", () => {
     expect(rows[0]).toMatchObject({ severity: "medium", ruleName: "R999" });
   });
 
-  it("names the engine's own diagnostics and grades them by their level", () => {
-    const directive: SarifFinding = { ...finding("jcl-directive", "a.jcl", 3), level: "note" };
-    const parseFailure: SarifFinding = { ...finding("parse-failure", "a.cbl", 1), level: "error" };
+  const directive: SarifFinding = { ...finding("jcl-directive", "a.jcl", 3), level: "note" };
+  const parseFailure: SarifFinding = { ...finding("parse-failure", "a.cbl", 1), level: "error" };
+
+  it("names the engine's own diagnostics", () => {
     const rows = filterFindings(
       mergeFindings([directive, parseFailure], []),
       INDEX,
       initialFindingFilter,
     );
     expect(rows).toMatchObject([
-      { severity: "high", ruleName: text.diagnostic["parse-failure"] },
-      { severity: "warning", ruleName: text.diagnostic["jcl-directive"] },
+      { ruleName: text.diagnostic["parse-failure"] },
+      { ruleName: text.diagnostic["jcl-directive"] },
     ]);
+  });
+
+  it("grades the engine's own diagnostics by their level", () => {
+    const rows = filterFindings(
+      mergeFindings([directive, parseFailure], []),
+      INDEX,
+      initialFindingFilter,
+    );
+    expect(rows).toMatchObject([{ severity: "high" }, { severity: "warning" }]);
     expect(hiddenByThreshold(mergeFindings([directive], []), INDEX, "low")).toBe(1);
   });
 });

@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { text } from "../../i18n/text";
-import { useProject } from "../../state/projectStore";
+import { notAnalysed, useProject } from "../../state/projectStore";
 import { PALETTE_CHORD } from "../../state/keybindings";
 
 export interface WelcomeProps {
@@ -19,9 +19,6 @@ export interface WelcomeProps {
  */
 export function Welcome({ onSelectFolder, onRunAll }: WelcomeProps): ReactElement {
   const project = useProject();
-  // Opening a folder only scans it (no auto-analyse); the lint findings are what says a run has
-  // actually finished, whether or not the scan itself already moved the mode past "empty".
-  const notAnalysed = project.findings.status === "none" && project.sqlFindings.status === "none";
 
   return (
     <div className="ci-welcome" data-testid="welcome">
@@ -34,7 +31,7 @@ export function Welcome({ onSelectFolder, onRunAll }: WelcomeProps): ReactElemen
         >
           {text.welcome.selectFolder}
         </button>
-      ) : notAnalysed ? (
+      ) : notAnalysed(project) ? (
         <button
           type="button"
           className="ci-button ci-button--primary"

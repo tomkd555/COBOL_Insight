@@ -75,8 +75,7 @@ public final class SectionFallThroughRule implements Rule {
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         units.get(i).name() + " の末尾に EXIT 文がありません。"
                                 + "次の節 " + units.get(i + 1).name() + " へ制御が移ります。",
-                        new SourcePosition(model.sourceFile(), last.range().start().line(), 1,
-                                SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                        CfgSupport.at(last.range())));
             }
         }
         return findings;

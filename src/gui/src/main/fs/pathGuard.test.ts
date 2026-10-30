@@ -20,6 +20,11 @@ describe("resolveWithinBase", () => {
     expect(resolveWithinBase(BASE, "C:/assets/cobol/A.cbl")).toBe(resolve(BASE, "cobol/A.cbl"));
   });
 
+  it("accepts a file under a folder whose name begins with two dots", () => {
+    expect(resolveWithinBase(BASE, "..x/A.cbl")).toBe(resolve(BASE, "..x/A.cbl"));
+    expect(resolveWithinBase(BASE, "cobol/..y/A.cbl")).toBe(resolve(BASE, "cobol/..y/A.cbl"));
+  });
+
   it("rejects a relative path that climbs out", () => {
     expect(resolveWithinBase(BASE, "../secrets.txt")).toBeNull();
     expect(resolveWithinBase(BASE, "cobol/../../secrets.txt")).toBeNull();
@@ -33,14 +38,15 @@ describe("resolveWithinBase", () => {
     expect(resolveWithinBase(BASE, "C:/assets-other/A.cbl")).toBeNull();
   });
 
-  it("rejects the base directory itself, which is not a file", () => {
+  it("rejects the base directory itself, since a target is a file inside it", () => {
     expect(resolveWithinBase(BASE, "")).toBeNull();
     expect(resolveWithinBase(BASE, ".")).toBeNull();
     expect(resolveWithinBase(BASE, "C:/assets")).toBeNull();
   });
 
-  it("keeps Windows reserved device names inside the base rather than treating them as devices", () => {
-    // CON, NUL and friends are only devices when used bare; as a path segment they stay contained.
+  it("resolves a Windows device name to a path inside the base", () => {
+    // The boundary is all this gate decides. Whether a file may be written under such a name is
+    // the import rule's to refuse (shared/importPath.ts).
     for (const name of ["CON", "NUL", "PRN", "AUX", "COM1", "LPT1"]) {
       expect(resolveWithinBase(BASE, name)).toBe(resolve(BASE, name));
     }
@@ -63,9 +69,17 @@ describe("resolveSourceFile", () => {
   });
 
   it("rejects a literal path outside the base before touching the filesystem", async () => {
-    await expect(resolveSourceFile(resolver(), BASE, "../secrets.txt")).rejects.toThrow(
+    const touched: string[] = [];
+    const recording: RealPathResolver = {
+      realPath: async (absPath) => {
+        touched.push(absPath);
+        return absPath;
+      },
+    };
+    await expect(resolveSourceFile(recording, BASE, "../secrets.txt")).rejects.toThrow(
       /資産フォルダの外/,
     );
+    expect(touched).toEqual([]);
   });
 
   it("rejects a symlink inside the base that points outside it", async () => {

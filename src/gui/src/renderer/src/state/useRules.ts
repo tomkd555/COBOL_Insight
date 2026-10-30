@@ -5,15 +5,16 @@
  * comes back. The engine is the single authority on which rules are in effect and at what severity,
  * so the screens never work that out from the file they just wrote.
  *
- * These are callbacks only — no state and no effect — so any screen may call the hook. Reading the
- * file at start-up belongs to useShellStartup, which already resolves the artefact paths.
+ * The hook holds no React state of its own: the write queue is module-level and shared, so any screen
+ * may call the hook. Reading the file at start-up belongs to useShellStartup, which already resolves
+ * the artefact paths.
  */
 
-import { useCallback } from "react";
+import { useCallback, useLayoutEffect } from "react";
 import type { RulesFile } from "../../../shared/rulesFile";
 import { RULES_FILE_VERSION } from "../../../shared/rulesFile";
 import { api, errorMessage } from "../api";
-import { pruned } from "../model/customRules";
+import { asWritten } from "../model/customRules";
 import { setEnabled, setSeverity } from "../model/rulesView";
 import { useProject, useProjectDispatch } from "./projectStore";
 import { useRulesDispatch, useRulesState } from "./rulesStore";
@@ -30,22 +31,49 @@ export interface RulesActions {
   validateCustomRules(): void;
 }
 
+/**
+ * The writes of the rule file, one after another, shared by every screen that calls the hook. Each
+ * write is one change applied to the file as the write before it left it, so two edits made in quick
+ * succession from two screens (the custom rules saved, then a rule switched off) both reach the disk.
+ */
+let writing: Promise<void> = Promise.resolve();
+/** The file the store holds, as of the last render of a screen that calls the hook. */
+let held: RulesFile | null = null;
+/** The file as the last write left it, until the store has caught up with it. */
+let written: RulesFile | null = null;
+
 export function useRules(notify: Notify): RulesActions {
   const project = useProject();
   const projectDispatch = useProjectDispatch();
   const rules = useRulesState();
   const rulesDispatch = useRulesDispatch();
   const rulesPath = project.outputPaths?.rules ?? null;
+  // Before the file has been read the store holds an empty one; a write then would put that empty
+  // file in the place of the one on disk.
+  const loaded = rules.loaded;
+  // After the commit, so a render React discards leaves what the writes go by alone.
+  useLayoutEffect(() => {
+    if (held !== rules.file) {
+      held = rules.file;
+      written = null;
+    }
+  }, [rules.file]);
 
-  /** Writes the file and replaces the catalogue with the one the engine derives from it. */
+  /** Writes the changed file and replaces the catalogue with the one the engine derives from it. */
   const persist = useCallback(
-    (next: RulesFile): void => {
-      if (rulesPath === null) {
+    (change: (file: RulesFile) => RulesFile): void => {
+      if (rulesPath === null || !loaded) {
         return;
       }
-      api()
-        .writeRules(rulesPath, next)
+      writing = writing
         .then(async () => {
+          const base = written ?? held;
+          if (base === null) {
+            return;
+          }
+          const next = change(base);
+          await api().writeRules(rulesPath, next);
+          written = next;
           rulesDispatch({ type: "SET_FILE", file: next });
           projectDispatch({ type: "RULES_WRITTEN" });
           const catalog = await api().rules({ rulesFile: rulesPath });
@@ -57,29 +85,30 @@ export function useRules(notify: Notify): RulesActions {
         })
         .catch((error: unknown) => notify(errorMessage(error), true));
     },
-    [rulesPath, rulesDispatch, projectDispatch, notify],
+    [rulesPath, loaded, rulesDispatch, projectDispatch, notify],
   );
 
   const setRulesEnabled = useCallback(
     (ids: readonly string[], enabled: boolean): void => {
-      persist(setEnabled(rules.file, ids, enabled));
+      persist((file) => setEnabled(file, ids, enabled));
     },
-    [persist, rules.file],
+    [persist],
   );
 
   const setRuleSeverity = useCallback(
     (id: string, severity: string | null): void => {
-      persist(setSeverity(rules.file, id, severity));
+      persist((file) => setSeverity(file, id, severity));
     },
-    [persist, rules.file],
+    [persist],
   );
 
   const saveCustomRules = useCallback((): void => {
     if (rules.rawError !== null) {
       return;
     }
-    persist({ ...rules.file, custom: rules.draft.map(pruned) });
-  }, [persist, rules.file, rules.draft, rules.rawError]);
+    const custom = rules.draft.map(asWritten);
+    persist((file) => ({ ...file, custom }));
+  }, [persist, rules.draft, rules.rawError]);
 
   const validateCustomRules = useCallback((): void => {
     if (rules.rawError !== null) {
@@ -87,7 +116,7 @@ export function useRules(notify: Notify): RulesActions {
       return;
     }
     const candidate = JSON.stringify(
-      { version: RULES_FILE_VERSION, rules: rules.file.rules, custom: rules.draft.map(pruned) },
+      { version: RULES_FILE_VERSION, rules: rules.file.rules, custom: rules.draft.map(asWritten) },
       null,
       2,
     );

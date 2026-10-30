@@ -16,6 +16,7 @@ import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
 import jp.cobolinsight.rules.SourceTextIndex;
+import jp.cobolinsight.rules.cfg.CfgSupport;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -105,8 +106,7 @@ public final class StringOverflowRule implements Rule {
                     : null;
             if (message != null) {
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(), message,
-                        new SourcePosition(model.sourceFile(), simple.range().start().line(), 1,
-                                SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                        CfgSupport.at(simple.range())));
             }
         }
     }

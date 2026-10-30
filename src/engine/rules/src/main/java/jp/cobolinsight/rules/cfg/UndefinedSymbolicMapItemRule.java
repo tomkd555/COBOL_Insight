@@ -112,8 +112,7 @@ public final class UndefinedSymbolicMapItemRule implements Rule {
                     findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                             item + " は " + map + " に定義のない項目です。"
                                     + "マップとシンボリックマップが食い違っています。",
-                            new SourcePosition(model.sourceFile(), line, 1,
-                                    SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                            CfgSupport.at(statement.range(), line)));
                 });
             });
         }

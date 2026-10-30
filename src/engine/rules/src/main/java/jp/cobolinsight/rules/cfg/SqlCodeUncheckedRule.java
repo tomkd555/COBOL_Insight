@@ -14,7 +14,12 @@ import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.CompoundStatement;
 import jp.cobolinsight.core.semantic.EmbeddedBlock;
 import jp.cobolinsight.core.semantic.EmbeddedBlockKind;
+import jp.cobolinsight.core.semantic.Procedure;
+import jp.cobolinsight.core.semantic.ProcedureMap;
+import jp.cobolinsight.core.semantic.ProgramLines;
 import jp.cobolinsight.core.semantic.SimpleStatement;
+import jp.cobolinsight.core.semantic.Statement;
+import jp.cobolinsight.core.semantic.Statements;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
@@ -29,10 +34,10 @@ import jp.cobolinsight.core.sql.WheneverClause;
 import jp.cobolinsight.rules.FixEdits;
 import jp.cobolinsight.rules.SourceTextIndex;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -46,8 +51,8 @@ import java.util.Set;
  * EXEC SQL, of a condition referencing SQLCODE/SQLSTATE. Because SQLCODE gets overwritten by the
  * next SQL statement, the boundary is the next EXEC SQL statement. A {@code WHENEVER SQLERROR
  * GO TO/PERFORM} in effect (the last WHENEVER SQLERROR before the statement in source order, a
- * later CONTINUE cancelling it; one a COPY brought in stands where the COPY statement does, which
- * is where the precompiler reads it) branches on every negative SQLCODE; the statement is then
+ * later CONTINUE cancelling it; one a COPY brought in stands where the COPY statement that brought
+ * that very copy in does, which is where the precompiler reads it) branches on every negative SQLCODE; the statement is then
  * reported at WARNING level for the +100 it still leaves unhandled, and an INSERT, which has no
  * +100 worth testing, is not reported at all. With a {@code WHENEVER NOT FOUND} branch in effect
  * as well, nothing is left unhandled and the statement is not reported.
@@ -74,7 +79,9 @@ public final class SqlCodeUncheckedRule implements Rule {
                     + "残る場合だけを WARNING で報告します。INSERT はその場合報告せず、WHENEVER NOT FOUND の"
                     + "分岐も有効な文についても報告しません。")
             .remedy("SQL 文の直後に SQLCODE を検査し、0 と +100 以外を異常として、+100 を"
-                    + "該当行なしとして処理してください。")
+                    + "該当行なしとして処理してください。COPY で取り込んだ SQL 文の指摘には"
+                    + "自動修正を付けません。コピー句への挿入は、それを取り込むすべての"
+                    + "プログラムに及ぶためです。")
             .example("""
                     EXEC SQL UPDATE CUSTOMER SET NAME = :WS-NAME
                              WHERE ID = :WS-ID END-EXEC.
@@ -111,20 +118,30 @@ public final class SqlCodeUncheckedRule implements Rule {
     }
 
     private void evaluate(CobolSemanticModel model, ControlFlowGraph cfg, List<Finding> findings) {
-        // Build the set of EXEC SQL statement nodes (all SQL; used as boundaries) and a range->node index.
+        // The EXEC SQL statement nodes (all SQL; used as boundaries), and the node of each block,
+        // by identity: two inclusions of one copybook give two blocks of one range.
+        ProcedureMap procedureMap = new ProcedureMap(model);
         Set<CfgNode> execSqlNodes = Collections.newSetFromMap(new IdentityHashMap<>());
-        Map<SourceRange, CfgNode> byRange = new HashMap<>();
+        Map<EmbeddedBlock, CfgNode> nodeByBlock = new IdentityHashMap<>();
         for (CfgNode node : cfg.nodes()) {
             node.statement().ifPresent(statement -> {
                 if (statement instanceof SimpleStatement simple
                         && "EXEC SQL".equals(simple.verb())) {
                     execSqlNodes.add(node);
-                    byRange.put(simple.range(), node);
+                    for (EmbeddedBlock block : procedureMap.blocksOf(simple)) {
+                        if (block.range().equals(simple.range())) {
+                            nodeByBlock.put(block, node);
+                        }
+                    }
                 }
             });
         }
-        List<Whenever> whenevers = whenevers(model);
-        for (EmbeddedBlock block : model.embeddedBlocks()) {
+        ProgramLines lines = new ProgramLines(model);
+        Map<EmbeddedBlock, Integer> programLines = programLines(model, lines, procedureMap);
+        List<Whenever> whenevers = whenevers(model, programLines);
+        List<EmbeddedBlock> blocks = model.embeddedBlocks();
+        for (int order = 0; order < blocks.size(); order++) {
+            EmbeddedBlock block = blocks.get(order);
             if (block.kind() != EmbeddedBlockKind.SQL) {
                 continue;
             }
@@ -138,12 +155,13 @@ public final class SqlCodeUncheckedRule implements Rule {
             // or a DELETE, which a WHENEVER NOT FOUND branch covers. An INSERT has no +100 worth
             // testing.
             int blockLine = block.range().start().line();
-            boolean wheneverInEffect = inEffect(whenevers, "SQLERROR", blockLine);
-            boolean notFoundHandled = inEffect(whenevers, "NOT FOUND", blockLine);
+            int programLine = programLines.get(block);
+            boolean wheneverInEffect = inEffect(whenevers, "SQLERROR", programLine, order);
+            boolean notFoundHandled = inEffect(whenevers, "NOT FOUND", programLine, order);
             if (wheneverInEffect && (keyword.equals("INSERT") || notFoundHandled)) {
                 continue;
             }
-            CfgNode start = byRange.get(block.range());
+            CfgNode start = nodeByBlock.get(block);
             if (start == null) {
                 continue;
             }
@@ -155,20 +173,33 @@ public final class SqlCodeUncheckedRule implements Rule {
             if (checked) {
                 continue;
             }
-            String file = model.sourceFile();
+            // A block a COPY member brings in stands in the member's file, as CfgSupport says.
+            String file = block.range().start().file();
             int last = block.range().end().line();
             String dml = dmlLabel(keyword, block.text());
             CfgNode next = CfgSupport.firstBoundary(cfg, start, execSqlNodes::contains)
                     .orElse(null);
-            Integer nextLine = next == null ? null
-                    : next.statement().orElseThrow().range().start().line();
+            SourcePosition nextStart = next == null ? null
+                    : next.statement().orElseThrow().range().start();
+            Integer nextLine = nextStart == null ? null : nextStart.line();
+            // Program lines decide: two inclusions of one copybook are one file whose lines say
+            // nothing about which COPY comes first. Lines of one file decide within one program
+            // line, which is one inclusion or one line of the program file.
+            int nextProgramLine = next == null ? 0 : programLineOf(model, lines, next);
+            boolean loopsBack = nextStart != null && (nextProgramLine != programLine
+                    ? nextProgramLine < programLine
+                    : nextStart.file().equals(file) && nextLine <= last);
+            String nextAt = nextStart == null ? null
+                    : (nextStart.file().equals(file) ? ""
+                            : Path.of(nextStart.file()).getFileName() + " ")
+                            + nextLine + "行";
             String until = nextLine == null ? "プログラムの終端まで進む"
-                    : nextLine <= last ? "ループで " + nextLine + "行の SQL へ戻る"
-                    : "次の SQL（" + nextLine + "行）へ進む";
+                    : loopsBack ? "ループで " + nextAt + "の SQL へ戻る"
+                    : "次の SQL（" + nextAt + "）へ進む";
             List<CodeFlowStep> steps = new ArrayList<>();
             steps.add(CfgSupport.step(file, blockLine, dml + " の実行（SQLCODE が設定される）"));
             if (nextLine != null) {
-                steps.add(CfgSupport.step(file, nextLine, (nextLine <= last
+                steps.add(CfgSupport.step(nextStart.file(), nextLine, (loopsBack
                         ? "ループで戻る SQL（" : "次の SQL（") + "SQLCODE が上書きされる）"));
             }
             String consequence = wheneverInEffect
@@ -189,51 +220,106 @@ public final class SqlCodeUncheckedRule implements Rule {
         }
     }
 
-    /** One WHENEVER statement: its line, its condition and whether it branches (GO TO or PERFORM) rather than CONTINUE. */
-    private record Whenever(int line, String condition, boolean branches) {
+    /**
+     * One WHENEVER statement: its program line, its place among the model's blocks, its condition
+     * and whether it branches (GO TO or PERFORM) where a CONTINUE leaves the flow alone.
+     */
+    private record Whenever(int line, int order, String condition, boolean branches) {
     }
 
     /** Every WHENEVER of the program in source order. */
-    private static List<Whenever> whenevers(CobolSemanticModel model) {
+    private static List<Whenever> whenevers(CobolSemanticModel model,
+            Map<EmbeddedBlock, Integer> programLines) {
         List<Whenever> whenevers = new ArrayList<>();
-        for (EmbeddedBlock block : model.embeddedBlocks()) {
+        List<EmbeddedBlock> blocks = model.embeddedBlocks();
+        for (int order = 0; order < blocks.size(); order++) {
+            EmbeddedBlock block = blocks.get(order);
+            int index = order;
             if (block.kind() == EmbeddedBlockKind.SQL) {
                 WheneverClause.clauseOf(block.text()).ifPresent(clause -> whenevers.add(
-                        new Whenever(lineInTheProgram(model, block), clause.condition(),
+                        new Whenever(programLines.get(block), index, clause.condition(),
                                 clause.branches())));
             }
         }
-        whenevers.sort(Comparator.comparingInt(Whenever::line));
+        whenevers.sort(Comparator.comparingInt(Whenever::line)
+                .thenComparingInt(Whenever::order));
         return whenevers;
     }
 
     /**
-     * Where the block stands in the program's own numbering, which is what the ordering compares.
-     * A block a COPY brought in carries a line of the copybook, measured in another file; the
-     * precompiler applies it where the COPY statement stands, so a copybook holding the shop's
-     * error handling at its top does not take effect over the statements written above the COPY.
-     * A copybook the expansions do not name — one a nested COPY brought in — keeps its own line.
+     * Where each block stands in the program's own numbering, which is what the ordering
+     * compares. A block a COPY brought in carries a line of the copybook, measured in another
+     * file; the precompiler applies it where the COPY statement that brought it stands, so a
+     * copybook holding the shop's error handling at its top does not take effect over the
+     * statements written above the COPY, and each inclusion of one copybook takes effect at its
+     * own COPY statement. A block a procedure's statement holds takes that statement's line from
+     * {@link ProgramLines}; any other block, from {@link #lineInTheProgram}.
      */
-    private static int lineInTheProgram(CobolSemanticModel model, EmbeddedBlock block) {
-        String file = block.range().start().file();
-        if (file.equals(model.sourceFile())) {
-            return block.range().start().line();
+    private static Map<EmbeddedBlock, Integer> programLines(CobolSemanticModel model,
+            ProgramLines lines, ProcedureMap procedureMap) {
+        Map<EmbeddedBlock, Integer> byBlock = new IdentityHashMap<>();
+        for (Procedure procedure : model.procedures()) {
+            Statements.walk(procedure.statements(), statement -> {
+                for (EmbeddedBlock block : procedureMap.blocksOf(statement)) {
+                    Integer copyLine = lines.copyLineOf(statement);
+                    byBlock.put(block, copyLine != null ? copyLine : lineInTheProgram(model, block));
+                }
+            });
         }
-        return model.copyInlineExpansions().stream()
-                .filter(expansion -> expansion.copybookPath().equals(file))
-                .mapToInt(CopyInlineExpansion::copyStatementLine).min()
-                .orElse(block.range().start().line());
+        for (EmbeddedBlock block : model.embeddedBlocks()) {
+            byBlock.computeIfAbsent(block, b -> lineInTheProgram(model, b));
+        }
+        return byBlock;
     }
 
     /**
-     * Whether a branching WHENEVER for the condition is in effect at the line. The precompiler
-     * applies WHENEVER in source order, so the last one before the line decides, and a
-     * CONTINUE there cancels an earlier GO TO or PERFORM.
+     * The program line of the statement of a node: the COPY line {@link ProgramLines} gives the
+     * statement itself, which tells two inclusions of one copybook apart where their equal ranges
+     * cannot, or else the line {@link #lineInTheProgram} gives its range.
      */
-    private static boolean inEffect(List<Whenever> whenevers, String condition, int line) {
+    private static int programLineOf(CobolSemanticModel model, ProgramLines lines, CfgNode node) {
+        Statement statement = node.statement().orElseThrow();
+        Integer copyLine = lines.copyLineOf(statement);
+        return copyLine != null ? copyLine : lineInTheProgram(model, statement.range());
+    }
+
+    private static int lineInTheProgram(CobolSemanticModel model, EmbeddedBlock block) {
+        return lineInTheProgram(model, block.range());
+    }
+
+    /**
+     * Where a range stands in the program's own numbering when no statement of a procedure holds
+     * it, or a statement the program file writes holds it: its own line in the program file, or
+     * the first COPY statement whose expansion holds its copybook. A copybook a nested COPY
+     * brought in stands where the program file's COPY statement whose expansion holds it stands.
+     */
+    private static int lineInTheProgram(CobolSemanticModel model,
+            SourceRange range) {
+        String file = range.start().file();
+        if (file.equals(model.sourceFile())) {
+            return range.start().line();
+        }
+        return model.copyInlineExpansions().stream()
+                .filter(expansion -> expansion.copybookPath().equals(file)
+                        || expansion.lines().stream().anyMatch(
+                                line -> line.copybookPath().filter(file::equals).isPresent()))
+                .mapToInt(CopyInlineExpansion::copyStatementLine).min()
+                .orElse(range.start().line());
+    }
+
+    /**
+     * Whether a branching WHENEVER for the condition is in effect at the program line, ahead of
+     * the block at {@code order} among the model's blocks when both stand on that line. The
+     * precompiler applies WHENEVER in source order, so the last one before the line decides, and
+     * a CONTINUE there cancels an earlier GO TO or PERFORM.
+     */
+    private static boolean inEffect(List<Whenever> whenevers, String condition, int line,
+            int order) {
         boolean branches = false;
         for (Whenever whenever : whenevers) {
-            if (whenever.line() < line && whenever.condition().equals(condition)) {
+            boolean before = whenever.line() < line
+                    || (whenever.line() == line && whenever.order() < order);
+            if (before && whenever.condition().equals(condition)) {
                 branches = whenever.branches();
             }
         }
@@ -299,7 +385,8 @@ public final class SqlCodeUncheckedRule implements Rule {
             }
             EmbeddedBlock block = model.embeddedBlocks().stream()
                     .filter(candidate -> candidate.kind() == EmbeddedBlockKind.SQL)
-                    .filter(candidate -> candidate.range().end().line() == line)
+                    .filter(candidate -> candidate.range().end().line() == line
+                            && candidate.range().end().file().equals(file))
                     .filter(candidate -> {
                         String keyword = leadingSqlKeyword(candidate.text());
                         return isDataChangeDml(keyword) || isSingleRowRead(keyword, candidate.text());

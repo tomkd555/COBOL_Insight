@@ -3,8 +3,8 @@
  *
  * A terminal screen puts the line-number and command areas to the left of the source, so pasting
  * the copy as it stands shifts every column. The user names the columns to keep and the text is cut
- * to them. Columns are counted in display cells, not characters: a full-width character occupies two
- * cells on the terminal, and counting characters would move the fixed-format areas out of place.
+ * to them. Columns are counted in display cells: a full-width character occupies two cells on the
+ * terminal, and a count by characters would move the fixed-format areas out of place.
  *
  * The file is written by main (fs:import-source); this module only prepares the lines and shows
  * where they will land.
@@ -41,7 +41,7 @@ const TAB_WIDTH = 8;
  * text editor on the way can; cutting without expanding would put the columns out of step with the
  * ruler the user read them from.
  */
-function expandTabs(line: string): string {
+export function expandTabs(line: string): string {
   if (!line.includes("\t")) {
     return line;
   }
@@ -94,7 +94,7 @@ export function clipLine(line: string, from: number, to: number): string {
 }
 
 /** Splits on CRLF, CR or LF, dropping the empty element a trailing newline leaves behind. */
-function splitLines(text: string): string[] {
+export function splitLines(text: string): string[] {
   const lines = text.split(/\r\n|\n|\r/);
   if (lines.length > 1 && lines[lines.length - 1] === "") {
     lines.pop();
@@ -128,33 +128,4 @@ export function columnRuler(width: number): ColumnRuler {
     ones += String(column % 10);
   }
   return { tens, ones };
-}
-
-/** Characters a file name cannot hold: the path separators and what Windows reserves. */
-const FORBIDDEN_IN_NAME = /[\\/:*?"<>|]/;
-
-/**
- * Where the import will land, relative to the asset folder, or null when the name cannot be used.
- * This is the same rule main applies before writing; it is repeated here only to show the
- * destination and to keep the button from offering a save that would be refused.
- */
-export function importRelPath(destDir: string, fileName: string): string | null {
-  const name = fileName.trim();
-  if (
-    name === "" ||
-    FORBIDDEN_IN_NAME.test(name) ||
-    name.startsWith(".") ||
-    /[. ]$/.test(name) ||
-    Array.from(name).some((char) => (char.codePointAt(0) ?? 0) < 0x20)
-  ) {
-    return null;
-  }
-  const segments = destDir
-    .split(/[\\/]/)
-    .map((segment) => segment.trim())
-    .filter((segment) => segment !== "");
-  if (segments.some((segment) => segment === "." || segment === "..")) {
-    return null;
-  }
-  return [...segments, name].join("/");
 }

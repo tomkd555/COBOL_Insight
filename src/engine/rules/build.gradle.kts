@@ -4,8 +4,9 @@ plugins {
 
 dependencies {
     implementation(project(":engine:core"))
+    // CfgBuilder.canCompleteNormally: the one judgment of whether a procedure falls through.
+    implementation(project(":engine:analysis"))
     testImplementation(project(":engine:cobol-frontend"))
-    testImplementation(project(":engine:analysis"))
     testImplementation(project(":engine:bms-frontend"))
     testImplementation(project(":engine:sql-frontend"))
     testImplementation("com.networknt:json-schema-validator:3.0.6")

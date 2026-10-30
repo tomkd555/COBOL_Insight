@@ -49,9 +49,12 @@ describe("readLineMap", () => {
 });
 
 describe("generatedLanguage", () => {
-  it("reads the language off the extension and rejects anything else", () => {
+  it("returns the language from the extension", () => {
     expect(generatedLanguage("a.py")).toBe("python");
     expect(generatedLanguage("A.JAVA")).toBe("java");
+  });
+
+  it("returns null for an unknown extension", () => {
     expect(generatedLanguage("runtime.txt")).toBeNull();
   });
 });

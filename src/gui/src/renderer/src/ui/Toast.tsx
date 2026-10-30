@@ -19,7 +19,7 @@ export interface ToastProps {
 }
 
 /**
- * The transient notifications. They are announced politely rather than assertively, so a message
+ * The transient notifications. They are announced politely, so a message
  * does not interrupt what a screen reader is already saying, and each can also be dismissed by hand
  * because an automatic dismissal alone leaves nothing for a user who needs longer to read.
  */

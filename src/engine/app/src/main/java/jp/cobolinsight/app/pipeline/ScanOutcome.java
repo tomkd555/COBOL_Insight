@@ -140,8 +140,11 @@ public record ScanOutcome(Summary summary, CallGraph callGraph, List<Finding> li
                     for (ExpandedCopyLine line : expansion.lines()) {
                         writer.beginObject()
                                 .name("copybookLine").value(line.copybookLine())
-                                .name("text").value(line.text())
-                                .endObject();
+                                .name("text").value(line.text());
+                        if (line.copybookPath().isPresent()) {
+                            writer.name("copybookPath").value(line.copybookPath().orElseThrow());
+                        }
+                        writer.endObject();
                     }
                     writer.endArray().endObject();
                 }

@@ -4,7 +4,7 @@ import type { RuleCatalog, RuleCatalogEntry } from "./ipc";
  * Converts the engine's `rules --json` output into the catalog the screens read. This is the only
  * conversion point: rule names, categories and prose are never authored in the GUI.
  *
- * Missing fields are filled with defaults rather than dropping the entry, so a GUI newer than the
+ * Missing fields are filled with defaults and the entry is kept, so a GUI newer than the
  * engine still renders the list. Only an entry without an id is discarded, because nothing can
  * address it.
  */

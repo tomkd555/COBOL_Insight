@@ -2,7 +2,7 @@
  * Where the screens put the directories the engine writes into (pure, independent of React).
  *
  * Main resolves the project file's location and the renderer derives the rest from it, so every
- * scratch directory sits beside the project file rather than in whatever the engine's working
+ * scratch directory sits beside the project file, wherever the engine's working
  * directory happens to be. The one exception is the fix output directory, which the settings screen
  * lets a user point somewhere they collect results from.
  */

@@ -4,8 +4,8 @@
  * COBOL's areas are byte columns, so a line holding double-byte characters has no fixed relation
  * between its character count and its column positions. The engine's `decode` reports the boundaries
  * of every line and is authoritative both when a file is opened and when it is saved; this module
- * recomputes them locally while the text is being edited, where asking the engine after every
- * keystroke is not an option.
+ * recomputes them locally while the text is being edited, where the engine cannot be asked after
+ * every keystroke.
  *
  * The codepage vocabulary itself lives in shared/codepage; this module only maps a name onto the
  * byte-width rule it implies.
@@ -21,6 +21,35 @@ export const AREA_COLUMNS: readonly [number, number, number, number] = [7, 8, 12
 
 /** The first byte column past the identification area. Nothing beyond it belongs to the record. */
 export const OVERFLOW_COLUMN = 81;
+
+/** The columns of a fixed-format record. */
+export const RECORD_COLUMNS = OVERFLOW_COLUMN - 1;
+
+/** The columns of the sequence area, the ones ahead of the indicator. */
+export const SEQUENCE_COLUMNS = AREA_COLUMNS[0] - 1;
+
+/**
+ * The character offsets at which the indicator, area A, area B and the identification area start in
+ * a line of single-byte characters.
+ */
+export const FIXED_OFFSETS: readonly [number, number, number, number] = [
+  AREA_COLUMNS[0] - 1,
+  AREA_COLUMNS[1] - 1,
+  AREA_COLUMNS[2] - 1,
+  AREA_COLUMNS[3] - 1,
+];
+
+/**
+ * The scale drawn above the code, one character per column of the record: a digit at every tenth
+ * column, a plus sign at every fifth between them (`----+----1----+----2` and on to 80).
+ */
+export const COLS_LINE: string = Array.from({ length: RECORD_COLUMNS }, (_, index) => {
+  const column = index + 1;
+  return column % 10 === 0 ? String((column / 10) % 10) : column % 5 === 0 ? "+" : "-";
+}).join("");
+
+/** The columns of the fixed-format rulers: the end of the sequence area, of the indicator, of area A, of the body, and of the record. */
+export const RULER_COLUMNS: readonly number[] = [...FIXED_OFFSETS, RECORD_COLUMNS];
 
 /** The value `decode` uses for a column the line is too short to reach. */
 export const UNREACHABLE = -1;
@@ -73,8 +102,8 @@ function charBytes(char: string, codepage: EditorCodepage): number {
  * Walks the line, calling `visit` with the one-based byte column each character starts at and the
  * character's UTF-16 offset. Returns the line's total byte length.
  *
- * EBCDIC's shift-out and shift-in bytes are not part of any character: one is spent entering a
- * double-byte run and one leaving it, so they are added between characters rather than to them.
+ * EBCDIC's shift-out and shift-in bytes sit between characters: one is spent entering a double-byte
+ * run and one leaving it, so they are added between characters.
  */
 function walk(
   line: string,
@@ -117,7 +146,7 @@ export function byteLengthOf(line: string, codepage: EditorCodepage): number {
  * A column that falls inside a double-byte character does not split it: the boundary moves on to the
  * next character, so an area never starts half way through one. Where every character starts before
  * the column, the answer is the position one past the last character — which is what makes an
- * exactly 72-byte line report the start of its empty identification area rather than nothing at all.
+ * exactly 72-byte line report the start of its empty identification area.
  * That is only reachable up to the column the line break itself occupies, since `decode` counts the
  * break in a line's byte length; past that the column does not exist.
  */
@@ -180,7 +209,7 @@ const INDICATOR_CLASS: Readonly<Record<string, string>> = {
 /**
  * The area decorations for one document.
  *
- * `boundaries` comes from `decode` while the text is untouched and from {@link decodedLinesOf} once
+ * `boundaries` comes from `decode` while the text is untouched and from {@link boundariesOf} once
  * it has been edited; either way this function only turns offsets into ranges. The overflow area
  * (past byte column 80) has no boundary of its own in the engine's result and is computed here.
  */

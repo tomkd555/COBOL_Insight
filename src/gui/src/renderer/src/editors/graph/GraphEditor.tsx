@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import type { GraphData } from "../../../../shared/ipc";
 import { api, errorMessage } from "../../api";
 import { text } from "../../i18n/text";
-import { artifactItems, useProject } from "../../state/projectStore";
+import { artifactItems, engineBusy, structureState, useProject } from "../../state/projectStore";
 import { sourceTab, useWorkbenchDispatch } from "../../state/workbenchStore";
 import {
   DEPTH_LIMITS,
@@ -22,6 +22,7 @@ import {
 } from "../../model/graphLayout";
 import { useResolvedTheme } from "../../state/useTheme";
 import { nodeDetail } from "../../model/graphDetail";
+import { rowPathTo } from "../../model/paragraphTrace";
 import { buildTrace, flattenTrace, initialExpanded, type TraceNode } from "../../model/traceTree";
 import { GraphCanvas, type GraphCanvasHandle } from "./GraphCanvas";
 import { GraphDetailPane, NodeSwatch } from "./GraphDetailPane";
@@ -31,7 +32,8 @@ import { TraceTree } from "./TraceTree";
 type GraphState =
   | { readonly status: "idle" }
   | { readonly status: "loading" }
-  | { readonly status: "ready"; readonly data: GraphData }
+  /** `reading` while the graph is read again; the last drawing and tree stay meanwhile. */
+  | { readonly status: "ready"; readonly data: GraphData; readonly reading: boolean }
   | { readonly status: "error"; readonly message: string };
 
 export interface GraphEditorProps {
@@ -40,6 +42,20 @@ export interface GraphEditorProps {
 }
 
 const EMPTY_GRAPH: GraphData = { nodes: [], edges: [], paragraphs: [], paragraphEdges: [] };
+
+/** The rows from a root down to the row of that id; empty when the tree holds no such row. */
+function pathToRow(nodes: readonly TraceNode[], rowId: string): TraceNode[] {
+  for (const node of nodes) {
+    if (node.id === rowId) {
+      return [node];
+    }
+    const below = pathToRow(node.children, rowId);
+    if (below.length > 0) {
+      return [node, ...below];
+    }
+  }
+  return [];
+}
 
 /**
  * The call-graph editor: the execution-order tree on the left, the drawing in the middle and the
@@ -61,6 +77,9 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [layoutRunning, setLayoutRunning] = useState(false);
+  /** Counts the selections made outside the tree, so the tree moves its Tab stop for each one. */
+  const [outsideSelections, setOutsideSelections] = useState(0);
+  const appliedFocusRef = useRef<string | null>(null);
   // Typing moves this at once; the filter (and the walk it triggers) follows 150ms later, so a fast
   // typist does not re-walk the graph on every keystroke.
   const [searchInput, setSearchInput] = useState(INITIAL_GRAPH_FILTER.search);
@@ -70,18 +89,29 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
   // The project file holds every folder ever scanned, so the graph is read for this one alone; and
   // it is read again after each run, which is when the folder's own graph has changed.
   const runId = project.runId;
+  // A scan rewrites the project file, so the read waits for a run in progress and for the scan that
+  // follows a save; the graph on screen stays until then.
+  const waiting = engineBusy(project);
+  // The drawing comes from the last scan, so it says when a write is still to be read into it.
+  const structure = structureState(project);
   useEffect(() => {
     if (dbPath === null || inputDir === null) {
       setState({ status: "idle" });
       return;
     }
+    if (waiting) {
+      return;
+    }
     let cancelled = false;
-    setState({ status: "loading" });
+    // A graph on screen stays while it is read again, so the reader's zoom, pan and scroll survive.
+    setState((current) =>
+      current.status === "ready" ? { ...current, reading: true } : { status: "loading" },
+    );
     api()
       .readGraph(dbPath, inputDir)
       .then((data) => {
         if (!cancelled) {
-          setState({ status: "ready", data });
+          setState({ status: "ready", data, reading: false });
         }
       })
       .catch((error: unknown) => {
@@ -92,14 +122,15 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
     return () => {
       cancelled = true;
     };
-  }, [dbPath, inputDir, runId]);
+  }, [dbPath, inputDir, runId, waiting]);
 
   const data = state.status === "ready" ? state.data : EMPTY_GRAPH;
   const inventory = artifactItems(project.inventory);
 
-  // The tab can be opened on a node named elsewhere — the program of a problems row, say.
+  // The tab can be opened on a node named elsewhere — the program of a problems row, say. The label
+  // is applied once: a graph read again leaves the reader's own selection and filter as they are.
   useEffect(() => {
-    if (focusLabel === null || state.status !== "ready") {
+    if (focusLabel === null || state.status !== "ready" || appliedFocusRef.current === focusLabel) {
       return;
     }
     const target = focusLabel.toUpperCase();
@@ -110,6 +141,8 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
       const id = String(node.id);
       setFilter((current) => ({ ...current, focusId: id }));
       setSelectedNodeId(id);
+      appliedFocusRef.current = focusLabel;
+      setOutsideSelections((count) => count + 1);
     }
   }, [focusLabel, data, state.status]);
 
@@ -121,11 +154,39 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
   }, [searchInput]);
 
   const roots = useMemo(() => buildTrace(data, inventory), [data, inventory]);
+  // A tree read again keeps the rows the reader opened or closed; rows new to it start as a fresh
+  // tree would.
   useEffect(() => {
-    setExpanded(initialExpanded(roots));
+    setExpanded((current) => ({ ...initialExpanded(roots), ...current }));
   }, [roots]);
 
   const rows = useMemo(() => flattenTrace(roots, expanded), [roots, expanded]);
+
+  // The tree follows a selection it did not make itself, such as the node the tab was opened on: the
+  // rows above the node's first row are opened and that row is selected.
+  const selectedRowRef = useRef(selectedRowId);
+  selectedRowRef.current = selectedRowId;
+  useEffect(() => {
+    if (selectedNodeId === null) {
+      return;
+    }
+    // The row already selected stays where it stands for the node; the rows above it are opened all
+    // the same, since the reader may have closed one of them.
+    const current = selectedRowRef.current;
+    const held = current === null ? [] : pathToRow(roots, current);
+    const rowPath =
+      held[held.length - 1]?.graphId === selectedNodeId
+        ? held.map((node) => node.id)
+        : rowPathTo(roots, selectedNodeId);
+    if (rowPath.length === 0) {
+      return;
+    }
+    setExpanded((open) => ({
+      ...open,
+      ...Object.fromEntries(rowPath.slice(0, -1).map((rowId) => [rowId, true])),
+    }));
+    setSelectedRowId(rowPath[rowPath.length - 1]);
+  }, [selectedNodeId, roots]);
   const graphIndex = useMemo(() => indexGraph(data), [data]);
   const visibleIds = useMemo(() => visibleNodeIds(graphIndex, filter), [graphIndex, filter]);
   const elements = useMemo(() => buildGraphElements(data, visibleIds), [data, visibleIds]);
@@ -169,7 +230,15 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
   /** A node on the canvas was tapped: move the tree's selection to the row that stands for it. */
   const selectGraphNode = (id: string): void => {
     setSelectedNodeId(id);
-    setSelectedRowId(rows.find((row) => row.node.graphId === id)?.node.id ?? null);
+    setOutsideSelections((count) => count + 1);
+    // A row already in view is taken; one under a closed row has the rows above it opened first.
+    const visible = rows.find((row) => row.node.graphId === id);
+    const rowPath = visible === undefined ? rowPathTo(roots, id) : [visible.node.id];
+    setExpanded((current) => ({
+      ...current,
+      ...Object.fromEntries(rowPath.slice(0, -1).map((rowId) => [rowId, true])),
+    }));
+    setSelectedRowId(rowPath[rowPath.length - 1] ?? null);
   };
 
   if (state.status === "idle") {
@@ -244,7 +313,7 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
         <span className="ci-graph__group">
           <button
             type="button"
-            className="ci-button ci-button--quiet"
+            className="ci-button ci-button--quiet ci-button--icon"
             aria-label={text.graph.zoomOut}
             title={text.graph.zoomOut}
             onClick={() => canvasRef.current?.zoomBy(1 / 1.2)}
@@ -254,7 +323,7 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
           </button>
           <button
             type="button"
-            className="ci-button ci-button--quiet"
+            className="ci-button ci-button--quiet ci-button--icon"
             aria-label={text.graph.zoomIn}
             title={text.graph.zoomIn}
             onClick={() => canvasRef.current?.zoomBy(1.2)}
@@ -299,16 +368,27 @@ export function GraphEditor({ focusLabel }: GraphEditorProps): ReactElement {
         })}
       </div>
 
+      {structure === null ? null : (
+        <p className="ci-pane__note" role="status" data-testid="graph-structure">
+          {structure === "reading" ? text.graph.structureReading : text.graph.structureUnread}
+        </p>
+      )}
+
       <div className="ci-graph__body">
         <TraceTree
           rows={rows}
           selectedId={selectedRowId}
+          selectionKey={outsideSelections}
           onSelect={selectTraceNode}
           onToggle={(id) => setExpanded({ ...expanded, [id]: expanded[id] !== true })}
           onOpen={openAsset}
         />
         <div className="ci-graph__stage">
-          {layoutRunning ? (
+          {state.reading ? (
+            <p className="ci-graph__laying" data-testid="graph-rereading">
+              {text.graph.rereading}
+            </p>
+          ) : layoutRunning ? (
             <p className="ci-graph__laying" data-testid="graph-laying">
               {text.graph.laying}
             </p>

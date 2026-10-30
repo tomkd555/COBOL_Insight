@@ -5,6 +5,7 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.GoToStatement;
 import jp.cobolinsight.core.semantic.Procedure;
+import jp.cobolinsight.core.semantic.ProcedureNames;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
@@ -70,24 +71,32 @@ public final class GoToStructureDeviationRule implements Rule {
                     }
                 });
             }
+            ProcedureNames names = new ProcedureNames(model.procedures());
             for (GoToStatement goTo : gotos) {
                 Procedure holder = CfgSupport.containingProcedure(model, goTo);
-                if (holder == null || holder.sectionName().isEmpty()) {
+                // A section's own leading statements lie in the section, as its paragraphs do.
+                Optional<String> holderSection =
+                        holder == null ? Optional.empty() : ProcedureNames.sectionOf(holder);
+                if (holderSection.isEmpty()) {
                     continue;
                 }
-                String fromSection = CfgSupport.upper(holder.sectionName().get());
-                for (String rawTarget : goTo.targets()) {
-                    Optional<String> targetSection = sectionOf(model, rawTarget);
+                String fromSection = CfgSupport.upper(holderSection.get());
+                for (int t = 0; t < goTo.targets().size(); t++) {
+                    String rawTarget = goTo.targets().get(t);
+                    int target = names.indexOf(rawTarget, goTo.targetSections().get(t),
+                            holderSection);
+                    Optional<String> targetSection = target < 0 ? Optional.empty()
+                            : ProcedureNames.sectionOf(model.procedures().get(target));
                     if (targetSection.isEmpty()) {
                         continue;
                     }
                     if (!CfgSupport.upper(targetSection.get()).equals(fromSection)) {
                         findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                                 "GO TO " + rawTarget + " が節をまたいでいます。節 "
-                                        + holder.sectionName().get() + " から節 "
+                                        + holderSection.get() + " から節 "
                                         + targetSection.get()
                                         + " へ制御が移り、流れを節の内側だけでは追えません。",
-                                new SourcePosition(model.sourceFile(),
+                                new SourcePosition(goTo.range().start().file(),
                                         goTo.range().start().line(), 1,
                                         SourcePosition.UNKNOWN_BYTE_OFFSET)));
                         break;
@@ -96,15 +105,5 @@ public final class GoToStructureDeviationRule implements Rule {
             }
         }
         return findings;
-    }
-
-    private static Optional<String> sectionOf(CobolSemanticModel model, String paragraphName) {
-        String wanted = CfgSupport.upper(paragraphName);
-        for (Procedure procedure : model.procedures()) {
-            if (CfgSupport.upper(procedure.name()).equals(wanted)) {
-                return procedure.sectionName();
-            }
-        }
-        return Optional.empty();
     }
 }

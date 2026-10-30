@@ -40,6 +40,7 @@ function toLine(value: unknown): CopyExpansionLine {
   return {
     copybookLine: asNumber(prop(value, "copybookLine")) ?? 0,
     text: asString(prop(value, "text")) ?? "",
+    copybookPath: asString(prop(value, "copybookPath")) ?? null,
   };
 }
 

@@ -16,6 +16,7 @@ import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
 import jp.cobolinsight.rules.SourceTextIndex;
+import jp.cobolinsight.rules.cfg.CfgSupport;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -110,7 +111,7 @@ public final class NumericClassUncheckedMoveRule implements Rule {
         findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                 hit.sender() + " は NUMERIC 検査を経ずに " + hit.receiver() + " へ転記されます。"
                         + "数字として不正な値のまま処理が進み得ます。",
-                new SourcePosition(model.sourceFile(), line, 1, SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                CfgSupport.at(simple.range(), line)));
     }
 
     private record Hit(String sender, String receiver) {

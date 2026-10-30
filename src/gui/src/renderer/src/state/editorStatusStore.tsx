@@ -26,7 +26,7 @@ export interface EditorStatus {
   readonly column: number;
   /** The codepage the engine decoded the file in. */
   readonly codepage: string;
-  /** Whether that codepage was detected rather than given. */
+  /** Whether that codepage was detected; false when it was given. */
   readonly detected: boolean;
 }
 

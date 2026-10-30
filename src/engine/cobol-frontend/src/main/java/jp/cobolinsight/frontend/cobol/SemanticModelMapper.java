@@ -23,7 +23,9 @@ import jp.cobolinsight.core.semantic.StatementBlock;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.source.SourceRange;
 import org.eclipse.lsp.cobol.common.model.Locality;
+import org.eclipse.lsp.cobol.common.model.ProcedureName;
 import org.eclipse.lsp.cobol.common.model.tree.CodeBlockUsageNode;
+import org.eclipse.lsp.cobol.common.model.tree.CopyNode;
 import org.eclipse.lsp.cobol.common.model.tree.DivisionNode;
 import org.eclipse.lsp.cobol.common.model.tree.EvaluateNode;
 import org.eclipse.lsp.cobol.common.model.tree.EvaluateWhenNode;
@@ -38,8 +40,11 @@ import org.eclipse.lsp.cobol.common.model.tree.LiteralNode;
 import org.eclipse.lsp.cobol.common.model.tree.Node;
 import org.eclipse.lsp.cobol.common.model.tree.OpenStatementNode;
 import org.eclipse.lsp.cobol.common.model.tree.ParagraphNode;
+import org.eclipse.lsp.cobol.common.model.tree.ParagraphsNode;
 import org.eclipse.lsp.cobol.common.model.tree.PerformNode;
 import org.eclipse.lsp.cobol.common.model.tree.PerformUntilNode;
+import org.eclipse.lsp.cobol.common.model.tree.ProcedureDivisionBodyNode;
+import org.eclipse.lsp.cobol.common.model.tree.ProcedureDivisionNode;
 import org.eclipse.lsp.cobol.common.model.tree.ProcedureSectionNode;
 import org.eclipse.lsp.cobol.common.model.tree.ProgramNode;
 import org.eclipse.lsp.cobol.common.model.tree.SentenceNode;
@@ -66,8 +71,11 @@ import org.eclipse.lsp.cobol.implicitDialects.cics.nodes.ExecCicsReturnNode;
 import org.eclipse.lsp.cobol.implicitDialects.sql.node.ExecSqlNode;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -104,6 +112,12 @@ final class SemanticModelMapper {
     private final Map<String, Set<FileAccess>> fileAccesses =
             new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     private String programId;
+    /** Each EXEC block a COPY brings into the PROCEDURE DIVISION, to that COPY statement. */
+    private final Map<Node, CopyNode> copyOfBlock = new IdentityHashMap<>();
+    /** Each COPY statement of the PROCEDURE DIVISION, to its EXEC blocks in copybook order. */
+    private final Map<CopyNode, List<Node>> blocksOfCopy = new IdentityHashMap<>();
+    /** The COPY statements Che4z hangs at procedure level, by the procedure they stand in. */
+    private final Map<Node, List<CopyNode>> copiesOwnedBy = new IdentityHashMap<>();
 
     SemanticModelMapper(String sourceFilePath, SourceTexts texts, CstCapture cstCapture) {
         this.sourceFilePath = sourceFilePath;
@@ -378,6 +392,7 @@ final class SemanticModelMapper {
     static final String IMPLICIT_PROCEDURE_NAME = "PROCEDURE DIVISION";
 
     private List<Procedure> mapProcedureDivision(ProgramNode program) {
+        assignCopiedBlocks(program);
         List<Procedure> procedures = new ArrayList<>();
         collectProcedures(program, procedures, Optional.empty());
         return procedures;
@@ -386,14 +401,19 @@ final class SemanticModelMapper {
     private void collectProcedures(Node parent, List<Procedure> out, Optional<String> section) {
         List<Node> sentences = parent.getChildren().stream()
                 .filter(SentenceNode.class::isInstance).toList();
-        if (!sentences.isEmpty() && !(parent instanceof ProcedureSectionNode)) {
+        boolean ownBlocks = parent instanceof ProcedureDivisionBodyNode
+                && (parent.getChildren().stream().anyMatch(SemanticModelMapper::isExecBlock)
+                        || copiesOwnedBy.getOrDefault(parent, List.of()).stream()
+                                .anyMatch(blocksOfCopy::containsKey));
+        if ((!sentences.isEmpty() || ownBlocks) && !(parent instanceof ProcedureSectionNode)) {
             // Sentences that hang off the PROCEDURE DIVISION itself, before any paragraph or
             // section header, belong to no procedure. Map them as one implicit procedure, or the
             // semantic model, the CFG and data flow never see them. A section's own sentences are
             // already mapped with the section, so a section is left out here.
             out.add(new Procedure(IMPLICIT_PROCEDURE_NAME, ProcedureKind.PARAGRAPH, section,
                     mapStatements(parent, IMPLICIT_PROCEDURE_NAME),
-                    sentenceExtent(parent, sentences)));
+                    sentences.isEmpty() ? rangeOf(parent.getLocality())
+                            : sentenceExtent(parent, sentences)));
         }
         for (Node child : parent.getChildren()) {
             if (child instanceof ProcedureSectionNode sectionNode) {
@@ -416,17 +436,217 @@ final class SemanticModelMapper {
     }
 
     private List<Statement> mapStatements(Node block, String procedureName) {
-        List<Statement> statements = new ArrayList<>();
+        List<Node> children = new ArrayList<>();
         for (Node child : block.getChildren()) {
-            if (child instanceof SentenceNode sentence) {
-                for (Node statementNode : sentence.getChildren()) {
-                    if (isStatementNode(statementNode)) {
-                        statements.add(mapStatement(statementNode, procedureName));
-                    }
-                }
+            if (child instanceof SentenceNode) {
+                children.addAll(child.getChildren());
+            } else if (isExecBlock(child)) {
+                children.add(child);
+            }
+        }
+        children.addAll(copiesOwnedBy.getOrDefault(block, List.of()));
+        List<Statement> statements = new ArrayList<>();
+        for (Node statementNode : inWrittenOrder(children)) {
+            if (isStatementNode(statementNode)) {
+                addStatement(statementNode, procedureName, statements);
             }
         }
         return statements;
+    }
+
+    /**
+     * Pairs each EXEC block a COPY brings into the PROCEDURE DIVISION with that COPY statement.
+     * Che4z's dialects add such a block to the tree after the parse, at the first place its
+     * copybook position maps to: the last child of a sentence, under a CopyNode, a direct child of
+     * the paragraph, or nested inside an earlier block from the same copybook line. The blocks of
+     * every inclusion of one copybook gather at one such place, which may lie in another paragraph
+     * or branch. Each inclusion still brings one block per copybook position, so the n-th block
+     * at a copybook position belongs to the n-th COPY of that copybook in written order. A COPY
+     * held by a node other than the statement containers this mapper orders, and a block left over
+     * once each COPY of its copybook has one, stay where Che4z put them; so does a block inside a
+     * paragraph a copybook declares.
+     *
+     * <p>A COPY written among a paragraph's sentences can hang off the PROCEDURE DIVISION or its
+     * section in place of the paragraph, as the last COPY of the program does. A COPY Che4z hangs
+     * at procedure level belongs to the procedure whose header comes last before it.
+     */
+    private void assignCopiedBlocks(ProgramNode program) {
+        List<Node> blocks = new ArrayList<>();
+        List<CopyNode> copies = new ArrayList<>();
+        List<Node> headers = new ArrayList<>();
+        collectCopied(program, false, blocks, copies, headers);
+        copies.sort(Comparator.comparingLong(SemanticModelMapper::key));
+        headers.sort(Comparator.comparingLong(SemanticModelMapper::key));
+        for (CopyNode copy : copies) {
+            if (isProcedureLevel(copy.getParent())) {
+                Node owner = null;
+                for (Node header : headers) {
+                    if (key(header) <= key(copy)) {
+                        owner = header;
+                    }
+                }
+                if (owner == null) {
+                    owner = copy.getParent();
+                    while (owner != null && !(owner instanceof ProcedureDivisionBodyNode)) {
+                        owner = owner.getParent();
+                    }
+                }
+                if (owner != null) {
+                    copiesOwnedBy.computeIfAbsent(owner, k -> new ArrayList<>()).add(copy);
+                }
+            }
+        }
+        Map<String, List<CopyNode>> copiesOf = new HashMap<>();
+        for (CopyNode copy : copies) {
+            copiesOf.computeIfAbsent(fileOf(copy.getUri()), k -> new ArrayList<>()).add(copy);
+        }
+        Map<String, List<Node>> atPosition = new LinkedHashMap<>();
+        for (Node block : blocks) {
+            atPosition.computeIfAbsent(fileOf(block.getLocality().getUri()) + "\n" + key(block),
+                    k -> new ArrayList<>()).add(block);
+        }
+        for (List<Node> same : atPosition.values()) {
+            List<CopyNode> inclusions = copiesOf.getOrDefault(
+                    fileOf(same.get(0).getLocality().getUri()), List.of());
+            for (int i = 0; i < Math.min(same.size(), inclusions.size()); i++) {
+                copyOfBlock.put(same.get(i), inclusions.get(i));
+                blocksOfCopy.computeIfAbsent(inclusions.get(i), k -> new ArrayList<>())
+                        .add(same.get(i));
+            }
+        }
+        blocksOfCopy.values().forEach(list -> list.sort(Comparator.comparingLong(
+                SemanticModelMapper::key)));
+    }
+
+    /**
+     * The copied EXEC blocks, the program's COPY statements and the procedure headers the program
+     * file writes, of the PROCEDURE DIVISION under {@code node}. Nested programs, the arguments of
+     * a CALL and the paragraphs and sections a copybook declares are left out.
+     */
+    private void collectCopied(Node node, boolean inProcedure, List<Node> blocks,
+            List<CopyNode> copies, List<Node> headers) {
+        for (Node child : node.getChildren()) {
+            if (child instanceof ProgramNode || child instanceof SubroutineNode) {
+                continue;
+            }
+            boolean in = inProcedure || child instanceof ProcedureDivisionNode;
+            if (child instanceof ParagraphNode || child instanceof ProcedureSectionNode) {
+                if (!inProgramFile(child.getLocality())) {
+                    continue;
+                }
+                headers.add(child);
+            }
+            if (in && child instanceof CopyNode copy && copy.getUri() != null
+                    && inProgramFile(copy.getLocality())
+                    && (isContainer(copy.getParent()) || isProcedureLevel(copy.getParent()))) {
+                copies.add(copy);
+            } else if (in && isExecBlock(child) && child.getLocality() != null
+                    && child.getLocality().getRange() != null
+                    && !inProgramFile(child.getLocality())) {
+                blocks.add(child);
+            }
+            collectCopied(child, in, blocks, copies, headers);
+        }
+    }
+
+    /** Whether the children of {@code node} below procedure level go through {@link #inWrittenOrder}. */
+    private static boolean isContainer(Node node) {
+        return node instanceof SentenceNode
+                || node instanceof IfNode || node instanceof IfElseNode
+                || node instanceof EvaluateNode || node instanceof EvaluateWhenOtherNode
+                || node instanceof PerformNode perform && perform.isInline();
+    }
+
+    /** Whether a COPY hung off {@code node} stands among some procedure's sentences. */
+    private static boolean isProcedureLevel(Node node) {
+        return node instanceof ParagraphNode || node instanceof ProcedureSectionNode
+                || node instanceof ProcedureDivisionBodyNode || node instanceof ParagraphsNode;
+    }
+
+    private List<Node> inWrittenOrder(Node container) {
+        return inWrittenOrder(container.getChildren());
+    }
+
+    /**
+     * {@code children} in the order the program writes them. A node of the program file stands
+     * at its own position. The EXEC blocks paired with a COPY stand at that COPY statement in
+     * copybook order, and the CopyNode itself drops out; a block paired with a COPY elsewhere
+     * drops out here. A statement Che4z expanded from a copybook in line stands at the first COPY
+     * here that names its copybook, comes after the program-file node before it and has blocks
+     * placed at it, at its copybook position: it keeps its order among that COPY's blocks. Any
+     * other node keeps its place after the node Che4z put before it, and an unpaired block Che4z
+     * nested inside a block follows that block.
+     */
+    private List<Node> inWrittenOrder(List<Node> children) {
+        List<Node> nodes = new ArrayList<>();
+        List<long[]> keys = new ArrayList<>();
+        List<CopyNode> copiesHere = children.stream().filter(CopyNode.class::isInstance)
+                .map(CopyNode.class::cast).filter(blocksOfCopy::containsKey).toList();
+        long[] last = {-1, 0};
+        long[] previous = last;
+        for (Node child : children) {
+            if (child instanceof CopyNode copy) {
+                for (Node block : blocksOfCopy.getOrDefault(copy, List.of())) {
+                    long[] at = {key(copy), key(block)};
+                    for (Node node : withUnpairedNested(block)) {
+                        nodes.add(node);
+                        keys.add(at);
+                    }
+                }
+                continue;
+            }
+            if (copyOfBlock.containsKey(child)) {
+                continue;
+            }
+            long[] at = previous;
+            if (inProgramFile(child.getLocality())) {
+                last = new long[] {key(child), 0};
+                at = last;
+            } else if (!isExecBlock(child) && child.getLocality() != null) {
+                String copybook = fileOf(child.getLocality().getUri());
+                long after = last[0];
+                at = copiesHere.stream()
+                        .filter(copy -> fileOf(copy.getUri()).equals(copybook) && key(copy) > after)
+                        .mapToLong(SemanticModelMapper::key).min()
+                        .stream().mapToObj(copy -> new long[] {copy, key(child)})
+                        .findFirst().orElse(previous);
+            }
+            previous = at;
+            for (Node node : isExecBlock(child) ? withUnpairedNested(child) : List.of(child)) {
+                nodes.add(node);
+                keys.add(at);
+            }
+        }
+        List<Integer> order = new ArrayList<>();
+        for (int i = 0; i < nodes.size(); i++) {
+            order.add(i);
+        }
+        order.sort(Comparator.<Integer>comparingLong(i -> keys.get(i)[0])
+                .thenComparingLong(i -> keys.get(i)[1]));
+        return order.stream().map(nodes::get).toList();
+    }
+
+    /** {@code block} followed by the EXEC blocks nested inside it that no COPY was paired with. */
+    private List<Node> withUnpairedNested(Node block) {
+        List<Node> out = new ArrayList<>(List.of(block));
+        block.getDepthFirstStream().skip(1).filter(SemanticModelMapper::isExecBlock)
+                .filter(nested -> !copyOfBlock.containsKey(nested)).forEach(out::add);
+        return out;
+    }
+
+    /** A node's start as one number that orders positions within one file. */
+    private static long key(Node node) {
+        Locality locality = node.getLocality();
+        if (locality == null || locality.getRange() == null) {
+            return -1;
+        }
+        org.eclipse.lsp4j.Position start = locality.getRange().getStart();
+        return start.getLine() * 1_000_000L + start.getCharacter();
+    }
+
+    private boolean inProgramFile(Locality locality) {
+        return locality != null && locality.getRange() != null
+                && fileOf(locality.getUri()).equals(sourceFilePath);
     }
 
     /**
@@ -444,6 +664,19 @@ final class SemanticModelMapper {
         return new SourceRange(start, end);
     }
 
+    /**
+     * Maps one statement node into {@code out}. A CALL is followed there by the EXEC blocks Che4z
+     * read into its USING list, each as the statement it is.
+     */
+    private void addStatement(Node node, String procedureName, List<Statement> out) {
+        out.add(mapStatement(node, procedureName));
+        if (node instanceof SubroutineNode call) {
+            for (Node block : absorbedExecBlocks(call)) {
+                out.add(mapStatement(block, procedureName));
+            }
+        }
+    }
+
     private Statement mapStatement(Node node, String procedureName) {
         if (node instanceof IfNode ifNode) {
             return mapIf(ifNode, procedureName);
@@ -455,18 +688,19 @@ final class SemanticModelMapper {
             return mapInlinePerform(perform, procedureName);
         }
         if (node instanceof PerformNode perform) {
-            performs.add(new PerformRelation(procedureName, perform.getTarget().getName(),
-                    Optional.ofNullable(perform.getThru()).map(t -> t.getName()),
-                    rangeOf(perform.getLocality())));
+            performs.add(performRelation(procedureName, perform));
             return simple("PERFORM", node);
         }
         if (node instanceof GoToNode goTo) {
-            return new GoToStatement(goTo.getTargets(), Optional.empty(),
-                    rangeOf(goTo.getLocality()));
+            return new GoToStatement(goTo.getTargets(), dependingOn(goTo),
+                    rangeOf(goTo.getLocality()), targetSections(goTo));
         }
         if (node instanceof SubroutineNode call) {
-            mapCall(call);
-            return simple("CALL", node);
+            Locality locality = callLocality(call);
+            mapCall(call, locality);
+            // What an ON EXCEPTION or ON OVERFLOW phrase, or its NOT form, writes.
+            collectNested(call, procedureName, true);
+            return simple("CALL", locality);
         }
         if (node instanceof ExecSqlNode) {
             mapEmbeddedSql(node);
@@ -493,7 +727,7 @@ final class SemanticModelMapper {
             collectSortProcedures(text, node, procedureName);
             collectSortFiles(text);
         }
-        collectNestedPerforms(node, procedureName);
+        collectNested(node, procedureName, false);
         return simple(verb, node);
     }
 
@@ -541,21 +775,71 @@ final class SemanticModelMapper {
     }
 
     /**
-     * Picks up PERFORM relations that sit inside the conditional clause of a statement that is
-     * otherwise mapped as a flat statement (e.g. READ ... NOT INVALID KEY PERFORM ...,
-     * COMPUTE ... ON SIZE ERROR PERFORM ...). The statement itself is still mapped as a
-     * SimpleStatement; only the relation is recorded. Without this, a paragraph called only from
-     * such a place would look like it is referenced from nowhere.
+     * Picks up what the conditional clause of a statement that is otherwise mapped as a flat
+     * statement writes (e.g. READ ... NOT INVALID KEY PERFORM ..., COMPUTE ... ON SIZE ERROR
+     * PERFORM ..., READ ... AT END EXEC CICS LINK ... END-EXEC): the relation of a PERFORM, the
+     * relation of a CALL, and the block of an EXEC CICS or EXEC SQL. The statement itself is still
+     * mapped as a SimpleStatement; only the relations and blocks are recorded. Without this, a
+     * paragraph or a program called only from such a place would look like it is referenced from
+     * nowhere.
+     *
+     * <p>With {@code ownCall}, {@code node} is a CALL statement, and the EXEC blocks Che4z read
+     * into its USING list are left to {@link #addStatement}, which maps them as statements.
      */
-    private void collectNestedPerforms(Node node, String procedureName) {
+    private void collectNested(Node node, String procedureName, boolean ownCall) {
         for (Node child : node.getChildren()) {
-            if (child instanceof PerformNode perform && !perform.isInline()) {
-                performs.add(new PerformRelation(procedureName, perform.getTarget().getName(),
-                        Optional.ofNullable(perform.getThru()).map(t -> t.getName()),
-                        rangeOf(perform.getLocality())));
+            if (ownCall && holdsExecBlock(child)) {
+                continue;
             }
-            collectNestedPerforms(child, procedureName);
+            if (child instanceof PerformNode perform && !perform.isInline()) {
+                performs.add(performRelation(procedureName, perform));
+            } else if (child instanceof SubroutineNode call) {
+                mapCall(call, callLocality(call));
+            } else if (child instanceof ExecSqlNode) {
+                mapEmbeddedSql(child);
+            } else if (isExecBlock(child)) {
+                mapEmbeddedCics(child);
+            }
+            collectNested(child, procedureName, false);
         }
+    }
+
+    /** The data item a GO TO ... DEPENDING ON names, empty for a GO TO without the phrase. */
+    private static Optional<String> dependingOn(GoToNode goTo) {
+        return goTo.getChildren().stream()
+                .filter(QualifiedReferenceNode.class::isInstance)
+                .flatMap(reference -> reference.getChildren().stream())
+                .filter(VariableUsageNode.class::isInstance)
+                .map(usage -> ((VariableUsageNode) usage).getName())
+                .filter(name -> name != null && !name.isBlank())
+                .findFirst();
+    }
+
+    /** The relation a procedure PERFORM makes, with the section each name is qualified by. */
+    private PerformRelation performRelation(String procedureName, PerformNode perform) {
+        Optional<ProcedureName> thru = Optional.ofNullable(perform.getThru());
+        return new PerformRelation(procedureName, perform.getTarget().getName(),
+                thru.map(ProcedureName::getName), rangeOf(perform.getLocality()),
+                sectionOf(perform.getTarget()), thru.flatMap(SemanticModelMapper::sectionOf));
+    }
+
+    private static Optional<String> sectionOf(ProcedureName name) {
+        return Optional.ofNullable(name.getInSection()).filter(section -> !section.isBlank());
+    }
+
+    /**
+     * The section each target of a GO TO is qualified by. Che4z keeps the qualifier on the usage
+     * node of each target, one per target in the order written; where the two lists do not line
+     * up, every target is read unqualified.
+     */
+    private static List<Optional<String>> targetSections(GoToNode goTo) {
+        List<Optional<String>> sections = goTo.getChildren().stream()
+                .filter(CodeBlockUsageNode.class::isInstance)
+                .map(usage -> Optional.ofNullable(((CodeBlockUsageNode) usage).getOfSection())
+                        .filter(section -> !section.isBlank()))
+                .toList();
+        return sections.size() == goTo.getTargets().size() ? sections
+                : Collections.nCopies(goTo.getTargets().size(), Optional.<String>empty());
     }
 
     private CompoundStatement mapIf(IfNode ifNode, String procedureName) {
@@ -563,16 +847,16 @@ final class SemanticModelMapper {
         List<Statement> thenStatements = new ArrayList<>();
         List<Statement> elseStatements = new ArrayList<>();
         boolean hasElse = false;
-        for (Node child : ifNode.getChildren()) {
+        for (Node child : inWrittenOrder(ifNode)) {
             if (child instanceof IfElseNode elseNode) {
                 hasElse = true;
-                for (Node elseChild : elseNode.getChildren()) {
+                for (Node elseChild : inWrittenOrder(elseNode)) {
                     if (isStatementNode(elseChild)) {
-                        elseStatements.add(mapStatement(elseChild, procedureName));
+                        addStatement(elseChild, procedureName, elseStatements);
                     }
                 }
             } else if (isStatementNode(child)) {
-                thenStatements.add(mapStatement(child, procedureName));
+                addStatement(child, procedureName, thenStatements);
             } else if (thenStatements.isEmpty()) {
                 condition.add(child);
             }
@@ -591,7 +875,7 @@ final class SemanticModelMapper {
         List<StatementBlock> blocks = new ArrayList<>();
         String currentLabel = null;
         List<Statement> currentStatements = new ArrayList<>();
-        for (Node child : evaluateNode.getChildren()) {
+        for (Node child : inWrittenOrder(evaluateNode)) {
             if (child instanceof EvaluateWhenNode when) {
                 if (currentLabel != null) {
                     blocks.add(new StatementBlock(currentLabel, currentStatements));
@@ -604,9 +888,9 @@ final class SemanticModelMapper {
                     currentLabel = null;
                 }
                 List<Statement> otherStatements = new ArrayList<>();
-                for (Node otherChild : other.getChildren()) {
+                for (Node otherChild : inWrittenOrder(other)) {
                     if (isStatementNode(otherChild)) {
-                        otherStatements.add(mapStatement(otherChild, procedureName));
+                        addStatement(otherChild, procedureName, otherStatements);
                     }
                 }
                 blocks.add(new StatementBlock("OTHER", otherStatements));
@@ -616,7 +900,7 @@ final class SemanticModelMapper {
                     // anonymous block instead of discarding it
                     currentLabel = "";
                 }
-                currentStatements.add(mapStatement(child, procedureName));
+                addStatement(child, procedureName, currentStatements);
             } else if (currentLabel == null && blocks.isEmpty()) {
                 selector.add(child);
             }
@@ -639,21 +923,93 @@ final class SemanticModelMapper {
         return text;
     }
 
+    /**
+     * An inline PERFORM as a loop. Its condition is the UNTIL phrase, or for a TIMES loop the
+     * words before the body ({@code 3 TIMES}); a PERFORM with neither runs its body once, and its
+     * condition is empty.
+     */
     private CompoundStatement mapInlinePerform(PerformNode perform, String procedureName) {
         List<Statement> body = new ArrayList<>();
-        String condition = "";
-        for (Node child : perform.getChildren()) {
+        String condition = null;
+        for (Node child : inWrittenOrder(perform)) {
             if (child instanceof PerformUntilNode until) {
                 condition = texts.textOf(until.getLocality()).trim();
             } else if (isStatementNode(child)) {
-                body.add(mapStatement(child, procedureName));
+                addStatement(child, procedureName, body);
             }
+        }
+        if (condition == null) {
+            // Che4z's node starts at the TIMES count, or at the first body statement when the
+            // PERFORM writes no loop phrase.
+            Locality locality = perform.getLocality();
+            org.eclipse.lsp4j.Position end = body.isEmpty() ? null
+                    : new org.eclipse.lsp4j.Position(body.get(0).range().start().line() - 1,
+                            body.get(0).range().start().column() - 1);
+            condition = locality == null || locality.getRange() == null || end == null
+                    || !fileOf(locality.getUri()).equals(body.get(0).range().start().file())
+                    ? "" : NestedBranches.withoutCommentLines(texts.extract(locality.getUri(),
+                            new org.eclipse.lsp4j.Range(locality.getRange().getStart(), end)))
+                            .replaceAll("\\s+", " ").trim();
         }
         return new CompoundStatement(ControlKind.LOOP, condition,
                 List.of(new StatementBlock("", body)), rangeOf(perform.getLocality()));
     }
 
-    private void mapCall(SubroutineNode call) {
+    /**
+     * The EXEC CICS and EXEC SQL blocks Che4z read into the USING list of a CALL. Che4z's grammar
+     * takes the placeholder an EXEC block leaves in the COBOL text as one more literal argument, so
+     * a CALL with no period after it swallows the blocks that follow it. Each block is a statement
+     * of its own, written after the CALL.
+     */
+    private static List<Node> absorbedExecBlocks(SubroutineNode call) {
+        List<Node> blocks = new ArrayList<>();
+        for (Node child : call.getChildren()) {
+            if (holdsExecBlock(child)) {
+                child.getDepthFirstStream().filter(SemanticModelMapper::isExecBlock)
+                        .forEach(blocks::add);
+            }
+        }
+        return blocks;
+    }
+
+    /** Whether a CALL argument is the placeholder of the EXEC blocks Che4z read into it. */
+    private static boolean holdsExecBlock(Node node) {
+        return node instanceof LiteralNode
+                && node.getDepthFirstStream().anyMatch(SemanticModelMapper::isExecBlock);
+    }
+
+    private static boolean isExecBlock(Node node) {
+        return node instanceof ExecSqlNode || node instanceof ExecCicsNode
+                || node instanceof ExecCicsReturnNode || node instanceof ExecCicsHandleNode
+                || node instanceof ExecCicsAbendNode;
+    }
+
+    /**
+     * Where the CALL itself stands: its own locality, ended at its last word before the EXEC blocks
+     * {@link #absorbedExecBlocks} gives back to the statements that follow.
+     */
+    private static Locality callLocality(SubroutineNode call) {
+        Locality locality = call.getLocality();
+        if (locality == null || locality.getRange() == null
+                || absorbedExecBlocks(call).isEmpty()) {
+            return locality;
+        }
+        org.eclipse.lsp4j.Position end = null;
+        for (Node child : call.getChildren()) {
+            Locality own = child.getLocality();
+            if (holdsExecBlock(child) || own == null || own.getRange() == null
+                    || !locality.getUri().equals(own.getUri())) {
+                continue;
+            }
+            if (end == null || compare(own.getRange().getEnd(), end) > 0) {
+                end = own.getRange().getEnd();
+            }
+        }
+        return end == null ? locality : locality.toBuilder()
+                .range(new org.eclipse.lsp4j.Range(locality.getRange().getStart(), end)).build();
+    }
+
+    private void mapCall(SubroutineNode call, Locality locality) {
         SubroutineNameNode nameNode = call.getDepthFirstStream()
                 .filter(SubroutineNameNode.class::isInstance)
                 .map(SubroutineNameNode.class::cast)
@@ -661,7 +1017,7 @@ final class SemanticModelMapper {
         if (nameNode != null && nameNode.getName() != null && !nameNode.getName().isBlank()) {
             // A literal specification becomes a SubroutineNameNode (static CALL)
             calls.add(new CallRelation(programId, CallKind.STATIC, nameNode.getName(),
-                    rangeOf(call.getLocality())));
+                    rangeOf(locality)));
             return;
         }
         // For a variable specification (dynamic CALL), the first variable reference names the target
@@ -673,7 +1029,7 @@ final class SemanticModelMapper {
                 .filter(name -> name != null && !name.isBlank())
                 .findFirst()
                 .ifPresent(target -> calls.add(new CallRelation(programId, CallKind.DYNAMIC,
-                        target, rangeOf(call.getLocality()))));
+                        target, rangeOf(locality))));
     }
 
     private void mapEmbeddedSql(Node node) {
@@ -742,8 +1098,11 @@ final class SemanticModelMapper {
     // ---- Helpers ----
 
     private SimpleStatement simple(String verb, Node node) {
-        String text = texts.textOf(node.getLocality());
-        return new SimpleStatement(verb, text, rangeOf(node.getLocality()));
+        return simple(verb, node.getLocality());
+    }
+
+    private SimpleStatement simple(String verb, Locality locality) {
+        return new SimpleStatement(verb, texts.textOf(locality), rangeOf(locality));
     }
 
     /**
@@ -769,9 +1128,15 @@ final class SemanticModelMapper {
         return "UNKNOWN";
     }
 
-    /** Determines whether a child of a statement container (paragraph, IF branch, etc.) is a target to map as a statement. */
+    /**
+     * Determines whether a child of a statement container (paragraph, IF branch, etc.) is a target
+     * to map as a statement. A COPY statement written after a statement of the same sentence
+     * leaves its CopyNode among the sentence's children; the statements it brings in are mapped
+     * where they stand, and the node itself is none.
+     */
     private static boolean isStatementNode(Node node) {
         return !(node instanceof QualifiedReferenceNode
+                || node instanceof CopyNode
                 || node instanceof VariableUsageNode
                 || node instanceof VariableDefinitionNameNode
                 || node instanceof LiteralNode

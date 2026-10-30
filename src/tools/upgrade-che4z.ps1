@@ -18,13 +18,20 @@ if (-not $JdkHome -or -not (Test-Path (Join-Path $JdkHome "bin/java.exe"))) { th
 if (-not $MavenHome -or -not (Test-Path (Join-Path $MavenHome "bin/mvn.cmd"))) { throw "Pass -MavenHome pointing at Maven 3.9 or later (bin/mvn.cmd not found)." }
 $env:JAVA_HOME = $JdkHome
 $env:PATH = "$JdkHome\bin;$MavenHome\bin;$env:PATH"
+# $ErrorActionPreference stops on a cmdlet's error; a native command's exit code is read here.
+function Assert-Exit([string]$Step) {
+    if ($LASTEXITCODE -ne 0) { throw "$Step failed with exit code $LASTEXITCODE." }
+}
 
 $vendor = Join-Path $root "src/vendor/che4z"
 $branch = "ja-identifiers-$Tag"
 Write-Host "1. Rebase the Japanese-identifier commits onto tag $Tag on branch $branch"
 git -C $vendor fetch origin --tags
+Assert-Exit "git fetch origin"
 git -C $vendor fetch https://github.com/eclipse-che4z/che-che4z-lsp-for-cobol.git --tags
+Assert-Exit "git fetch upstream"
 git -C $vendor checkout -B $branch
+Assert-Exit "git checkout"
 git -C $vendor rebase $Tag
 if ($LASTEXITCODE -ne 0) { throw "Rebase stopped on a conflict. Resolve it in $vendor, then rerun." }
 
@@ -32,19 +39,38 @@ Write-Host "2. Build with Maven (tests skipped) and install the thin engine jar"
 Push-Location (Join-Path $vendor "server")
 try {
     mvn -q -DskipTests install
-    mvn -q -DskipTests "-Dassembly.skipAssembly=true" install -pl engine
+    Assert-Exit "mvn install"
+    # clean: the test-source antlr4 run rewrites the main parser sources without visitors, and a rebuild on top of them drops accept().
+    mvn -q -DskipTests "-Dassembly.skipAssembly=true" clean install -pl engine
+    Assert-Exit "mvn clean install -pl engine"
 } finally { Pop-Location }
 
 Write-Host "3. Merge engine + common + parser into one jar under src/engine/libs/m2"
 $m2 = Join-Path $HOME ".m2/repository/org/eclipse/lsp/cobol"
-$engine = Get-ChildItem "$m2/engine/*/engine-*.jar" | Where-Object { $_.Name -notmatch "sources|javadoc|jar-with" } | Sort-Object LastWriteTime | Select-Object -Last 1
-$common = Get-ChildItem "$m2/common/*/common-*.jar" | Sort-Object LastWriteTime | Select-Object -Last 1
-$parser = Get-ChildItem "$m2/parser/*/parser-*.jar" | Sort-Object LastWriteTime | Select-Object -Last 1
+# The newest jar a glob finds; a glob that finds none stops the script.
+function Find-Jar([string]$Glob) {
+    $found = Get-ChildItem $Glob -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notmatch "sources|javadoc|jar-with" } |
+        Sort-Object LastWriteTime | Select-Object -Last 1
+    if (-not $found) { throw "No jar matches $Glob." }
+    return $found
+}
+$engine = Find-Jar "$m2/engine/*/engine-*.jar"
+$common = Find-Jar "$m2/common/*/common-*.jar"
+$parser = Find-Jar "$m2/parser/*/parser-*.jar"
 $version = "$Tag-$Suffix"
 $outDir = Join-Path $root "src/engine/libs/m2/jp/cobolinsight/vendor/che4z-cobol-engine/$version"
 New-Item -ItemType Directory -Force $outDir | Out-Null
-& (Join-Path $JdkHome "bin/java.exe") (Join-Path $PSScriptRoot "MergeJars.java") (Join-Path $outDir "che4z-cobol-engine-$version.jar") $engine.FullName $common.FullName $parser.FullName
 $jar = Join-Path $outDir "che4z-cobol-engine-$version.jar"
+# The merge writes a temporary jar beside the vendored one and moves it over that jar once it has
+# finished, so a merge that stops midway leaves the previous jar, its hash and its pom in place.
+$merged = Join-Path $outDir ".che4z-cobol-engine-$version.jar.tmp"
+& (Join-Path $JdkHome "bin/java.exe") (Join-Path $PSScriptRoot "MergeJars.java") $merged $engine.FullName $common.FullName $parser.FullName
+if ($LASTEXITCODE -ne 0) {
+    Remove-Item -LiteralPath $merged -ErrorAction SilentlyContinue
+    Assert-Exit "java MergeJars"
+}
+Move-Item -LiteralPath $merged -Destination $jar -Force
 (Get-FileHash $jar -Algorithm SHA256).Hash.ToLower() + "`n" | Set-Content -NoNewline "$jar.sha256"
 @"
 <?xml version="1.0" encoding="UTF-8"?>
@@ -56,13 +82,13 @@ $jar = Join-Path $outDir "che4z-cobol-engine-$version.jar"
   <name>Eclipse Che4z COBOL Language Support engine (patched for Japanese identifiers)</name>
   <description>engine, common and parser modules of eclipse-che4z/che-che4z-lsp-for-cobol tag $Tag
     plus branch $branch of tomkd555/che-che4z-lsp-for-cobol, merged into one jar.
-    Third-party dependencies are declared by the consuming Gradle module, not here.</description>
+    The consuming Gradle module declares the third-party dependencies.</description>
   <licenses><license><name>Eclipse Public License 2.0</name><url>https://www.eclipse.org/legal/epl-2.0/</url></license></licenses>
 </project>
 "@ | Set-Content "$outDir/che4z-cobol-engine-$version.pom"
-Copy-Item (Join-Path $vendor "LICENSE.md") (Join-Path $root "src/engine/cli/src/main/resources/licenses/che4z/LICENSE.md")
+Copy-Item (Join-Path $vendor "LICENSE.md") (Join-Path $root "src/engine/app/src/main/resources/licenses/che4z/LICENSE.md")
 
 Write-Host "Done. Next:"
 Write-Host "  git -C src/vendor/che4z push -u origin $branch"
 Write-Host "  edit src/engine/cobol-frontend/build.gradle.kts: che4z-cobol-engine:$version"
-Write-Host "  git add src/vendor/che4z src/engine/libs/m2 src/engine/cli/src/main/resources/licenses"
+Write-Host "  git add src/vendor/che4z src/engine/libs/m2 src/engine/app/src/main/resources/licenses/che4z/LICENSE.md"

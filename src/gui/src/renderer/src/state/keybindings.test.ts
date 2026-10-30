@@ -36,8 +36,11 @@ describe("isModifierKey", () => {
 });
 
 describe("the Ctrl+K sequence", () => {
-  it("arms on Ctrl+K and completes on S, with or without Ctrl", () => {
+  it("arms the sequence on Ctrl+K", () => {
     expect(isSequencePrefix(press("k", { ctrlKey: true }))).toBe(true);
+  });
+
+  it("completes the sequence on S, with or without Ctrl", () => {
     expect(commandAfterPrefix(press("s"))).toBe("editor.saveAll");
     expect(commandAfterPrefix(press("s", { ctrlKey: true }))).toBe("editor.saveAll");
   });

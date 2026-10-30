@@ -9,7 +9,7 @@ describe("clampWindowSize", () => {
     });
   });
 
-  it("shrinks to the work area rather than putting the window edges off screen", () => {
+  it("shrinks to the work area so the window edges stay on screen", () => {
     expect(clampWindowSize({ width: 1440, height: 900 }, { width: 1366, height: 768 })).toEqual({
       width: 1366,
       height: 768,

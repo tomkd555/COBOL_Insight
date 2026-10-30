@@ -28,6 +28,38 @@ class SqlCodeUncheckedFixTest {
     @TempDir
     Path tempDir;
 
+    /**
+     * An UPDATE a COPY member brings in is reported in the copybook, and gets no fix: an edit of
+     * the copybook would reach every program that copies it.
+     */
+    @Test
+    void anUpdateInACopybookGetsNoFix() throws java.io.IOException {
+        Path copybooks = java.nio.file.Files.createDirectories(tempDir.resolve("cpy"));
+        java.nio.file.Files.writeString(copybooks.resolve("UPD.cpy"),
+                "           EXEC SQL UPDATE MYTAB SET COL1 = 1 END-EXEC.\n");
+        String text = String.join("\n",
+                "       IDENTIFICATION DIVISION.",
+                "       PROGRAM-ID. FIX018N.",
+                "       DATA DIVISION.",
+                "       WORKING-STORAGE SECTION.",
+                "           EXEC SQL INCLUDE SQLCA END-EXEC.",
+                "       PROCEDURE DIVISION.",
+                "       0000-MAIN.",
+                "           COPY UPD.",
+                "           GOBACK.",
+                "");
+        CobolSemanticModel model = CfgFixtures.parse(tempDir, "FIX018N.cbl", text, copybooks);
+        AnalysisContext context =
+                CfgFixtures.context(List.of(model), Map.of(model.sourceFile(), text));
+        List<Finding> findings = new SqlCodeUncheckedRule().evaluate(context);
+
+        assertEquals(List.of("UPD.cpy:1"), findings.stream()
+                .map(f -> Path.of(f.location().file()).getFileName() + ":"
+                        + f.location().line()).toList());
+        assertEquals(java.util.Optional.empty(), new SqlCodeUncheckedRule().fix().orElseThrow()
+                .produce(findings.get(0), context));
+    }
+
     private static final String CHECK =
             "           IF SQLCODE NOT = 0 DISPLAY 'SQL ERROR: ' SQLCODE END-IF.\n";
 

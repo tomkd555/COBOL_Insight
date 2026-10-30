@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { clipColumns, clipLine, columnRuler, displayWidth, importRelPath } from "./importModel";
+import { clipColumns, clipLine, columnRuler, displayWidth } from "./importModel";
 
-describe("cutting one line to a column range", () => {
-  it("takes the columns, counting from one and including both ends", () => {
+describe("clipLine", () => {
+  it("clips columns inclusively, counting from one", () => {
     expect(clipLine("ABCDEFGH", 3, 5)).toBe("CDE");
   });
 
@@ -25,7 +25,7 @@ describe("cutting one line to a column range", () => {
   });
 });
 
-describe("cutting a pasted screen", () => {
+describe("clipColumns", () => {
   const PASTED = [
     "000100 IDENTIFICATION DIVISION.      ",
     "000200 PROGRAM-ID. SYK001.",
@@ -33,7 +33,7 @@ describe("cutting a pasted screen", () => {
     "",
   ].join("\r\n");
 
-  it("drops the line-number area, the padding and the blank lines below the source", () => {
+  it("returns the source columns with trailing blanks and blank lines dropped", () => {
     expect(clipColumns(PASTED, 8, 72)).toEqual([
       "IDENTIFICATION DIVISION.",
       "PROGRAM-ID. SYK001.",
@@ -49,28 +49,8 @@ describe("cutting a pasted screen", () => {
   });
 });
 
-describe("the column ruler", () => {
+describe("columnRuler", () => {
   it("marks every tenth column above the units", () => {
     expect(columnRuler(12)).toEqual({ tens: "         1  ", ones: "123456789012" });
-  });
-});
-
-describe("where the import lands", () => {
-  it("joins the destination folder and the name with forward slashes", () => {
-    expect(importRelPath("cobol\\src", "SYK001.cbl")).toBe("cobol/src/SYK001.cbl");
-    expect(importRelPath("", "SYKD010.jcl")).toBe("SYKD010.jcl");
-  });
-
-  it("uses the typed file name as-is", () => {
-    expect(importRelPath("", "SYKCPY1")).toBe("SYKCPY1");
-    expect(importRelPath("", "SYKCPY1.cpy")).toBe("SYKCPY1.cpy");
-  });
-
-  it("refuses a name that is empty, holds a separator, or climbs out of the folder", () => {
-    expect(importRelPath("", "")).toBeNull();
-    expect(importRelPath("", "a/b.cbl")).toBeNull();
-    expect(importRelPath("", ".cbl")).toBeNull();
-    expect(importRelPath("", "SYK001.")).toBeNull();
-    expect(importRelPath("../up", "SYK001.cbl")).toBeNull();
   });
 });

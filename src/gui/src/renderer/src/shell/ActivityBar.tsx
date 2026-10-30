@@ -7,6 +7,7 @@ import {
   reportTab,
   settingsTab,
   transpileTab,
+  activeTabOf,
   useWorkbench,
   useWorkbenchDispatch,
   type SideView,
@@ -29,15 +30,9 @@ const EDITORS: readonly { id: string; icon: string; label: string; tab: () => Wo
   },
   {
     id: "report",
-    icon: "codicon-file-pdf",
+    icon: "codicon-file-text",
     label: text.report.title,
     tab: () => reportTab(text.report.title),
-  },
-  {
-    id: "settings",
-    icon: "codicon-gear",
-    label: text.settings.title,
-    tab: () => settingsTab(text.settings.title),
   },
 ];
 
@@ -52,6 +47,10 @@ export function ActivityBar(): ReactElement {
   const dispatch = useWorkbenchDispatch();
   const listRef = useRef<HTMLDivElement | null>(null);
   const cobolPath = activeCobolPath(project, workbench);
+  // The editor in front marks its launcher, as the side-bar view in front marks its own.
+  const front = activeTabOf(workbench)?.kind ?? null;
+  const editorClass = (kind: string): string =>
+    `ci-activitybar__item${front === kind ? " ci-activitybar__item--front" : ""}`;
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     const step = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
@@ -95,7 +94,7 @@ export function ActivityBar(): ReactElement {
           );
         })}
       </div>
-      {/* The editors that are not side-bar views. They open a tab rather than swapping the side. */}
+      {/* The editors, each opened as a tab of its own. They leave the side bar as it is. */}
       <div className="ci-activitybar__group ci-activitybar__group--end">
         {EDITORS.map((entry) => (
           <button
@@ -103,7 +102,8 @@ export function ActivityBar(): ReactElement {
             type="button"
             aria-label={entry.label}
             title={entry.label}
-            className="ci-activitybar__item"
+            aria-current={front === entry.id ? "true" : undefined}
+            className={editorClass(entry.id)}
             onClick={() => dispatch({ type: "OPEN_TAB", tab: entry.tab() })}
             data-testid={`activity-${entry.id}`}
           >
@@ -113,9 +113,11 @@ export function ActivityBar(): ReactElement {
         <button
           type="button"
           aria-label={text.transpileView.tab}
-          disabled={cobolPath === null}
+          // In front of its own tab the launcher stays a live control: the tab is what it opened.
+          disabled={cobolPath === null && front !== "transpile"}
           title={text.transpileView.tab}
-          className="ci-activitybar__item"
+          aria-current={front === "transpile" ? "true" : undefined}
+          className={editorClass("transpile")}
           onClick={() => {
             if (cobolPath !== null) {
               dispatch({ type: "OPEN_TAB", tab: transpileTab(cobolPath) });
@@ -124,6 +126,17 @@ export function ActivityBar(): ReactElement {
           data-testid="activity-transpile"
         >
           <span className="codicon codicon-file-code" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          aria-label={text.settings.title}
+          title={text.settings.title}
+          aria-current={front === "settings" ? "true" : undefined}
+          className={editorClass("settings")}
+          onClick={() => dispatch({ type: "OPEN_TAB", tab: settingsTab(text.settings.title) })}
+          data-testid="activity-settings"
+        >
+          <span className="codicon codicon-gear" aria-hidden="true" />
         </button>
       </div>
     </div>

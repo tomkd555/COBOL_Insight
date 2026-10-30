@@ -1,6 +1,6 @@
 import { useEffect, useRef, type ReactElement } from "react";
 import type * as monacoApi from "monaco-editor/editor/editor.api";
-import { text } from "../../i18n/text";
+import { RULER_COLUMNS } from "../../model/columns";
 import { monacoEditor } from "../../vendor/monacoEditor";
 import { registerLanguages } from "../../vendor/monacoLanguages";
 import { CODE_FONT } from "../../vendor/monarch";
@@ -84,10 +84,10 @@ export function SideBySide({
     const monaco = monacoEditor();
     registerLanguages(monaco);
     // The rulers mark the fixed-format columns, which only the COBOL on the left has. Over Java or
-    // Python they are four lines drawn through code that has no columns to keep.
+    // Python they are lines drawn through code that has no columns to keep.
     const first = monaco.editor.create(leftNode, {
       ...OPTIONS,
-      rulers: [6, 7, 11, 72],
+      rulers: [...RULER_COLUMNS],
       ariaLabel: leftLabel,
     });
     const second = monaco.editor.create(rightNode, { ...OPTIONS, ariaLabel: rightLabel });
@@ -123,7 +123,13 @@ export function SideBySide({
           target.revealLineInCenter(line, 1);
         });
       }),
-      source.onDidScrollChange(() => {
+      source.onDidScrollChange((event) => {
+        // Only a move of the top is followed. Monaco also reports a change of the scroll width from
+        // inside the frame that draws every editor; moving the other pane from there leaves its
+        // line numbers drawn at the old position while its text takes the new one.
+        if (!event.scrollTopChanged) {
+          return;
+        }
         const top = source.getVisibleRanges()[0]?.startLineNumber;
         const line = top === undefined ? null : link()(top);
         if (line === null) {
@@ -181,8 +187,8 @@ export function SideBySide({
   return (
     <div className="ci-sidebyside">
       <div className="ci-sidebyside__pane">
-        {/* The tab already names the asset; this pane is always the source, whichever file is open. */}
-        <span className="ci-sidebyside__label">{text.sourceView.editor}</span>
+        {/* The file name, as the generated pane beside it is headed by its own. */}
+        <span className="ci-sidebyside__label">{leftLabel.split(/[\\/]/).pop()}</span>
         <div className="ci-sidebyside__code" ref={leftHost} data-testid="transpile-cobol" />
       </div>
       <div className="ci-sidebyside__pane">

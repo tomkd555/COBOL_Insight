@@ -1,9 +1,11 @@
 /**
  * What the write-back's result means (pure, independent of React).
  *
- * The engine's exit code is the whole contract: 0 written, 1 written but the reparse found problems,
- * 2 not written. Code 1 is not a failure — the write is deliberately not rolled back, so that an
- * edit that is still half-finished can be saved.
+ * The engine reports `written` and an exit code. 0 means written, or, with `written` false, that the
+ * disk already held the text; 1 means written with problems found by the reparse check; 2 means
+ * refused, or written with a failed reparse check, and `written` says which. Code 1 is a success with
+ * findings: the write stays in place on purpose, so that an edit that is still half-finished can be
+ * saved.
  *
  * The reparse check runs on every save, but copybooks, JCL and BMS cannot be parsed on their own and
  * therefore always report errors. Those errors are shown for COBOL programs only; for every other
@@ -25,6 +27,8 @@ export function showsReparseErrors(assetType: string): boolean {
  * is in VS Code, and only the verification findings are worth raising.
  */
 export type SaveOutcome =
+  /** The disk already held the text: nothing was written, and nothing is to be reported. */
+  | { readonly kind: "unchanged"; readonly message: null }
   | {
       readonly kind: "saved";
       readonly message: string | null;
@@ -41,11 +45,15 @@ export type SaveOutcome =
  * @param assetType NODE.type, which decides whether reparse errors are shown.
  */
 export function saveOutcomeOf(path: string, assetType: string, result: SaveResult): SaveOutcome {
-  if (result.exitCode === 2 || !result.written) {
-    return {
-      kind: "failed",
-      message: text.save.failed(path, result.error),
-    };
+  if (!result.written) {
+    return result.exitCode === 0
+      ? { kind: "unchanged", message: null }
+      : { kind: "failed", message: text.save.failed(path, result.error) };
+  }
+  if (result.exitCode === 2) {
+    // The file was replaced and the reparse check then failed: the save stands, and the engine's
+    // reason is passed on as a warning.
+    return { kind: "saved", message: text.save.checkFailed(path, result.error), diagnostics: [] };
   }
   if (!showsReparseErrors(assetType) || result.reparseErrors.length === 0) {
     return { kind: "saved", message: null, diagnostics: [] };
@@ -67,11 +75,13 @@ export function saveOutcomeOf(path: string, assetType: string, result: SaveResul
 /**
  * Whether the original changed under the editor since it was decoded.
  *
- * A missing current stamp is not treated as stale: the file is gone or unreadable, and the engine's
- * own save reports that far more precisely than a guess here would.
+ * A missing current stamp counts as unchanged: the file is gone or unreadable, and the engine's own
+ * save reports that far more precisely than a guess here would. A missing decoded stamp, left by a
+ * stat that failed after the last write, counts as unchanged too, once, until the next write takes a
+ * fresh one.
  */
-export function isStale(decoded: SourceStamp, current: SourceStamp | null): boolean {
-  if (current === null) {
+export function isStale(decoded: SourceStamp | null, current: SourceStamp | null): boolean {
+  if (decoded === null || current === null) {
     return false;
   }
   return current.mtimeMs !== decoded.mtimeMs || current.byteSize !== decoded.byteSize;

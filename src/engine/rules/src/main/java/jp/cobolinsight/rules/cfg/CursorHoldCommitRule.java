@@ -13,14 +13,16 @@ import jp.cobolinsight.core.rule.RuleMeta;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.EmbeddedBlock;
 import jp.cobolinsight.core.semantic.EmbeddedBlockKind;
+import jp.cobolinsight.core.semantic.ProcedureMap;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
-import jp.cobolinsight.core.source.SourceRange;
 import jp.cobolinsight.core.spi.AnalysisContext;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -111,13 +113,13 @@ public final class CursorHoldCommitRule implements Rule {
                 openedAt.putIfAbsent(open.group(1).toUpperCase(Locale.ROOT), block);
             }
         }
-        Map<SourceRange, CfgNode> byRange = execSqlNodes(cfg);
+        Map<EmbeddedBlock, CfgNode> nodeByBlock = execSqlNodes(model, cfg);
         for (Map.Entry<String, EmbeddedBlock> entry : openedAt.entrySet()) {
             String cursor = entry.getKey();
             if (!declared.contains(cursor) || heldCursors.contains(cursor)) {
                 continue;
             }
-            CfgNode start = byRange.get(entry.getValue().range());
+            CfgNode start = nodeByBlock.get(entry.getValue());
             if (start == null) {
                 continue;
             }
@@ -130,32 +132,45 @@ public final class CursorHoldCommitRule implements Rule {
             }
             int openLine = entry.getValue().range().start().line();
             int commitLine = commit.statement().orElseThrow().range().start().line();
+            String commitFile = commit.statement().orElseThrow().range().start().file();
+            String commitAt = (commitFile.equals(entry.getValue().range().start().file()) ? ""
+                    : Path.of(commitFile).getFileName() + " ") + commitLine;
             findings.add(new Finding(META.id(), META.defaultSeverity().toLevel(),
-                    cursor + " は WITH HOLD なしで宣言されています。" + commitLine
+                    cursor + " は WITH HOLD なしで宣言されています。" + commitAt
                             + "行の同期点でカーソルが閉じられ、後続の FETCH が失敗します。",
-                    new SourcePosition(model.sourceFile(), openLine, 1,
-                            SourcePosition.UNKNOWN_BYTE_OFFSET),
+                    CfgSupport.at(entry.getValue().range(), openLine),
                     List.of(new CodeFlow(List.of(
-                            CfgSupport.step(model.sourceFile(), openLine,
+                            CfgSupport.step(entry.getValue().range().start().file(), openLine,
                                     "カーソルの OPEN（WITH HOLD なし）"),
-                            CfgSupport.step(model.sourceFile(), commitLine,
+                            CfgSupport.step(
+                                    commit.statement().orElseThrow().range().start().file(),
+                                    commitLine,
                                     "同期点（ここでカーソルが閉じられる）")))),
                     List.of()));
         }
     }
 
-    /** The EXEC SQL statement nodes of the graph, indexed by the range their embedded block carries. */
-    private static Map<SourceRange, CfgNode> execSqlNodes(ControlFlowGraph cfg) {
-        Map<SourceRange, CfgNode> byRange = new HashMap<>();
+    /**
+     * The EXEC SQL statement nodes of the graph, by the embedded block each statement holds. By
+     * identity: two inclusions of one copybook give two blocks of one range.
+     */
+    private static Map<EmbeddedBlock, CfgNode> execSqlNodes(CobolSemanticModel model,
+            ControlFlowGraph cfg) {
+        ProcedureMap procedureMap = new ProcedureMap(model);
+        Map<EmbeddedBlock, CfgNode> nodeByBlock = new IdentityHashMap<>();
         for (CfgNode node : cfg.nodes()) {
             node.statement().ifPresent(statement -> {
                 if (statement instanceof SimpleStatement simple
                         && "EXEC SQL".equals(simple.verb())) {
-                    byRange.put(simple.range(), node);
+                    for (EmbeddedBlock block : procedureMap.blocksOf(simple)) {
+                        if (block.range().equals(simple.range())) {
+                            nodeByBlock.put(block, node);
+                        }
+                    }
                 }
             });
         }
-        return byRange;
+        return nodeByBlock;
     }
 
     private static boolean matches(CfgNode node, Pattern pattern, String cursor) {

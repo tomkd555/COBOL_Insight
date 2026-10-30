@@ -265,10 +265,12 @@ public final class PythonProcedureDialect implements ProcedureDialect {
     }
 
     @Override
-    public void emitTimesLoop(LineTrackingEmitter out, String methodName, String count) {
+    public void emitTimesLoop(LineTrackingEmitter out, List<String> methodNames, String count) {
         out.emit("for _ in range(" + count + "):");
         out.indent();
-        out.emit("self." + methodName + "()");
+        for (String methodName : methodNames) {
+            out.emit("self." + methodName + "()");
+        }
         out.dedent();
     }
 

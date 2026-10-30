@@ -28,7 +28,7 @@ describe("fixOutDirOf", () => {
     expect(fixOutDirOf("D:\\out", "C:\\data\\cobol-insight.db")).toBe("D:\\out");
   });
 
-  it("trims the setting, so whitespace alone is not a directory", () => {
+  it("trims the setting, so whitespace alone names no directory", () => {
     expect(fixOutDirOf("  D:\\out  ", null)).toBe("D:\\out");
     expect(fixOutDirOf("   ", "C:\\data\\cobol-insight.db")).toBe("C:\\data\\fix");
   });

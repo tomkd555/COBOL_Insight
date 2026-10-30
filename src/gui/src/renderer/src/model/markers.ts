@@ -5,7 +5,7 @@
  * clears another: `sarif` carries the lint and sql-lint findings, `save` the reparse errors the
  * write-back reported, and `format` the lines whose bytes run past the record.
  *
- * Severity is taken from the rule catalog rather than from the SARIF level, for the same reason the
+ * Severity is taken from the rule catalog, for the same reason the
  * problems table does: level has three values and says nothing rule-specific. A finding the catalog
  * lists no rule for — the engine's own diagnostics — is graded from its level, which is all it has.
  */
@@ -23,7 +23,7 @@ export const MARKER_OWNER = {
 } as const;
 
 /**
- * Monaco's MarkerSeverity values. They are repeated here rather than imported so this module stays
+ * Monaco's MarkerSeverity values. They are copied here so this module stays
  * loadable without Monaco, which needs a worker and real layout that a unit test does not have.
  */
 export const MARKER_SEVERITY = { hint: 1, info: 2, warning: 4, error: 8 } as const;
@@ -106,7 +106,7 @@ export function reparseMarkers(errors: readonly SaveReparseError[]): EditorMarke
 /**
  * Lines whose bytes run past the 80-column record. The engine refuses nothing here — a long line is
  * still saved — but the fixed format gives those bytes no meaning, so the editor says so while the
- * edit is being made rather than after it has been written back.
+ * edit is being made, ahead of the write-back.
  */
 export function overflowMarkers(
   lines: readonly string[],

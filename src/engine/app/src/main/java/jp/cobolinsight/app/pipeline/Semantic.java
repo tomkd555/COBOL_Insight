@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -52,19 +53,33 @@ public final class Semantic implements Step {
             return;
         }
         SqlParser sqlParser = EngineWiring.sqlParser();
+        ParseCache cache = s.artifact(ParseCache.class).orElse(null);
         Map<String, String> relPathByFile = relPathByFile(s);
         Set<String> reported = new HashSet<>();
         for (Map.Entry<String, CobolSemanticModel> entry : s.programsByPath().entrySet()) {
-            for (EmbeddedBlock block : entry.getValue().embeddedBlocks()) {
-                if (block.kind() != EmbeddedBlockKind.SQL) {
+            // A program taken back from the parse cache brings what its blocks gave with it.
+            List<ParseCache.SqlResult> results = cache == null ? null : cache.sql(entry.getKey());
+            if (results == null) {
+                results = new ArrayList<>();
+                for (EmbeddedBlock block : entry.getValue().embeddedBlocks()) {
+                    if (block.kind() != EmbeddedBlockKind.SQL) {
+                        continue;
+                    }
+                    ParseOutcome<SqlStatementModel> outcome = sqlParser.parse(block);
+                    results.add(outcome instanceof ParseOutcome.Failure<SqlStatementModel> failure
+                            ? new ParseCache.SqlResult(null, failure.finding())
+                            : new ParseCache.SqlResult(outcome.value().orElseThrow(), null));
+                }
+                if (cache != null) {
+                    cache.putSql(entry.getKey(), results);
+                }
+            }
+            for (ParseCache.SqlResult result : results) {
+                if (result.failure() != null) {
+                    s.addFinding(entry.getKey(), result.failure());
                     continue;
                 }
-                ParseOutcome<SqlStatementModel> outcome = sqlParser.parse(block);
-                if (outcome instanceof ParseOutcome.Failure<SqlStatementModel> failure) {
-                    s.addFinding(entry.getKey(), failure.finding());
-                    continue;
-                }
-                SqlStatementModel statement = outcome.value().orElseThrow();
+                SqlStatementModel statement = result.statement();
                 if (!statement.isFullyAnalysed()) {
                     // The statement may stand in a copybook rather than in the program that copies
                     // it: file the warning against the source its own position names, and only the

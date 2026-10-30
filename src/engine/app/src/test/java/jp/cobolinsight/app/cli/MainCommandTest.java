@@ -119,4 +119,20 @@ class MainCommandTest {
         assertNotNull(Main.class.getResourceAsStream("/licenses/mapa/LICENSE"),
                 "MAPA(MIT)のライセンスファイルがcli.jarへ同梱されること");
     }
+
+    /**
+     * An argument that starts with @ is taken as written: {@code scan @args.txt} names the folder
+     * {@code @args.txt}, whatever a file args.txt would hold.
+     */
+    @Test
+    void anArgumentStartingWithAtIsTakenAsWritten() throws IOException {
+        Path argsFile = Files.writeString(tempDir.resolve("args.txt"), "OTHER-DIR\n");
+        // A relative path: an absolute one on Windows would make no folder name after the @.
+        String written = "@" + Path.of("").toAbsolutePath().relativize(argsFile);
+
+        CommandLine.ParseResult parsed = Main.commandLine().parseArgs("scan", written);
+
+        Object folder = parsed.subcommand().matchedPositional(0).getValue();
+        assertEquals(written, folder.toString());
+    }
 }

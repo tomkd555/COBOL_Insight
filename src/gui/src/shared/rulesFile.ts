@@ -3,7 +3,7 @@
  * --rules on every subcommand. It replaces V1's separate rules-config.json and user-rules.json.
  *
  * Reading is deliberately forgiving: a missing, empty or corrupt file yields an empty configuration
- * rather than an error, because a rule file the GUI cannot read must not stop the application from
+ * with no error, because a rule file the GUI cannot read must not stop the application from
  * starting. What the engine makes of the same file is reported back through RuleCatalog.ruleErrors.
  *
  * A custom rule is carried across as it was written, with only its id checked. The engine is the
@@ -79,7 +79,7 @@ export interface CustomRule {
   readonly severity?: string;
   /** Asset kinds to scan (COBOL/COPYBOOK/JCL/BMS). Absent means COBOL alone. */
   readonly targets?: readonly string[];
-  /** Subcommands the rule runs under (LINT/SQL_LINT/REPORT/FIX/SCAN). */
+  /** Subcommands the rule runs under (LINT/SQL_LINT/FIX). */
   readonly commands?: readonly string[];
   readonly category?: string;
   readonly summary?: string;
@@ -107,12 +107,13 @@ export function normalizeRulesFile(value: unknown): RulesFile {
     const entry: { enabled?: boolean; severity?: string } = {};
     if (typeof override["enabled"] === "boolean") entry.enabled = override["enabled"];
     if (typeof override["severity"] === "string") entry.severity = override["severity"];
-    rules[id] = entry;
+    // Defined, since assigning to a member named `__proto__` would set the prototype.
+    Object.defineProperty(rules, id, { value: entry, enumerable: true, writable: true, configurable: true });
   }
   const custom: CustomRule[] = [];
   for (const raw of Array.isArray(source["custom"]) ? source["custom"] : []) {
-    // A definition without an id cannot be addressed, so it is dropped rather than defaulted; the
-    // rest is carried across untouched for the engine to judge.
+    // A definition without an id cannot be addressed, so it is dropped and no id is made up for
+    // it; the rest is carried across untouched for the engine to judge.
     if (typeof asObject(raw)["id"] === "string" && asObject(raw)["id"] !== "") {
       custom.push(raw as CustomRule);
     }

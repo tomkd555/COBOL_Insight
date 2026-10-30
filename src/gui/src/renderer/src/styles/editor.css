@@ -60,12 +60,175 @@
   color: var(--color-muted-foreground);
 }
 
+/* ---------------------------------------------------------------- the code column and its pane */
+
+/*
+ * A fixed-format record is 80 columns, so the code column is exactly that wide (the editor measures
+ * its own gutter and font and hands the width over as --ci-code-width) and the pane takes the rest of
+ * the row. With no pane the code keeps the whole row.
+ */
+.ci-source__body {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.ci-source__code {
+  display: flex;
+  flex: 0 1 var(--ci-code-width, 100%);
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.ci-source__body--single .ci-source__code {
+  flex: 1 1 auto;
+}
+
+/* The column scale. The editor shifts the text so each mark stands over its column of the code. */
+.ci-scale {
+  flex: 0 0 auto;
+  overflow: hidden;
+  background: var(--color-muted);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-muted-foreground);
+  font-family: var(--ci-font-code);
+  font-size: var(--ci-code-size);
+  line-height: var(--ci-line);
+  white-space: pre;
+  user-select: none;
+}
+
+.ci-scale > span {
+  display: inline-block;
+}
+
+.ci-source__side {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-inline-start: 1px solid var(--color-border);
+}
+
+/* The regions share the pane; the two lower ones take the height their boundary was moved to. */
+.ci-pane__region {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* The tab strip keeps its height; the list under it is what scrolls. */
+.ci-pane__region > .ci-panel__tabs {
+  flex: 0 0 auto;
+}
+
+.ci-source__side > .ci-split {
+  background: var(--color-border);
+}
+
+.ci-source__side > .ci-split:hover,
+.ci-source__side > .ci-split--dragging {
+  background: var(--color-primary);
+}
+
+.ci-pane__body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ci-pane__body .ci-trace {
+  flex: 1 1 auto;
+}
+
+.ci-pane__state,
+.ci-pane__note {
+  margin: 0;
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+}
+
+.ci-pane__state {
+  padding: var(--ci-space-3);
+}
+
+.ci-pane__state--error {
+  color: var(--color-destructive);
+}
+
+.ci-pane__note {
+  padding: var(--ci-space-1) var(--ci-space-2);
+  background: var(--color-muted);
+}
+
+.ci-pane__head {
+  display: flex;
+  align-items: center;
+  gap: var(--ci-space-2);
+  padding: var(--ci-space-1) var(--ci-space-2);
+  background: var(--color-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ci-pane__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--ci-font-code);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ci-peek {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.ci-peek__range {
+  background: var(--ci-bg-selected);
+}
+
+/* The call graph's legend, placed above the drawing here. */
+.ci-pane__legend {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: var(--ci-space-1) var(--ci-space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ci-pane__legend > summary {
+  margin: 0;
+}
+
+.ci-pane__legend li {
+  align-items: center;
+}
+
+.ci-pane__line {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 6px;
+}
+
 /* ---------------------------------------------------------------- the code editor */
 
 .ci-code,
 .ci-diff {
   flex: 1 1 auto;
   min-height: 0;
+}
+
+/* A section or paragraph name where the text refers to it. Pressing it shows the paragraph. */
+.ci-code__ref {
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
 }
 
 /*
@@ -78,33 +241,33 @@
   color: inherit;
 }
 
-/* Monaco's own token colour overrides a decoration's `color`, so these are background bands. */
+/* Monaco's own token colour overrides a decoration's `color`, so the areas are told apart by bands.
+   A band is a box behind the text (the `-band` class of the same decoration), translucent so the
+   selection drawn in the same layer shows through it. */
 .ci-code__indicator {
-  background: color-mix(in oklch, var(--color-muted-foreground) 18%, transparent);
   font-weight: 700;
 }
 
 .ci-code__indicator--comment {
-  background: color-mix(in oklch, var(--color-muted-foreground) 18%, transparent);
   font-weight: 400;
 }
 
-.ci-code__indicator--debug {
-  background: color-mix(in oklch, var(--color-muted-foreground) 18%, transparent);
-}
-
-.ci-code__indicator--continuation {
-  background: color-mix(in oklch, var(--color-muted-foreground) 18%, transparent);
+.ci-code__indicator-band {
+  background: color-mix(in oklch, var(--color-muted-foreground) var(--ci-band-indicator), transparent);
 }
 
 /* A background only: the text colour stays Monaco's token colour. The band is what sets the area
    apart; an opacity on top of it would dim the very text the reader is there to read. */
-.ci-code__identification {
-  background: color-mix(in oklch, var(--color-muted-foreground) 22%, transparent);
+.ci-code__identification-band {
+  background: color-mix(
+    in oklch,
+    var(--color-muted-foreground) var(--ci-band-identification),
+    transparent
+  );
 }
 
 /* Past column 80 the fixed format gives the bytes no meaning at all. */
-.ci-code__overflow {
+.ci-code__overflow-band {
   background: color-mix(in oklch, var(--color-destructive) 18%, transparent);
   border-left: 1px solid var(--color-destructive);
 }
@@ -150,24 +313,41 @@
 
 /*
  * A COPY expansion, drawn as a Monaco view zone between the lines of the source. It is set apart from
- * the body by its own ground and a left rule, because none of it is text the file holds.
+ * the body by its own ground and a left rule, because none of it is text the file holds. The zone's
+ * node starts at the content's left edge; its margin node (.ci-copy-margin) carries the line numbers.
+ * The rules above and below are inset shadows, so every row keeps the source's line height.
  */
-.ci-copy {
+.ci-copy,
+.ci-copy-margin {
   height: 100%;
-  overflow: auto;
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
-  border-left: 2px solid var(--color-primary);
+  box-shadow:
+    inset 0 1px 0 var(--color-border),
+    inset 0 -1px 0 var(--color-border);
   /* Set apart from the code by the same amount in both themes. One mix cannot do that: the surface it
      is mixed into sits above the editor's ground in light and below it in dark, so the fraction is
      per theme and the two land within a hundredth of 1.3:1 against the code around them. */
   background: color-mix(in oklch, var(--color-foreground) 14%, var(--color-surface));
   font-family: var(--ci-font-code);
   font-size: var(--ci-code-size);
+  line-height: var(--ci-line);
 }
 
-.dark .ci-copy {
+.ci-copy {
+  overflow: auto;
+}
+
+.ci-copy-margin {
+  border-left: 2px solid var(--color-primary);
+}
+
+.dark .ci-copy,
+.dark .ci-copy-margin {
   background: color-mix(in oklch, var(--color-foreground) 8%, var(--color-surface));
+}
+
+.ci-copy__header,
+.ci-copy-margin__head {
+  height: calc(var(--ci-code-size) * var(--ci-line));
 }
 
 .ci-copy__header {
@@ -180,6 +360,8 @@
 }
 
 .ci-copy__toggle {
+  box-sizing: border-box;
+  height: 100%;
   border: 1px solid var(--ci-border-strong);
   border-radius: var(--ci-radius);
   padding: 0 var(--ci-space-2);
@@ -211,18 +393,28 @@
 }
 
 .ci-copy__lines {
-  padding: 0 var(--ci-space-2);
   color: var(--color-foreground);
   white-space: pre;
 }
 
+/* Right-aligned where the source's own line numbers end, whatever the gutter holds after them. */
 .ci-copy__number {
-  display: inline-block;
-  width: 5ch;
-  margin-inline-end: var(--ci-space-2);
+  padding-inline-end: calc(var(--ci-copy-content-left) - var(--ci-copy-numbers-end));
   color: var(--color-muted-foreground);
   text-align: right;
   user-select: none;
+}
+
+/* Where the lines pass to another copybook: the path the numbers beneath it count in. */
+.ci-copy__line--path {
+  padding: 0 var(--ci-space-2);
+  color: var(--color-muted-foreground);
+  font-family: var(--ci-font-ui);
+  font-size: var(--ci-size-sm);
+  /* One row of the code's grid, so the lines beneath stay on the margin's numbers. */
+  height: calc(var(--ci-code-size) * var(--ci-line));
+  line-height: calc(var(--ci-code-size) * var(--ci-line));
+  overflow: hidden;
 }
 
 /* The copybook's own line, as the engine preprocessed it. */
@@ -262,6 +454,40 @@
 /* The fix diff's heading row only: it must not take the height DiffView needs. */
 .ci-sidebyside--labels {
   flex: 0 0 auto;
+}
+
+.ci-fix {
+  container: fix / inline-size;
+}
+
+/*
+ * Under 900px the diff is drawn as one column with both texts in it (DiffView). The heading row then
+ * stands as the key to that column's marks: the removed lines are the original, the added the fix.
+ */
+@container fix (width < 900px) {
+  .ci-sidebyside--labels {
+    display: flex;
+    gap: 0;
+    background: var(--color-muted);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .ci-sidebyside--labels .ci-sidebyside__pane {
+    flex: 0 0 auto;
+    background: none;
+  }
+
+  .ci-sidebyside--labels .ci-sidebyside__label {
+    border-bottom: none;
+  }
+
+  .ci-sidebyside--labels .ci-sidebyside__pane:first-child .ci-sidebyside__label::before {
+    content: "\2212\00a0";
+  }
+
+  .ci-sidebyside--labels .ci-sidebyside__pane:last-child .ci-sidebyside__label::before {
+    content: "+\00a0";
+  }
 }
 
 .ci-sidebyside__pane {

@@ -97,8 +97,7 @@ public final class ReferenceModificationOutOfRangeRule implements Rule {
             findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                     name + "(" + start + ":" + length + ") が項目の長さ " + byteLength
                             + "バイトを超えています。定義されていない領域を参照します。",
-                    new SourcePosition(model.sourceFile(), line, 1,
-                            SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                    CfgSupport.at(statement.range(), line)));
         }
     }
 

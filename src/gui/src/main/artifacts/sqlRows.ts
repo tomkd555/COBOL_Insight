@@ -1,7 +1,7 @@
 /**
  * Shared types and the row reader for the SQLite reads done through sql.js (WASM, offline). Values
- * are taken by column name rather than by position, and SQLite's loose typing is narrowed to
- * TypeScript values. Each reader module owns its own SQL and result interface.
+ * are taken by column name, so they stay right whatever order a query lists its columns in, and
+ * SQLite's loose typing is narrowed to TypeScript values. Each reader module owns its own SQL and result interface.
  */
 
 /**

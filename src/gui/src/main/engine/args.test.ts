@@ -46,7 +46,7 @@ describe("buildEngineArgs", () => {
     ).toEqual(["lint", "C:/assets", "--sarif", "C:/out.sarif", "--sql-sarif", "C:/out-sql.sarif"]);
   });
 
-  it("repeats --scope once per scoped path, and only for lint", () => {
+  it("repeats --scope once per scoped path", () => {
     // lint alone accepts a scope: it is typed on LintRequest, so no other subcommand can carry one.
     expect(
       buildEngineArgs({
@@ -66,7 +66,8 @@ describe("buildEngineArgs", () => {
   });
 
   it("omits --scope when the whole folder is analysed", () => {
-    // What a whole-folder run emits: the renderer leaves the scope out rather than passing none.
+    // What a whole-folder run emits: the scope key is absent. An empty list would name a scope that
+    // holds nothing.
     expect(
       buildEngineArgs({ subcommand: "lint", request: { inputDir: "C:/assets", scope: undefined } }),
     ).toEqual(["lint", "C:/assets"]);

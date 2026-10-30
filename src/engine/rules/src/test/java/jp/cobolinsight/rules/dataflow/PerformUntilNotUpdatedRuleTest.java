@@ -6,6 +6,8 @@ import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -117,5 +119,94 @@ class PerformUntilNotUpdatedRuleTest {
                 "           END-IF.");
         assertEquals(List.of(), run("F012D", text),
                 "呼び出す段落で終了条件変数を更新する場合は対象外");
+    }
+
+    /** UNTIL at the end of a line, its condition on the next, is the UNTIL of the PERFORM. */
+    @Test
+    void untilAtTheEndOfALineIsFound() {
+        String text = program("F012H",
+                "           PERFORM SUB-PARA UNTIL",
+                "               WS-DONE-FLAG = 'Y'",
+                "           STOP RUN.",
+                "       SUB-PARA.",
+                "           ADD 1 TO WS-COUNTER.");
+        List<Finding> findings = run("F012H", text);
+        assertEquals(List.of(9), findings.stream().map(f -> f.location().line()).toList());
+        assertTrue(findings.get(0).message().contains("WS-DONE-FLAG"), findings.get(0).message());
+    }
+
+    /**
+     * Two files declare PROGRAM-ID F012G. Each is analysed on its own graph and its own data flow:
+     * the first updates its flag, the second does not and is reported in its own file.
+     */
+    @Test
+    void twoFilesOfOneProgramIdEachHaveTheirOwnDataFlow() throws IOException {
+        String updates = program("F012G",
+                "           PERFORM UNTIL WS-DONE-FLAG = 'Y'",
+                "               MOVE 'Y' TO WS-DONE-FLAG",
+                "           END-PERFORM",
+                "           STOP RUN.");
+        String stuck = program("F012G",
+                "           DISPLAY 'START'",
+                "           PERFORM UNTIL WS-DONE-FLAG = 'Y'",
+                "               ADD 1 TO WS-COUNTER",
+                "           END-PERFORM",
+                "           STOP RUN.");
+        CobolSemanticModel first = DataFlowFixtures.parse(
+                Files.createDirectories(tempDir.resolve("first")), "F012G.cbl", updates);
+        CobolSemanticModel second = DataFlowFixtures.parse(
+                Files.createDirectories(tempDir.resolve("second")), "F012G.cbl", stuck);
+
+        List<Finding> findings = new PerformUntilNotUpdatedRule().evaluate(DataFlowFixtures.context(
+                List.of(first, second), Map.of(first.sourceFile(), updates,
+                        second.sourceFile(), stuck)));
+
+        assertEquals(List.of(second.sourceFile() + ":10"), findings.stream()
+                .map(f -> f.location().file() + ":" + f.location().line()).toList());
+    }
+
+    /**
+     * The first loop runs R-1 IN LOOP-SECT THRU R-3, three paragraphs, and the third updates its
+     * flag. The second loop is copied in and nothing updates its flag; the finding stands in the
+     * copybook at the copybook's line.
+     */
+    @Test
+    void aThruRangeUpdatesInItsLastParagraphAndACopiedLoopIsReportedInItsCopybook()
+            throws IOException {
+        Path copybooks = Files.createDirectories(tempDir.resolve("cpy"));
+        Files.writeString(copybooks.resolve("STUCK.cpy"),
+                "           PERFORM S-1 UNTIL WS-STUCK-FLAG = 'Y'\n");
+        String text = String.join("\n",
+                "       IDENTIFICATION DIVISION.",
+                "       PROGRAM-ID. F012F.",
+                "       DATA DIVISION.",
+                "       WORKING-STORAGE SECTION.",
+                "       01  WS-DONE-FLAG  PIC X(01) VALUE 'N'.",
+                "       01  WS-STUCK-FLAG PIC X(01) VALUE 'N'.",
+                "       PROCEDURE DIVISION.",
+                "       MAIN-SECT SECTION.",
+                "       M-START.",
+                "           PERFORM R-1 IN LOOP-SECT THRU R-3 UNTIL WS-DONE-FLAG = 'Y'",
+                "           COPY STUCK.",
+                "           STOP RUN.",
+                "       LOOP-SECT SECTION.",
+                "       R-1.",
+                "           DISPLAY 'R1'.",
+                "       R-2.",
+                "           DISPLAY 'R2'.",
+                "       R-3.",
+                "           MOVE 'Y' TO WS-DONE-FLAG.",
+                "       S-1.",
+                "           DISPLAY 'S1'.",
+                "");
+        CobolSemanticModel model =
+                DataFlowFixtures.parse(tempDir, "F012F.cbl", text, copybooks);
+        List<Finding> findings = new PerformUntilNotUpdatedRule().evaluate(
+                DataFlowFixtures.context(List.of(model), Map.of(model.sourceFile(), text)));
+
+        assertEquals(List.of("STUCK.cpy:1"), findings.stream()
+                .map(f -> Path.of(f.location().file()).getFileName() + ":" + f.location().line())
+                .toList());
+        assertTrue(findings.get(0).message().contains("WS-STUCK-FLAG"), findings.get(0).message());
     }
 }

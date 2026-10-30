@@ -27,6 +27,7 @@ import java.util.Set;
 final class ProgramDataFlowFacts implements ProgramDataFlow {
 
     private final String programId;
+    private final String sourceFile;
     private final Map<CfgNode, DefUse> defUseByNode;
     private final Map<CfgNode, Set<Definition>> reachingIn;
     private final Map<CfgNode, Set<TaintFact>> externalTaintIn;
@@ -37,11 +38,12 @@ final class ProgramDataFlowFacts implements ProgramDataFlow {
     private final Map<Integer, Map<String, List<TaintFact>>> externalFactsByKey;
     private final Map<Integer, Map<String, List<TaintFact>>> sensitiveFactsByKey;
 
-    ProgramDataFlowFacts(String programId, List<CfgNode> nodes, Map<CfgNode, DefUse> defUseByNode,
+    ProgramDataFlowFacts(String programId, String sourceFile, List<CfgNode> nodes, Map<CfgNode, DefUse> defUseByNode,
             Map<CfgNode, Set<Definition>> reachingIn, Map<CfgNode, Set<TaintFact>> externalTaintIn,
             Map<CfgNode, Set<TaintFact>> sensitiveTaintIn, Map<CfgNode, Set<String>> liveOut,
             Map<CfgNode, Map<String, ValueInterval>> intervalIn) {
         this.programId = programId;
+        this.sourceFile = sourceFile;
         this.defUseByNode = defUseByNode;
         this.reachingIn = reachingIn;
         this.externalTaintIn = externalTaintIn;
@@ -60,6 +62,11 @@ final class ProgramDataFlowFacts implements ProgramDataFlow {
     @Override
     public String programId() {
         return programId;
+    }
+
+    @Override
+    public String sourceFile() {
+        return sourceFile;
     }
 
     @Override

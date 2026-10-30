@@ -42,7 +42,7 @@ const ENTRIES = [
   }),
 ];
 
-describe("the search", () => {
+describe("filterRules", () => {
   it("matches the id, the name and the summary", () => {
     expect(filterRules(ENTRIES, "r004").map((rule) => rule.id)).toEqual(["R004"]);
     expect(filterRules(ENTRIES, "SELECT").map((rule) => rule.id)).toEqual(["S001"]);
@@ -54,8 +54,8 @@ describe("the search", () => {
   });
 });
 
-describe("the grouping", () => {
-  it("keeps the engine's order and puts each rule under its category", () => {
+describe("groupByCategory", () => {
+  it("groups rules by category in the engine's order", () => {
     expect(groupByCategory(ENTRIES)).toEqual([
       { category: "データフロー", rules: [ENTRIES[0]] },
       { category: "例外処理", rules: [ENTRIES[1]] },
@@ -64,7 +64,7 @@ describe("the grouping", () => {
   });
 });
 
-describe("switching rules off and on", () => {
+describe("setEnabled", () => {
   it("writes the state of every id it was given", () => {
     const file = setEnabled(emptyRulesFile(), ["R001", "R004"], false);
     expect(file.rules).toEqual({ R001: { enabled: false }, R004: { enabled: false } });
@@ -87,8 +87,8 @@ describe("switching rules off and on", () => {
   });
 });
 
-describe("the severity override", () => {
-  it("is written and then removed, leaving no empty entry behind", () => {
+describe("setSeverity", () => {
+  it("writes a severity and removes it without leaving an empty entry", () => {
     const set = setSeverity(emptyRulesFile(), "R001", "HIGH");
     expect(set.rules).toEqual({ R001: { severity: "HIGH" } });
     expect(setSeverity(set, "R001", null).rules).toEqual({});
@@ -99,9 +99,16 @@ describe("the severity override", () => {
     expect(setSeverity(off, "R001", null).rules).toEqual({ R001: { enabled: false } });
   });
 
-  it("reads back through overrideOf", () => {
+});
+
+describe("overrideOf", () => {
+  it("returns the severity that setSeverity wrote", () => {
     const file = setSeverity(emptyRulesFile(), "R001", "LOW");
     expect(overrideOf(file, "R001").severity).toBe("LOW");
+  });
+
+  it("returns an empty override for a rule with no entry", () => {
+    const file = setSeverity(emptyRulesFile(), "R001", "LOW");
     expect(overrideOf(file, "R004")).toEqual({});
   });
 });

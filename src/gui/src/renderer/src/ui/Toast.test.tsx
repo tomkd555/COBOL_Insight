@@ -9,7 +9,7 @@ describe("Toast", () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
-  it("marks a dismissed toast as leaving and only then drops it", () => {
+  it("drops a dismissed toast after its leaving transition", () => {
     const onDismiss = vi.fn();
     render(<Toast messages={[MESSAGE]} onDismiss={onDismiss} />);
 

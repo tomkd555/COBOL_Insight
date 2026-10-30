@@ -53,7 +53,7 @@ function decodeChunks(chunks: (Buffer | string)[]): string {
  * child_process.spawn and file output are involved; there is no socket and no HTTP.
  *
  * The engine puts finding severity in its exit code (0 = clean, 1 = warnings, 2 = errors), so a
- * non-zero code is not a failure and does not reject. Only a failure to start the process at all
+ * non-zero code is a normal result and does not reject. Only a failure to start the process at all
  * (a missing executable, say) rejects.
  */
 export function runEngine(

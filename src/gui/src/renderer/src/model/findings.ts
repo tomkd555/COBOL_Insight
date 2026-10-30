@@ -2,7 +2,7 @@
  * The view model behind the problems panel (pure, independent of React). The lint and sql-lint
  * findings become one table, filtered by severity, source and free text.
  *
- * Severity comes from the rule index rather than the SARIF level: level has three values and says
+ * Severity comes from the rule index: the SARIF level has three values and says
  * nothing rule-specific, whereas the interface grades findings in four and does so per rule. The
  * level is passed along all the same, because the engine's own diagnostics have no rule to grade
  * them and the index falls back to it.
@@ -110,8 +110,8 @@ export function filterFindings(
   const needle = filter.text.trim().toLowerCase();
   const allowed = new Set(visibleSeverities(filter.threshold));
   const result: FindingRow[] = [];
-  // How many rows already carry each identity. Counted over every finding rather than the ones that
-  // pass, so which duplicate is which does not move when the filter changes.
+  // How many rows already carry each identity. Counted over every finding, including those the
+  // filter hides, so which duplicate is which does not move when the filter changes.
   const seen = new Map<string, number>();
   for (const row of rows) {
     const identity = `${row.source}:${row.finding.file}:${row.finding.startLine}:${row.finding.ruleId}`;

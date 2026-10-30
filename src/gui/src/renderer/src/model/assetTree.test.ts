@@ -38,12 +38,15 @@ const OPTIONS: TreeOptions = {
 };
 
 describe("assetTypeOf", () => {
-  it("maps the engine node types and puts everything else in other", () => {
+  it("maps the engine node types to asset types", () => {
     expect(assetTypeOf("PROGRAM")).toBe("cobol");
     expect(assetTypeOf("COPYBOOK")).toBe("copybook");
     expect(assetTypeOf("JCL")).toBe("jcl");
     expect(assetTypeOf("BMS")).toBe("bms");
     expect(assetTypeOf("SQL")).toBe("sql");
+  });
+
+  it("maps a dataset or an unknown node type to other", () => {
     expect(assetTypeOf("DATASET")).toBe("other");
     expect(assetTypeOf("UNKNOWN")).toBe("other");
   });
@@ -72,7 +75,7 @@ describe("buildTreeRows", () => {
     expect(rows.find((row) => row.name === "cobol")?.expanded).toBe(false);
   });
 
-  it("filters by kind and leaves out the folders that empty", () => {
+  it("keeps only the folders and files of the filtered kind", () => {
     const rows = buildTreeRows(ITEMS, { ...OPTIONS, type: "jcl" });
     expect(rows.map((row) => row.name)).toEqual(["jcl", "SYKD010.jcl"]);
     expect(buildTreeRows(ITEMS, { ...OPTIONS, type: "sql" }).map((row) => row.name)).toEqual([
@@ -135,10 +138,16 @@ describe("countFindingsByFile", () => {
 });
 
 describe("toggleCollapsed", () => {
-  it("flips one folder and leaves the original set alone", () => {
+  it("toggles a folder in the collapsed set", () => {
     const original = new Set(["a"]);
     expect([...toggleCollapsed(original, "b")]).toEqual(["a", "b"]);
     expect([...toggleCollapsed(original, "a")]).toEqual([]);
+  });
+
+  it("leaves the original set unchanged when toggling", () => {
+    const original = new Set(["a"]);
+    toggleCollapsed(original, "b");
+    toggleCollapsed(original, "a");
     expect([...original]).toEqual(["a"]);
   });
 });

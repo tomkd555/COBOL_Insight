@@ -6,6 +6,8 @@ import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.GoToStatement;
 import jp.cobolinsight.core.semantic.PerformRelation;
 import jp.cobolinsight.core.semantic.Procedure;
+import jp.cobolinsight.core.semantic.ProcedureMap;
+import jp.cobolinsight.core.semantic.ProcedureNames;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
@@ -15,9 +17,8 @@ import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
 
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Optional;
 
 /**
  * R007 A GO TO that interrupts a PERFORM THRU range. Among the group of paragraphs forming a
@@ -77,34 +78,36 @@ public final class PerformThruInterruptGoToRule implements Rule {
                 }
             });
         }
+        // Names resolve through ProcedureNames, from the section of the statement that writes them.
+        ProcedureNames names = new ProcedureNames(procedures);
+        ProcedureMap procedureMap = new ProcedureMap(model);
         for (GoToStatement goTo : gotos) {
-            Procedure holder = CfgSupport.containingProcedure(model, goTo);
-            if (holder == null) {
+            int holderIndex = procedureMap.procedureOf(goTo);
+            if (holderIndex < 0) {
                 continue;
             }
-            String holderName = CfgSupport.upper(holder.name());
+            Procedure holder = procedures.get(holderIndex);
+            Optional<String> holderSection = ProcedureNames.sectionOf(holder);
             for (PerformRelation perform : model.performs()) {
                 if (perform.thruProcedure().isEmpty()) {
                     continue;
                 }
-                int targetIndex = indexOf(procedures, perform.targetProcedure());
-                int thruIndex = indexOf(procedures, perform.thruProcedure().get());
-                if (targetIndex < 0 || thruIndex < 0 || thruIndex < targetIndex) {
+                ProcedureNames.Range range =
+                        names.rangeOf(perform, procedureMap.sectionOf(perform)).orElse(null);
+                if (range == null) {
                     continue;
                 }
-                Set<String> range = new LinkedHashSet<>();
-                for (int i = targetIndex; i <= thruIndex; i++) {
-                    range.add(CfgSupport.upper(procedures.get(i).name()));
-                }
-                if (range.contains(holderName)) {
+                int targetIndex = range.from();
+                int thruIndex = range.to();
+                if (holderIndex >= targetIndex && holderIndex <= thruIndex) {
                     continue; // The paragraph containing the GO TO is inside the range -> not an interruption
                 }
-                String entry = CfgSupport.upper(perform.targetProcedure());
                 String hit = null;
-                for (String rawTarget : goTo.targets()) {
-                    String target = CfgSupport.upper(rawTarget);
-                    if (range.contains(target) && !target.equals(entry)) {
-                        hit = rawTarget;
+                for (int t = 0; t < goTo.targets().size(); t++) {
+                    int target = names.indexOf(goTo.targets().get(t),
+                            goTo.targetSections().get(t), holderSection);
+                    if (target > targetIndex && target <= thruIndex) {
+                        hit = goTo.targets().get(t);
                         break;
                     }
                 }
@@ -114,22 +117,12 @@ public final class PerformThruInterruptGoToRule implements Rule {
                                     + perform.targetProcedure() + " THRU "
                                     + perform.thruProcedure().get() + " の範囲外の段落 "
                                     + holder.name() + " からで、入口を経由しません。",
-                            new SourcePosition(model.sourceFile(),
+                            new SourcePosition(goTo.range().start().file(),
                                     goTo.range().start().line(), 1,
                                     SourcePosition.UNKNOWN_BYTE_OFFSET)));
                     break; // One finding per GO TO
                 }
             }
         }
-    }
-
-    private static int indexOf(List<Procedure> procedures, String name) {
-        String wanted = CfgSupport.upper(name);
-        for (int i = 0; i < procedures.size(); i++) {
-            if (CfgSupport.upper(procedures.get(i).name()).equals(wanted)) {
-                return i;
-            }
-        }
-        return -1;
     }
 }

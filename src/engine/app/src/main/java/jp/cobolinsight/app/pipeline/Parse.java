@@ -42,6 +42,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -51,6 +52,13 @@ import java.util.regex.Pattern;
  * source must not cost the analysis of every other.
  */
 public final class Parse implements Step {
+
+    /**
+     * How many assets were handed to a frontend in this process: a program, a JCL file, a member
+     * read on its own or an SQL script parsed afresh. The tests of the parse cache read it to
+     * count what a scan parsed.
+     */
+    static final AtomicInteger FRESH_PARSES = new AtomicInteger();
 
     /**
      * The head of a routine definition, down to the name it gives. A script's other CREATE
@@ -77,6 +85,12 @@ public final class Parse implements Step {
         JclParser jcl = EngineWiring.jclParser();
         BmsSourceParser bms = EngineWiring.bmsParser();
         JclMembers members = new JclMembers(s);
+        // What an earlier scan into the same project file parsed, for every asset whose inputs
+        // are unchanged. A result taken from it goes through the same steps a fresh one does.
+        ParseCache cache = ParseCache.open(s);
+        if (cache != null) {
+            s.artifact(ParseCache.class, cache);
+        }
         // One diagnostic reaches the report once, however many JCL files expand the member that
         // raised it: the same member read from two jobs would otherwise write two identical rows.
         Set<Map.Entry<String, Finding>> reported = new LinkedHashSet<>();
@@ -86,23 +100,29 @@ public final class Parse implements Step {
                 continue;
             }
             switch (unit.kind()) {
-                case COBOL -> parseCobol(s, cobol, unit, decoded);
-                case JCL -> parseJcl(s, jcl, unit, decoded, members, reported);
+                case COBOL -> parseCobol(s, cobol, unit, decoded, cache);
+                case JCL -> parseJcl(s, jcl, unit, decoded, members, reported, cache);
                 case BMS -> parseBms(s, bms, unit, decoded);
-                case SQL -> parseSqlScript(s, unit, decoded);
+                case SQL -> parseSqlScript(s, unit, decoded, cache);
                 case COPYBOOK -> {
                     // Copybooks are analysed through the programs that copy them; on their own they
                     // contribute only their text.
                 }
             }
         }
-        diagnoseUnexpandedMembers(s, jcl, members, reported);
+        diagnoseUnexpandedMembers(s, jcl, members, reported, cache);
     }
 
     private static void parseCobol(SourceSet s, CobolParser parser, SourceUnit unit,
-            DecodedSource decoded) {
-        ParseOutcome<CobolSemanticModel> outcome =
-                parser.parse(decoded, s.copybookSearchPaths());
+            DecodedSource decoded, ParseCache cache) {
+        ParseOutcome<CobolSemanticModel> outcome = cache == null ? null : cache.cobol(unit);
+        if (outcome == null) {
+            FRESH_PARSES.incrementAndGet();
+            outcome = parser.parse(decoded, s.copybookSearchPaths());
+            if (cache != null) {
+                cache.putCobol(unit, outcome);
+            }
+        }
         if (outcome instanceof ParseOutcome.Failure<CobolSemanticModel> failure) {
             s.addFinding(unit.relPath(), failure.finding());
             s.unanalyzable().put(unit.relPath(), failure.finding().message());
@@ -113,13 +133,20 @@ public final class Parse implements Step {
 
     private static void parseJcl(SourceSet s, JclParser parser, SourceUnit unit,
             DecodedSource decoded, JclMembers members,
-            Set<Map.Entry<String, Finding>> reported) {
+            Set<Map.Entry<String, Finding>> reported, ParseCache cache) {
         if (parser.isMember(decoded)) {
             // A catalogued PROC or an INCLUDE member found in the folder: its steps belong to the
             // jobs that call it, and it is read on its own only if no job called it.
             return;
         }
-        ParseOutcome<List<JclJobModel>> outcome = parser.parse(decoded, members.forUnit(unit));
+        ParseOutcome<List<JclJobModel>> outcome = cache == null ? null : cache.jcl(unit);
+        if (outcome == null) {
+            FRESH_PARSES.incrementAndGet();
+            outcome = parser.parse(decoded, members.forUnit(unit));
+            if (cache != null) {
+                cache.putJcl(unit, outcome);
+            }
+        }
         if (outcome instanceof ParseOutcome.Failure<List<JclJobModel>> failure) {
             s.addFinding(unit.relPath(), failure.finding());
             s.unanalyzable().put(unit.relPath(), failure.finding().message());
@@ -139,7 +166,7 @@ public final class Parse implements Step {
      * called this one, but its syntax errors and its directive lines are still worth reporting.
      */
     private static void diagnoseUnexpandedMembers(SourceSet s, JclParser parser,
-            JclMembers members, Set<Map.Entry<String, Finding>> reported) {
+            JclMembers members, Set<Map.Entry<String, Finding>> reported, ParseCache cache) {
         // Keyed the way JclMembers keys the same paths, so two spellings of one file agree.
         Set<String> expanded = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         for (List<JclJobModel> jobs : s.jobsByPath().values()) {
@@ -153,7 +180,15 @@ public final class Parse implements Step {
                     || expanded.contains(Paths.normalisedKey(unit.absPath().toString()))) {
                 continue;
             }
-            for (Finding finding : parser.diagnose(decoded)) {
+            List<Finding> diagnostics = cache == null ? null : cache.memberDiagnostics(unit);
+            if (diagnostics == null) {
+                FRESH_PARSES.incrementAndGet();
+                diagnostics = parser.diagnose(decoded);
+                if (cache != null) {
+                    cache.putMemberDiagnostics(unit, diagnostics);
+                }
+            }
+            for (Finding finding : diagnostics) {
                 record(s, members, unit.relPath(), finding, reported);
             }
         }
@@ -213,10 +248,23 @@ public final class Parse implements Step {
      * <p>Gated on {@link Needs#SQL}: a run whose rules never look at SQL has no use for the
      * statements, and {@code scan}, which writes them, always asks for it.
      */
-    private static void parseSqlScript(SourceSet s, SourceUnit unit, DecodedSource decoded) {
+    private static void parseSqlScript(SourceSet s, SourceUnit unit, DecodedSource decoded,
+            ParseCache cache) {
         if (!s.requires(Needs.SQL)) {
             return;
         }
+        ParseCache.ScriptResult cached = cache == null ? null : cache.script(unit);
+        if (cached != null) {
+            cached.findings().forEach(finding -> s.addFinding(unit.relPath(), finding));
+            if (!cached.statements().isEmpty()) {
+                s.sqlByPath().put(unit.relPath(), new ArrayList<>(cached.statements()));
+            }
+            s.sqlRoutines().addAll(cached.routines());
+            return;
+        }
+        FRESH_PARSES.incrementAndGet();
+        int findingsBefore = s.findingsOf(unit.relPath()).size();
+        int routinesBefore = s.sqlRoutines().size();
         SqlScriptSplitter.unclosedLiteralLine(decoded.text()).ifPresent(line ->
                 s.addFinding(unit.relPath(), Finding.of(Finding.SQL_SYNTAX_RULE_ID,
                         FindingLevel.WARNING,
@@ -236,6 +284,13 @@ public final class Parse implements Step {
         }
         if (!statements.isEmpty()) {
             s.sqlByPath().put(unit.relPath(), statements);
+        }
+        if (cache != null) {
+            List<Finding> findings = s.findingsOf(unit.relPath());
+            cache.putScript(unit, new ParseCache.ScriptResult(
+                    List.copyOf(findings.subList(findingsBefore, findings.size())),
+                    List.copyOf(statements), List.copyOf(s.sqlRoutines()
+                            .subList(routinesBefore, s.sqlRoutines().size()))));
         }
     }
 

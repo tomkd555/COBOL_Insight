@@ -137,21 +137,25 @@ public final class FileStatusUncheckedRule implements Rule {
                     other -> referencesStatusVar(other, var));
             if (!checked) {
                 SimpleStatement io = (SimpleStatement) node.statement().orElseThrow();
-                String file = model.sourceFile();
+                String file = io.range().start().file();
                 int line = io.range().start().line();
                 String verb = CfgSupport.upper(io.verb()) + " " + fd;
                 CfgNode next = CfgSupport.firstBoundary(cfg, node,
                         other -> other != node && fd.equals(ioFd.get(other))).orElse(null);
-                Integer nextLine = next == null ? null
-                        : next.statement().orElseThrow().range().start().line();
+                SourcePosition nextStart = next == null ? null
+                        : next.statement().orElseThrow().range().start();
+                Integer nextLine = nextStart == null ? null : nextStart.line();
+                // Lines of two files say nothing about which comes first.
+                boolean loopsBack = nextStart != null && nextStart.file().equals(file)
+                        && nextLine <= line;
                 String until = nextLine == null ? "プログラムの終端まで進む"
-                        : nextLine <= line ? "ループで " + nextLine + "行の " + fd + " の入出力へ戻る"
+                        : loopsBack ? "ループで " + nextLine + "行の " + fd + " の入出力へ戻る"
                         : "次の " + fd + " の入出力（" + nextLine + "行）へ進む";
                 List<CodeFlowStep> steps = new ArrayList<>();
                 steps.add(CfgSupport.step(file, line,
                         verb + " の実行（" + var + " に入出力状態が設定される）"));
                 if (nextLine != null) {
-                    steps.add(CfgSupport.step(file, nextLine, (nextLine <= line
+                    steps.add(CfgSupport.step(nextStart.file(), nextLine, (loopsBack
                             ? "ループで戻る入出力（" : "次の入出力（")
                             + var + " が上書きされる）"));
                 }
@@ -194,7 +198,8 @@ public final class FileStatusUncheckedRule implements Rule {
             if (source == null) {
                 return Optional.empty();
             }
-            SimpleStatement io = FixEdits.findSimpleStatement(model, finding.location().line(),
+            SimpleStatement io = FixEdits.findSimpleStatement(model, finding.location().file(),
+                    finding.location().line(),
                     candidate -> IO_VERBS.contains(CfgSupport.upper(candidate.verb()))).orElse(null);
             if (io == null) {
                 return Optional.empty();

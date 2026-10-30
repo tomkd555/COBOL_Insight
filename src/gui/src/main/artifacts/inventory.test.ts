@@ -43,7 +43,7 @@ describe("readInventory", () => {
     }
   });
 
-  it("takes the name from the last path segment and the kind from NODE", async () => {
+  it("reads an asset's name, type and codepage", async () => {
     const db = await openDatabaseWith(TWO_ROOTS);
     try {
       const program = readInventory(db, "C:/assets").find((item) => item.path === "cobol/a.cbl");
@@ -63,10 +63,19 @@ describe("readInventory", () => {
     }
   });
 
-  it("reports UNKNOWN for a source with no node and null for an undecodable codepage", async () => {
+  it("reports type UNKNOWN for a source with no node", async () => {
     const db = await openDatabaseWith(TWO_ROOTS);
     try {
-      expect(readInventory(db, "C:/assets")[0]).toMatchObject({ type: "UNKNOWN", codepage: null });
+      expect(readInventory(db, "C:/assets")[0]).toMatchObject({ type: "UNKNOWN" });
+    } finally {
+      db.close();
+    }
+  });
+
+  it("reports a null codepage for a source with no codepage", async () => {
+    const db = await openDatabaseWith(TWO_ROOTS);
+    try {
+      expect(readInventory(db, "C:/assets")[0]).toMatchObject({ codepage: null });
     } finally {
       db.close();
     }

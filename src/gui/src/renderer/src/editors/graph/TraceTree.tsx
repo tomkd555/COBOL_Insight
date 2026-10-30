@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactElement } from "react";
 import { text } from "../../i18n/text";
 import type { TraceNode, TraceRow } from "../../model/traceTree";
 
@@ -11,6 +11,19 @@ export interface TraceTreeProps {
   onToggle: (id: string) => void;
   /** Opens the asset at the row's line. Not called for a row that names no asset. */
   onOpen: (path: string, line: number | null) => void;
+  /**
+   * The name of the tree where something else already shows it — a tab, in the source view's pane.
+   * The tree then draws no title of its own and carries the name for a screen reader only.
+   */
+  label?: string;
+  /** The test id of the tree and the prefix of its rows'. The call graph's tree is `trace`. */
+  testId?: string;
+  /**
+   * Changes with every selection made outside the tree, the same row selected again included; the
+   * selected row is then brought into view and becomes the Tab stop. A selection made in the tree
+   * leaves it as it is.
+   */
+  selectionKey?: number;
 }
 
 /** Where the arrow keys, Home and End move the focus, or null when the key moves nothing. */
@@ -47,14 +60,62 @@ export function TraceTree({
   onSelect,
   onToggle,
   onOpen,
+  label,
+  testId = "trace",
+  selectionKey = 0,
 }: TraceTreeProps): ReactElement {
+  const titleId = useId();
   const treeRef = useRef<HTMLDivElement>(null);
-  const [focusIndex, setFocusIndex] = useState(0);
+  /**
+   * The row the Tab key enters the tree at, held by its id so that a row opened or closed above it
+   * leaves the stop on the same row. A row no longer listed hands the stop to the selected row, and
+   * with none listed to the first.
+   */
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const held = rows.findIndex((row) => row.node.id === focusId);
+  const focusIndex =
+    held >= 0 ? held : Math.max(rows.findIndex((row) => row.node.id === selectedId), 0);
 
-  // A change of rows can leave the previous focus position past the end of the list.
+  /** Brings the selected row into view. False while the tree holds no such row. */
+  const reveal = (): boolean => {
+    const row = treeRef.current?.querySelector<HTMLElement>(".ci-trace__row--selected");
+    if (row === null || row === undefined) {
+      return false;
+    }
+    // jsdom has no scrollIntoView; the guard keeps the tests running.
+    if (typeof row.scrollIntoView === "function") {
+      row.scrollIntoView({ block: "nearest" });
+    }
+    return true;
+  };
+  const revealRef = useRef(reveal);
+  revealRef.current = reveal;
+
+  // A selection made elsewhere is brought into view once, when its row is there, and the Tab key then
+  // enters the tree at that row, which stays the Tab stop while rows above it open or close. Rows
+  // opened or closed afterwards leave the scroll where the reader put it. Each selection made
+  // elsewhere does this anew, the same row selected again included.
+  const revealedRef = useRef<string | null>(null);
   useEffect(() => {
-    setFocusIndex((current) => (current < rows.length ? current : 0));
-  }, [rows.length]);
+    const selection = `${selectionKey}:${selectedId ?? ""}`;
+    if (selectedId === null) {
+      revealedRef.current = null;
+    } else if (revealedRef.current !== selection && reveal()) {
+      revealedRef.current = selection;
+      setFocusId(selectedId);
+    }
+  });
+
+  // The selected row stays in view when the tree is given less height.
+  useEffect(() => {
+    const tree = treeRef.current;
+    if (tree === null || typeof ResizeObserver === "undefined") {
+      return;
+    }
+    const resized = new ResizeObserver(() => revealRef.current());
+    resized.observe(tree);
+    return () => resized.disconnect();
+  }, []);
 
   function focusRow(index: number): void {
     treeRef.current?.querySelectorAll<HTMLElement>('[role="treeitem"]')[index]?.focus();
@@ -70,7 +131,7 @@ export function TraceTree({
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>, index: number, row: TraceRow): void {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
-      setFocusIndex(index);
+      setFocusId(row.node.id);
       activate(row);
       return;
     }
@@ -87,21 +148,24 @@ export function TraceTree({
       return;
     }
     event.preventDefault();
-    setFocusIndex(next);
+    setFocusId(rows[next].node.id);
     focusRow(next);
   }
 
   return (
     <div className="ci-trace">
-      <p className="ci-trace__title" id="ci-trace-title">
-        {text.graph.columnSeq}
-      </p>
+      {label === undefined ? (
+        <p className="ci-trace__title" id={titleId}>
+          {text.graph.traceTitle}
+        </p>
+      ) : null}
       <div
         ref={treeRef}
         className="ci-trace__tree"
         role="tree"
-        aria-labelledby="ci-trace-title"
-        data-testid="trace-tree"
+        aria-labelledby={label === undefined ? titleId : undefined}
+        aria-label={label}
+        data-testid={`${testId}-tree`}
       >
         {rows.map((row, index) => {
           const selected = row.node.id === selectedId;
@@ -121,9 +185,9 @@ export function TraceTree({
               style={{
                 paddingInlineStart: `calc(var(--ci-space-2) + ${row.depth} * var(--ci-space-4))`,
               }}
-              data-testid={`trace-${row.node.id}`}
+              data-testid={`${testId}-${row.node.id}`}
               onClick={() => {
-                setFocusIndex(index);
+                setFocusId(row.node.id);
                 activate(row);
               }}
               onKeyDown={(event) => onKeyDown(event, index, row)}
@@ -143,10 +207,12 @@ export function TraceTree({
                 {row.hasChildren ? (row.expanded ? "▾" : "▸") : ""}
               </button>
               <span className="ci-trace__kind">{text.graph.traceKind[row.node.kind]}</span>
-              <span className="ci-trace__label">{row.node.label}</span>
+              <span className="ci-trace__label" title={row.node.label}>
+                {row.node.label}
+              </span>
               {row.node.cyclic ? <span className="ci-trace__note">{text.graph.cyclic}</span> : null}
               {row.node.line === null ? null : (
-                <span className="ci-trace__line">{`${row.node.line}行`}</span>
+                <span className="ci-trace__line">{text.graph.line(row.node.line)}</span>
               )}
             </div>
           );

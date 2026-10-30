@@ -14,6 +14,9 @@
  * package's default entry point is avoided because it registers every language.
  */
 
+// Monaco's own Japanese messages (its menus, its find widget, what it says to a screen reader). The
+// file sets the table the editor's modules look their messages up in, so it comes before them.
+import "monaco-editor/nls/lang/ja";
 import * as monaco from "monaco-editor/editor/editor.api";
 import EditorWorker from "monaco-editor/editor/editor.worker?worker&inline";
 // The icon glyphs (codicon): the @font-face rule and codicon.ttf. They are not part of the
@@ -24,6 +27,9 @@ import "monaco-editor/features/codicon/register";
 // editor.api carries the API for registering a provider but none of the interface that offers what a
 // provider returns, and the quick fix on a finding is reached from that interface alone.
 import "monaco-editor/features/codeAction/register";
+// The folding contribution: the controls in the gutter and the fold and unfold commands. editor.api
+// takes a folding range provider but folds nothing without it.
+import "monaco-editor/features/folding/register";
 
 /**
  * The globals Monaco reads when it creates a worker. ciMonaco is the handle the offscreen render

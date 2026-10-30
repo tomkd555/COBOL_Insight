@@ -17,6 +17,7 @@ import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
 import jp.cobolinsight.rules.sql.Db2Schema.Column;
 import jp.cobolinsight.rules.sql.Db2Schema.Pair;
+import jp.cobolinsight.rules.cfg.CfgSupport;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -107,8 +108,7 @@ public final class HostVariableTypeRule implements Rule {
                 continue;
             }
             findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(), message,
-                    new SourcePosition(model.sourceFile(), line, 1,
-                            SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                    CfgSupport.at(block.range(), line)));
         }
     }
 

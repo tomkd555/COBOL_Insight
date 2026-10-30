@@ -73,7 +73,7 @@ describe("visibleNodeIds", () => {
     expect(visible.has("4")).toBe(false);
   });
 
-  it("centres on the focus node instead of the roots", () => {
+  it("centres on the focus node, replacing the roots", () => {
     const visible = visibleNodeIds(index, {
       ...INITIAL_GRAPH_FILTER,
       depth: 1,
@@ -109,8 +109,11 @@ describe("visibleNodeIds", () => {
 });
 
 describe("searchMatches", () => {
-  it("matches labels case-insensitively and matches nothing when empty", () => {
+  it("matches labels case-insensitively", () => {
     expect(searchMatches(GRAPH, "step0")).toEqual([String(STEP010_ID), String(STEP020_ID)]);
+  });
+
+  it("matches nothing for a blank query", () => {
     expect(searchMatches(GRAPH, "  ")).toEqual([]);
   });
 });

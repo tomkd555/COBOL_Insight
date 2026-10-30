@@ -47,15 +47,17 @@ public final class FixEdits {
     }
 
     /**
-     * Returns the first simple statement whose start line is {@code line} and that matches the
-     * predicate, searching the procedure division down through its nesting. Because
-     * Finding.location's column is lost, the target statement is identified by start line and
-     * predicate instead.
+     * Returns the first simple statement that starts in {@code file} at {@code line} and matches
+     * the predicate, searching the procedure division down through its nesting. Because
+     * Finding.location's column is lost, the target statement is identified by file, start line
+     * and predicate instead: a copybook line and a program line of one number are two places.
      */
-    public static Optional<SimpleStatement> findSimpleStatement(CobolSemanticModel model, int line,
-            Predicate<SimpleStatement> predicate) {
+    public static Optional<SimpleStatement> findSimpleStatement(CobolSemanticModel model,
+            String file, int line, Predicate<SimpleStatement> predicate) {
+        Predicate<SimpleStatement> inFile = simple -> simple.range().start().file().equals(file);
         for (Procedure procedure : model.procedures()) {
-            Optional<SimpleStatement> found = find(procedure.statements(), line, predicate);
+            Optional<SimpleStatement> found = find(procedure.statements(), line,
+                    inFile.and(predicate));
             if (found.isPresent()) {
                 return found;
             }

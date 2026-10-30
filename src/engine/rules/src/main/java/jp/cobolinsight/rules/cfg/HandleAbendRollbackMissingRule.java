@@ -11,6 +11,8 @@ import jp.cobolinsight.core.semantic.EmbeddedBlock;
 import jp.cobolinsight.core.semantic.EmbeddedBlockKind;
 import jp.cobolinsight.core.semantic.PerformRelation;
 import jp.cobolinsight.core.semantic.Procedure;
+import jp.cobolinsight.core.semantic.ProcedureMap;
+import jp.cobolinsight.core.semantic.ProcedureNames;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
@@ -19,10 +21,11 @@ import jp.cobolinsight.core.spi.AnalysisContext;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.LinkedHashMap;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -72,19 +75,32 @@ public final class HandleAbendRollbackMissingRule implements Rule {
     public List<Finding> evaluate(AnalysisContext context) {
         List<Finding> findings = new ArrayList<>();
         for (CobolSemanticModel model : context.cobolPrograms()) {
-            Map<String, Procedure> byName = new LinkedHashMap<>();
+            ProcedureNames names = new ProcedureNames(model.procedures());
+            ProcedureMap procedureMap = new ProcedureMap(model);
+            // The section of the procedure whose statement holds each EXEC CICS block, which a
+            // label is resolved from; a block outside every procedure resolves from no section.
+            Map<EmbeddedBlock, Optional<String>> sectionByBlock = new IdentityHashMap<>();
             for (Procedure procedure : model.procedures()) {
-                byName.putIfAbsent(CfgSupport.upper(procedure.name()), procedure);
+                CfgSupport.walk(procedure.statements(), statement -> {
+                    for (EmbeddedBlock block : procedureMap.blocksOf(statement)) {
+                        sectionByBlock.put(block, ProcedureNames.sectionOf(procedure));
+                    }
+                });
             }
             for (EmbeddedBlock block : model.embeddedBlocks()) {
                 String label = handleAbendLabel(block);
-                if (label == null || recovers(model, byName, label)) {
+                if (label == null) {
+                    continue;
+                }
+                int start = names.indexOf(label, Optional.empty(),
+                        sectionByBlock.getOrDefault(block, Optional.empty()));
+                if (start >= 0 && recovers(model, names, procedureMap, start)) {
                     continue;
                 }
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         CfgSupport.upper(label) + " は ROLLBACK を実行しません。"
                                 + "異常終了までの更新が取り消されずに確定します。",
-                        new SourcePosition(model.sourceFile(),
+                        new SourcePosition(block.range().start().file(),
                                 CfgSupport.operandLine(block, "LABEL"), 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
             }
@@ -102,30 +118,33 @@ public final class HandleAbendRollbackMissingRule implements Rule {
         return label == null || label.isBlank() ? null : label.trim();
     }
 
-    /** Whether the label paragraph, or a paragraph it performs, backs the unit of work out or abends. */
-    private static boolean recovers(CobolSemanticModel model, Map<String, Procedure> byName,
-            String label) {
-        Set<String> visited = new LinkedHashSet<>();
-        Deque<String> queue = new ArrayDeque<>();
-        queue.add(CfgSupport.upper(label));
+    /**
+     * Whether the label paragraph, or a paragraph it performs, backs the unit of work out or
+     * abends. A PERFORM brings in every procedure of its range, THRU end and a section's
+     * paragraphs included.
+     */
+    private static boolean recovers(CobolSemanticModel model, ProcedureNames names,
+            ProcedureMap procedureMap, int start) {
+        List<Procedure> procedures = model.procedures();
+        Set<Integer> visited = new LinkedHashSet<>();
+        Deque<Integer> queue = new ArrayDeque<>();
+        queue.add(start);
         while (!queue.isEmpty()) {
-            String name = queue.removeFirst();
-            if (!visited.add(name)) {
+            int index = queue.removeFirst();
+            if (!visited.add(index)) {
                 continue;
             }
-            Procedure procedure = byName.get(name);
-            if (procedure == null) {
-                continue;
-            }
+            Procedure procedure = procedures.get(index);
             if (backsOut(procedure)) {
                 return true;
             }
-            for (PerformRelation perform : model.performs()) {
-                if (CfgSupport.upper(perform.fromProcedure()).equals(name)) {
-                    queue.add(CfgSupport.upper(perform.targetProcedure()));
-                    perform.thruProcedure()
-                            .ifPresent(thru -> queue.add(CfgSupport.upper(thru)));
-                }
+            Optional<String> section = ProcedureNames.sectionOf(procedure);
+            for (PerformRelation perform : procedureMap.performsIn(index)) {
+                names.rangeOf(perform, section).ifPresent(range -> {
+                    for (int i = range.from(); i <= range.to(); i++) {
+                        queue.add(i);
+                    }
+                });
             }
         }
         return false;

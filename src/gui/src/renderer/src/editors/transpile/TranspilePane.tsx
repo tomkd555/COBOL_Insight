@@ -6,7 +6,8 @@ import type {
 } from "../../../../shared/ipc";
 import { api, engineFailure, errorMessage } from "../../api";
 import { text } from "../../i18n/text";
-import { useProject } from "../../state/projectStore";
+import { viewRun } from "../../state/engineGate";
+import { engineBusy, structureScanDue, useProject } from "../../state/projectStore";
 import { useSettings } from "../../state/settingsStore";
 import { sourceTabId } from "../../state/workbenchStore";
 import { artifactSubdir } from "../../model/artifactPaths";
@@ -39,23 +40,26 @@ const GENERATED_LANGUAGE_ID: Readonly<Record<TranspileLanguage, string>> = {
 };
 
 /**
- * The `translate` request the output directory was last built from, so switching back to a tab
- * already translated in this run reads the existing files instead of launching the engine again.
+ * What the output directory was last built from, and the `translate` launch that builds it: a key
+ * (folder, artefact epoch `runId`, the count of asset writes, directory, copybook paths, codepage
+ * overrides) and a promise that settles when it ends. A tab opened or switched back to under the same key, during
+ * that launch or after it, awaits the promise and reads the existing files, so the engine launches
+ * once per key.
  * Module-level: every open transpile tab shares one output directory.
  */
-let translateReadyFor = "";
+let translation: { readonly key: string; readonly done: Promise<void> } | null = null;
 
 /**
  * One asset's translation, beside the COBOL it came from.
  *
- * The translation is produced on opening rather than during the analysis run: it is far the most
+ * The translation is produced on opening, outside the analysis run: it is far the most
  * expensive step and most assets are never looked at this way. It writes into a directory beside the
  * project file, and LINE_MAP — which the run persists into the same project file — is what lines the
  * two panes up.
  *
- * This is its own tab rather than a pane of the source editor. Two languages side by side need the
- * width of the whole editor area, and the COBOL shown here is read-only, which the editable source
- * view is not.
+ * The source editor could host this as a pane; it is a tab of its own because two languages side
+ * by side need the width of the whole editor area, and the COBOL shown here is read-only while the
+ * source view is editable.
  */
 export function TranspilePane({ path }: TranspilePaneProps): ReactElement {
   const project = useProject();
@@ -67,6 +71,11 @@ export function TranspilePane({ path }: TranspilePaneProps): ReactElement {
   const dbPath = project.outputPaths?.db ?? project.dbPath;
   const outDir = artifactSubdir(dbPath, "transpile");
   const copybookPaths = settings.copybookPaths;
+  // The codepages the scan and the lint read the files in, so the translation reads them the same way.
+  const codepageOverrides = project.codepageOverrides;
+  // The translation is an engine run of its own and reads the project file, so it waits for a run in
+  // progress and for the scan that follows a save or an import; what is on screen stays until then.
+  const waiting = engineBusy(project);
 
   useEffect(() => {
     if (inputDir === null || dbPath === null || dbPath === undefined || outDir === "") {
@@ -75,34 +84,62 @@ export function TranspilePane({ path }: TranspilePaneProps): ReactElement {
       setLoad({ status: "empty" });
       return;
     }
+    if (waiting) {
+      return;
+    }
     let cancelled = false;
     setLoad({ status: "loading" });
-    const key = `${project.runId}|${outDir}|${copybookPaths.join("|")}`;
+    // The writes are in the key beside the epoch, as in the fix preview (FixDiff).
+    const key = `${inputDir}|${project.runId}|${project.staleWrites}|${outDir}|${copybookPaths.join("|")}|${JSON.stringify(codepageOverrides)}`;
     void (async () => {
       try {
-        if (key !== translateReadyFor) {
-          const finished = await api().run({
-            subcommand: "translate",
-            request: {
-              inputDir,
-              copybookPaths: [...copybookPaths],
-              db: dbPath,
-              language: "both",
-              outDir,
-            },
+        let entry = translation;
+        if (entry === null || entry.key !== key) {
+          const done = viewRun(() =>
+            api().run({
+              subcommand: "translate",
+              request: {
+                inputDir,
+                copybookPaths: [...copybookPaths],
+                codepageOverrides,
+                db: dbPath,
+                language: "both",
+                outDir,
+              },
+            }),
+          ).then((finished) => {
+            const crashed = engineFailure(finished);
+            if (crashed !== null) {
+              throw new Error(crashed);
+            }
           });
-          const crashed = engineFailure(finished);
-          if (crashed !== null) {
-            // The out directory still holds the previous run's translation, which reading it now
-            // would present as this one's. The key is left as it was, so a later mount tries again.
-            throw new Error(crashed);
-          }
-          translateReadyFor = key;
+          const built = { key, done };
+          entry = built;
+          translation = built;
+          // After a run that failed the out directory still holds the translation of the run before
+          // it, which reading it now would present as this one's. The entry is dropped, so a later
+          // mount tries again.
+          done.catch(() => {
+            if (translation === built) {
+              translation = null;
+            }
+          });
         }
+        await entry.done;
         // The source editor already decoded this asset when its tab was opened; reading that spares
         // a second engine launch for text this view only shows, never edits.
         const opened = openDocument(sourceTabId(path));
-        const decoded = opened !== null ? null : await api().decode({ baseDir: inputDir, path, db: dbPath });
+        // The override the scan and the lint read the file in; without one the engine reads the
+        // codepage the scan recorded.
+        const decoded =
+          opened !== null
+            ? null
+            : await api().decode({
+                baseDir: inputDir,
+                path,
+                db: dbPath,
+                codepage: codepageOverrides[path] || undefined,
+              });
         const cobolText = opened?.text ?? decoded?.text ?? "";
         const decodeError = opened !== null ? "" : (decoded?.error ?? "");
         const artifacts = await api().readTranspile({ outDir, dbPath, cobolRelPath: path });
@@ -130,7 +167,20 @@ export function TranspilePane({ path }: TranspilePaneProps): ReactElement {
     return () => {
       cancelled = true;
     };
-  }, [inputDir, dbPath, outDir, path, copybookPaths, project.runId]);
+  }, [
+    inputDir,
+    dbPath,
+    outDir,
+    path,
+    copybookPaths,
+    codepageOverrides,
+    project.runId,
+    project.staleWrites,
+    waiting,
+  ]);
+
+  // Until the scan after a save has read the files, a translation on screen was made before the save.
+  const beforeSave = structureScanDue(project) && load.status === "ready";
 
   const artifacts = load.status === "ready" ? load.artifacts : null;
   const offered = useMemo(
@@ -170,6 +220,11 @@ export function TranspilePane({ path }: TranspilePaneProps): ReactElement {
         </label>
         {load.status === "ready" && entries.length === 0 ? (
           <span>{text.transpileView.noMap}</span>
+        ) : null}
+        {beforeSave ? (
+          <span className="ci-source__note" data-testid="transpile-before-save">
+            {text.transpileView.beforeSave}
+          </span>
         ) : null}
         <div className="ci-source__spacer" />
       </div>

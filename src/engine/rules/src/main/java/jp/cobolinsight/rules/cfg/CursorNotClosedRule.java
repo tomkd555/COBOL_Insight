@@ -94,9 +94,7 @@ public final class CursorNotClosedRule implements Rule {
                 if (declared.contains(cursor) && !closed.contains(cursor)) {
                     findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                             cursor + " が OPEN のまま CLOSE されていません。",
-                            new SourcePosition(model.sourceFile(),
-                                    entry.getValue().range().start().line(), 1,
-                                    SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                            CfgSupport.at(entry.getValue().range())));
                 }
             }
         }

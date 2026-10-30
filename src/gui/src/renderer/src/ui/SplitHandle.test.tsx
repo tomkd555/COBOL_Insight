@@ -12,8 +12,11 @@ describe("nextSplitSize", () => {
     expect(nextSplitSize(300, 40, "before", 100, 600)).toBe(340);
   });
 
-  it("clamps to the minimum and the maximum", () => {
+  it("clamps to the minimum", () => {
     expect(nextSplitSize(300, 500, "after", 100, 600)).toBe(100);
+  });
+
+  it("clamps to the maximum", () => {
     expect(nextSplitSize(300, -500, "after", 100, 600)).toBe(600);
   });
 
@@ -48,7 +51,7 @@ describe("SplitHandle", () => {
     expect(separator).toHaveAttribute("aria-orientation", "vertical");
   });
 
-  it("resizes with the arrow keys and commits once on release", () => {
+  it("resizes by one step per arrow key", () => {
     const onSizeChange = vi.fn();
     const onCommit = vi.fn();
     render(
@@ -68,6 +71,26 @@ describe("SplitHandle", () => {
     fireEvent.keyUp(separator, { key: "ArrowLeft" });
     expect(onSizeChange).toHaveBeenCalledTimes(2);
     expect(onSizeChange).toHaveBeenLastCalledWith(300);
+  });
+
+  it("commits once on release after repeated arrow keys", () => {
+    const onSizeChange = vi.fn();
+    const onCommit = vi.fn();
+    render(
+      <SplitHandle
+        size={280}
+        min={200}
+        oppositeMin={520}
+        step={20}
+        onSizeChange={onSizeChange}
+        onCommit={onCommit}
+        ariaLabel="幅"
+      />,
+    );
+    const separator = screen.getByRole("separator", { name: "幅" });
+    fireEvent.keyDown(separator, { key: "ArrowLeft" });
+    fireEvent.keyDown(separator, { key: "ArrowLeft" });
+    fireEvent.keyUp(separator, { key: "ArrowLeft" });
     // A key repeat is one gesture, so it saves once.
     expect(onCommit).toHaveBeenCalledTimes(1);
   });
@@ -81,7 +104,7 @@ describe("SplitHandle", () => {
     expect(onSizeChange).toHaveBeenCalledWith(200);
   });
 
-  it("ignores a key it does not handle, and commits nothing", () => {
+  it("ignores a key it does not handle", () => {
     const onSizeChange = vi.fn();
     const onCommit = vi.fn();
     render(
@@ -131,7 +154,7 @@ describe("SplitHandle", () => {
     expect(onSizeChange).toHaveBeenLastCalledWith(400);
   });
 
-  it("uses the vertical arrows and reports horizontal orientation when stacked", () => {
+  it("reports horizontal orientation when stacked", () => {
     const onSizeChange = vi.fn();
     render(
       <SplitHandle
@@ -146,6 +169,22 @@ describe("SplitHandle", () => {
     );
     const separator = screen.getByRole("separator", { name: "高さ" });
     expect(separator).toHaveAttribute("aria-orientation", "horizontal");
+  });
+
+  it("uses the vertical arrows when stacked", () => {
+    const onSizeChange = vi.fn();
+    render(
+      <SplitHandle
+        size={240}
+        min={120}
+        oppositeMin={200}
+        step={20}
+        orientation="horizontal"
+        onSizeChange={onSizeChange}
+        ariaLabel="高さ"
+      />,
+    );
+    const separator = screen.getByRole("separator", { name: "高さ" });
     fireEvent.keyDown(separator, { key: "ArrowUp" });
     expect(onSizeChange).toHaveBeenCalledWith(260);
   });

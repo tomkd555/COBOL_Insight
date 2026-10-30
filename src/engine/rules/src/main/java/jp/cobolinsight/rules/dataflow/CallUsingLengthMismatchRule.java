@@ -10,6 +10,8 @@ import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.semantic.CallKind;
+import jp.cobolinsight.core.semantic.CallRelation;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.Procedure;
 import jp.cobolinsight.core.semantic.SimpleStatement;
@@ -18,6 +20,7 @@ import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
 import jp.cobolinsight.rules.SourceTextIndex;
+import jp.cobolinsight.rules.cfg.CfgSupport;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -120,10 +123,27 @@ public final class CallUsingLengthMismatchRule implements Rule {
         }
         List<String> operands = usingOperands(text, "ON", "END-CALL");
         int line = simple.range().start().line();
+        CallRelation relation = model.calls().stream()
+                .filter(candidate -> candidate.range().start().equals(simple.range().start()))
+                .findFirst().orElse(null);
+        if (relation == null) {
+            return;
+        }
+        // An edge stands for every call of one target and keeps the line of the first, so a
+        // static CALL is matched by its target. A dynamic CALL's candidates are known only to the
+        // edge, which it is matched to by the line of the first relation standing there.
+        CallRelation firstAtLine = model.calls().stream()
+                .filter(candidate -> candidate.range().start().line() == line)
+                .findFirst().orElse(null);
         for (CallGraphEdge edge : graph.edges()) {
             if (edge.kind() != EdgeKind.CALL || edge.resolution() == Resolution.UNRESOLVED
-                    || !edge.fromId().equals(callerId) || edge.line() == null
-                    || edge.line() != line || !edge.toId().startsWith(PROGRAM_PREFIX)) {
+                    || !edge.fromId().equals(callerId) || !edge.toId().startsWith(PROGRAM_PREFIX)) {
+                continue;
+            }
+            boolean ofThisCall = relation.kind() == CallKind.STATIC
+                    ? edge.toId().equals(PROGRAM_PREFIX + relation.target().toUpperCase(Locale.ROOT))
+                    : edge.line() != null && edge.line() == line && firstAtLine == relation;
+            if (!ofThisCall) {
                 continue;
             }
             String calleeName = edge.toId().substring(PROGRAM_PREFIX.length());
@@ -139,8 +159,7 @@ public final class CallUsingLengthMismatchRule implements Rule {
                     DataFlowSupport.of(callee, texts), calleeName);
             if (message != null) {
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(), message,
-                        new SourcePosition(model.sourceFile(), line, 1,
-                                SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                        CfgSupport.at(simple.range(), line)));
                 return;
             }
         }

@@ -11,7 +11,7 @@ describe("severityOf", () => {
     expect(severityOf("ADVISORY")).toBe("warning");
   });
 
-  it("treats anything unknown as medium rather than dropping the finding", () => {
+  it("treats an unknown severity as medium", () => {
     expect(severityOf("CRITICAL")).toBe("medium");
     expect(severityOf("")).toBe("medium");
   });
@@ -36,8 +36,11 @@ describe("compareSeverity", () => {
 });
 
 describe("closeDecision", () => {
-  it("closes a clean tab outright and confirms a dirty one", () => {
+  it("closes a clean tab", () => {
     expect(closeDecision(false)).toBe("close");
+  });
+
+  it("asks to confirm a dirty tab", () => {
     expect(closeDecision(true)).toBe("confirm");
   });
 });
@@ -64,8 +67,11 @@ describe("codepageLabel", () => {
     expect(codepageLabel("cp930", "不明")).toBe("EBCDIC CP930");
   });
 
-  it("shows an unknown value as recorded, and the fallback when there is none", () => {
+  it("shows an unknown codepage as recorded", () => {
     expect(codepageLabel("EUC-JP", "不明")).toBe("EUC-JP");
+  });
+
+  it("shows the fallback when there is no codepage", () => {
     expect(codepageLabel(null, "不明")).toBe("不明");
     expect(codepageLabel("", "不明")).toBe("不明");
   });

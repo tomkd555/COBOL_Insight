@@ -57,7 +57,7 @@ export const SEQUENCE_PREFIX = { key: "k", label: "Ctrl+K" } as const;
  */
 export const SEQUENCE_TIMEOUT_MS = 3000;
 
-/** The keys that only qualify another key. Pressing one is not the second key of a sequence. */
+/** The keys that only qualify another key. Pressing one never counts as the second key of a sequence. */
 const MODIFIER_KEYS = ["Control", "Shift", "Alt", "Meta"];
 
 /**
@@ -137,7 +137,7 @@ export function isPaletteChord(event: ChordEvent): boolean {
   return event.key.toLowerCase() === PALETTE_CHORD.key;
 }
 
-/** The command the chord runs, or null when it is not a chord at all. */
+/** The command the chord runs, or null for any other event. */
 export function commandForChord(event: ChordEvent): CommandId | null {
   if (!event.ctrlKey || event.metaKey || event.altKey) {
     return null;

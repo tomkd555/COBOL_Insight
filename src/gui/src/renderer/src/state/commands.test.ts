@@ -46,22 +46,6 @@ const withTab: WorkbenchState = {
   activeTabId: sourceTab("a.cbl").id,
 };
 
-describe("the command list", () => {
-  const commands = buildCommands(context());
-
-  it("gives every command a unique id", () => {
-    const ids = commands.map((command) => command.id);
-    expect(new Set(ids).size).toBe(ids.length);
-  });
-
-  it("gives every command a title and a category", () => {
-    for (const command of commands) {
-      expect(command.title, command.id).not.toBe("");
-      expect(command.category, command.id).not.toBe("");
-    }
-  });
-});
-
 describe("every keybinding resolves", () => {
   it("names a command that exists", () => {
     const ids = new Set(buildCommands(context()).map((command) => command.id));
@@ -76,120 +60,138 @@ describe("every keybinding resolves", () => {
   });
 });
 
-describe("when", () => {
-  it("offers running only with a folder chosen and nothing already running", () => {
-    const offered = (project: ProjectState): boolean =>
-      availableCommands(buildCommands(context({ project }))).some(
-        (command) => command.id === "run.analyze",
-      );
-    expect(offered(initialProjectState)).toBe(false);
-    expect(offered(withFolder)).toBe(true);
-    expect(offered(running)).toBe(false);
-  });
+describe("buildCommands", () => {
+  describe("the command list", () => {
+    const commands = buildCommands(context());
 
-  it("offers analysing the whole folder under the same condition as analysing the selection", () => {
-    const offered = (project: ProjectState): boolean =>
-      availableCommands(buildCommands(context({ project }))).some(
-        (command) => command.id === "run.analyzeAll",
-      );
-    expect(offered(initialProjectState)).toBe(false);
-    expect(offered(withFolder)).toBe(true);
-    expect(offered(running)).toBe(false);
-  });
+    it("gives every command a unique id", () => {
+      const ids = commands.map((command) => command.id);
+      expect(new Set(ids).size).toBe(ids.length);
+    });
 
-  it("offers cancelling only while a run is in progress", () => {
-    const offered = (project: ProjectState): boolean =>
-      availableCommands(buildCommands(context({ project }))).some(
-        (command) => command.id === "run.cancel",
-      );
-    expect(offered(withFolder)).toBe(false);
-    expect(offered(running)).toBe(true);
-  });
-
-  it("offers the translation only for a COBOL source tab", () => {
-    const offered = (workbench: WorkbenchState): boolean =>
-      availableCommands(buildCommands(context({ workbench, project: scanned }))).some(
-        (command) => command.id === "view.showTranspile",
-      );
-    expect(offered(initialWorkbenchState)).toBe(false);
-    expect(offered(withTab)).toBe(true);
-    // A copybook has no translation, so the command does not apply on its tab.
-    const copybook = sourceTab("b.cpy");
-    expect(offered({ ...initialWorkbenchState, tabs: [copybook], activeTabId: copybook.id })).toBe(
-      false,
-    );
-    const settings = settingsTab("設定");
-    expect(offered({ ...initialWorkbenchState, tabs: [settings], activeTabId: settings.id })).toBe(
-      false,
-    );
-  });
-
-  it("offers the save only on a source tab that holds unsaved edits", () => {
-    const offered = (workbench: WorkbenchState): boolean =>
-      availableCommands(buildCommands(context({ workbench, hasDirty: true }))).some(
-        (command) => command.id === "editor.save",
-      );
-    const dirty = { ...withTab, drafts: { [sourceTab("a.cbl").id]: "EDITED" } };
-    expect(offered(dirty)).toBe(true);
-    // Clean source tab, and another kind of tab while a source tab elsewhere is unsaved.
-    expect(offered(withTab)).toBe(false);
-    const settings = settingsTab("設定");
-    expect(
-      offered({ ...dirty, tabs: [...dirty.tabs, settings], activeTabId: settings.id }),
-    ).toBe(false);
-  });
-
-  it("offers the tab commands only when a tab is open", () => {
-    const withoutTabs = availableCommands(buildCommands(context())).map((command) => command.id);
-    expect(withoutTabs).not.toContain("editor.closeTab");
-    const withTabs = availableCommands(buildCommands(context({ workbench: withTab }))).map(
-      (command) => command.id,
-    );
-    expect(withTabs).toContain("editor.closeTab");
-    expect(withTabs).toContain("editor.nextTab");
-  });
-});
-
-describe("run", () => {
-  it("keeps the selected run and the whole-folder run apart", () => {
-    const runAnalysis = vi.fn();
-    const runAnalysisAll = vi.fn();
-    const commands = buildCommands(
-      context({ project: withFolder, runAnalysis, runAnalysisAll }),
-    );
-    commands.find((command) => command.id === "run.analyze")?.run();
-    expect(runAnalysis).toHaveBeenCalledTimes(1);
-    expect(runAnalysisAll).not.toHaveBeenCalled();
-
-    commands.find((command) => command.id === "run.analyzeAll")?.run();
-    expect(runAnalysisAll).toHaveBeenCalledTimes(1);
-    expect(runAnalysis).toHaveBeenCalledTimes(1);
-  });
-
-  it("routes closing through the guard rather than closing outright", () => {
-    const requestCloseTab = vi.fn();
-    const commands = buildCommands(context({ workbench: withTab, requestCloseTab }));
-    commands.find((command) => command.id === "editor.closeTab")?.run();
-    expect(requestCloseTab).toHaveBeenCalledWith(withTab.activeTabId);
-  });
-
-  it("opens the translation of the asset the active source tab shows", () => {
-    const workbenchDispatch = vi.fn();
-    const commands = buildCommands(
-      context({ workbench: withTab, workbenchDispatch, project: scanned }),
-    );
-    commands.find((command) => command.id === "view.showTranspile")?.run();
-    expect(workbenchDispatch).toHaveBeenCalledWith({
-      type: "OPEN_TAB",
-      tab: transpileTab("a.cbl"),
+    it("gives every command a title and a category", () => {
+      for (const command of commands) {
+        expect(command.title, command.id).not.toBe("");
+        expect(command.category, command.id).not.toBe("");
+      }
     });
   });
 
-  it("dispatches the layout toggles", () => {
-    const workbenchDispatch = vi.fn();
-    const commands = buildCommands(context({ workbenchDispatch }));
-    commands.find((command) => command.id === "view.togglePanel")?.run();
-    expect(workbenchDispatch).toHaveBeenCalledWith({ type: "TOGGLE_PANEL" });
+  describe("when", () => {
+    it("offers running only with a folder chosen and nothing already running", () => {
+      const offered = (project: ProjectState): boolean =>
+        availableCommands(buildCommands(context({ project }))).some(
+          (command) => command.id === "run.analyze",
+        );
+      expect(offered(initialProjectState)).toBe(false);
+      expect(offered(withFolder)).toBe(true);
+      expect(offered(running)).toBe(false);
+    });
+
+    it("offers run.analyzeAll under the same condition as run.analyze", () => {
+      const offered = (project: ProjectState): boolean =>
+        availableCommands(buildCommands(context({ project }))).some(
+          (command) => command.id === "run.analyzeAll",
+        );
+      expect(offered(initialProjectState)).toBe(false);
+      expect(offered(withFolder)).toBe(true);
+      expect(offered(running)).toBe(false);
+    });
+
+    it("offers cancelling only while a run is in progress", () => {
+      const offered = (project: ProjectState): boolean =>
+        availableCommands(buildCommands(context({ project }))).some(
+          (command) => command.id === "run.cancel",
+        );
+      expect(offered(withFolder)).toBe(false);
+      expect(offered(running)).toBe(true);
+    });
+
+    it("offers the translation only for a COBOL source tab", () => {
+      const offered = (workbench: WorkbenchState): boolean =>
+        availableCommands(buildCommands(context({ workbench, project: scanned }))).some(
+          (command) => command.id === "view.showTranspile",
+        );
+      expect(offered(initialWorkbenchState)).toBe(false);
+      expect(offered(withTab)).toBe(true);
+      // A copybook has no translation, so the command is not offered on its tab.
+      const copybook = sourceTab("b.cpy");
+      expect(offered({ ...initialWorkbenchState, tabs: [copybook], activeTabId: copybook.id })).toBe(
+        false,
+      );
+      const settings = settingsTab("設定");
+      expect(offered({ ...initialWorkbenchState, tabs: [settings], activeTabId: settings.id })).toBe(
+        false,
+      );
+    });
+
+    it("offers the save only on a source tab that holds unsaved edits", () => {
+      const offered = (workbench: WorkbenchState): boolean =>
+        availableCommands(buildCommands(context({ workbench, hasDirty: true }))).some(
+          (command) => command.id === "editor.save",
+        );
+      const dirty = { ...withTab, drafts: { [sourceTab("a.cbl").id]: "EDITED" } };
+      expect(offered(dirty)).toBe(true);
+      // Clean source tab, and another kind of tab while a source tab elsewhere is unsaved.
+      expect(offered(withTab)).toBe(false);
+      const settings = settingsTab("設定");
+      expect(
+        offered({ ...dirty, tabs: [...dirty.tabs, settings], activeTabId: settings.id }),
+      ).toBe(false);
+    });
+
+    it("offers the tab commands only when a tab is open", () => {
+      const withoutTabs = availableCommands(buildCommands(context())).map((command) => command.id);
+      expect(withoutTabs).not.toContain("editor.closeTab");
+      const withTabs = availableCommands(buildCommands(context({ workbench: withTab }))).map(
+        (command) => command.id,
+      );
+      expect(withTabs).toContain("editor.closeTab");
+      expect(withTabs).toContain("editor.nextTab");
+    });
+  });
+
+  describe("run", () => {
+    it("keeps the selected run and the whole-folder run apart", () => {
+      const runAnalysis = vi.fn();
+      const runAnalysisAll = vi.fn();
+      const commands = buildCommands(
+        context({ project: withFolder, runAnalysis, runAnalysisAll }),
+      );
+      commands.find((command) => command.id === "run.analyze")?.run();
+      expect(runAnalysis).toHaveBeenCalledTimes(1);
+      expect(runAnalysisAll).not.toHaveBeenCalled();
+
+      commands.find((command) => command.id === "run.analyzeAll")?.run();
+      expect(runAnalysisAll).toHaveBeenCalledTimes(1);
+      expect(runAnalysis).toHaveBeenCalledTimes(1);
+    });
+
+    it("routes closing through the guard", () => {
+      const requestCloseTab = vi.fn();
+      const commands = buildCommands(context({ workbench: withTab, requestCloseTab }));
+      commands.find((command) => command.id === "editor.closeTab")?.run();
+      expect(requestCloseTab).toHaveBeenCalledWith(withTab.activeTabId);
+    });
+
+    it("opens the translation of the asset the active source tab shows", () => {
+      const workbenchDispatch = vi.fn();
+      const commands = buildCommands(
+        context({ workbench: withTab, workbenchDispatch, project: scanned }),
+      );
+      commands.find((command) => command.id === "view.showTranspile")?.run();
+      expect(workbenchDispatch).toHaveBeenCalledWith({
+        type: "OPEN_TAB",
+        tab: transpileTab("a.cbl"),
+      });
+    });
+
+    it("dispatches the layout toggles", () => {
+      const workbenchDispatch = vi.fn();
+      const commands = buildCommands(context({ workbenchDispatch }));
+      commands.find((command) => command.id === "view.togglePanel")?.run();
+      expect(workbenchDispatch).toHaveBeenCalledWith({ type: "TOGGLE_PANEL" });
+    });
   });
 });
 
@@ -200,7 +202,7 @@ describe("filterCommands", () => {
     expect(filterCommands(commands, "   ")).toHaveLength(commands.length);
   });
 
-  it("matches the title and the category, ignoring case", () => {
+  it("matches the title and the category", () => {
     expect(filterCommands(commands, "パネル").map((command) => command.id)).toEqual([
       "view.togglePanel",
     ]);

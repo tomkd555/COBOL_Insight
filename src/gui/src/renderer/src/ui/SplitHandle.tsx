@@ -50,7 +50,7 @@ export function nextSplitSize(
 }
 
 /**
- * The maximum size, derived from the container rather than held as a constant: subtract the other
+ * The maximum size, derived from the container: subtract the other
  * pane's minimum and the handle itself. A constant would crush the other pane in a small window and
  * stop short for no visible reason in a large one.
  *
@@ -143,9 +143,9 @@ export function SplitHandle({
 
   // Clamp a size that exceeds the maximum, which happens right after restoring a stored size, after
   // shrinking the window, or on a page zoom. No commit follows: shrinking the window must not
-  // overwrite the size the user chose. That size is kept here rather than in the caller, which is
+  // overwrite the size the user chose. That size is kept here, and the caller is
   // handed the clamped one to render, so a container that grows again — the zoom going back to
-  // 100%, say — goes back to the size that was asked for instead of staying small for good.
+  // 100%, say — goes back to the size that was asked for.
   useEffect(() => {
     const requested = requestedRef.current ?? size;
     const allowed = Math.min(requested, maxSize);
@@ -160,8 +160,8 @@ export function SplitHandle({
 
   /**
    * During a drag the pointer leaves the handle and travels over the neighbouring pane, so movement
-   * and release are taken from the window. The listeners are attached here rather than in an effect:
-   * an effect runs after the render and would miss the movement immediately after the press.
+   * and release are taken from the window. The listeners are attached here, because an effect
+   * runs after the render and would miss the movement immediately after the press.
    */
   function onMouseDown(event: MouseEvent<HTMLDivElement>): void {
     // Suppress the default selection start, so the drag does not select the neighbour's text.
@@ -202,7 +202,7 @@ export function SplitHandle({
           : event.key === "Home"
             ? min
             : event.key === "End"
-              ? // While the maximum cannot be measured, stay put rather than jump to infinity.
+              ? // While the maximum cannot be measured, stay put, which avoids a jump to infinity.
                 Number.isFinite(max)
                 ? max
                 : size

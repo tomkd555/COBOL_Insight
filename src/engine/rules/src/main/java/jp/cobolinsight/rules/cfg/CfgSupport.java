@@ -14,7 +14,9 @@ import jp.cobolinsight.core.semantic.Procedure;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.semantic.StatementBlock;
+import jp.cobolinsight.core.semantic.Statements;
 import jp.cobolinsight.core.source.SourcePosition;
+import jp.cobolinsight.core.source.SourceRange;
 
 import java.util.ArrayDeque;
 import java.util.Collections;
@@ -28,7 +30,15 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
-/** Traversal and search helpers shared by control-flow analysis rules. Stateless. */
+/**
+ * Traversal and search helpers shared by control-flow analysis rules. Stateless.
+ *
+ * <p>A finding, or a step of its code flow, about a statement a COPY member brings in stands in
+ * the copybook's own file at the copybook's own line: the file and the line of the statement's
+ * range, taken together from that one range. Every rule that reports on a statement or an
+ * embedded block places its finding through {@link #at(SourceRange, int)}, so a position always
+ * names a line of the file it names.
+ */
 public final class CfgSupport {
 
     private CfgSupport() {
@@ -40,14 +50,7 @@ public final class CfgSupport {
 
     /** Pre-order traversal, in definition order, of statements and the nested bodies of their compound statements. */
     static void walk(List<Statement> statements, Consumer<Statement> visitor) {
-        for (Statement statement : statements) {
-            visitor.accept(statement);
-            if (statement instanceof CompoundStatement compound) {
-                for (StatementBlock block : compound.blocks()) {
-                    walk(block.statements(), visitor);
-                }
-            }
-        }
+        Statements.walk(statements, visitor);
     }
 
     /** Returns the procedure that contains target (by instance identity, including nested statements). Null if none does. */
@@ -266,6 +269,20 @@ public final class CfgSupport {
     /** A code flow of one step per position, so a finding can point at the places it is about. */
     static CodeFlow flow(CodeFlowStep... steps) {
         return new CodeFlow(List.of(steps));
+    }
+
+    /**
+     * Where a finding about the code of {@code range} stands: the range's own file at
+     * {@code line}, a line of that file, which is the convention the class comment states.
+     */
+    public static SourcePosition at(SourceRange range, int line) {
+        return new SourcePosition(range.start().file(), line, 1,
+                SourcePosition.UNKNOWN_BYTE_OFFSET);
+    }
+
+    /** {@link #at(SourceRange, int)} at the first line of the range. */
+    public static SourcePosition at(SourceRange range) {
+        return at(range, range.start().line());
     }
 
     public static CodeFlowStep step(String file, int line, String message) {

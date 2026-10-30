@@ -14,6 +14,7 @@ import jp.cobolinsight.core.semantic.CompoundStatement;
 import jp.cobolinsight.core.semantic.DataItem;
 import jp.cobolinsight.core.semantic.EmbeddedBlock;
 import jp.cobolinsight.core.semantic.EmbeddedBlockKind;
+import jp.cobolinsight.core.semantic.ProcedureMap;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
@@ -83,8 +84,8 @@ public final class CicsResponseUncheckedRule implements Rule {
             Map.entry("START", "INTERVAL"), Map.entry("RETRIEVE", "INTERVAL"),
             Map.entry("CANCEL", "INTERVAL"), Map.entry("DELAY", "INTERVAL"));
 
-    /** A HANDLE CONDITION: its line and the conditions it names with a label. */
-    private record Handle(int line, Set<String> conditions) {
+    /** A HANDLE CONDITION: its order among the model's blocks and the conditions it names with a label. */
+    private record Handle(int order, Set<String> conditions) {
     }
 
     private static final RuleMeta META =
@@ -137,32 +138,43 @@ public final class CicsResponseUncheckedRule implements Rule {
 
     private static void evaluate(CobolSemanticModel model, ControlFlowGraph cfg,
             List<Finding> findings) {
-        List<Handle> handles = model.embeddedBlocks().stream()
-                .filter(block -> block.kind() == EmbeddedBlockKind.CICS_HANDLE_CONDITION)
-                .map(block -> new Handle(block.range().start().line(), handledConditions(block)))
-                .toList();
+        // A HANDLE CONDITION is placed by its order among the model's blocks, which is the
+        // written order: lines of a copybook and of the program say nothing about which is first.
+        List<EmbeddedBlock> blocks = model.embeddedBlocks();
+        List<Handle> handles = new ArrayList<>();
+        for (int order = 0; order < blocks.size(); order++) {
+            if (blocks.get(order).kind() == EmbeddedBlockKind.CICS_HANDLE_CONDITION) {
+                handles.add(new Handle(order, handledConditions(blocks.get(order))));
+            }
+        }
         Set<CfgNode> cicsNodes = Collections.newSetFromMap(new IdentityHashMap<>());
-        Map<SourceRange, CfgNode> byRange = new HashMap<>();
+        // By identity: two inclusions of one copybook give two blocks of one range.
+        Map<EmbeddedBlock, CfgNode> nodeByBlock = new IdentityHashMap<>();
         if (cfg != null) {
+            ProcedureMap procedureMap = new ProcedureMap(model);
             for (CfgNode node : cfg.nodes()) {
                 node.statement().ifPresent(statement -> {
                     if (statement instanceof SimpleStatement simple
                             && "EXEC CICS".equals(simple.verb())) {
                         cicsNodes.add(node);
-                        byRange.put(simple.range(), node);
+                        for (EmbeddedBlock block : procedureMap.blocksOf(simple)) {
+                            if (block.range().equals(simple.range())) {
+                                nodeByBlock.put(block, node);
+                            }
+                        }
                     }
                 });
             }
         }
-        for (EmbeddedBlock block : model.embeddedBlocks()) {
+        for (int order = 0; order < blocks.size(); order++) {
+            EmbeddedBlock block = blocks.get(order);
             if (!block.kind().isCics() || EXEMPT.contains(firstWord(block))) {
                 continue;
             }
-            SourcePosition at = new SourcePosition(model.sourceFile(),
-                    block.range().end().line(), 1, SourcePosition.UNKNOWN_BYTE_OFFSET);
+            SourcePosition at = CfgSupport.at(block.range(), block.range().end().line());
             String respItem = block.operands().getOrDefault("RESP", block.operands().get("RESP2"));
             if (respItem == null) {
-                if (NOHANDLE.matcher(block.text()).find() || covered(block, handles)) {
+                if (NOHANDLE.matcher(block.text()).find() || covered(block, order, handles)) {
                     continue;
                 }
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
@@ -170,7 +182,7 @@ public final class CicsResponseUncheckedRule implements Rule {
                                 + "応答コードを検査できず、異常時は既定の異常終了になります。", at));
                 continue;
             }
-            CfgNode start = byRange.get(block.range());
+            CfgNode start = nodeByBlock.get(block);
             if (start == null) {
                 continue;
             }
@@ -200,13 +212,12 @@ public final class CicsResponseUncheckedRule implements Rule {
      * condition of the command's family. A command of no known family is covered by any earlier
      * HANDLE CONDITION.
      */
-    private static boolean covered(EmbeddedBlock block, List<Handle> handles) {
-        int line = block.range().start().line();
+    private static boolean covered(EmbeddedBlock block, int order, List<Handle> handles) {
         String name = commandName(block);
         String family = name.endsWith(" MAP") ? "MAP" : FAMILY_BY_COMMAND.get(firstWord(block));
         Set<String> raised = family == null ? null : CONDITIONS_BY_FAMILY.get(family);
         for (Handle handle : handles) {
-            if (handle.line() >= line) {
+            if (handle.order() >= order) {
                 continue;
             }
             if (raised == null || handle.conditions().contains("ERROR")

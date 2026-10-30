@@ -28,7 +28,7 @@ function defaultSeverityLabel(entry: RuleCatalogEntry, override: string): string
  * The rule list: every rule the engine knows, grouped by category, with its state and its severity.
  *
  * A toggle writes the rule configuration file and then asks the engine again, so what the checkbox
- * shows is always the engine's own answer rather than a guess made from the file just written.
+ * shows is always the engine's own answer to the file just written.
  */
 export function Rules({ notify }: RulesProps): ReactElement {
   const project = useProject();
@@ -94,7 +94,7 @@ export function Rules({ notify }: RulesProps): ReactElement {
               <h3 className="ci-rules__groupname">{group.category}</h3>
               <button
                 type="button"
-                className="ci-button ci-button--quiet"
+                className="ci-button ci-button--quiet ci-button--icon"
                 title={text.rules.enableGroup}
                 aria-label={text.rules.enableGroup}
                 onClick={() =>
@@ -108,7 +108,7 @@ export function Rules({ notify }: RulesProps): ReactElement {
               </button>
               <button
                 type="button"
-                className="ci-button ci-button--quiet"
+                className="ci-button ci-button--quiet ci-button--icon"
                 title={text.rules.disableGroup}
                 aria-label={text.rules.disableGroup}
                 onClick={() =>
@@ -122,16 +122,19 @@ export function Rules({ notify }: RulesProps): ReactElement {
               </button>
             </header>
             {group.rules.map((entry) => {
-              const override = overrideOf(rules.file, entry.id).severity ?? "";
+              // The engine reads an override in either case; the options are upper case.
+              const override = (overrideOf(rules.file, entry.id).severity ?? "").toUpperCase();
               return (
               <div className="ci-rules__row" key={entry.id} data-testid={`rule-${entry.id}`}>
-                <input
-                  type="checkbox"
-                  checked={entry.enabled}
-                  aria-label={text.rules.enabledLabel(entry.id)}
-                  onChange={(event) => setRulesEnabled([entry.id], event.target.checked)}
-                  data-testid={`rule-toggle-${entry.id}`}
-                />
+                <label className="ci-rules__toggle">
+                  <input
+                    type="checkbox"
+                    checked={entry.enabled}
+                    aria-label={text.rules.enabledLabel(entry.id)}
+                    onChange={(event) => setRulesEnabled([entry.id], event.target.checked)}
+                    data-testid={`rule-toggle-${entry.id}`}
+                  />
+                </label>
                 <button
                   type="button"
                   className="ci-rules__name"

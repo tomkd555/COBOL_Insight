@@ -13,11 +13,11 @@ import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.CompoundStatement;
 import jp.cobolinsight.core.semantic.EmbeddedBlock;
 import jp.cobolinsight.core.semantic.EmbeddedBlockKind;
+import jp.cobolinsight.core.semantic.ProcedureMap;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
-import jp.cobolinsight.core.source.SourceRange;
 import jp.cobolinsight.core.spi.AnalysisContext;
 import jp.cobolinsight.rules.SourceTextIndex;
 
@@ -28,6 +28,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 /**
@@ -106,43 +107,55 @@ public final class MapfailUncheckedRule implements Rule {
         }
         SourceTextIndex texts = context.artifact(SourceTextIndex.class).orElse(null);
         List<Finding> findings = new ArrayList<>();
+        Map<String, String[]> linesByFile = new HashMap<>();
+        Function<String, String[]> lines = file -> texts == null ? null
+                : linesByFile.computeIfAbsent(file, f -> texts.textOf(f)
+                        .map(text -> text.split("\n", -1)).orElse(null));
         for (CobolSemanticModel model : context.cobolPrograms()) {
-            String[] lines = texts == null ? null : texts.textOf(model.sourceFile())
-                    .map(text -> text.split("\n", -1)).orElse(null);
             cfgs.of(model).ifPresent(cfg -> evaluate(model, cfg, lines, findings));
         }
         return findings;
     }
 
-    private static void evaluate(CobolSemanticModel model, ControlFlowGraph cfg, String[] lines,
-            List<Finding> findings) {
+    private static void evaluate(CobolSemanticModel model, ControlFlowGraph cfg,
+            Function<String, String[]> lines, List<Finding> findings) {
         Set<CfgNode> cicsNodes = Collections.newSetFromMap(new IdentityHashMap<>());
-        Map<SourceRange, CfgNode> byRange = new HashMap<>();
+        // By identity: two inclusions of one copybook give two blocks of one range.
+        Map<EmbeddedBlock, CfgNode> nodeByBlock = new IdentityHashMap<>();
+        ProcedureMap procedureMap = new ProcedureMap(model);
         for (CfgNode node : cfg.nodes()) {
             node.statement().ifPresent(statement -> {
                 if (statement instanceof SimpleStatement simple
                         && "EXEC CICS".equals(simple.verb())) {
                     cicsNodes.add(node);
-                    byRange.put(simple.range(), node);
+                    for (EmbeddedBlock block : procedureMap.blocksOf(simple)) {
+                        if (block.range().equals(simple.range())) {
+                            nodeByBlock.put(block, node);
+                        }
+                    }
                 }
             });
         }
-        List<Integer> handledFrom = model.embeddedBlocks().stream()
-                .filter(block -> block.kind() == EmbeddedBlockKind.CICS_HANDLE_CONDITION)
-                .filter(block -> HANDLED.matcher(block.text()).find())
-                .map(block -> block.range().start().line())
-                .toList();
-        for (EmbeddedBlock block : model.embeddedBlocks()) {
+        // A HANDLE CONDITION is placed by its order among the model's blocks, which is the
+        // written order: lines of a copybook and of the program say nothing about which is first.
+        List<EmbeddedBlock> blocks = model.embeddedBlocks();
+        int handledFrom = Integer.MAX_VALUE;
+        for (int order = 0; order < blocks.size(); order++) {
+            if (blocks.get(order).kind() == EmbeddedBlockKind.CICS_HANDLE_CONDITION
+                    && HANDLED.matcher(blocks.get(order).text()).find()) {
+                handledFrom = Math.min(handledFrom, order);
+            }
+        }
+        for (int order = 0; order < blocks.size(); order++) {
+            EmbeddedBlock block = blocks.get(order);
             if (block.kind() != EmbeddedBlockKind.CICS_RECEIVE_MAP) {
                 continue;
             }
             String resp = block.operands().getOrDefault("RESP", block.operands().get("RESP2"));
-            int line = block.range().start().line();
-            if (resp == null || NOHANDLE.matcher(block.text()).find()
-                    || handledFrom.stream().anyMatch(handle -> handle < line)) {
+            if (resp == null || NOHANDLE.matcher(block.text()).find() || handledFrom < order) {
                 continue;
             }
-            CfgNode start = byRange.get(block.range());
+            CfgNode start = nodeByBlock.get(block);
             if (start == null || CfgSupport.forwardHasMatch(cfg, start, cicsNodes::contains,
                     node -> handlesMapfail(node, lines))) {
                 continue;
@@ -151,8 +164,7 @@ public final class MapfailUncheckedRule implements Rule {
             findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                     map + " の RECEIVE MAP は MAPFAIL を検査していません。"
                             + "入力のない画面でも前回の受け取り内容で処理を続けます。",
-                    new SourcePosition(model.sourceFile(), block.range().end().line(), 1,
-                            SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                    CfgSupport.at(block.range(), block.range().end().line())));
         }
     }
 
@@ -161,14 +173,15 @@ public final class MapfailUncheckedRule implements Rule {
      * clause, or one that lets only a NORMAL response through: a positive test of
      * DFHRESP(NORMAL), or a negated one with an ELSE.
      */
-    private static boolean handlesMapfail(CfgNode node, String[] lines) {
+    private static boolean handlesMapfail(CfgNode node, Function<String, String[]> lines) {
         return node.statement()
                 .map(statement -> statement instanceof CompoundStatement compound
                         && handlesMapfail(compound, lines))
                 .orElse(false);
     }
 
-    private static boolean handlesMapfail(CompoundStatement compound, String[] lines) {
+    private static boolean handlesMapfail(CompoundStatement compound,
+            Function<String, String[]> lines) {
         String header = headerText(compound, lines);
         if (MAPFAIL_CONDITION.matcher(header).find()) {
             return true;
@@ -181,11 +194,14 @@ public final class MapfailUncheckedRule implements Rule {
 
     /**
      * The condition and branch labels the model carries for the statement, plus the source lines
-     * of its header up to its first nested statement: the model's condition text names only the
-     * data items of an IF condition, so DFHRESP(...) is read from the source.
+     * of its header up to its first nested statement, read from the file the statement stands in:
+     * the model's condition text names only the data items of an IF condition, so DFHRESP(...) is
+     * read from the source.
      */
-    private static String headerText(CompoundStatement compound, String[] lines) {
+    private static String headerText(CompoundStatement compound,
+            Function<String, String[]> fileLines) {
         StringBuilder text = new StringBuilder(CfgSupport.referenceText(compound));
+        String[] lines = fileLines.apply(compound.range().start().file());
         if (lines == null) {
             return text.toString();
         }

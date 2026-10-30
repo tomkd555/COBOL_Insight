@@ -14,13 +14,12 @@ import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Supplementary information from the CST obtained through our own pipeline up to ParserStage.
@@ -130,15 +129,24 @@ final class CstCapture {
     }
 
     /**
-     * Builds the inline expansion for each COPY statement. Scans, in order, which copybook and
-     * which line in it each line of the post-expansion document originates from, groups a run of
-     * consecutive lines from the same copybook into a single expansion, and supplies the original
-     * COPY statement's line number from the COPY statement position recorded by Che4z. When the
-     * same copybook is pulled in multiple times, the expansions' order of appearance is matched
-     * against the COPY statements' line numbers in ascending order.
+     * Builds the inline expansion for each COPY statement the program file writes. Che4z splices
+     * a copybook in between lines of the program file, so a run of consecutive post-expansion
+     * lines from copybooks, ended by the next line of the program file, is one COPY statement's
+     * expansion. It holds the lines of the copybook the statement names and, where a COPY inside
+     * that copybook brought another one in, the nested copybook's lines at their place, each
+     * marked with its copybook. The expansion stands on the last COPY statement of that copybook
+     * Che4z recorded in the program file at or above the run, which is the statement itself.
      *
-     * <p>Excludes runs for which no COPY statement is found in the original (nested expansion via
-     * a COPY inside a copybook) and code Che4z implicitly inserts (such as SQLCA).
+     * <p>A nested COPY statement's own line appears, blanked, before and after the lines it
+     * brought in; the expansion keeps its first appearance. Code Che4z implicitly inserts (such as
+     * SQLCA) ends a run and belongs to none.
+     *
+     * <p>A COPY written after other code on its line is spliced into that line: the copybook's
+     * first line joins the text around the statement, and its further lines follow as lines of
+     * their own. Each post-expansion line is therefore read as pieces, one for each stretch of
+     * text from one file, and the pieces take the place of lines in the runs above. Text of the
+     * program file after such a COPY can end the run after the copybook's first line; the lines
+     * that follow it continue the same expansion.
      */
     private static List<CopyInlineExpansion> collectInlineExpansions(AnalysisContext context,
             String mainUri) {
@@ -147,33 +155,82 @@ final class CstCapture {
         if (document == null || copybooks == null) {
             return List.of();
         }
-        Map<String, Deque<Integer>> statementLines = copyStatementLines(copybooks, mainUri);
+        Map<String, List<Integer>> statementLines = copyStatementLines(copybooks, mainUri);
         List<CopyInlineExpansion> expansions = new ArrayList<>();
-        String runUri = null;
-        List<ExpandedCopyLine> runLines = new ArrayList<>();
+        List<Location> run = new ArrayList<>();
+        List<String> runTexts = new ArrayList<>();
+        int lastProgramLine = 0;
         String[] lines = document.toString().split("\n", -1);
         for (int i = 0; i < lines.length; i++) {
-            Location origin = originOf(document, i, lines[i]);
-            String uri = origin == null ? null : origin.getUri();
-            boolean inCopybook = uri != null && !uri.equals(mainUri) && !UriPaths.isImplicit(uri);
-            if (!inCopybook || !uri.equals(runUri)) {
-                addInlineExpansion(expansions, runUri, runLines, copybooks, statementLines);
-                runUri = inCopybook ? uri : null;
-                runLines = new ArrayList<>();
-            }
-            if (inCopybook) {
-                runLines.add(new ExpandedCopyLine(origin.getRange().getStart().getLine() + 1,
-                        stripTrailing(lines[i])));
+            for (Piece piece : piecesOf(document, i, lines[i])) {
+                Location origin = piece.origin();
+                String uri = origin == null ? null : origin.getUri();
+                if (uri != null && !uri.equals(mainUri) && !UriPaths.isImplicit(uri)) {
+                    run.add(origin);
+                    runTexts.add(piece.text());
+                    continue;
+                }
+                addInlineExpansion(expansions, run, runTexts, lastProgramLine, copybooks,
+                        statementLines);
+                run = new ArrayList<>();
+                runTexts = new ArrayList<>();
+                if (uri != null && uri.equals(mainUri)) {
+                    lastProgramLine = origin.getRange().getStart().getLine() + 1;
+                }
             }
         }
-        addInlineExpansion(expansions, runUri, runLines, copybooks, statementLines);
+        addInlineExpansion(expansions, run, runTexts, lastProgramLine, copybooks, statementLines);
         return List.copyOf(expansions);
     }
 
+    /** A stretch of one post-expansion line that comes from one file, and its text. */
+    private record Piece(Location origin, String text) {
+    }
+
+    /**
+     * The pieces of one post-expansion line. A line whose text comes from one file is one piece
+     * holding the whole line, as Che4z wrote it. A line that joins text of several files splits
+     * where the file changes, each piece indented to the column its first character has in its
+     * own file, so a copybook line reads as the copybook writes it.
+     */
+    private static List<Piece> piecesOf(ExtendedDocument document, int line, String text) {
+        Location first = originOf(document, line, text);
+        int start = 0;
+        while (start < text.length() && text.charAt(start) == ' ') {
+            start++;
+        }
+        List<Piece> pieces = new ArrayList<>();
+        Location pieceOrigin = first;
+        int pieceStart = start;
+        for (int column = start + 1; column < text.length(); column++) {
+            if (text.charAt(column) == ' ') {
+                continue;
+            }
+            Location origin = locationAt(document, line, column);
+            if (origin == null || pieceOrigin == null
+                    || origin.getUri().equals(pieceOrigin.getUri())) {
+                continue;
+            }
+            pieces.add(piece(pieceOrigin, text, pieceStart, column));
+            pieceOrigin = origin;
+            pieceStart = column;
+        }
+        if (pieces.isEmpty()) {
+            return List.of(new Piece(first, stripTrailing(text)));
+        }
+        pieces.add(piece(pieceOrigin, text, pieceStart, text.length()));
+        return pieces;
+    }
+
+    private static Piece piece(Location origin, String text, int start, int end) {
+        int column = origin == null ? 0 : origin.getRange().getStart().getCharacter();
+        return new Piece(origin, " ".repeat(column) + stripTrailing(text.substring(start, end)));
+    }
+
     /** Copybook name to the line numbers of COPY statements appearing in the original (1-based, ascending). */
-    private static Map<String, Deque<Integer>> copyStatementLines(CopybooksRepository copybooks,
+    private static Map<String, List<Integer>> copyStatementLines(CopybooksRepository copybooks,
             String mainUri) {
-        Map<String, Deque<Integer>> byName = new HashMap<>();
+        Map<String, List<Integer>> byName = new HashMap<>();
         copybooks.getDefinitionStatements().asMap().forEach((name, localities) -> {
             List<Integer> lines = localities.stream()
                     .filter(locality -> mainUri.equals(locality.getUri()))
@@ -181,25 +238,81 @@ final class CstCapture {
                     .sorted()
                     .toList();
             if (!lines.isEmpty()) {
-                byName.put(name, new ArrayDeque<>(lines));
+                byName.put(name, lines);
             }
         });
         return byName;
     }
 
-    private static void addInlineExpansion(List<CopyInlineExpansion> out, String uri,
-            List<ExpandedCopyLine> lines, CopybooksRepository copybooks,
-            Map<String, Deque<Integer>> statementLines) {
-        if (uri == null || lines.isEmpty()) {
+    /**
+     * Adds the expansion one run of copybook lines makes. Its copybook is the first one in the
+     * run the program file writes a COPY statement for at or above the run; a run with none is
+     * left out.
+     */
+    private static void addInlineExpansion(List<CopyInlineExpansion> out, List<Location> run,
+            List<String> texts, int lastProgramLine, CopybooksRepository copybooks,
+            Map<String, List<Integer>> statementLines) {
+        String uri = null;
+        String name = null;
+        int statementLine = 0;
+        for (Location origin : run) {
+            String candidate = copybooks.getCopybookIdByUri(origin.getUri());
+            int line = candidate == null ? 0
+                    : statementLines.getOrDefault(candidate, List.of()).stream()
+                            .filter(l -> l <= lastProgramLine)
+                            .reduce(0, Math::max);
+            if (line > 0) {
+                uri = origin.getUri();
+                name = candidate;
+                statementLine = line;
+                break;
+            }
+        }
+        if (uri == null) {
             return;
         }
-        String name = copybooks.getCopybookIdByUri(uri);
-        Deque<Integer> pending = name == null ? null : statementLines.get(name);
-        if (pending == null || pending.isEmpty()) {
+        List<ExpandedCopyLine> lines = new ArrayList<>();
+        Map<String, Integer> lastLineOf = new HashMap<>();
+        for (int i = 0; i < run.size(); i++) {
+            String lineUri = run.get(i).getUri();
+            int copybookLine = run.get(i).getRange().getStart().getLine() + 1;
+            Integer previous = lastLineOf.put(lineUri, copybookLine);
+            if (texts.get(i).isBlank() && previous != null && previous == copybookLine) {
+                continue;
+            }
+            lines.add(new ExpandedCopyLine(copybookLine, texts.get(i), lineUri.equals(uri)
+                    ? Optional.empty() : Optional.of(UriPaths.toPathString(lineUri))));
+        }
+        String path = UriPaths.toPathString(uri);
+        CopyInlineExpansion previous = out.isEmpty() ? null : out.get(out.size() - 1);
+        if (previous != null && continues(previous, statementLine, path, lines.get(0))) {
+            List<ExpandedCopyLine> joined = new ArrayList<>(previous.lines());
+            joined.addAll(lines);
+            out.set(out.size() - 1, new CopyInlineExpansion(statementLine, name, path, joined));
             return;
         }
-        out.add(new CopyInlineExpansion(pending.removeFirst(), name, UriPaths.toPathString(uri),
-                lines));
+        out.add(new CopyInlineExpansion(statementLine, name, path, lines));
+    }
+
+    /**
+     * Whether a run goes on with the expansion before it: the same COPY statement, and a line of
+     * its copybook below the last one that expansion holds. That is the rest of a copybook
+     * spliced in after other code, once the program text after the COPY statement has ended the
+     * run at the copybook's first line.
+     */
+    private static boolean continues(CopyInlineExpansion previous, int statementLine, String path,
+            ExpandedCopyLine first) {
+        if (previous.copyStatementLine() != statementLine
+                || !previous.copybookPath().equals(path) || first.copybookPath().isPresent()) {
+            return false;
+        }
+        int last = 0;
+        for (ExpandedCopyLine line : previous.lines()) {
+            if (line.copybookPath().isEmpty()) {
+                last = line.copybookLine();
+            }
+        }
+        return first.copybookLine() > last;
     }
 
     /**
@@ -213,6 +326,11 @@ final class CstCapture {
         while (column < text.length() && text.charAt(column) == ' ') {
             column++;
         }
+        return locationAt(document, line, column);
+    }
+
+    /** The origin position of the character at one column of a post-expansion line. */
+    private static Location locationAt(ExtendedDocument document, int line, int column) {
         try {
             return document.mapLocation(new Range(new Position(line, column),
                     new Position(line, column + 1)));

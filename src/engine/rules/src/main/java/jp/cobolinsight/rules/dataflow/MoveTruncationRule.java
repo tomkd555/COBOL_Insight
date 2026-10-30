@@ -107,12 +107,11 @@ public final class MoveTruncationRule implements Rule {
                 support.item(t.receiver()).ifPresent(item -> steps.add(CfgSupport.step(
                         item.position().file(), item.position().line(),
                         "受け取り側項目 " + t.receiver() + " の宣言（PIC " + t.receiverPic() + "）")));
-                steps.add(CfgSupport.step(model.sourceFile(), line, "切り捨てが起きる MOVE 文"));
+                steps.add(CfgSupport.step(simple.range().start().file(), line, "切り捨てが起きる MOVE 文"));
                 findings.add(new Finding(META.id(), META.defaultSeverity().toLevel(),
                         "MOVE " + t.sender() + " TO " + t.receiver() + " で" + t.lost()
                                 + "が切り捨てられます。実行時エラーも警告も出ません。",
-                        new SourcePosition(model.sourceFile(), line, 1,
-                                SourcePosition.UNKNOWN_BYTE_OFFSET),
+                        CfgSupport.at(simple.range(), line),
                         List.of(new CodeFlow(steps)), List.of()));
             }
         }

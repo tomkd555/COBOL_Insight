@@ -29,7 +29,7 @@ public final class MergeJars {
                         ZipEntry e = entries.nextElement();
                         String n = e.getName();
                         if (e.isDirectory() || n.equals("module-info.class")) continue;
-                        if (n.startsWith("META-INF/") && n.matches(".*\.(SF|DSA|RSA|EC)")) continue;
+                        if (n.startsWith("META-INF/") && n.matches(".*\\.(SF|DSA|RSA|EC)")) continue;
                         byte[] data = z.getInputStream(e).readAllBytes();
                         if (n.startsWith("META-INF/services/")) {
                             services.computeIfAbsent(n, k -> new StringBuilder())

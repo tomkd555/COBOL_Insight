@@ -11,7 +11,8 @@ import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.CompoundStatement;
 import jp.cobolinsight.core.semantic.ControlKind;
 import jp.cobolinsight.core.semantic.PerformRelation;
-import jp.cobolinsight.core.semantic.Procedure;
+import jp.cobolinsight.core.semantic.ProcedureMap;
+import jp.cobolinsight.core.semantic.ProcedureNames;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.rule.Command;
@@ -47,6 +48,8 @@ import java.util.regex.Pattern;
  */
 public final class PerformUntilNotUpdatedRule implements Rule {
 
+    private static final Pattern UNTIL =
+            Pattern.compile("(?i)(?<![\\p{L}\\p{N}$#_-])UNTIL(?![\\p{L}\\p{N}$#_-])");
     private static final Pattern NAME_TOKEN =
             Pattern.compile("[\\p{L}\\p{N}$#_-]*\\p{L}[\\p{L}\\p{N}$#_-]*");
     private static final Set<String> RESERVED = Set.of(
@@ -102,15 +105,16 @@ public final class PerformUntilNotUpdatedRule implements Rule {
             ProgramDataFlow df = facts.of(model).orElse(null);
             ControlFlowGraph cfg = cfgs.of(model).orElse(null);
             if (df != null && cfg != null) {
-                evaluate(model, cfg, df, DataFlowSupport.of(model, texts),
-                        texts.textOf(model.sourceFile()).orElse(""), findings);
+                evaluate(model, cfg, df, DataFlowSupport.of(model, texts), texts, findings);
             }
         }
         return findings;
     }
 
     private void evaluate(CobolSemanticModel model, ControlFlowGraph cfg, ProgramDataFlow df,
-            DataFlowSupport support, String source, List<Finding> findings) {
+            DataFlowSupport support, SourceTextIndex texts, List<Finding> findings) {
+        ProcedureNames names = new ProcedureNames(model.procedures());
+        ProcedureMap procedureMap = new ProcedureMap(model);
         for (CfgNode node : cfg.nodes()) {
             Statement statement = node.statement().orElse(null);
             List<String> condVars = conditionVariables(statement);
@@ -121,12 +125,14 @@ public final class PerformUntilNotUpdatedRule implements Rule {
             if (body.isEmpty()) {
                 continue;
             }
-            Set<CfgNode> performed = performedBody(model, cfg, statement);
+            Set<CfgNode> performed = performedBody(names, procedureMap, cfg, statement);
             if (!performed.isEmpty()) {
                 body = performed;
             }
             Set<String> updated = updatedInBody(df, body, support);
-            Set<String> varyingVars = varyingControlVars(statement, source);
+            String file = statement.range().start().file();
+            Set<String> varyingVars =
+                    varyingControlVars(statement, texts.textOf(file).orElse(""));
             boolean terminable = false;
             for (String var : condVars) {
                 if (support.isSpecialRegister(var) || varyingVars.contains(var)
@@ -137,10 +143,11 @@ public final class PerformUntilNotUpdatedRule implements Rule {
             }
             if (!terminable) {
                 int line = statement.range().start().line();
+                // A statement a COPY member brings in stands in the member's file.
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         String.join(", ", condVars)
                                 + " が PERFORM UNTIL の本体で更新されていません。ループから抜けられません。",
-                        new SourcePosition(model.sourceFile(), line, 1,
+                        new SourcePosition(file, line, 1,
                                 SourcePosition.UNKNOWN_BYTE_OFFSET)));
             }
         }
@@ -155,18 +162,19 @@ public final class PerformUntilNotUpdatedRule implements Rule {
 
     /** The variables appearing in the loop header node's continuation condition. Empty if it is not a loop. */
     private List<String> conditionVariables(Statement statement) {
+        String text;
         if (statement instanceof CompoundStatement compound && compound.kind() == ControlKind.LOOP) {
-            return names(compound.conditionText());
-        }
-        if (statement instanceof SimpleStatement simple
+            text = compound.conditionText();
+        } else if (statement instanceof SimpleStatement simple
                 && "PERFORM".equals(simple.verb().toUpperCase(Locale.ROOT))) {
-            String upper = simple.text().toUpperCase(Locale.ROOT);
-            int until = upper.indexOf(" UNTIL ");
-            if (until >= 0) {
-                return names(simple.text().substring(until + " UNTIL ".length()));
-            }
+            text = simple.text();
+        } else {
+            return List.of();
         }
-        return List.of();
+        // UNTIL as a word of its own, whatever white space stands around it: it may end a line.
+        // A TIMES loop has none and tests no variable.
+        Matcher until = UNTIL.matcher(text);
+        return until.find() ? names(text.substring(until.end())) : List.of();
     }
 
     /**
@@ -206,58 +214,31 @@ public final class PerformUntilNotUpdatedRule implements Rule {
      * makes the header dominate nothing, so the range comes from the semantic model instead.
      * Empty for an inline PERFORM.
      */
-    private static Set<CfgNode> performedBody(CobolSemanticModel model, ControlFlowGraph cfg,
-            Statement header) {
+    private static Set<CfgNode> performedBody(ProcedureNames names, ProcedureMap procedureMap,
+            ControlFlowGraph cfg, Statement header) {
         if (!(header instanceof SimpleStatement)) {
             return Set.of();
         }
-        List<Procedure> procedures = model.procedures();
-        Set<String> names = new LinkedHashSet<>();
-        Deque<PerformRelation> pending = new ArrayDeque<>();
-        for (PerformRelation perform : model.performs()) {
-            if (perform.range().equals(header.range())) {
-                pending.add(perform);
-            }
-        }
+        Set<Integer> performed = new LinkedHashSet<>();
+        Deque<PerformRelation> pending = new ArrayDeque<>(procedureMap.performsOf(header));
         while (!pending.isEmpty()) {
             PerformRelation perform = pending.removeFirst();
-            int from = indexOf(procedures, perform.targetProcedure());
-            if (from < 0) {
-                continue;
-            }
-            int to = perform.thruProcedure().map(name -> indexOf(procedures, name)).orElse(from);
-            for (int i = from; i <= Math.max(from, to); i++) {
-                Procedure procedure = procedures.get(i);
-                if (!names.add(procedure.name().toUpperCase(Locale.ROOT))) {
-                    continue;
-                }
-                int first = procedure.range().start().line();
-                int last = procedure.range().end().line();
-                for (PerformRelation nested : model.performs()) {
-                    int line = nested.range().start().line();
-                    if (line >= first && line <= last && !nested.range().equals(header.range())) {
-                        pending.add(nested);
+            names.rangeOf(perform, procedureMap.sectionOf(perform)).ifPresent(range -> {
+                for (int i = range.from(); i <= range.to(); i++) {
+                    if (performed.add(i)) {
+                        pending.addAll(procedureMap.performsIn(i));
                     }
                 }
-            }
+            });
         }
         Set<CfgNode> body = Collections.newSetFromMap(new IdentityHashMap<>());
         for (CfgNode n : cfg.nodes()) {
             if (n.statement().isPresent()
-                    && names.contains(n.procedureName().toUpperCase(Locale.ROOT))) {
+                    && performed.contains(procedureMap.procedureOf(n.statement().orElseThrow()))) {
                 body.add(n);
             }
         }
         return body;
-    }
-
-    private static int indexOf(List<Procedure> procedures, String name) {
-        for (int i = 0; i < procedures.size(); i++) {
-            if (procedures.get(i).name().equalsIgnoreCase(name)) {
-                return i;
-            }
-        }
-        return -1;
     }
 
     /** Nodes reachable from start along successor (or predecessor) edges, never stepping onto {@code blocked}. */
@@ -292,7 +273,7 @@ public final class PerformUntilNotUpdatedRule implements Rule {
         return updated;
     }
 
-    /** The control variables of an inline/paragraph PERFORM VARYING (from the original source). Treated as updated if they match the continuation-condition variable. */
+    /** The control variables of an inline/paragraph PERFORM VARYING (from the source of the statement's own file). Treated as updated if they match the continuation-condition variable. */
     private static Set<String> varyingControlVars(Statement statement, String source) {
         int start = statement.range().start().line();
         int end = statement.range().end().line();
@@ -301,6 +282,8 @@ public final class PerformUntilNotUpdatedRule implements Rule {
         for (int i = start - 1; i < end && i < lines.length && i >= 0; i++) {
             sb.append(lines[i]).append(' ');
         }
+        // The statement's own text covers a file the index does not hold.
+        sb.append(textOf(statement));
         Matcher m = Pattern.compile("(?i)\\bVARYING\\s+([\\p{L}\\p{N}$#_-]*\\p{L}[\\p{L}\\p{N}$#_-]*)")
                 .matcher(sb.toString());
         Set<String> vars = new LinkedHashSet<>();

@@ -64,16 +64,20 @@ describe("findingMarkers", () => {
     expect(markers.map((marker) => marker.code)).toEqual(["R001", "S001"]);
   });
 
-  it("takes the severity from the rule rather than from the SARIF level", () => {
+  it("takes the severity from the rule, whatever the SARIF level says", () => {
     // Every finding above carries level "warning"; the rules grade them HIGH and LOW.
     const [high, low] = findingMarkers(findings, "cobol/A.cbl", index);
     expect(high.severity).toBe(MARKER_SEVERITY.error);
     expect(low.severity).toBe(MARKER_SEVERITY.info);
   });
 
-  it("names the rule in the message and files the marker under the sarif owner", () => {
+  it("names the rule in the marker message", () => {
     const [marker] = findingMarkers(findings, "cobol/A.cbl", index);
     expect(marker.message).toBe("R001 R001 の名前: R001 の内容");
+  });
+
+  it("files the marker under the sarif owner at the finding's position", () => {
+    const [marker] = findingMarkers(findings, "cobol/A.cbl", index);
     expect(marker.source).toBe(MARKER_OWNER.sarif);
     expect(marker.startLineNumber).toBe(24);
     expect(marker.startColumn).toBe(12);
@@ -87,11 +91,15 @@ describe("findingMarkers", () => {
 });
 
 describe("reparseMarkers", () => {
-  it("covers the whole offending line and files it under the save owner", () => {
+  it("covers the whole offending line", () => {
     const [marker] = reparseMarkers([{ line: 7, message: "構文解析に失敗しました。" }]);
     expect(marker.startLineNumber).toBe(7);
     expect(marker.startColumn).toBe(1);
     expect(marker.endColumn).toBeGreaterThan(80);
+  });
+
+  it("files the marker under the save owner as an error", () => {
+    const [marker] = reparseMarkers([{ line: 7, message: "構文解析に失敗しました。" }]);
     expect(marker.severity).toBe(MARKER_SEVERITY.error);
     expect(marker.source).toBe(MARKER_OWNER.save);
     expect(marker.code).toBe(REPARSE_RULE_ID);
@@ -110,7 +118,7 @@ describe("overflowMarkers", () => {
     expect(markers[0].source).toBe(MARKER_OWNER.format);
   });
 
-  it("counts the bytes of the codepage in force, not the characters", () => {
+  it("flags a line that overflows in the bytes of the codepage in force", () => {
     // 40 double-byte characters are 80 bytes in Shift_JIS but 120 in UTF-8.
     expect(overflowMarkers(["受".repeat(40)], "UTF-8", message)).toHaveLength(1);
   });

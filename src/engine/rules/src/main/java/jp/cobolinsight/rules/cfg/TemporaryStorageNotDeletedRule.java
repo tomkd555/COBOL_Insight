@@ -89,9 +89,7 @@ public final class TemporaryStorageNotDeletedRule implements Rule {
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         queue + " は DELETEQ TS で削除されていません。"
                                 + "一時記憶データセットに残り続けます。",
-                        new SourcePosition(model.sourceFile(),
-                                CfgSupport.operandLine(block, "QUEUE"), 1,
-                                SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                        CfgSupport.at(block.range(), CfgSupport.operandLine(block, "QUEUE"))));
             }
         }
         return findings;

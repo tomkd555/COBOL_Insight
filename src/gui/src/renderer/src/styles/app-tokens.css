@@ -7,25 +7,27 @@
 :root {
   /* Derived surfaces: mixed at use site, so both themes get them from the one palette. */
   --ci-bg-hover: color-mix(in oklch, var(--color-foreground) 8%, transparent);
-  /* A tint, not a fill: the selected row keeps its text legible and the inset rule marks it. */
+  /* A light tint: the selected row keeps its text legible and the inset rule marks it. */
   --ci-bg-selected: color-mix(in oklch, var(--color-primary) 14%, var(--color-background));
   /* The one value not mixed from the palette: a scrim must darken under both themes, and the dark
      theme's foreground is light. check_slop reads hex/rgb/hsl only, and this is the deliberate case. */
-  --ci-bg-overlay: oklch(0% 0 0 / 45%);
+  --ci-bg-overlay: oklch(0% 0 0 / 60%);
   /* Control edges: the separator border is too faint for a boundary (WCAG 1.4.11 wants 3:1). */
   --ci-border-strong: color-mix(in oklch, var(--color-border) 45%, var(--color-muted-foreground));
-  --ci-danger-bg: color-mix(in oklch, var(--color-destructive) 20%, var(--color-background));
+  /* oklab, so the mix keeps the red's hue; in oklch it passes through violet on the way to the
+     ground's blue. */
+  --ci-danger-bg: color-mix(in oklab, var(--color-destructive) 20%, var(--color-background));
 
   /* Type. The UI face comes from theme.css; code is the fixed-pitch member of the same family. */
   --ci-font-ui: "BIZ UDPGothic", "Yu Gothic UI", "Meiryo", sans-serif;
   --ci-font-code: "BIZ UDGothic", "MS Gothic", monospace;
-  /* Must match CODE_FONT.fontSize in vendor/monarch.ts: the COPY expansion zone is plain DOM, not
-     Monaco, and its columns line up with the source only if the two agree on the pixel size. */
-  --ci-code-size: 13px;
-  --ci-size-sm: 12px;
-  --ci-size-md: 14px;
-  --ci-size-lg: 16px;
-  --ci-size-xl: 22px;
+  /* Must match CODE_FONT.fontSize in vendor/monarch.ts: the COPY expansion zone is plain DOM
+     outside Monaco, and its columns line up with the source only if the two agree on the pixel size. */
+  --ci-code-size: 16px;
+  --ci-size-sm: 14px;
+  --ci-size-md: 16px;
+  --ci-size-lg: 18px;
+  --ci-size-xl: 24px;
   --ci-line: 1.5;
 
   /* Space, on the 4px base of tokens.json. */
@@ -36,22 +38,41 @@
   --ci-space-5: 24px;
 
   /* Chrome sizes. */
-  --ci-titlebar-height: 36px;
-  --ci-statusbar-height: 24px;
+  --ci-titlebar-height: 40px;
+  --ci-statusbar-height: 28px;
   --ci-activitybar-width: 48px;
-  --ci-tab-height: 34px;
-  --ci-split-size: 6px;
+  --ci-tab-height: 38px;
+  --ci-split-size: 1px;
   --ci-radius: var(--radius-md);
+  /* The most the bottom panel may take: half of what lies between the title bar and the status
+     bar. A length, so the panel and the toasts stacked above it read the same height. */
+  --ci-panel-cap: calc((100vh - var(--ci-titlebar-height) - var(--ci-statusbar-height)) * 0.5);
+  /* How much of the muted foreground the bands over the indicator and identification areas carry. */
+  --ci-band-indicator: 18%;
+  --ci-band-identification: 22%;
+}
+
+/* A short window — a small display, or a large one at 200% — leaves the editor the larger share. */
+@media (max-height: 520px) {
+  :root {
+    --ci-panel-cap: calc((100vh - var(--ci-titlebar-height) - var(--ci-statusbar-height)) * 0.35);
+  }
 }
 
 /*
  * What the dark theme needs beyond the palette. A shadow is cast light and reads as nothing on a dark
  * ground, so the two lifted steps carry a light ring that draws the edge the shadow cannot; the scrim
- * is deepened for the same reason, a 45% black over an already dark shell not reading as modal.
+ * is deepened for the same reason, a 60% black over an already dark shell reading too faintly as modal.
  * tokens.json has one shadow block for both themes (there is no shadow_dark), so the ring lives here.
  */
 .dark {
+  /* At 14% the selected row sat too close to the dark ground to be told apart. */
+  --ci-bg-selected: color-mix(in oklch, var(--color-primary) 22%, var(--color-background));
   --ci-bg-overlay: oklch(0% 0 0 / 70%);
+  /* The muted foreground is light here, so the bands are thinner: at 12% the comment colour of
+     vendor/monarch.ts holds 5:1 over them, and the identifier colour 9:1. */
+  --ci-band-indicator: 12%;
+  --ci-band-identification: 12%;
   --shadow-md:
     0 0 0 1px color-mix(in oklch, var(--color-foreground) 14%, transparent),
     0 4px 12px -2px oklch(0% 0 0 / 0.5);

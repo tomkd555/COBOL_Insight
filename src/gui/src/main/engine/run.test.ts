@@ -67,7 +67,7 @@ describe("runEngine", () => {
     expect(result.summary).toEqual({ sarifFile: "C:/actual.sarif" });
   });
 
-  it("resolves rather than rejects on a non-zero exit code, which carries severity", async () => {
+  it("resolves on a non-zero exit code, which carries severity", async () => {
     const spawn: EngineSpawn = () => fakeChild({ code: 2 });
     const result = await runEngine({ spawn }, { command: "e", prefixArgs: [] }, {
       subcommand: "lint",
@@ -76,7 +76,7 @@ describe("runEngine", () => {
     expect(result.exitCode).toBe(2);
   });
 
-  it("reports -1 when the process was killed and gave no exit code", async () => {
+  it("returns exitCode -1 when the process ends without an exit code", async () => {
     const spawn: EngineSpawn = () => fakeChild({ code: null });
     const result = await runEngine({ spawn }, { command: "e", prefixArgs: [] }, {
       subcommand: "scan",

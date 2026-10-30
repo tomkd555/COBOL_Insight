@@ -3,6 +3,8 @@ package jp.cobolinsight.rules.cfg;
 import jp.cobolinsight.core.finding.Finding;
 import jp.cobolinsight.core.finding.FindingLevel;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.semantic.ProgramLines;
+import jp.cobolinsight.core.semantic.Statements;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -13,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** R018 boundary fixture verification for unchecked SQLCODE: DML and SELECT INTO/FETCH, with and without WHENEVER. */
 class SqlCodeUncheckedRuleTest {
@@ -177,6 +180,192 @@ class SqlCodeUncheckedRuleTest {
                 "           DISPLAY 'SQL ERROR' SQLCODE",
                 "           GOBACK.",
                 "");
+    }
+
+    /**
+     * One copybook's WHENEVER SQLERROR GO TO is copied at line 8 and again at line 11, with a
+     * WHENEVER SQLERROR CONTINUE between them. The CONTINUE at line 9 governs line 10, and the
+     * copy at line 11 governs line 12. The model holds both copies, each at its own COPY line.
+     */
+    @Test
+    void eachCopyOfAWheneverTakesEffectAtItsOwnCopyStatement() throws IOException {
+        Path copybooks = Files.createDirectories(tempDir.resolve("cpy"));
+        Files.writeString(copybooks.resolve("SQLERR.cpy"),
+                "           EXEC SQL WHENEVER SQLERROR GO TO 9900-SQL-ERROR END-EXEC.\n");
+        String text = String.join("\n",
+                /*  1 */ "       IDENTIFICATION DIVISION.",
+                /*  2 */ "       PROGRAM-ID. FIX018K.",
+                /*  3 */ "       DATA DIVISION.",
+                /*  4 */ "       WORKING-STORAGE SECTION.",
+                /*  5 */ "           EXEC SQL INCLUDE SQLCA END-EXEC.",
+                /*  6 */ "       PROCEDURE DIVISION.",
+                /*  7 */ "       0000-MAIN.",
+                /*  8 */ "           COPY SQLERR.",
+                /*  9 */ "           EXEC SQL WHENEVER SQLERROR CONTINUE END-EXEC.",
+                /* 10 */ "           EXEC SQL INSERT INTO MYTAB VALUES (1) END-EXEC.",
+                /* 11 */ "           COPY SQLERR.",
+                /* 12 */ "           EXEC SQL INSERT INTO MYTAB VALUES (2) END-EXEC.",
+                /* 13 */ "           GOBACK.",
+                /* 14 */ "       9900-SQL-ERROR.",
+                /* 15 */ "           DISPLAY 'SQL ERROR' SQLCODE",
+                /* 16 */ "           GOBACK.",
+                "");
+        CobolSemanticModel model = CfgFixtures.parse(tempDir, "FIX018K.cbl", text, copybooks);
+        List<Finding> findings = new SqlCodeUncheckedRule()
+                .evaluate(CfgFixtures.context(List.of(model), Map.of(model.sourceFile(), text)));
+        assertEquals(List.of(10), findings.stream().map(f -> f.location().line()).toList());
+        assertEquals(FindingLevel.ERROR, findings.get(0).level());
+        assertEquals(List.of(8, 11), copyLinesOf(model, "SQLERR.cpy"));
+    }
+
+    /**
+     * The verifier's program: the copy at line 8 governs the INSERT at line 9, the CONTINUE at
+     * line 10 is cancelled by the copy at line 11, and that copy governs the INSERT at line 12.
+     * Neither INSERT is reported.
+     */
+    @Test
+    void theFirstCopyOfAWheneverGovernsTheStatementAfterIt() throws IOException {
+        Path copybooks = Files.createDirectories(tempDir.resolve("cpy4"));
+        Files.writeString(copybooks.resolve("SQLERR.cpy"),
+                "           EXEC SQL WHENEVER SQLERROR GO TO 9900-SQL-ERROR END-EXEC.\n");
+        String text = String.join("\n",
+                /*  1 */ "       IDENTIFICATION DIVISION.",
+                /*  2 */ "       PROGRAM-ID. FIX018N.",
+                /*  3 */ "       DATA DIVISION.",
+                /*  4 */ "       WORKING-STORAGE SECTION.",
+                /*  5 */ "           EXEC SQL INCLUDE SQLCA END-EXEC.",
+                /*  6 */ "       PROCEDURE DIVISION.",
+                /*  7 */ "       0000-MAIN.",
+                /*  8 */ "           COPY SQLERR.",
+                /*  9 */ "           EXEC SQL INSERT INTO MYTAB VALUES (1) END-EXEC.",
+                /* 10 */ "           EXEC SQL WHENEVER SQLERROR CONTINUE END-EXEC.",
+                /* 11 */ "           COPY SQLERR.",
+                /* 12 */ "           EXEC SQL INSERT INTO MYTAB VALUES (2) END-EXEC.",
+                /* 13 */ "           GOBACK.",
+                /* 14 */ "       9900-SQL-ERROR.",
+                /* 15 */ "           DISPLAY 'SQL ERROR' SQLCODE",
+                /* 16 */ "           GOBACK.",
+                "");
+        CobolSemanticModel model = CfgFixtures.parse(tempDir, "FIX018N.cbl", text, copybooks);
+        List<Finding> findings = new SqlCodeUncheckedRule()
+                .evaluate(CfgFixtures.context(List.of(model), Map.of(model.sourceFile(), text)));
+        assertEquals(List.of(), findings, findings::toString);
+    }
+
+    /**
+     * A copied DELETE included at line 8 and again at line 10: the first inclusion goes on to the
+     * second, which stands on the same copybook line, and the message names the copybook.
+     */
+    @Test
+    void theNextInclusionOfOneCopybookIsAheadOfThePreviousOne() throws IOException {
+        Path copybooks = Files.createDirectories(tempDir.resolve("cpy5"));
+        Files.writeString(copybooks.resolve("SQLC.cpy"),
+                "           EXEC SQL DELETE FROM MYTAB2 WHERE ID = 1 END-EXEC.\n");
+        String text = String.join("\n",
+                /*  1 */ "       IDENTIFICATION DIVISION.",
+                /*  2 */ "       PROGRAM-ID. FIX018P.",
+                /*  3 */ "       DATA DIVISION.",
+                /*  4 */ "       WORKING-STORAGE SECTION.",
+                /*  5 */ "           EXEC SQL INCLUDE SQLCA END-EXEC.",
+                /*  6 */ "       PROCEDURE DIVISION.",
+                /*  7 */ "       0000-MAIN.",
+                /*  8 */ "           COPY SQLC.",
+                /*  9 */ "           DISPLAY 'X'.",
+                /* 10 */ "           COPY SQLC.",
+                /* 11 */ "           GOBACK.",
+                "");
+        CobolSemanticModel model = CfgFixtures.parse(tempDir, "FIX018P.cbl", text, copybooks);
+        List<String> messages = new SqlCodeUncheckedRule()
+                .evaluate(CfgFixtures.context(List.of(model), Map.of(model.sourceFile(), text)))
+                .stream().map(Finding::message).toList();
+        assertEquals(2, messages.size(), messages::toString);
+        assertTrue(messages.get(0).contains("次の SQL（1行）へ進む"), messages::toString);
+        assertTrue(messages.get(1).contains("プログラムの終端まで進む"), messages::toString);
+    }
+
+    /**
+     * A program statement on the line of the first COPY leaves the second COPY of one copybook
+     * its own place: the INSERT at line 10 runs under the CONTINUE of line 9, and the INSERT at
+     * line 12 under the copy at line 11. The model holds both copies, each at its own COPY line.
+     */
+    @Test
+    void aProgramStatementOnACopysLineKeepsTheNextCopyInItsPlace() throws IOException {
+        Path copybooks = Files.createDirectories(tempDir.resolve("cpy2"));
+        Files.writeString(copybooks.resolve("SQLERR.cpy"),
+                "           EXEC SQL WHENEVER SQLERROR GO TO 9900-SQL-ERROR END-EXEC.\n");
+        String text = String.join("\n",
+                /*  1 */ "       IDENTIFICATION DIVISION.",
+                /*  2 */ "       PROGRAM-ID. FIX018L.",
+                /*  3 */ "       DATA DIVISION.",
+                /*  4 */ "       WORKING-STORAGE SECTION.",
+                /*  5 */ "           EXEC SQL INCLUDE SQLCA END-EXEC.",
+                /*  6 */ "       01  WS-D PIC 9.",
+                /*  7 */ "       PROCEDURE DIVISION.",
+                /*  8 */ "       0000-MAIN.",
+                /*  9 */ "           COPY SQLERR. EXEC SQL WHENEVER SQLERROR CONTINUE END-EXEC.",
+                /* 10 */ "           EXEC SQL INSERT INTO MYTAB VALUES (1) END-EXEC.",
+                /* 11 */ "           COPY SQLERR.",
+                /* 12 */ "           EXEC SQL INSERT INTO MYTAB VALUES (2) END-EXEC.",
+                /* 13 */ "           GOBACK.",
+                /* 14 */ "       9900-SQL-ERROR.",
+                /* 15 */ "           DISPLAY 'SQL ERROR' SQLCODE",
+                /* 16 */ "           GOBACK.",
+                "");
+        CobolSemanticModel model = CfgFixtures.parse(tempDir, "FIX018L.cbl", text, copybooks);
+        List<Finding> findings = new SqlCodeUncheckedRule()
+                .evaluate(CfgFixtures.context(List.of(model), Map.of(model.sourceFile(), text)));
+        assertEquals(List.of(10), findings.stream().map(f -> f.location().line()).toList());
+        assertEquals(List.of(9, 11), copyLinesOf(model, "SQLERR.cpy"));
+    }
+
+    /** The COPY line of each statement the copybook named {@code fileName} brings in. */
+    private static List<Integer> copyLinesOf(CobolSemanticModel model, String fileName) {
+        ProgramLines lines = new ProgramLines(model);
+        List<Integer> copyLines = new java.util.ArrayList<>();
+        for (var procedure : model.procedures()) {
+            Statements.walk(procedure.statements(), statement -> {
+                if (Path.of(statement.range().start().file()).getFileName().toString()
+                        .equals(fileName)) {
+                    copyLines.add(lines.copyLineOf(statement));
+                }
+            });
+        }
+        return copyLines;
+    }
+
+    /**
+     * One copybook of an EXEC SQL statement included before and after an UPDATE: the SQL after
+     * the UPDATE is the second inclusion, which comes later in the program, so the UPDATE goes on
+     * to it and loops back to nothing. Two inclusions give two blocks of one range, told apart
+     * by identity.
+     */
+    @Test
+    void theSecondInclusionOfACopiedStatementIsTheNextSqlAfterAnUpdate() throws IOException {
+        Path copybooks = Files.createDirectories(tempDir.resolve("cpy3"));
+        Files.writeString(copybooks.resolve("SQLC.cpy"),
+                "           EXEC SQL DELETE FROM MYTAB2 WHERE ID = 1 END-EXEC.\n");
+        String text = String.join("\n",
+                /*  1 */ "       IDENTIFICATION DIVISION.",
+                /*  2 */ "       PROGRAM-ID. FIX018M.",
+                /*  3 */ "       DATA DIVISION.",
+                /*  4 */ "       WORKING-STORAGE SECTION.",
+                /*  5 */ "           EXEC SQL INCLUDE SQLCA END-EXEC.",
+                /*  6 */ "       PROCEDURE DIVISION.",
+                /*  7 */ "       0000-MAIN.",
+                /*  8 */ "           COPY SQLC.",
+                /*  9 */ "           EXEC SQL UPDATE MYTAB SET COL1 = 1 END-EXEC.",
+                /* 10 */ "           DISPLAY 'X'.",
+                /* 11 */ "           COPY SQLC.",
+                /* 12 */ "           GOBACK.",
+                "");
+        CobolSemanticModel model = CfgFixtures.parse(tempDir, "FIX018M.cbl", text, copybooks);
+        List<Finding> findings = new SqlCodeUncheckedRule()
+                .evaluate(CfgFixtures.context(List.of(model), Map.of(model.sourceFile(), text)));
+        Finding update = findings.stream()
+                .filter(f -> f.location().file().equals(model.sourceFile())
+                        && f.location().line() == 9)
+                .findFirst().orElseThrow(() -> new AssertionError(findings.toString()));
+        assertTrue(update.message().contains("次の SQL（SQLC.cpy 1行）へ進む"), update.message());
     }
 
     /** WHENEVER is a precompiler directive: the last one before the statement decides. */

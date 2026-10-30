@@ -6,7 +6,7 @@
  * provides, and the real package is roughly 10MB of ESM whose worker import (?worker&inline) builds
  * a second bundle at test time, which would slow down even tests that merely render a screen.
  *
- * It is a fake, not a mock: enough of the API answers for a screen holding an editor to mount and
+ * It is a fake: enough of the API answers for a screen holding an editor to mount and
  * unmount without throwing, and no more. Nothing here highlights, lays out or measures anything, so
  * no test may assert on what Monaco draws — that is what the offscreen Electron smoke is for
  * (npm run smoke:render). Types come from the real declarations through tsc, so only the runtime
@@ -38,16 +38,37 @@ class StubModel {
     this.value = value;
   }
 
+  private version = 1;
+
   getValue(): string {
     return this.value;
   }
 
+  /** Replaces the text. As in Monaco, the content listeners of every editor showing the model run. */
   setValue(next: string): void {
     this.value = next;
+    this.version += 1;
+    for (const each of editors) {
+      if (each.getModel() === this) {
+        each.notifyContentChange();
+      }
+    }
+  }
+
+  getVersionId(): number {
+    return this.version;
   }
 
   getLinesContent(): string[] {
-    return this.value.split("\n");
+    return this.value.split(/\r\n|\r|\n/);
+  }
+
+  /**
+   * What typing does: the text changes and the content listeners of every editor showing this model
+   * run, as Monaco's do. A test reaches it through the model of a tab (vendor/monacoModels).
+   */
+  edit(next: string): void {
+    this.setValue(next);
   }
 
   getLineCount(): number {
@@ -80,9 +101,34 @@ class StubDecorations {
   }
 }
 
-/** A code editor: a model holder with the listeners and view operations turned into no-ops. */
+/** The editors that have not been disposed, which `StubModel.edit` notifies. */
+const editors = new Set<StubEditor>();
+
+/**
+ * The editors that have not been disposed, in creation order, so a test can reach the one a screen
+ * created and run its actions.
+ */
+export function liveEditors(): StubEditor[] {
+  return [...editors];
+}
+
+/** A code editor: a model holder with the view operations turned into no-ops. */
 class StubEditor {
   private model: StubModel | null = null;
+  private readonly contentListeners = new Set<() => void>();
+  private position = { lineNumber: 1, column: 1 };
+  /** The actions registered on this editor, by id. */
+  private readonly actions = new Map<string, (editor: StubEditor) => void>();
+
+  constructor() {
+    editors.add(this);
+  }
+
+  notifyContentChange(): void {
+    for (const listener of [...this.contentListeners]) {
+      listener();
+    }
+  }
 
   getModel(): StubModel | null {
     return this.model;
@@ -96,16 +142,62 @@ class StubEditor {
     return this.model?.getValue() ?? "";
   }
 
+  /** The caret, as the last setPosition left it. Nothing is laid out, so nothing else moves it. */
   getPosition(): { lineNumber: number; column: number } {
-    return { lineNumber: 1, column: 1 };
+    return { ...this.position };
   }
 
-  setPosition(): void {
-    /* no layout to move a caret in */
+  setPosition(position: { lineNumber: number; column: number }): void {
+    this.position = { lineNumber: position.lineNumber, column: position.column };
   }
 
   revealLineInCenter(): void {
     /* nothing is scrolled */
+  }
+
+  getTopForLineNumber(): number {
+    return 0;
+  }
+
+  setScrollTop(): void {
+    /* nothing is scrolled */
+  }
+
+  getScrollLeft(): number {
+    return 0;
+  }
+
+  setScrollLeft(): void {
+    /* nothing is scrolled */
+  }
+
+  focus(): void {
+    /* there is no text area to focus */
+  }
+
+  getSelection(): null {
+    return null;
+  }
+
+  /** No font is measured and nothing is laid out, so every metric is zero. */
+  getOption(): { typicalHalfwidthCharacterWidth: number } {
+    return { typicalHalfwidthCharacterWidth: 0 };
+  }
+
+  getLayoutInfo(): { contentLeft: number; verticalScrollbarWidth: number } {
+    return { contentLeft: 0, verticalScrollbarWidth: 0 };
+  }
+
+  onDidLayoutChange(): typeof disposable {
+    return disposable;
+  }
+
+  onDidChangeConfiguration(): typeof disposable {
+    return disposable;
+  }
+
+  onMouseUp(): typeof disposable {
+    return disposable;
   }
 
   updateOptions(): void {
@@ -120,8 +212,9 @@ class StubEditor {
     return disposable;
   }
 
-  onDidChangeModelContent(): typeof disposable {
-    return disposable;
+  onDidChangeModelContent(listener: () => void): typeof disposable {
+    this.contentListeners.add(listener);
+    return { dispose: (): void => void this.contentListeners.delete(listener) };
   }
 
   onDidChangeCursorSelection(): typeof disposable {
@@ -136,8 +229,14 @@ class StubEditor {
     return disposable;
   }
 
-  addAction(): typeof disposable {
-    return disposable;
+  addAction(action: { id: string; run: (editor: StubEditor) => void }): typeof disposable {
+    this.actions.set(action.id, action.run);
+    return { dispose: (): void => void this.actions.delete(action.id) };
+  }
+
+  /** What a keystroke bound to the action does: runs it on this editor. */
+  runAction(id: string): void {
+    this.actions.get(id)?.(this);
   }
 
   /** View zones need a layout to sit in, so the callback is handed an accessor that keeps none. */
@@ -147,6 +246,7 @@ class StubEditor {
 
   dispose(): void {
     this.model = null;
+    editors.delete(this);
   }
 }
 
@@ -196,6 +296,9 @@ export const editor = {
   setModelLanguage: (): void => undefined,
   getModelMarkers: (): unknown[] => [],
   getEditors: (): unknown[] => [],
+  EditorOption: { fontInfo: 59 },
+  MouseTargetType: { CONTENT_TEXT: 6 },
+  TrackedRangeStickiness: { NeverGrowsWhenTypingAtEdges: 1 },
 };
 
 /** Stands in for the monaco.languages namespace. */
@@ -204,6 +307,8 @@ export const languages = {
   setMonarchTokensProvider: (): void => undefined,
   setLanguageConfiguration: (): void => undefined,
   registerCodeActionProvider: (): typeof disposable => disposable,
+  registerFoldingRangeProvider: (): typeof disposable => disposable,
+  FoldingRangeKind: { Comment: { value: "comment" } },
 };
 
 /** Stands in for the key enums an editor action's keybinding is built from. */
@@ -214,7 +319,7 @@ export function getCodiconFontCharacters(): Record<string, number> {
 
 export const KeyMod = { CtrlCmd: 2048, Shift: 1024, Alt: 512, WinCtrl: 256 };
 
-export const KeyCode = { KeyC: 33 };
+export const KeyCode = { KeyC: 33, F12: 70 };
 
 /** Stands in for the monaco.Range constructor. */
 export class Range {

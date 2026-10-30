@@ -1,7 +1,13 @@
 import type { ReactElement } from "react";
 import { text } from "../i18n/text";
-import { useProject } from "../state/projectStore";
-import type { TreeSelection } from "../state/workbenchStore";
+import { notAnalysed, reportReady, useProject } from "../state/projectStore";
+import { customSavable, useRulesState } from "../state/rulesStore";
+import {
+  CUSTOM_RULES_TAB_ID,
+  activeTabOf,
+  useWorkbench,
+  type TreeSelection,
+} from "../state/workbenchStore";
 
 /** The stages a run passes through, in order, indexed by ProjectState.runStage. */
 const STAGE_NAMES: readonly string[] = [text.run.scan, text.run.lint];
@@ -39,14 +45,32 @@ export function TitleBar({
 }: TitleBarProps): ReactElement {
   const project = useProject();
   const running = project.mode === "running";
+  // One filled button to a screen. Where the editor in front shows its own, the run button is drawn
+  // outlined: the welcome view until the first analysis, the report once there is an analysis of the
+  // whole folder to report on, and the custom-rule editor while it has something to save.
+  const active = activeTabOf(useWorkbench());
+  const rules = useRulesState();
+  const editorLeads =
+    active === null
+      ? notAnalysed(project)
+      : active.kind === "report"
+        ? reportReady(project)
+        : active.id === CUSTOM_RULES_TAB_ID && customSavable(rules);
 
   return (
     <header className="ci-titlebar" data-testid="titlebar">
-      <span className="ci-titlebar__name">{text.app.name}</span>
+      <h1 className="ci-titlebar__name">{text.app.name}</h1>
       <button
         type="button"
         className="ci-titlebar__folder"
-        aria-label={text.command.selectFolder}
+        // With a folder open the button shows its path, so what a press does is said in its name and
+        // on hover, with the whole of a path the bar had to cut.
+        aria-label={
+          project.inputDir === null
+            ? text.command.selectFolder
+            : text.command.selectFolderAt(project.inputDir)
+        }
+        title={project.inputDir === null ? undefined : text.command.selectFolderAt(project.inputDir)}
         onClick={onSelectFolder}
         disabled={running}
         data-testid="select-folder"
@@ -55,6 +79,10 @@ export function TitleBar({
         <span className="ci-titlebar__folder-path">
           {project.inputDir ?? text.command.selectFolder}
         </span>
+        {/* The path names the folder; the chevron says the control picks another one. */}
+        {project.inputDir === null ? null : (
+          <span className="codicon codicon-chevron-down" aria-hidden="true" />
+        )}
       </button>
       <div className="ci-titlebar__spacer" />
       {running ? (
@@ -77,7 +105,11 @@ export function TitleBar({
       ) : (
         <>
           {target === null ? null : (
-            <span className="ci-titlebar__target" data-testid="run-target">
+            <span
+              className="ci-titlebar__target"
+              title={text.app.runTarget(target.path, target.kind)}
+              data-testid="run-target"
+            >
               {text.app.runTarget(target.path, target.kind)}
             </span>
           )}
@@ -92,9 +124,9 @@ export function TitleBar({
           </button>
           <button
             type="button"
-            className="ci-button ci-button--primary ci-titlebar__action"
+            className={`ci-button${editorLeads ? "" : " ci-button--primary"} ci-titlebar__action`}
             onClick={onRun}
-            disabled={project.inputDir === null}
+            disabled={project.inputDir === null || target === null}
             data-testid="run-analysis"
           >
             <span className="codicon codicon-play" aria-hidden="true" />

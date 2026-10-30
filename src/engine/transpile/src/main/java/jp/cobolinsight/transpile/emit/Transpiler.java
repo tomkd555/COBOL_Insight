@@ -11,6 +11,7 @@ import jp.cobolinsight.core.transpile.TranspileResult;
 import jp.cobolinsight.transpile.LayoutField;
 import jp.cobolinsight.transpile.RecordLayoutResolver;
 import jp.cobolinsight.transpile.proc.DataDivisionSql;
+import jp.cobolinsight.transpile.proc.MethodNames;
 import jp.cobolinsight.transpile.proc.ProcedureDialect;
 import jp.cobolinsight.transpile.proc.ProcedureIr;
 import jp.cobolinsight.transpile.proc.ProcedureModelBuilder;
@@ -71,8 +72,8 @@ public final class Transpiler {
         for (EmbeddedBlock block : model.embeddedBlocks()) {
             embeddedByRange.putIfAbsent(block.range(), block);
         }
-        List<ProcedureIr> procedures = new ProcedureModelBuilder(symbols, embeddedByRange, slicer)
-                .build(model.procedures());
+        List<ProcedureIr> procedures = new ProcedureModelBuilder(symbols, embeddedByRange, slicer,
+                new MethodNames(model)).build(model.procedures());
         List<DataDivisionSql.Directive> dataSql = DataDivisionSql.extract(sourceText);
         return new Ir(symbols, procedures, dataSql);
     }

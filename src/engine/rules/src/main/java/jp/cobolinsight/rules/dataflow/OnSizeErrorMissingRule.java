@@ -26,6 +26,7 @@ import jp.cobolinsight.core.spi.FixProducer;
 import jp.cobolinsight.core.fix.FixedFormatNormalizer;
 import jp.cobolinsight.rules.FixEdits;
 import jp.cobolinsight.rules.SourceTextIndex;
+import jp.cobolinsight.rules.cfg.CfgSupport;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -132,8 +133,7 @@ public final class OnSizeErrorMissingRule implements Rule {
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         receiver + " への " + verb + " 文に ON SIZE ERROR 句がありません。"
                                 + "結果がけた数を超えても、けたあふれが検知されません。",
-                        new SourcePosition(model.sourceFile(), simple.range().start().line(), 1,
-                                SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                        CfgSupport.at(simple.range())));
             }
         }
     }
@@ -170,7 +170,7 @@ public final class OnSizeErrorMissingRule implements Rule {
                 return Optional.empty();
             }
             SimpleStatement arithmetic = FixEdits.findSimpleStatement(model,
-                    finding.location().line(),
+                    finding.location().file(), finding.location().line(),
                     candidate -> ARITHMETIC_VERBS.contains(candidate.verb().toUpperCase(Locale.ROOT))
                             && !candidate.text().toUpperCase(Locale.ROOT).contains("SIZE ERROR"))
                     .orElse(null);

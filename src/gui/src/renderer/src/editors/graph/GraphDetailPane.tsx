@@ -50,7 +50,7 @@ function shapeMark(shape: NodeKindStyle["shape"]): ReactElement {
   }
 }
 
-/** One node kind's swatch: the cytoscape shape it is drawn with, not a generic square. */
+/** One node kind's swatch: the cytoscape shape it is drawn with. */
 export function NodeSwatch({ style }: { style: NodeKindStyle }): ReactElement {
   return (
     <svg
@@ -170,7 +170,9 @@ export function GraphDetailPane({
       aria-label={text.graph.detail}
       data-testid="graph-detail"
     >
-      {detail === null ? null : (
+      {detail === null ? (
+        <p className="ci-graph__state">{text.graph.selectOne}</p>
+      ) : (
         <>
           <h3 className="ci-graph__detail-title" data-testid="graph-detail-label">
             {detail.node.label}

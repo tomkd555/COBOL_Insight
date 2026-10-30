@@ -15,6 +15,7 @@
   height: 100%;
   min-height: 0;
   padding: var(--ci-space-2);
+  container: graph / inline-size;
 }
 
 .ci-graph__toolbar {
@@ -46,6 +47,7 @@
 
 .ci-graph__depth input {
   width: 7rem;
+  height: 24px;
   accent-color: var(--color-primary);
 }
 
@@ -70,21 +72,47 @@
   min-height: 0;
 }
 
+/*
+ * In a narrow editor the detail pane moves under the tree and the drawing. The graph runs from left
+ * to right, so the width is what its labels need, and the pane's tables are read at full width.
+ */
+@container graph (max-width: 860px) {
+  .ci-graph__body {
+    display: grid;
+    grid-template-columns: 14rem minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .ci-graph__body > .ci-graph__detail {
+    grid-column: 1 / -1;
+    max-height: 11rem;
+  }
+}
+
 .ci-graph__stage {
   position: relative;
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
   min-width: 0;
+  overflow: hidden;
   background: var(--color-background);
   border: 1px solid var(--color-border);
   border-radius: var(--ci-radius);
 }
 
 .ci-graph__canvas {
+  position: relative;
   flex: 1;
   min-height: 0;
   background: var(--color-background);
+  /* The drawing is moved by dragging its ground. */
+  cursor: grab;
+}
+
+.ci-graph__host {
+  position: absolute;
+  inset: 0;
 }
 
 .ci-graph__laying {
@@ -155,6 +183,7 @@
 .ci-graph__table th {
   color: var(--color-muted-foreground);
   font-weight: 400;
+  white-space: nowrap;
 }
 
 .ci-graph__resolution {
@@ -176,7 +205,7 @@
 }
 
 /* The swatch is a fixed-width column and the label its own block, so a label long enough to wrap
-   hangs its continuation lines under the label rather than back under the swatch. */
+   hangs its continuation lines under the label and clear of the swatch. */
 .ci-graph__legend-list li {
   display: flex;
   align-items: flex-start;
@@ -248,7 +277,7 @@
   display: flex;
   align-items: center;
   gap: var(--ci-space-1);
-  height: 24px;
+  height: 28px;
   cursor: pointer;
   font-size: var(--ci-size-sm);
   white-space: nowrap;
@@ -260,11 +289,15 @@
 
 .ci-trace__row--selected {
   background: var(--ci-bg-selected);
+  box-shadow: inset 2px 0 0 var(--color-primary);
   color: var(--color-foreground);
 }
 
 .ci-trace__marker {
-  width: 1em;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  padding: 0;
   background: none;
   border: none;
   color: inherit;

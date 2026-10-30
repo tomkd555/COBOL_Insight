@@ -20,11 +20,13 @@ import jp.cobolinsight.core.rule.Rule;
 import jp.cobolinsight.core.rule.RuleMeta;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
+import jp.cobolinsight.core.source.SourceRange;
 import jp.cobolinsight.rules.cfg.CfgSupport;
 import jp.cobolinsight.core.spi.AnalysisContext;
 import jp.cobolinsight.rules.SourceTextIndex;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
@@ -118,8 +120,7 @@ public final class UninitializedVariableRule implements Rule {
                         || !df.mayReachUninitialized(node, var)) {
                     continue;
                 }
-                int line = statement.range().start().line();
-                findings.add(finding(model, cfg, df, support, var, line));
+                findings.add(finding(cfg, df, support, var, statement.range()));
             }
         }
     }
@@ -128,27 +129,31 @@ public final class UninitializedVariableRule implements Rule {
      * The finding text names the declaration, the use, and the statements that do set the item, so
      * the reader sees which of those a path can skip.
      */
-    private static Finding finding(CobolSemanticModel model, ControlFlowGraph cfg,
-            ProgramDataFlow df, DataFlowSupport support, String var, int line) {
-        String file = model.sourceFile();
+    private static Finding finding(ControlFlowGraph cfg, ProgramDataFlow df,
+            DataFlowSupport support, String var, SourceRange use) {
+        String file = use.start().file();
+        int line = use.start().line();
         List<CodeFlowStep> steps = new ArrayList<>();
         Optional<DataItem> declared = support.item(var);
         declared.ifPresent(item -> steps.add(CfgSupport.step(item.position().file(),
                 item.position().line(), "宣言（VALUE 句がなく初期値は不定）")));
-        List<Integer> setLines = new ArrayList<>();
+        // Each setting statement in its own file at its own line.
+        List<SourcePosition> sets = new ArrayList<>();
         for (CfgNode node : cfg.nodes()) {
             if (df.defsAt(node).contains(var)) {
                 node.statement().ifPresent(statement -> {
-                    int at = statement.range().start().line();
-                    if (!setLines.contains(at)) {
-                        setLines.add(at);
+                    SourcePosition at = CfgSupport.at(statement.range());
+                    if (!sets.contains(at)) {
+                        sets.add(at);
                     }
                 });
             }
         }
-        setLines.sort(null);
-        for (int at : setLines.subList(0, Math.min(setLines.size(), 3))) {
-            steps.add(CfgSupport.step(file, at,
+        sets.sort(Comparator.comparingInt(SourcePosition::line)
+                .thenComparing(SourcePosition::file));
+        List<Integer> setLines = sets.stream().map(SourcePosition::line).distinct().toList();
+        for (SourcePosition at : sets.subList(0, Math.min(sets.size(), 3))) {
+            steps.add(CfgSupport.step(at.file(), at.line(),
                     var + " に値を設定する文（この文を通らない経路がある）"));
         }
         steps.add(CfgSupport.step(file, line, "未設定のまま参照する箇所"));

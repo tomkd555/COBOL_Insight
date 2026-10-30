@@ -202,7 +202,7 @@ export function buildCommands(context: CommandContext): Command[] {
       id: "view.showTranspile",
       title: text.command.showTranspile,
       category: text.command.categoryView,
-      // Only COBOL is translated, so the command does not apply to a copybook, JCL or BMS tab.
+      // Only COBOL is translated, so the command is offered on COBOL tabs only.
       when: () => activeCobolPath(project, workbench) !== null,
       run: () => {
         const path = activeCobolPath(project, workbench);
@@ -226,7 +226,7 @@ export function buildCommands(context: CommandContext): Command[] {
       id: "editor.save",
       title: text.command.save,
       category: text.command.categoryFile,
-      // A tab with nothing unsaved has nothing to write, so the command does not apply.
+      // A tab with nothing unsaved has nothing to write, so the command is not offered.
       when: () => activeTabDirty(workbench),
       run: context.saveActiveTab,
     },

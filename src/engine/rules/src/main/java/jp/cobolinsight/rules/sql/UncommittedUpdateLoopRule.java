@@ -12,8 +12,11 @@ import jp.cobolinsight.core.semantic.ControlKind;
 import jp.cobolinsight.core.semantic.EmbeddedBlock;
 import jp.cobolinsight.core.semantic.PerformRelation;
 import jp.cobolinsight.core.semantic.Procedure;
+import jp.cobolinsight.core.semantic.ProcedureMap;
+import jp.cobolinsight.core.semantic.ProcedureNames;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
+import jp.cobolinsight.core.semantic.Statements;
 import jp.cobolinsight.core.semantic.StatementBlock;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
@@ -25,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -38,7 +40,9 @@ import java.util.regex.Pattern;
  */
 public final class UncommittedUpdateLoopRule implements Rule {
 
-    private static final Pattern LOOP_PERFORM = Pattern.compile("(?i)\\b(UNTIL|VARYING)\\b");
+    /** UNTIL or VARYING as a word of its own; a name such as WAIT-UNTIL-READY holds neither. */
+    private static final Pattern LOOP_PERFORM =
+            Pattern.compile("(?i)(?<![\\p{L}\\p{N}-])(UNTIL|VARYING)(?![\\p{L}\\p{N}-])");
     private static final Pattern TARGET_TABLE = Pattern.compile(
             "(?i)^(?:UPDATE|INSERT\\s+INTO|DELETE\\s+FROM)\\s+([\\p{L}\\p{N}$#@_.-]+)");
     private static final Set<String> DML = Set.of("UPDATE", "INSERT", "DELETE");
@@ -105,13 +109,14 @@ public final class UncommittedUpdateLoopRule implements Rule {
         if (updates.isEmpty()) {
             return;
         }
-        List<SourceRange> loops = loopBodies(model);
+        List<SourceRange> inLoops = statementsInLoops(model);
+        // The first in the model's order, which is the order the program runs its text in: a
+        // line number alone ranks a copybook's line against the program's.
         EmbeddedBlock first = null;
         for (EmbeddedBlock block : updates) {
-            if (loops.stream().anyMatch(loop -> covers(loop, block.range().start()))
-                    && (first == null
-                            || block.range().start().line() < first.range().start().line())) {
+            if (inLoops.stream().anyMatch(range -> range.contains(block.range()))) {
                 first = block;
+                break;
             }
         }
         if (first == null) {
@@ -123,90 +128,68 @@ public final class UncommittedUpdateLoopRule implements Rule {
         findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                 name + " の更新に COMMIT がありません。"
                         + "繰り返しの途中で異常終了すると、それまでの更新が取り消されます。",
-                new SourcePosition(model.sourceFile(), first.range().start().line(), 1,
+                new SourcePosition(first.range().start().file(), first.range().start().line(), 1,
                         SourcePosition.UNKNOWN_BYTE_OFFSET)));
     }
 
     /**
-     * The source ranges a loop runs over: the body of an inline PERFORM UNTIL/VARYING, and every
-     * procedure a paragraph PERFORM UNTIL/VARYING reaches, directly or through a further PERFORM.
+     * The ranges of the simple statements a loop runs: those in the body of an inline PERFORM
+     * UNTIL/VARYING, and those of every procedure a paragraph PERFORM UNTIL/VARYING reaches,
+     * directly or through a further PERFORM. An EXEC SQL block runs in a loop when one of them
+     * holds it, as a statement of its own or inside a phrase. Statements are found through the
+     * model, so one a COPY member brings in counts where it is copied.
      */
-    private static List<SourceRange> loopBodies(CobolSemanticModel model) {
-        List<SourceRange> loops = new ArrayList<>();
+    private static List<SourceRange> statementsInLoops(CobolSemanticModel model) {
+        List<Procedure> procedures = model.procedures();
+        ProcedureNames names = new ProcedureNames(procedures);
+        ProcedureMap procedureMap = new ProcedureMap(model);
         List<Statement> statements = new ArrayList<>();
-        for (Procedure procedure : model.procedures()) {
+        for (Procedure procedure : procedures) {
             collect(procedure.statements(), statements);
         }
+        List<Statement> looped = new ArrayList<>();
+        Set<Integer> performed = new LinkedHashSet<>();
         for (Statement statement : statements) {
             if (statement instanceof CompoundStatement compound
                     && compound.kind() == ControlKind.LOOP) {
-                loops.add(compound.range());
+                for (StatementBlock block : compound.blocks()) {
+                    collect(block.statements(), looped);
+                }
             } else if (statement instanceof SimpleStatement simple
                     && "PERFORM".equalsIgnoreCase(simple.verb())
                     && LOOP_PERFORM.matcher(simple.text()).find()) {
-                addPerformed(model, simple.range(), loops);
+                addPerformed(names, procedureMap, simple, performed);
             }
         }
-        return loops;
+        for (int index : performed) {
+            collect(procedures.get(index).statements(), looped);
+        }
+        List<SourceRange> ranges = new ArrayList<>();
+        for (Statement statement : looped) {
+            if (statement instanceof SimpleStatement simple) {
+                ranges.add(simple.range());
+            }
+        }
+        return ranges;
     }
 
-    /** The ranges of the procedures the PERFORM at {@code header} reaches, transitively. */
-    private static void addPerformed(CobolSemanticModel model, SourceRange header,
-            List<SourceRange> loops) {
-        List<Procedure> procedures = model.procedures();
-        Set<String> seen = new LinkedHashSet<>();
-        Deque<PerformRelation> pending = new ArrayDeque<>();
-        for (PerformRelation perform : model.performs()) {
-            if (perform.range().equals(header)) {
-                pending.add(perform);
-            }
-        }
+    /** Adds the procedures the PERFORM {@code header} reaches, transitively, by index. */
+    private static void addPerformed(ProcedureNames names, ProcedureMap procedureMap,
+            SimpleStatement header, Set<Integer> performed) {
+        Deque<PerformRelation> pending = new ArrayDeque<>(procedureMap.performsOf(header));
         while (!pending.isEmpty()) {
             PerformRelation perform = pending.removeFirst();
-            int from = indexOf(procedures, perform.targetProcedure());
-            if (from < 0) {
-                continue;
-            }
-            int to = perform.thruProcedure().map(name -> indexOf(procedures, name)).orElse(from);
-            for (int i = from; i <= Math.max(from, to) && i < procedures.size(); i++) {
-                Procedure procedure = procedures.get(i);
-                if (!seen.add(procedure.name().toUpperCase(Locale.ROOT))) {
-                    continue;
-                }
-                loops.add(procedure.range());
-                for (PerformRelation nested : model.performs()) {
-                    if (covers(procedure.range(), nested.range().start())
-                            && !nested.range().equals(header)) {
-                        pending.add(nested);
+            names.rangeOf(perform, procedureMap.sectionOf(perform)).ifPresent(range -> {
+                for (int i = range.from(); i <= range.to(); i++) {
+                    if (performed.add(i)) {
+                        pending.addAll(procedureMap.performsIn(i));
                     }
                 }
-            }
+            });
         }
-    }
-
-    private static int indexOf(List<Procedure> procedures, String name) {
-        for (int i = 0; i < procedures.size(); i++) {
-            if (procedures.get(i).name().equalsIgnoreCase(name)) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    private static boolean covers(SourceRange range, SourcePosition position) {
-        return range.start().file().equals(position.file())
-                && range.start().line() <= position.line()
-                && position.line() <= range.end().line();
     }
 
     private static void collect(List<Statement> statements, List<Statement> out) {
-        for (Statement statement : statements) {
-            out.add(statement);
-            if (statement instanceof CompoundStatement compound) {
-                for (StatementBlock block : compound.blocks()) {
-                    collect(block.statements(), out);
-                }
-            }
-        }
+        Statements.walk(statements, out::add);
     }
 }

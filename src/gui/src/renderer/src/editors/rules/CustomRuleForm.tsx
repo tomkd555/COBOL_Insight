@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactElement, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactElement, type ReactNode } from "react";
 import { text } from "../../i18n/text";
 import type {
   CheckedAfterMatch,
@@ -14,7 +14,10 @@ import {
   CUSTOM_SEVERITIES,
   CUSTOM_TARGETS,
   emptyMatch,
+  formEditable,
+  idOf,
   matchOf,
+  stringList,
   type CustomRuleProblem,
   type CustomRuleProblemCode,
 } from "../../model/customRules";
@@ -45,8 +48,12 @@ export interface CustomRuleFormProps {
 /**
  * One field per member of a custom rule.
  *
- * The regular expressions are never compiled here: the engine reads Java syntax, which is not this
- * runtime's syntax, so 「検証する」 is what settles whether a pattern is usable.
+ * The engine reads Java regular expressions and this runtime reads JavaScript ones, so 「検証」
+ * settles whether a pattern is usable.
+ *
+ * A definition holding something the fields cannot show (model/customRules.ts, formEditable) is
+ * drawn as its id, a line that sends the reader to the JSON pane and the engine's complaints about
+ * it, so nothing typed here can write over it.
  */
 export function CustomRuleForm({
   rule,
@@ -55,6 +62,36 @@ export function CustomRuleForm({
   onChange,
   onRemove,
 }: CustomRuleFormProps): ReactElement {
+  const id = idOf(rule);
+  const engineStrip =
+    engineErrors.length === 0 ? null : (
+      <div className="ci-strip ci-strip--error" role="alert">
+        <ul className="ci-strip__list">
+          {engineErrors.map((error) => (
+            <li key={error}>{error}</li>
+          ))}
+        </ul>
+      </div>
+    );
+  if (!formEditable(rule)) {
+    return (
+      <fieldset className="ci-form" data-testid={`custom-rule-${id}`}>
+        <legend className="ci-form__legend">{id === "" ? text.customRules.fieldId : id}</legend>
+        <p className="ci-form__note" data-testid={`custom-json-only-${id}`}>
+          {text.customRules.jsonOnly}
+        </p>
+        {engineStrip}
+        <button
+          type="button"
+          className="ci-button ci-button--danger"
+          onClick={onRemove}
+          data-testid={`custom-remove-${id}`}
+        >
+          {text.customRules.remove}
+        </button>
+      </fieldset>
+    );
+  }
   const match = matchOf(rule);
   const set = (patch: Partial<CustomRule>): void => onChange({ ...rule, ...patch });
   const setMatch = (next: CustomMatch): void => onChange({ ...rule, match: next });
@@ -62,9 +99,9 @@ export function CustomRuleForm({
     problems.some((problem) => problem.code === code);
   const problemNote = (code: CustomRuleProblemCode): ReactElement | null =>
     has(code) ? (
-      <p className="ci-form__error" role="alert">
+      <span className="ci-form__error" role="alert">
         {text.customRules.problem[code]}
-      </p>
+      </span>
     ) : null;
 
   return (
@@ -110,7 +147,8 @@ export function CustomRuleForm({
       <Field label={text.customRules.fieldSeverity}>
         <select
           className="ci-select"
-          value={rule.severity ?? "MEDIUM"}
+          // The engine reads the severity in either case; the options are upper case.
+          value={(rule.severity ?? "MEDIUM").toUpperCase()}
           onChange={(event) => set({ severity: event.target.value })}
         >
           {CUSTOM_SEVERITIES.map((severity) => (
@@ -121,18 +159,20 @@ export function CustomRuleForm({
         </select>
       </Field>
 
-      <Field label={text.customRules.fieldCommands}>
+      <Field label={text.customRules.fieldCommands} group>
         <CheckList
           options={CUSTOM_COMMANDS}
-          selected={rule.commands ?? []}
+          labelOf={text.rules.commandName}
+          selected={stringList(rule.commands)}
           onChange={(commands) => set({ commands })}
         />
       </Field>
 
-      <Field label={text.customRules.fieldTargets}>
+      <Field label={text.customRules.fieldTargets} group>
         <CheckList
           options={CUSTOM_TARGETS}
-          selected={rule.targets ?? []}
+          labelOf={text.rules.targetName}
+          selected={stringList(rule.targets)}
           onChange={(targets) => set({ targets })}
         />
       </Field>
@@ -186,15 +226,7 @@ export function CustomRuleForm({
         />
       </Field>
 
-      {engineErrors.length === 0 ? null : (
-        <div className="ci-strip ci-strip--error" role="alert">
-          <ul className="ci-strip__list">
-            {engineErrors.map((error) => (
-              <li key={error}>{error}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {engineStrip}
 
       <button
         type="button"
@@ -273,7 +305,7 @@ function StatementFields({
     <>
       <Field label={text.customRules.fieldVerb}>
         <ListField
-          value={match.verb}
+          value={stringList(match.verb)}
           placeholder={text.customRules.verbPlaceholder}
           onChange={(verb) => onChange({ ...match, verb })}
         />
@@ -281,7 +313,7 @@ function StatementFields({
       </Field>
       <Field label={text.customRules.fieldMissingClause}>
         <ListField
-          value={match.missingClause ?? []}
+          value={stringList(match.missingClause)}
           placeholder={text.customRules.missingClausePlaceholder}
           onChange={(missingClause) => onChange({ ...match, missingClause })}
         />
@@ -306,7 +338,12 @@ function CheckedAfterFields({
   onChange: (match: CustomMatch) => void;
   problemNote: ProblemNote;
 }): ReactElement {
-  const after = match.after ?? { verb: "" };
+  const written: unknown = match.after;
+  const after: CheckedAfterMatch["after"] =
+    written !== null && typeof written === "object" ? match.after : { verb: "" };
+  const checks: unknown = match.checks;
+  const dataItem =
+    checks !== null && typeof checks === "object" ? stringList(match.checks.dataItem) : [];
   return (
     <>
       <Field label={text.customRules.fieldAfterVerb}>
@@ -328,9 +365,9 @@ function CheckedAfterFields({
       </Field>
       <Field label={text.customRules.fieldDataItem}>
         <ListField
-          value={match.checks?.dataItem ?? []}
+          value={dataItem}
           placeholder={text.customRules.dataItemPlaceholder}
-          onChange={(dataItem) => onChange({ ...match, checks: { dataItem } })}
+          onChange={(dataItem) => onChange({ ...match, checks: { ...match.checks, dataItem } })}
         />
         {problemNote("dataItemRequired")}
       </Field>
@@ -361,7 +398,30 @@ function CheckedAfterFields({
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }): ReactElement {
+/**
+ * A field under its label. A group of controls is named through `aria-labelledby`: wrapped in a
+ * label, a press on the caption would press the first control of the group.
+ */
+function Field({
+  label,
+  group = false,
+  children,
+}: {
+  label: string;
+  group?: boolean;
+  children: ReactNode;
+}): ReactElement {
+  const labelId = useId();
+  if (group) {
+    return (
+      <div className="ci-form__field" role="group" aria-labelledby={labelId}>
+        <span className="ci-form__label" id={labelId}>
+          {label}
+        </span>
+        {children}
+      </div>
+    );
+  }
   return (
     <label className="ci-form__field">
       <span className="ci-form__label">{label}</span>
@@ -373,10 +433,13 @@ function Field({ label, children }: { label: string; children: ReactNode }): Rea
 /** A group of checkboxes over a fixed vocabulary, in place of a multiple-selection list box. */
 function CheckList({
   options,
+  labelOf,
   selected,
   onChange,
 }: {
   options: readonly string[];
+  /** The word shown for an option; the option itself is what the rule file holds. */
+  labelOf: (option: string) => string;
   selected: readonly string[];
   onChange: (selected: string[]) => void;
 }): ReactElement {
@@ -390,12 +453,14 @@ function CheckList({
             onChange={(event) =>
               onChange(
                 event.target.checked
-                  ? [...options.filter((o) => o === option || selected.includes(o))]
+                  ? // In the order of the options. A list holding anything else is edited in the
+                    // JSON pane (formEditable), so the boxes are all there is to keep.
+                    options.filter((each) => each === option || selected.includes(each))
                   : selected.filter((value) => value !== option),
               )
             }
           />
-          {option}
+          {labelOf(option)}
         </label>
       ))}
     </span>
@@ -406,9 +471,9 @@ function CheckList({
  * A list of short words in one text field. The placeholder is an example in the field's own
  * vocabulary, which is also where the separator is shown.
  *
- * The typed text is held here rather than derived from the value on every keystroke: reformatting
- * mid-word would eat the separator the moment it was typed. The field is re-synchronised only when
- * the value changes from elsewhere — the raw pane, or a switch to another rule.
+ * The typed text is held here, because deriving it from the value on every keystroke would
+ * reformat mid-word and eat the separator the moment it was typed. The field is re-synchronised
+ * only when the value changes from elsewhere — the raw pane, or a switch to another rule.
  */
 function ListField({
   value,
@@ -420,15 +485,17 @@ function ListField({
   onChange: (value: string[]) => void;
 }): ReactElement {
   const [draft, setDraft] = useState(() => formatList(value));
+  // The list as one text: the caller hands over a new array at every render.
+  const joined = value.join("\0");
 
   useEffect(() => {
-    if (parseList(draft).join(" ") !== value.join(" ")) {
+    if (parseList(draft).join("\0") !== joined) {
       setDraft(formatList(value));
     }
     // Only an outside change re-synchronises the field; comparing against `draft` here would undo
     // the user's own typing on the very next render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  }, [joined]);
 
   return (
     <input

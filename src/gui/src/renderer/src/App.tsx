@@ -9,7 +9,12 @@ import {
 } from "react";
 import { api, errorMessage } from "./api";
 import { text } from "./i18n/text";
-import { ProjectProvider, artifactItems, useProject } from "./state/projectStore";
+import {
+  ProjectProvider,
+  artifactItems,
+  structureScanDue,
+  useProject,
+} from "./state/projectStore";
 import {
   PANEL_LIMITS,
   SIDE_LIMITS,
@@ -51,6 +56,7 @@ import { CommandPalette } from "./shell/CommandPalette";
 import { DiffView } from "./editors/diff/DiffView";
 import { SplitHandle } from "./ui/SplitHandle";
 import { Modal } from "./ui/Modal";
+import { ErrorBoundary } from "./ui/ErrorBoundary";
 import { Toast, type ToastMessage } from "./ui/Toast";
 
 /** The shell proper. It sits inside the providers so it can read and write every store. */
@@ -114,10 +120,10 @@ function Shell(): ReactElement {
       notify(text.run.noSelection, true);
       return;
     }
-    // A copybook is not a unit of analysis: it is checked through the programs that copy it, so a
-    // scope holding no program leaves the engine nothing to parse and its empty result would erase
-    // the findings those copybooks genuinely have. The test is over the whole scope rather than the
-    // selected item, because a folder of copybooks is as empty a scope as one copybook.
+    // A copybook is checked only through the programs that copy it, so a scope holding no program
+    // leaves the engine nothing to parse and its empty result would erase the findings those
+    // copybooks genuinely have. The test runs over the whole scope, whatever item is selected,
+    // because a folder of copybooks is as empty a scope as one copybook.
     const analysable = artifactItems(project.inventory).some(
       (item) =>
         (item.path === selection.path || item.path.startsWith(`${selection.path}/`)) &&
@@ -138,11 +144,25 @@ function Shell(): ReactElement {
     void analysis.run(project.inputDir);
   }, [analysis, project.inputDir, notify]);
 
+  /**
+   * Whether a run is in progress now. The folder dialog stays open for as long as the user takes,
+   * and the scan after a save can start meanwhile; the answer is checked against this, which the
+   * closure that opened the dialog would hold as it stood then.
+   */
+  const runningRef = useRef(false);
+  runningRef.current = project.mode === "running";
+
   const selectFolder = useCallback((): void => {
     api()
       .selectFolder()
       .then((folder) => {
         if (folder === null) {
+          return;
+        }
+        // One run at a time: a folder chosen while a run goes is refused, as the folder button is
+        // while the run shows, and the user opens it again once the run has ended.
+        if (runningRef.current) {
+          notify(text.run.folderWhileRunning, true);
           return;
         }
         if (folder !== project.inputDir) {
@@ -166,6 +186,20 @@ function Shell(): ReactElement {
       })
       .catch((error: unknown) => notify(errorMessage(error), true));
   }, [analysis, workbenchDispatch, project.inputDir, workbench.tabs, sourceSave.hasDirty, notify]);
+
+  // An asset written into the folder — a save, a paste — leaves the project file describing it as it
+  // was. The scan is run again for it once nothing else is running, so one engine runs at a time and
+  // a save made during a run is picked up when that run ends. A save of every tab is waited for, so
+  // its writes are read by one scan. A scan that failed waits for the next write. No lint is part
+  // of it.
+  const refreshStructure = analysis.refresh;
+  const structurePending =
+    structureScanDue(project) && project.mode !== "running" && !sourceSave.savingAll;
+  useEffect(() => {
+    if (structurePending && project.inputDir !== null) {
+      void refreshStructure(project.inputDir);
+    }
+  }, [structurePending, project.inputDir, refreshStructure]);
 
   const cancelAnalysis = useCallback((): void => {
     analysis.cancel().catch((error: unknown) => notify(errorMessage(error), true));
@@ -229,8 +263,9 @@ function Shell(): ReactElement {
     ],
   );
 
-  // The keyboard chords. They are ignored while typing into a field, except inside the code editor.
-  // Ctrl+K arms a two-key sequence; the next key completes it or cancels it.
+  // The keyboard chords. They are ignored while typing into a field, except inside the code editor,
+  // and while a dialog is open. Ctrl+K arms a two-key sequence; the next key completes it or cancels
+  // it.
   const armed = useRef(false);
   const armTimer = useRef<number | null>(null);
   useEffect(() => {
@@ -255,6 +290,11 @@ function Shell(): ReactElement {
       return true;
     };
     const onKeyDown = (event: globalThis.KeyboardEvent): void => {
+      // An open dialog holds the keyboard: a chord would act on the shell behind it.
+      if (document.querySelector('[aria-modal="true"]') !== null) {
+        disarm();
+        return;
+      }
       if (armed.current) {
         if (isModifierKey(event)) {
           // Ctrl released and pressed again on the way to the second key. Stay armed.
@@ -264,12 +304,17 @@ function Shell(): ReactElement {
         const sequenced = commandAfterPrefix(event);
         if (sequenced !== null) {
           event.preventDefault();
+          event.stopPropagation();
           runCommand(sequenced);
           return;
         }
       }
       if (isSequencePrefix(event)) {
+        // The code editor has Ctrl+K sequences of its own (its folding commands) and would take the
+        // prefix and the key after it. The shell's sequence is the one this product documents, so
+        // the two keys stop here; folding from the keyboard is Ctrl+Shift+[ and Ctrl+Shift+].
         event.preventDefault();
+        event.stopPropagation();
         arm();
         return;
       }
@@ -287,11 +332,12 @@ function Shell(): ReactElement {
       event.preventDefault();
       runCommand(id);
     };
-    window.addEventListener("keydown", onKeyDown);
+    // In the capture phase, so the sequence is seen ahead of the editor the keys are typed into.
+    window.addEventListener("keydown", onKeyDown, true);
     // Leaving the window ends the gesture: the second key would land somewhere else entirely.
     window.addEventListener("blur", disarm);
     return () => {
-      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keydown", onKeyDown, true);
       window.removeEventListener("blur", disarm);
     };
   }, [commands]);
@@ -302,6 +348,17 @@ function Shell(): ReactElement {
 
   const conflict = sourceSave.conflict;
 
+  /**
+   * Where the focus goes as a dialog closes when the control that opened it is gone (the command
+   * palette, say): the header of the tab in front, read as the dialog closes.
+   */
+  const activeTabRef = useRef(workbench.activeTabId);
+  activeTabRef.current = workbench.activeTabId;
+  const activeTabFocus = useCallback((): HTMLElement | null => {
+    const id = activeTabRef.current;
+    return id === null ? null : document.getElementById(`tabheader-${id}`);
+  }, []);
+
   return (
     <div
       className="ci-shell"
@@ -309,7 +366,7 @@ function Shell(): ReactElement {
       style={
         {
           "--ci-panel-open-height": workbench.panelVisible
-            ? `min(${workbench.panelHeight}px, 50%)`
+            ? `min(${workbench.panelHeight}px, var(--ci-panel-cap))`
             : "0px",
         } as CSSProperties
       }
@@ -360,9 +417,9 @@ function Shell(): ReactElement {
               />
               <div
                 className="ci-shell__panel"
-                style={{ height: `min(${workbench.panelHeight}px, 50%)` }}
+                style={{ height: `min(${workbench.panelHeight}px, var(--ci-panel-cap))` }}
               >
-                <Panel onOpenAsset={openAsset} onShowFix={showFix} />
+                <Panel onOpenAsset={openAsset} onShowFix={showFix} onRunAll={runAnalysisAll} />
               </div>
             </>
           ) : null}
@@ -379,6 +436,7 @@ function Shell(): ReactElement {
           title={text.modal.confirmDiscardTitle}
           testId="confirm-discard"
           onDismiss={() => setPendingClose(null)}
+          fallbackFocus={activeTabFocus}
           actions={
             <>
               <button
@@ -429,6 +487,7 @@ function Shell(): ReactElement {
           testId="save-conflict"
           wide={conflict.diskText !== null}
           onDismiss={sourceSave.dismissConflict}
+          fallbackFocus={activeTabFocus}
           actions={
             // Safest first, destructive late, cancel last: nothing terminal sits under the cursor.
             <>
@@ -474,12 +533,15 @@ function Shell(): ReactElement {
           <p>{text.save.conflictBody(conflict.path)}</p>
           {conflict.diskText === null ? null : (
             <div className="ci-modal__diff">
-              <DiffView
-                original={conflict.diskText}
-                modified={conflict.draft}
-                languageId={languageIdFor(conflict.path)}
-                ariaLabel={`${text.save.diskLabel} / ${text.save.draftLabel}`}
-              />
+              {/* A diff that fails to draw stays inside this box, and the actions above still answer. */}
+              <ErrorBoundary resetKey={conflict.tabId} message={text.editor.viewFailed}>
+                <DiffView
+                  original={conflict.diskText}
+                  modified={conflict.draft}
+                  languageId={languageIdFor(conflict.path)}
+                  ariaLabel={text.save.compareLabel}
+                />
+              </ErrorBoundary>
             </div>
           )}
         </Modal>

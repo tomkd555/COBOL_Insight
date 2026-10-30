@@ -2,14 +2,14 @@ import type { EngineResult, RuleCatalog, RulesRequest, RulesValidation } from ".
 import { parseRuleCatalog } from "../../shared/ruleCatalog";
 
 /**
- * Asking the engine about rules. It sits beside decode and save because all three are engine calls
- * the renderer makes outside a run, rather than artefact reads.
+ * Asking the engine about rules. It sits beside decode and save because all three launch the engine
+ * at the renderer's request outside a run; the artefact reads open files a run already wrote.
  */
 
 /** The filesystem validating candidate rule text needs: a scratch file to hand the engine. */
 export interface RulesFileSystem {
   writeText(absPath: string, text: string): Promise<void>;
-  /** Removes a file; an absent file is not an error. */
+  /** Removes a file; removing an absent file succeeds. */
   remove(absPath: string): Promise<void>;
 }
 

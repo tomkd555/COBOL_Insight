@@ -11,6 +11,8 @@
  * conditional on a byte column, so the areas are drawn as decorations instead (model/columns).
  */
 
+import { SEQUENCE_COLUMNS } from "../model/columns";
+
 /** The action of a rule with no capture groups: a token name, or a token plus a state change. */
 export interface MonarchTokenAction {
   token: string;
@@ -81,12 +83,12 @@ export type ThemeName = keyof typeof COBOL_INSIGHT_THEME;
  * The code face and its metrics, shared by every editor. BIZ UDGothic is the fixed-pitch member
  * of the UI family (tokens.json); the fallbacks keep a DBCS glyph two cells wide.
  *
- * 13px is the product's own floor for Japanese body text; 12px kanji in a code face lose strokes.
+ * 16px matches the body text, so the Japanese comment lines read at the same size as the prose.
  */
 export const CODE_FONT = {
   fontFamily: "'BIZ UDGothic','MS Gothic',monospace",
-  fontSize: 13,
-  lineHeight: 20,
+  fontSize: 16,
+  lineHeight: 24,
 } as const;
 
 /* ------------------------------------------------------------------ COBOL fixed format */
@@ -142,6 +144,9 @@ const KEYWORDS: string[] = [
   "RECURSIVE", "DECIMAL-POINT", "COMMA", "CURRENCY",
 ];
 
+/** Every word the grammar reserves, in upper case. A user-defined name is any word outside it. */
+export const RESERVED_WORDS: ReadonlySet<string> = new Set([...DIVISIONS, ...FIGURATIVE, ...KEYWORDS]);
+
 /**
  * The non-ASCII range a word may be built from. User-defined names may hold full-width characters,
  * so everything from U+00C0 up is a word character except the ideographic space (U+3000). The set is
@@ -151,6 +156,9 @@ const WIDE = `${String.fromCharCode(0x00c0)}-${String.fromCharCode(0x2fff)}${Str
 
 /** A word: a reserved word, a figurative constant or a user-defined name. */
 const WORD = new RegExp(`[A-Za-z${WIDE}][A-Za-z0-9${WIDE}-]*`);
+
+/** The sequence area, as wide as model/columns says it is. */
+const SEQUENCE = `.{${SEQUENCE_COLUMNS}}`;
 
 /** The fixed-format COBOL grammar. A fresh definition is built on every call. */
 export function cobolLanguage(): MonarchLanguage {
@@ -163,13 +171,13 @@ export function cobolLanguage(): MonarchLanguage {
     tokenizer: {
       root: [
         // Sequence area plus indicator. Matched only at the start of a line, one rule per indicator.
-        [/^(.{6})([*/])(.*)$/, ["sequence", "comment", "comment"]],
-        [/^(.{6})(D)/, ["sequence", "debug"]],
-        [/^(.{6})(-)/, ["sequence", "continuation"]],
-        [/^(.{6})( )/, ["sequence", "white"]],
-        [/^(.{6})(.)/, ["sequence", "indicator"]],
+        [new RegExp(`^(${SEQUENCE})([*/])(.*)$`), ["sequence", "comment", "comment"]],
+        [new RegExp(`^(${SEQUENCE})(D)`), ["sequence", "debug"]],
+        [new RegExp(`^(${SEQUENCE})(-)`), ["sequence", "continuation"]],
+        [new RegExp(`^(${SEQUENCE})( )`), ["sequence", "white"]],
+        [new RegExp(`^(${SEQUENCE})(.)`), ["sequence", "indicator"]],
         // A line too short to fill the sequence area.
-        [/^.{1,6}$/, "sequence"],
+        [new RegExp(`^.{1,${SEQUENCE_COLUMNS}}$`), "sequence"],
 
         // The body (columns 8-72).
         [/\s+/, "white"],
@@ -297,7 +305,7 @@ export function bmsLanguage(): MonarchLanguage {
  * Monaco ships JSON only as a language service (vs/language/json), which brings a worker of its own
  * and with it validation and completion. This editor registers grammars and nothing else — one base
  * worker serves the whole renderer — so JSON is highlighted from a Monarch definition like the other
- * three languages rather than from that service.
+ * three languages, without that service.
  */
 export function jsonLanguage(): MonarchLanguage {
   return {
@@ -340,7 +348,9 @@ export function cobolInsightTheme(theme: ThemeName): MonacoThemeData {
       { token: "indicator", foreground: c("d7ba7d", "6f4c0a"), fontStyle: "bold" },
       { token: "continuation", foreground: c("d7ba7d", "6f4c0a") },
       { token: "debug", foreground: c("c586c0", "8a3fa0") },
-      { token: "comment", foreground: c("6a9955", "2f6a34") },
+      // The dark value holds 5:1 over the bands of the indicator and identification areas as well
+      // (styles/app-tokens.css, --ci-band-*).
+      { token: "comment", foreground: c("82bd6e", "2f6a34") },
       { token: "string", foreground: c("ce9178", "a0522d") },
       { token: "string.invalid", foreground: c("ff6b5e", "d03a2e"), fontStyle: "bold" },
       { token: "number", foreground: c("b5cea8", "2f6b3d") },
@@ -361,14 +371,19 @@ export function cobolInsightTheme(theme: ThemeName): MonacoThemeData {
       "editorRuler.foreground": c("#6e7582", "#7b8493"),
       "editorGutter.background": c("#101418", "#f4f7fa"),
       // The caret line, at 6% of the foreground and no border: enough to find the caret after a jump
-      // from the problems table, not enough to compete with the column bands drawn over it.
+      // from the problems table, yet quiet beside the column bands drawn over it.
       "editor.lineHighlightBackground": c("#e3e5ea0f", "#2b2f380f"),
       "editor.lineHighlightBorder": "#00000000",
-      // One finding, one colour: Monaco's own red, amber and blue are not the palette's, so a marker
+      // One finding, one colour: Monaco's own red, amber and blue differ from the palette's, so a marker
       // and the glyph beside it in the margin disagreed on what severity looks like.
       "editorError.foreground": c("#ff7266", "#bb0916"),
       "editorWarning.foreground": c("#d59800", "#995700"),
       "editorInfo.foreground": c("#59a0f9", "#0267c7"),
+      // Bracket pairs in the generated Java and Python, in three of the token colours: Monaco's own
+      // three fall under 4.5:1 on the light ground.
+      "editorBracketHighlight.foreground1": c("#6aa7ff", "#2a66d0"),
+      "editorBracketHighlight.foreground2": c("#c586c0", "#8a3fa0"),
+      "editorBracketHighlight.foreground3": c("#dcdcaa", "#6b5b00"),
       "diffEditor.insertedLineBackground": c("#1d2a1a", "#e6f0dd"),
       // Dark keeps Monaco's own removed-line colour; only light needed one of its own.
       ...(dark ? {} : { "diffEditor.removedLineBackground": "#f6dcdd" }),

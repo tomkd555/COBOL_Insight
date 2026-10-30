@@ -7,6 +7,7 @@ import jp.cobolinsight.core.semantic.CompoundStatement;
 import jp.cobolinsight.core.semantic.ControlKind;
 import jp.cobolinsight.core.semantic.GoToStatement;
 import jp.cobolinsight.core.semantic.Procedure;
+import jp.cobolinsight.core.semantic.ProcedureNames;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.semantic.StatementBlock;
@@ -45,9 +46,12 @@ import java.util.function.Function;
 final class GotoStructurer {
 
     private static final String DUP_NOTE = "GO TO 構造化による複製(元の段落と重複)";
+    /** The note of a statement a THRU range's method holds, which its own procedure's method holds too. */
+    private static final String RANGE_NOTE = "一つのメソッドに展開した THRU 範囲による複製(元の段落と重複)";
 
     private final List<Procedure> procedures;
-    private final Map<String, Integer> indexByName;
+    /** How a GO TO names its destination; the rule the analysis and the stored flow share. */
+    private final ProcedureNames names;
     private final OperandParser parser;
     private final Function<Statement, List<ProcStmt>> leafConverter;
 
@@ -56,11 +60,7 @@ final class GotoStructurer {
         this.procedures = procedures;
         this.parser = parser;
         this.leafConverter = leafConverter;
-        Map<String, Integer> byName = new LinkedHashMap<>();
-        for (int i = 0; i < procedures.size(); i++) {
-            byName.putIfAbsent(upper(procedures.get(i).name()), i);
-        }
-        this.indexByName = byName;
+        this.names = new ProcedureNames(procedures);
     }
 
     /** Whether the procedure's statement tree contains a GO TO anywhere. */
@@ -101,15 +101,108 @@ final class GotoStructurer {
             if (!GotoNormalizer.isReducible(normalized)) {
                 return null;
             }
-            return new Analysis(normalized, region.condJumps(), start.name()).run();
+            return new Analysis(normalized, region.condJumps(), region.procedureOf(),
+                    indexOf(start), DUP_NOTE).run();
         } catch (Unsupported unsupported) {
             return null;
         }
     }
 
+    /**
+     * The body of one method that runs the procedures {@code from} to {@code to} the way a
+     * PERFORM … THRU runs them: each falls into the next unless it leaves, a GO TO to a procedure
+     * of the range goes there, and the end of {@code to} returns. Null when the range holds a GO
+     * TO out of it, or a form the structuring cannot reduce.
+     */
+    List<ProcStmt> structureRange(int from, int to) {
+        try {
+            Map<Integer, List<Item>> itemsByPara = new LinkedHashMap<>();
+            for (int idx = from; idx <= to; idx++) {
+                List<Item> items = flatten(procedures.get(idx));
+                if (items == null) {
+                    throw new Unsupported();
+                }
+                itemsByPara.put(idx, items);
+            }
+            int nextId = 0;
+            List<CfgNode> nodes = new ArrayList<>();
+            CfgNode entry = new CfgNode(nextId++, CfgNodeKind.ENTRY, null, "");
+            nodes.add(entry);
+            Map<Integer, List<CfgNode>> paraNodes = new LinkedHashMap<>();
+            Map<CfgNode, Integer> procedureOf = new IdentityHashMap<>();
+            for (int idx = from; idx <= to; idx++) {
+                List<CfgNode> pn = new ArrayList<>();
+                for (Item item : itemsByPara.get(idx)) {
+                    CfgNode node = new CfgNode(nextId++, CfgNodeKind.STATEMENT, item.statement(),
+                            procedures.get(idx).name());
+                    nodes.add(node);
+                    pn.add(node);
+                    procedureOf.put(node, idx);
+                }
+                paraNodes.put(idx, pn);
+            }
+            CfgNode exit = new CfgNode(nextId++, CfgNodeKind.EXIT, null, "");
+            nodes.add(exit);
+            Map<CfgNode, List<CfgNode>> successors = new LinkedHashMap<>();
+            for (CfgNode node : nodes) {
+                successors.put(node, new ArrayList<>());
+            }
+            // The first statement of each procedure, or where control goes on past an empty one.
+            Map<Integer, CfgNode> paraFirst = new LinkedHashMap<>();
+            for (int idx = to; idx >= from; idx--) {
+                List<CfgNode> pn = paraNodes.get(idx);
+                paraFirst.put(idx, !pn.isEmpty() ? pn.get(0)
+                        : idx < to ? paraFirst.get(idx + 1) : exit);
+            }
+            successors.get(entry).add(paraFirst.get(from));
+            Set<CfgNode> condJumps = Collections.newSetFromMap(new IdentityHashMap<>());
+            for (int idx = from; idx <= to; idx++) {
+                List<Item> items = itemsByPara.get(idx);
+                List<CfgNode> pn = paraNodes.get(idx);
+                CfgNode fallThrough = idx < to ? paraFirst.get(idx + 1) : exit;
+                for (int i = 0; i < items.size(); i++) {
+                    Item item = items.get(i);
+                    CfgNode node = pn.get(i);
+                    CfgNode after = (i + 1 < items.size()) ? pn.get(i + 1) : fallThrough;
+                    switch (item) {
+                        case Item.Leaf leaf -> successors.get(node).add(leaf.terminal() ? exit : after);
+                        case Item.Jump jump -> successors.get(node).add(
+                                rangeTarget(jump.target(), from, to, paraFirst));
+                        case Item.CondJump cond -> {
+                            condJumps.add(node);
+                            successors.get(node).add(rangeTarget(cond.target(), from, to,
+                                    paraFirst));
+                            successors.get(node).add(after);
+                        }
+                    }
+                }
+            }
+            ControlFlowGraph cfg = new ControlFlowGraph(procedures.get(from).name(), nodes,
+                    entry, exit, successors);
+            ControlFlowGraph normalized = GotoNormalizer.normalize(cfg);
+            if (!GotoNormalizer.isReducible(normalized)) {
+                return null;
+            }
+            return new Analysis(normalized, condJumps, procedureOf, -1, RANGE_NOTE).run();
+        } catch (Unsupported unsupported) {
+            return null;
+        }
+    }
+
+    /** Where a GO TO inside a range goes: a procedure of the range. A GO TO out of it leaves it. */
+    private static CfgNode rangeTarget(int target, int from, int to,
+            Map<Integer, CfgNode> paraFirst) {
+        if (target < from || target > to) {
+            throw new Unsupported();
+        }
+        return paraFirst.get(target);
+    }
+
     // ---- Building the partial CFG ----
 
-    private record RegionCfg(ControlFlowGraph cfg, Set<CfgNode> condJumps) {
+    /** The partial CFG, its IF-conditioned GO TO nodes, and the procedure index of each node. */
+    private record RegionCfg(ControlFlowGraph cfg, Set<CfgNode> condJumps,
+            Map<CfgNode, Integer> procedureOf) {
     }
 
     /** One item obtained by flattening a procedure statement into a "flow element" for GO TO structuring. */
@@ -121,17 +214,17 @@ final class GotoStructurer {
         record Leaf(Statement statement, boolean terminal) implements Item {
         }
 
-        /** An unconditional GO TO (single destination). */
-        record Jump(GoToStatement statement, String target) implements Item {
+        /** An unconditional GO TO (single destination), with the index of the destination procedure. */
+        record Jump(GoToStatement statement, int target) implements Item {
         }
 
         /** An IF-conditioned GO TO (THEN holds only a single GO TO). true takes the jump destination, false falls through. */
-        record CondJump(CompoundStatement statement, String target) implements Item {
+        record CondJump(CompoundStatement statement, int target) implements Item {
         }
     }
 
     private RegionCfg buildRegion(Procedure start) {
-        int startIdx = indexByName.get(upper(start.name()));
+        int startIdx = indexOf(start);
         List<Integer> region = computeRegion(startIdx);
 
         Map<Integer, List<Item>> itemsByPara = new LinkedHashMap<>();
@@ -149,6 +242,7 @@ final class GotoStructurer {
         nodes.add(entry);
         Map<Integer, CfgNode> paraFirst = new LinkedHashMap<>();
         Map<Integer, List<CfgNode>> paraNodes = new LinkedHashMap<>();
+        Map<CfgNode, Integer> procedureOf = new IdentityHashMap<>();
         for (int idx : region) {
             List<CfgNode> pn = new ArrayList<>();
             for (Item item : itemsByPara.get(idx)) {
@@ -156,6 +250,7 @@ final class GotoStructurer {
                         procedures.get(idx).name());
                 nodes.add(node);
                 pn.add(node);
+                procedureOf.put(node, idx);
             }
             paraFirst.put(idx, pn.get(0));
             paraNodes.put(idx, pn);
@@ -193,15 +288,24 @@ final class GotoStructurer {
         }
 
         ControlFlowGraph cfg = new ControlFlowGraph(start.name(), nodes, entry, exit, successors);
-        return new RegionCfg(cfg, condJumps);
+        return new RegionCfg(cfg, condJumps, procedureOf);
     }
 
-    private CfgNode targetNode(String target, Set<Integer> regionSet, Map<Integer, CfgNode> paraFirst) {
-        Integer idx = indexByName.get(upper(target));
-        if (idx == null || !regionSet.contains(idx)) {
+    private CfgNode targetNode(int target, Set<Integer> regionSet, Map<Integer, CfgNode> paraFirst) {
+        if (!regionSet.contains(target)) {
             throw new Unsupported();
         }
-        return paraFirst.get(idx);
+        return paraFirst.get(target);
+    }
+
+    /** The position of the procedure itself in the list, a duplicate name notwithstanding. */
+    private int indexOf(Procedure procedure) {
+        for (int i = 0; i < procedures.size(); i++) {
+            if (procedures.get(i) == procedure) {
+                return i;
+            }
+        }
+        throw new Unsupported();
     }
 
     /** The fall-through target from the end of a paragraph. The start paragraph (invoked via PERFORM) returns at its end, so it goes to the exit. */
@@ -226,15 +330,9 @@ final class GotoStructurer {
                 throw new Unsupported();
             }
             for (Item item : items) {
-                String target = targetOf(item);
-                if (target != null) {
-                    Integer idx = indexByName.get(upper(target));
-                    if (idx == null) {
-                        throw new Unsupported();
-                    }
-                    if (region.add(idx)) {
-                        queue.add(idx);
-                    }
+                int target = targetOf(item);
+                if (target >= 0 && region.add(target)) {
+                    queue.add(target);
                 }
             }
             if (p != startIdx && fallsThrough(items)) {
@@ -247,11 +345,12 @@ final class GotoStructurer {
         return new ArrayList<>(region);
     }
 
-    private static String targetOf(Item item) {
+    /** The destination of a jump, -1 for a leaf. */
+    private static int targetOf(Item item) {
         return switch (item) {
             case Item.Jump jump -> jump.target();
             case Item.CondJump cond -> cond.target();
-            case Item.Leaf ignored -> null;
+            case Item.Leaf ignored -> -1;
         };
     }
 
@@ -274,17 +373,17 @@ final class GotoStructurer {
                     if (g.targets().size() != 1 || g.dependingOn().isPresent()) {
                         return null;
                     }
-                    items.add(new Item.Jump(g, g.targets().get(0)));
+                    items.add(new Item.Jump(g, destination(g, procedure)));
                 }
                 case CompoundStatement c -> {
                     if (!containsGoTo(c)) {
                         items.add(new Item.Leaf(c, false));
                     } else {
-                        String target = condJumpTarget(c);
-                        if (target == null) {
+                        GoToStatement jump = condJump(c);
+                        if (jump == null) {
                             return null;
                         }
-                        items.add(new Item.CondJump(c, target));
+                        items.add(new Item.CondJump(c, destination(jump, procedure)));
                     }
                 }
                 case SimpleStatement ss -> items.add(new Item.Leaf(ss, isHardTerminator(ss)));
@@ -293,8 +392,21 @@ final class GotoStructurer {
         return items;
     }
 
-    /** The jump destination if this is an IF-conditioned GO TO form (THEN holds a single GO TO, no ELSE); otherwise null. */
-    private static String condJumpTarget(CompoundStatement c) {
+    /**
+     * The index of the procedure a single-target GO TO written in {@code holder} goes to, as
+     * {@link ProcedureNames} resolves it. A destination no procedure carries cannot be structured.
+     */
+    private int destination(GoToStatement g, Procedure holder) {
+        int index = names.indexOf(g.targets().get(0), g.targetSections().get(0),
+                ProcedureNames.sectionOf(holder));
+        if (index < 0) {
+            throw new Unsupported();
+        }
+        return index;
+    }
+
+    /** The GO TO of an IF-conditioned GO TO form (THEN holds a single GO TO, no ELSE); otherwise null. */
+    private static GoToStatement condJump(CompoundStatement c) {
         if (c.kind() != ControlKind.BRANCH || c.blocks().size() != 1) {
             return null;
         }
@@ -308,7 +420,7 @@ final class GotoStructurer {
         if (g.targets().size() != 1 || g.dependingOn().isPresent()) {
             return null;
         }
-        return g.targets().get(0);
+        return g;
     }
 
     private static boolean isHardTerminator(SimpleStatement s) {
@@ -330,7 +442,11 @@ final class GotoStructurer {
 
         private final ControlFlowGraph cfg;
         private final Set<CfgNode> condJumps;
-        private final String startPara;
+        /** The procedure index of each node GotoNormalizer kept; a duplicate it made is absent. */
+        private final Map<CfgNode, Integer> procedureOf;
+        private final int startIdx;
+        /** The note of a statement this method holds that another method holds too. */
+        private final String copyNote;
         private final Dom dom;
         private final Dom postDom;
         private final Set<CfgNode> loopHeaders = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -338,10 +454,13 @@ final class GotoStructurer {
         private final Map<CfgNode, Set<CfgNode>> loopBodies = new IdentityHashMap<>();
         private final Set<CfgNode> visited = Collections.newSetFromMap(new IdentityHashMap<>());
 
-        Analysis(ControlFlowGraph cfg, Set<CfgNode> condJumps, String startPara) {
+        Analysis(ControlFlowGraph cfg, Set<CfgNode> condJumps, Map<CfgNode, Integer> procedureOf,
+                int startIdx, String copyNote) {
             this.cfg = cfg;
             this.condJumps = condJumps;
-            this.startPara = startPara;
+            this.procedureOf = procedureOf;
+            this.startIdx = startIdx;
+            this.copyNote = copyNote;
             this.dom = Dom.build(cfg.entry(), cfg::successors, cfg::predecessors);
             this.postDom = Dom.build(cfg.exit(), cfg::predecessors, cfg::successors);
         }
@@ -444,13 +563,13 @@ final class GotoStructurer {
             }
             List<ProcStmt> base = leafConverter.apply(s);
             boolean inlined = node.originalNodeId().isPresent()
-                    || !node.procedureName().equalsIgnoreCase(startPara);
+                    || procedureOf.getOrDefault(node, -1) != startIdx;
             if (!inlined) {
                 return base;
             }
             List<ProcStmt> renoted = new ArrayList<>(base.size());
             for (ProcStmt ps : base) {
-                renoted.add(reNote(ps, DUP_NOTE));
+                renoted.add(reNote(ps, copyNote));
             }
             return renoted;
         }
@@ -487,9 +606,9 @@ final class GotoStructurer {
                     s.varyingInit(), s.varyingStep(), s.range(), combine(s.note(), extra));
             case ProcStmt.PerformCall s -> new ProcStmt.PerformCall(s.methodName(), s.range(),
                     combine(s.note(), extra));
-            case ProcStmt.PerformTimes s -> new ProcStmt.PerformTimes(s.methodName(), s.count(),
+            case ProcStmt.PerformTimes s -> new ProcStmt.PerformTimes(s.methodNames(), s.count(),
                     s.range(), combine(s.note(), extra));
-            case ProcStmt.PerformThru s -> new ProcStmt.PerformThru(s.methodNames(), s.range(),
+            case ProcStmt.PerformThru s -> new ProcStmt.PerformThru(s.methodNames(), s.thru(), s.range(),
                     combine(s.note(), extra));
             case ProcStmt.Display s -> new ProcStmt.Display(s.operands(), s.range(),
                     combine(s.note(), extra));

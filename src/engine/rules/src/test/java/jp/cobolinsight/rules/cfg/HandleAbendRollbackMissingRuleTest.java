@@ -6,6 +6,8 @@ import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -82,5 +84,50 @@ class HandleAbendRollbackMissingRuleTest {
     @Test
     void ignoresHandleAbendExitThatRollsBack() {
         assertEquals(List.of(), run("FIX043B", WITH_ROLLBACK), "ROLLBACK を実行していれば対象外");
+    }
+
+    /**
+     * One copybook's HANDLE ABEND is copied into two sections, each with its own 9500-ABEND. The
+     * label of each copy resolves from the section the copy stands in: SECT-A's exit only returns,
+     * and SECT-B's performs R-1 OF SECT-B THRU R-3, whose third paragraph rolls back. The one
+     * finding stands in the copybook at the copybook's line.
+     */
+    @Test
+    void eachCopyResolvesItsLabelFromItsOwnSection() throws IOException {
+        Path copybooks = Files.createDirectories(tempDir.resolve("cpy"));
+        Files.writeString(copybooks.resolve("HABEND.cpy"),
+                "           EXEC CICS HANDLE ABEND LABEL(9500-ABEND) END-EXEC.\n");
+        String text = String.join("\n",
+                /*  1 */ "       IDENTIFICATION DIVISION.",
+                /*  2 */ "       PROGRAM-ID. FIX043C.",
+                /*  3 */ "       PROCEDURE DIVISION.",
+                /*  4 */ "       SECT-A SECTION.",
+                /*  5 */ "       A-START.",
+                /*  6 */ "           COPY HABEND.",
+                /*  7 */ "           PERFORM SECT-B",
+                /*  8 */ "           GOBACK.",
+                /*  9 */ "       9500-ABEND.",
+                /* 10 */ "           EXEC CICS RETURN END-EXEC.",
+                /* 11 */ "       SECT-B SECTION.",
+                /* 12 */ "       B-START.",
+                /* 13 */ "           COPY HABEND.",
+                /* 14 */ "           GOBACK.",
+                /* 15 */ "       9500-ABEND.",
+                /* 16 */ "           PERFORM R-1 OF SECT-B THRU R-3",
+                /* 17 */ "           EXEC CICS RETURN END-EXEC.",
+                /* 18 */ "       R-1.",
+                /* 19 */ "           DISPLAY 'R1'.",
+                /* 20 */ "       R-2.",
+                /* 21 */ "           DISPLAY 'R2'.",
+                /* 22 */ "       R-3.",
+                /* 23 */ "           EXEC CICS SYNCPOINT ROLLBACK END-EXEC.",
+                "");
+        CobolSemanticModel model = CfgFixtures.parse(tempDir, "FIX043C.cbl", text, copybooks);
+        List<Finding> findings = new HandleAbendRollbackMissingRule().evaluate(
+                CfgFixtures.context(List.of(model), Map.of(model.sourceFile(), text)));
+
+        assertEquals(List.of("HABEND.cpy:1"), findings.stream()
+                .map(f -> Path.of(f.location().file()).getFileName() + ":" + f.location().line())
+                .toList());
     }
 }

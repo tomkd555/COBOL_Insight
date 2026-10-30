@@ -79,13 +79,18 @@ public final class ProcedureRenderer {
             case ProcStmt.Assign s -> leaf(s.range(), s.note(),
                     () -> dialect.emitAssign(out, ExprWriter.expr(s.target(), dialect),
                             ExprWriter.expr(s.value(), dialect)));
-            case ProcStmt.PerformCall s -> leaf(s.range(), s.note(),
-                    () -> dialect.emitInvoke(out, s.methodName()));
-            case ProcStmt.PerformTimes s -> leaf(s.range(), s.note(),
-                    () -> dialect.emitTimesLoop(out, s.methodName(),
-                            ExprWriter.expr(s.count(), dialect)));
+            case ProcStmt.PerformCall s -> leaf(s.range(), s.note(), () -> {
+                performNote(s.note());
+                dialect.emitInvoke(out, s.methodName());
+            });
+            case ProcStmt.PerformTimes s -> leaf(s.range(), s.note(), () -> {
+                performNote(s.note());
+                dialect.emitTimesLoop(out, s.methodNames(), ExprWriter.expr(s.count(), dialect));
+            });
             case ProcStmt.PerformThru s -> leaf(s.range(), s.note(), () -> {
-                dialect.emitComment(out, "PERFORM THRU: " + String.join(" .. ", s.methodNames()));
+                performNote(s.note());
+                dialect.emitComment(out, (s.thru() ? "PERFORM THRU: " : "PERFORM range: ")
+                        + String.join(" .. ", s.methodNames()));
                 for (String method : s.methodNames()) {
                     dialect.emitInvoke(out, method);
                 }
@@ -168,6 +173,13 @@ public final class ProcedureRenderer {
                     ExprWriter.isString(operand)));
         }
         return parts;
+    }
+
+    /** A comment holding the note on how a PERFORM runs its THRU range, when it has one. */
+    private void performNote(String note) {
+        if (OperandParser.PERFORM_NOTES.stream().anyMatch(note::contains)) {
+            dialect.emitComment(out, note);
+        }
     }
 
     private void leaf(SourceRange range, String note, Runnable emit) {

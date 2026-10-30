@@ -98,9 +98,7 @@ public final class CommareaLengthMismatchRule implements Rule {
         if (passed == null) {
             return;
         }
-        SourcePosition at = new SourcePosition(model.sourceFile(),
-                CfgSupport.operandLine(block, "COMMAREA"), 1,
-                SourcePosition.UNKNOWN_BYTE_OFFSET);
+        SourcePosition at = CfgSupport.at(block.range(), CfgSupport.operandLine(block, "COMMAREA"));
         if (passed > MAX_LENGTH) {
             findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                     "COMMAREA の " + passed + " バイトが上限を超えています。"

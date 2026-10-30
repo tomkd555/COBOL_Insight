@@ -1,7 +1,7 @@
 /**
  * The text models of the open tabs.
  *
- * Monaco keeps a document's undo stack on its model, not on the editor. The editor area renders only
+ * Monaco keeps a document's undo stack on its model. The editor area renders only
  * the selected tab, so an editor bound straight to the tab would lose the undo stack — and, while an
  * edit is unsaved, the edit itself — on every switch. The models therefore outlive the editor: they
  * live here, keyed by tab id, and switching a tab is `editor.setModel`.
@@ -53,7 +53,7 @@ export function resetModel(tabId: string, text: string): void {
   existingModel(tabId)?.setValue(text);
 }
 
-/** Disposes a closed tab's model. An unknown tab id is not an error. */
+/** Disposes a closed tab's model. An unknown tab id does nothing. */
 export function disposeModel(tabId: string): void {
   models.get(tabId)?.dispose();
   models.delete(tabId);

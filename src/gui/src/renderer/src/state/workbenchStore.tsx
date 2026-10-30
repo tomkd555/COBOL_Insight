@@ -46,7 +46,10 @@ export interface TreeSelection {
 export interface WorkbenchState {
   readonly tabs: readonly WorkbenchTab[];
   readonly activeTabId: string | null;
-  /** The explorer row the run command analyses, or null while nothing is selected. */
+  /**
+   * What the run command analyses: the explorer row last chosen, or the asset of the tab brought
+   * forward since. Null while nothing is selected.
+   */
   readonly selection: TreeSelection | null;
   readonly sideVisible: boolean;
   readonly sideWidth: number;
@@ -59,6 +62,22 @@ export interface WorkbenchState {
    * cannot hold the text without losing it on every switch. The presence of a key is the dirty flag.
    */
   readonly drafts: Readonly<Record<string, string>>;
+  /**
+   * What the pane beside a source shows, keyed by tab id. It is kept here because the source editor
+   * is unmounted whenever a tab of another kind is in front.
+   */
+  readonly paragraphs: Readonly<Record<string, ParagraphChoice>>;
+}
+
+/**
+ * The sections or paragraphs chosen in one source tab, by outline key (cobolOutline): a name stays
+ * the same through an edit, where a line number would move.
+ */
+export interface ParagraphChoice {
+  /** Where the trace starts; null starts where execution does. */
+  readonly root: string | null;
+  /** Whose text the pane shows; null shows none. */
+  readonly shown: string | null;
 }
 
 /** Side bar sizing. `min` keeps the panel usable; `oppositeMin` is what the editor must keep. */
@@ -85,7 +104,15 @@ export const initialWorkbenchState: WorkbenchState = {
   panelHeight: PANEL_LIMITS.initial,
   panelView: "problems",
   drafts: {},
+  paragraphs: {},
 };
+
+const NO_CHOICE: ParagraphChoice = { root: null, shown: null };
+
+/** What the pane of a source tab shows. */
+export function paragraphChoiceOf(state: WorkbenchState, id: string): ParagraphChoice {
+  return state.paragraphs[id] ?? NO_CHOICE;
+}
 
 /** The id of an asset's tab, used both by the editor and by the draft lookup. */
 export function sourceTabId(path: string): string {
@@ -171,6 +198,8 @@ export type WorkbenchAction =
   | { type: "SELECT"; selection: TreeSelection | null }
   | { type: "STEP_TAB"; step: 1 | -1 }
   | { type: "SET_DRAFT"; id: string; draft: string | null }
+  /** Sets what a source tab's pane shows. A field left out keeps its value. */
+  | { type: "SET_PARAGRAPH"; id: string; root?: string | null; shown?: string | null }
   | { type: "TOGGLE_SIDE" }
   | { type: "SHOW_SIDE"; view: SideView }
   | { type: "SET_SIDE_WIDTH"; width: number }
@@ -179,11 +208,8 @@ export type WorkbenchAction =
   | { type: "SET_PANEL_HEIGHT"; height: number }
   | { type: "RESTORE_SIZES"; sideWidth?: number; panelHeight?: number };
 
-/** Returns the drafts without the given tab's entry. */
-function withoutDraft(
-  drafts: Readonly<Record<string, string>>,
-  id: string,
-): Record<string, string> {
+/** Returns the per-tab record without the given tab's entry. */
+function withoutDraft<T>(drafts: Readonly<Record<string, T>>, id: string): Record<string, T> {
   const next = { ...drafts };
   delete next[id];
   return next;
@@ -209,22 +235,44 @@ function nextActiveId(
   return remaining[Math.min(closedIndex, remaining.length - 1)].id;
 }
 
+/** The tab kinds that show one asset. */
+const ASSET_TAB_KINDS: ReadonlySet<TabKind> = new Set<TabKind>(["source", "fix", "transpile"]);
+
+/**
+ * The state with the selection moved to the asset the active tab shows, so the run button analyses
+ * what is on screen. A tab that shows no asset leaves the selection where it was.
+ */
+function followActiveTab(state: WorkbenchState): WorkbenchState {
+  const tab = activeTabOf(state);
+  if (tab === null || tab.path === null || !ASSET_TAB_KINDS.has(tab.kind)) {
+    return state;
+  }
+  if (state.selection?.path === tab.path && state.selection.kind === "file") {
+    return state;
+  }
+  return { ...state, selection: { path: tab.path, kind: "file" } };
+}
+
 export function workbenchReducer(state: WorkbenchState, action: WorkbenchAction): WorkbenchState {
   switch (action.type) {
     case "OPEN_TAB": {
       const existing = state.tabs.find((tab) => tab.id === action.tab.id);
       if (existing === undefined) {
-        return { ...state, tabs: [...state.tabs, action.tab], activeTabId: action.tab.id };
+        return followActiveTab({
+          ...state,
+          tabs: [...state.tabs, action.tab],
+          activeTabId: action.tab.id,
+        });
       }
       // An open tab is not opened again; only what the request points at is replaced — the line for
       // a source tab, and the node to centre on for the call graph.
-      return {
+      return followActiveTab({
         ...state,
         tabs: state.tabs.map((tab) =>
           tab.id === action.tab.id ? { ...tab, path: action.tab.path, line: action.tab.line } : tab,
         ),
         activeTabId: action.tab.id,
-      };
+      });
     }
 
     case "CLOSE_TAB": {
@@ -232,19 +280,22 @@ export function workbenchReducer(state: WorkbenchState, action: WorkbenchAction)
       if (index < 0) {
         return state;
       }
-      return {
+      const closed = {
         ...state,
         tabs: state.tabs.filter((tab) => tab.id !== action.id),
         activeTabId: nextActiveId(state.tabs, index, state.activeTabId, action.id),
         drafts: withoutDraft(state.drafts, action.id),
+        paragraphs: withoutDraft(state.paragraphs, action.id),
       };
+      // Closing a tab behind the active one moves nothing, so the explorer keeps its selection.
+      return closed.activeTabId === state.activeTabId ? closed : followActiveTab(closed);
     }
 
     case "CLOSE_ALL_TABS":
       // A tab id names an asset by its path relative to the asset folder, so tabs opened from one
       // folder mean nothing once another is chosen. The caller releases their models and decodes.
       // The selection goes with them: that path names nothing in the folder being opened.
-      return { ...state, tabs: [], activeTabId: null, drafts: {}, selection: null };
+      return { ...state, tabs: [], activeTabId: null, drafts: {}, paragraphs: {}, selection: null };
 
     case "SELECT":
       // Focusing a row selects it, and the keyboard both moves and focuses, so the same row is
@@ -259,7 +310,7 @@ export function workbenchReducer(state: WorkbenchState, action: WorkbenchAction)
 
     case "ACTIVATE_TAB":
       return state.tabs.some((tab) => tab.id === action.id)
-        ? { ...state, activeTabId: action.id }
+        ? followActiveTab({ ...state, activeTabId: action.id })
         : state;
 
     case "STEP_TAB": {
@@ -269,7 +320,7 @@ export function workbenchReducer(state: WorkbenchState, action: WorkbenchAction)
       const current = state.tabs.findIndex((tab) => tab.id === state.activeTabId);
       // Wrap around at either end; with nothing selected, count from the first tab.
       const next = (Math.max(current, 0) + action.step + state.tabs.length) % state.tabs.length;
-      return { ...state, activeTabId: state.tabs[next].id };
+      return followActiveTab({ ...state, activeTabId: state.tabs[next].id });
     }
 
     case "SET_DRAFT": {
@@ -282,6 +333,15 @@ export function workbenchReducer(state: WorkbenchState, action: WorkbenchAction)
       return current === action.draft
         ? state
         : { ...state, drafts: { ...state.drafts, [action.id]: action.draft } };
+    }
+
+    case "SET_PARAGRAPH": {
+      const current = paragraphChoiceOf(state, action.id);
+      const root = action.root === undefined ? current.root : action.root;
+      const shown = action.shown === undefined ? current.shown : action.shown;
+      return root === current.root && shown === current.shown
+        ? state
+        : { ...state, paragraphs: { ...state.paragraphs, [action.id]: { root, shown } } };
     }
 
     case "TOGGLE_SIDE":

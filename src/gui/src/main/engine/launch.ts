@@ -38,7 +38,7 @@ const JAVA_OPTIONS = ["-Dfile.encoding=UTF-8", "-XX:MaxRAMPercentage=50", "-Xss4
  * - Development: the gradle `:engine:app:installDist` output, with lib/ on the classpath, run by the
  *   java from JAVA_HOME (or PATH). appRoot is src/gui, whose parent src holds engine/app/build/....
  *
- * The trailing `lib/*` on the classpath is expanded by java itself, not by a shell. spawn does not
+ * The trailing `lib/*` on the classpath is expanded by java itself, with no shell involved. spawn does not
  * go through a shell, so it must be passed in exactly this form.
  */
 export function resolveEngineLaunch(input: EngineLaunchInput): EngineLaunch {

@@ -24,6 +24,7 @@ import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.PosixFileAttributeView;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -136,20 +137,40 @@ public class SaveCommand implements Callable<Integer> {
      * into place, so if the write fails partway through, the original file is left with its
      * original content intact. Opening and writing directly to the original would leave it
      * truncated with incomplete content at the point of failure.
+     *
+     * <p>The file replaced is the one the path leads to: a symbolic link keeps pointing where it
+     * pointed, at the edited file. Where the file system has POSIX permissions, the new file takes
+     * those of the one it replaces.
      */
     private void replace(Path target, byte[] bytes) throws IOException {
-        Path temp = Files.createTempFile(target.getParent(), target.getFileName().toString(),
-                ".save");
+        Path real = target.toRealPath();
+        Path temp = createTemp(real);
         try {
             writeTemp(temp, bytes);
+            if (Files.getFileAttributeView(real, PosixFileAttributeView.class) != null) {
+                Files.setPosixFilePermissions(temp, Files.getPosixFilePermissions(real));
+            }
             try {
-                Files.move(temp, target, StandardCopyOption.ATOMIC_MOVE);
+                Files.move(temp, real, StandardCopyOption.ATOMIC_MOVE);
             } catch (AtomicMoveNotSupportedException e) {
-                Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
+                Files.move(temp, real, StandardCopyOption.REPLACE_EXISTING);
             }
         } finally {
             Files.deleteIfExists(temp);
         }
+    }
+
+    /**
+     * The temporary file the new content is written to: in the original's folder, so the move is
+     * a rename on one volume, and named {@code .<original name><random>.save}. The leading dot keeps
+     * it out of every walk of the asset folder, which leaves names starting with a dot out
+     * ({@code SourceDiscovery}); a scan, lint, fix or translate running beside a save, or after a
+     * save that was killed, sees only the assets. The parse cache lists every file of the
+     * copybook search paths, so a scan that runs while a save in a search path is in progress
+     * parses every program afresh.
+     */
+    static Path createTemp(Path target) throws IOException {
+        return Files.createTempFile(target.getParent(), "." + target.getFileName(), ".save");
     }
 
     /** Writes to the temporary file. This is factored out separately so tests can trigger a failure partway through the write-back. */

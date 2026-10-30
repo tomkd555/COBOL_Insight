@@ -19,6 +19,7 @@ import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
 import jp.cobolinsight.rules.SourceTextIndex;
+import jp.cobolinsight.rules.cfg.CfgSupport;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -101,8 +102,7 @@ public final class UnsignedNegativeResultRule implements Rule {
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         receiver + "（符号なし）に " + simple.verb().toUpperCase(Locale.ROOT)
                                 + " の結果が負で格納され得ます。符号が失われ、絶対値になります。",
-                        new SourcePosition(model.sourceFile(), simple.range().start().line(), 1,
-                                SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                        CfgSupport.at(simple.range())));
             }
         }
     }

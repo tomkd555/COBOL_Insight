@@ -1,9 +1,9 @@
 /**
  * The call graph the model tests share: one job with two steps, the programs they run, a called
- * subprogram, a dataset, and a copybook row that is an asset rather than a call-graph node.
+ * subprogram, a dataset, and a copybook row that is an asset outside the call graph.
  *
  * The two step edges are deliberately listed out of execution order, so anything that claims to
- * order by seq has to do so rather than pass the recorded order through.
+ * order by seq has to sort them itself.
  */
 
 import type { GraphData } from "../../../shared/ipc";

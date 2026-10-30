@@ -16,6 +16,7 @@ import jp.cobolinsight.core.rule.RuleMeta;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
+import jp.cobolinsight.rules.cfg.CfgSupport;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -122,8 +123,7 @@ public final class IdenticalOperandsRule implements Rule {
             if (isOperand(left) && isOperand(right) && left.equalsIgnoreCase(right)) {
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         messageFor(display(left, literals), tokens.get(i)),
-                        new SourcePosition(model.sourceFile(), statement.range().start().line(), 1,
-                                SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                        CfgSupport.at(statement.range())));
                 return;
             }
         }

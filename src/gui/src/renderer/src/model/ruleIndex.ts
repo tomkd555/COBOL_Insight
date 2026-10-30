@@ -41,7 +41,7 @@ export function buildRuleIndex(entries: readonly RuleCatalogEntry[]): RuleIndex 
   return { entries: [...entries], byId };
 }
 
-/** The names of the engine's own finding ids, which are diagnostics rather than rules. */
+/** The names of the engine's own finding ids, which are diagnostics that the catalogue does not list. */
 const DIAGNOSTIC_NAMES: Readonly<Record<string, string>> = text.diagnostic;
 
 /**

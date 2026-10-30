@@ -36,6 +36,11 @@ import java.util.stream.Stream;
  * ({@link Path#toRealPath}). A depth limit has no justification and would silently drop a user's
  * asset placed deep in the tree. The only real need for a limit is to break directory cycles
  * (a link back to itself), and tracking visited real paths is enough for that.
+ *
+ * <p>A file or a folder whose name starts with a dot is left out of the walk, whatever it holds:
+ * such a name marks something hidden ({@code .git}, an editor's working file), and the temporary
+ * file {@code save} writes beside an asset is named so to stay out of every walk. A COBOL program
+ * named {@code .HELPER.cbl} therefore stays out of the walk.
  */
 public final class SourceDiscovery {
 
@@ -152,7 +157,7 @@ public final class SourceDiscovery {
      */
     public static final int MAX_FILES = 5_000;
 
-    /** Directory names the recursive walk does not descend into. Names starting with . are also excluded. */
+    /** Directory names the recursive walk does not descend into. Names starting with . are also excluded, files and directories alike. */
     private static final Set<String> EXCLUDED_DIRS =
             Set.of("node_modules", "build", "target", "out", "dist");
 
@@ -259,15 +264,25 @@ public final class SourceDiscovery {
                     if (!isExcluded(child)) {
                         walk(child);
                     }
-                } else if (Files.isRegularFile(child)) {
+                } else if (Files.isRegularFile(child) && !isHidden(child)) {
                     consider(child);
                 }
             }
         }
 
         private boolean isExcluded(Path dir) {
-            String name = dir.getFileName().toString();
-            return name.startsWith(".") || EXCLUDED_DIRS.contains(name.toLowerCase(Locale.ROOT));
+            return isHidden(dir) || EXCLUDED_DIRS.contains(
+                    dir.getFileName().toString().toLowerCase(Locale.ROOT));
+        }
+
+        /**
+         * Whether a name starts with a dot. The walk leaves such files and directories out: they
+         * belong to tools, as {@code .git} does, and the temporary file of a {@code save} in
+         * progress is one ({@code SaveCommand}), so a walk running beside a save sees the assets
+         * the folder holds.
+         */
+        private static boolean isHidden(Path path) {
+            return path.getFileName().toString().startsWith(".");
         }
 
         private void consider(Path file) {

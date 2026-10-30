@@ -94,9 +94,7 @@ public final class EibcalenUncheckedRule implements Rule {
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         COMMAREA + " を EIBCALEN の検査なしに参照しています。"
                                 + "連絡域が渡されない起動では領域の内容が定まりません。",
-                        new SourcePosition(model.sourceFile(),
-                                first.range().start().line(), 1,
-                                SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                        CfgSupport.at(first.range())));
             }
         }
         return findings;

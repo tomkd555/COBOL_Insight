@@ -31,18 +31,25 @@ import jp.cobolinsight.core.jcl.JclJobModel;
 import jp.cobolinsight.core.jcl.JclStep;
 import jp.cobolinsight.core.jcl.JclUtilityFacts;
 import jp.cobolinsight.core.json.JsonWriter;
+import jp.cobolinsight.core.semantic.CallRelation;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
-import jp.cobolinsight.core.semantic.CompoundStatement;
+import jp.cobolinsight.core.semantic.EmbeddedBlock;
+import jp.cobolinsight.core.semantic.EmbeddedBlockKind;
 import jp.cobolinsight.core.semantic.GoToStatement;
+import jp.cobolinsight.core.semantic.NestedBranches;
 import jp.cobolinsight.core.semantic.PerformRelation;
 import jp.cobolinsight.core.semantic.Procedure;
+import jp.cobolinsight.core.semantic.ProcedureMap;
+import jp.cobolinsight.core.semantic.ProcedureNames;
+import jp.cobolinsight.core.semantic.ProgramLines;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
-import jp.cobolinsight.core.semantic.StatementBlock;
+import jp.cobolinsight.core.semantic.Statements;
 import jp.cobolinsight.core.source.AssetKind;
+import jp.cobolinsight.core.source.CopyInlineExpansion;
 import jp.cobolinsight.core.source.CopyExpansionEntry;
 import jp.cobolinsight.core.source.DecodedSource;
-import jp.cobolinsight.core.source.SourceRange;
+import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.sql.SqlColumnRef;
 import jp.cobolinsight.core.sql.SqlDeclaredColumn;
 import jp.cobolinsight.core.sql.SqlSetPair;
@@ -53,12 +60,14 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -198,6 +207,10 @@ public final class Persist implements Step {
                 writeSqlScripts(targets);
                 writeCallGraph();
             });
+            // The parse results go beside the project file once it holds the rows made from them,
+            // with those of the other asset folders the project file still holds rows of.
+            List<String> roots = dao.findSourceRoots();
+            s.artifact(ParseCache.class).ifPresent(cache -> cache.save(roots));
 
             int persistedFindings = 0;
             boolean hasError = false;
@@ -223,39 +236,49 @@ public final class Persist implements Step {
     }
 
     /**
-     * The digest of every PROC or INCLUDE member this JCL expanded from outside the asset folder,
-     * or the empty string when it expanded none.
+     * The digest of every PROC or INCLUDE member this JCL expanded, or every copybook this program
+     * copied, from outside the asset folder; the empty string when there is none.
      *
-     * <p>A member reached through {@code --proc-path} has no SOURCE row and no hash of its own, so
-     * the planner never hears of a change to it and every job that expands it keeps the steps and
-     * DD statements of the member's previous content. Folding the member's digest into the job's
-     * own content hash is what asks for the job to be read again, the way the code page override
-     * already does.
+     * <p>A member reached through {@code --proc-path} or a copybook reached through
+     * {@code --copybook-path} has no SOURCE row and no hash of its own, so the planner never hears
+     * of a change to it and every job or program that takes it in keeps the rows of its previous
+     * content. Folding its digest into the asset's own content hash is what asks for the asset to
+     * be written again, the way the code page override already does.
      */
     private static String externalMemberHash(SourceSet s, SourceUnit unit,
             Set<String> walkedPaths) {
-        if (unit.kind() != AssetKind.JCL) {
-            return "";
+        Set<String> members = new TreeSet<>();
+        if (unit.kind() == AssetKind.JCL) {
+            for (JclJobModel job : s.jobsByPath().getOrDefault(unit.relPath(), List.of())) {
+                members.addAll(job.members());
+            }
+        }
+        CobolSemanticModel model = unit.kind() == AssetKind.COBOL
+                ? s.programsByPath().get(unit.relPath()) : null;
+        if (model != null) {
+            model.copyExpansions().forEach(entry -> members.add(entry.copybookPath()));
+            for (CopyInlineExpansion expansion : model.copyInlineExpansions()) {
+                members.add(expansion.copybookPath());
+                expansion.lines().forEach(line -> line.copybookPath().ifPresent(members::add));
+            }
         }
         Set<String> digests = new TreeSet<>();
-        for (JclJobModel job : s.jobsByPath().getOrDefault(unit.relPath(), List.of())) {
-            for (String member : job.members()) {
-                Path path;
-                try {
-                    path = Path.of(member);
-                } catch (InvalidPathException e) {
-                    continue;
-                }
-                if (walkedPaths.contains(Paths.normalisedKey(member))
-                        || !Files.isRegularFile(path)) {
-                    continue;
-                }
-                try {
-                    digests.add(Paths.normalisedKey(member) + "="
-                            + Paths.sha256(Files.readAllBytes(path)));
-                } catch (IOException e) {
-                    // Parse has already told the user the member could not be read.
-                }
+        for (String member : members) {
+            Path path;
+            try {
+                path = Path.of(member);
+            } catch (InvalidPathException e) {
+                continue;
+            }
+            if (walkedPaths.contains(Paths.normalisedKey(member))
+                    || !Files.isRegularFile(path)) {
+                continue;
+            }
+            try {
+                digests.add(Paths.normalisedKey(member) + "="
+                        + Paths.sha256(Files.readAllBytes(path)));
+            } catch (IOException e) {
+                // Parse has already told the user the member could not be read.
             }
         }
         return digests.isEmpty() ? "" : ":" + String.join(",", digests);
@@ -343,113 +366,200 @@ public final class Persist implements Step {
             dao.insertProgram(new ProgramRecord(id, id, model.programId()));
             // The PROGRAM row has to stand before an SQL statement may point at it.
             writeSqlStatements(id, id, statements);
-            long paragraphSeq = 0;
+            // The rows give lines of the program's own file, which is the file the GUI opens.
+            ProgramLines lines = new ProgramLines(model);
             List<Long> paragraphIds = new ArrayList<>();
-            Map<String, Long> paragraphIdByName = new LinkedHashMap<>();
-            for (Procedure procedure : model.procedures()) {
-                long paragraphId = id * ID_STRIDE + (++paragraphSeq);
+            for (int i = 0; i < model.procedures().size(); i++) {
+                Procedure procedure = model.procedures().get(i);
+                long paragraphId = id * ID_STRIDE + (i + 1);
                 dao.insertParagraph(new ParagraphRecord(paragraphId, id, procedure.name(),
-                        procedure.range().start().line(), procedure.range().end().line()));
+                        procedure.kind().name(), procedure.sectionName().orElse(null),
+                        lines.startOf(i), lines.endOf(i)));
                 paragraphIds.add(paragraphId);
-                // Where two paragraphs share a name, the first one defined is the target, which is
-                // how the control flow graph resolves it too.
-                paragraphIdByName.putIfAbsent(procedure.name().toUpperCase(Locale.ROOT),
-                        paragraphId);
             }
-            writeParagraphEdges(id, model, paragraphIds, paragraphIdByName);
+            writeParagraphEdges(id, model, paragraphIds, lines);
             writeCopyEdges(id, model, copybookIdByFileName);
         }
     }
 
-    /** One flow between paragraphs. {@code line} is the PERFORM or GO TO line, null for fall-through. */
-    private record ParagraphFlow(String kind, String toName, Integer line) {
+    /**
+     * One flow out of a paragraph. {@code thruName} is the THRU end of a PERFORM, null otherwise;
+     * the two sections are the qualifiers the names are written with. {@code line} is the line of
+     * the program's own file the row carries.
+     */
+    private record ParagraphFlow(String kind, String toName, Optional<String> toSection,
+            String thruName, Optional<String> thruSection, int line) {
+
+        static ParagraphFlow to(String kind, String toName, Optional<String> toSection,
+                int line) {
+            return new ParagraphFlow(kind, toName, toSection, null, Optional.empty(), line);
+        }
     }
 
     /**
-     * Writes the flow between paragraphs. Paragraphs are taken in definition order; within one,
-     * its PERFORM and GO TO statements in line order, then the fall-through into the next
-     * paragraph. {@code PERFORM … THRU} contributes a single edge to the entry paragraph — the
-     * fall-through edges already lead from there to the THRU target. An edge whose target name
-     * matches no paragraph keeps the name and leaves the id empty.
+     * A flow of one statement and where the words that make it stand in the statement's file,
+     * which is what orders the flows of one statement.
+     */
+    private record PlacedFlow(ParagraphFlow flow, int line, int column) {
+    }
+
+    /**
+     * Writes the flow out of each paragraph. Paragraphs are taken in definition order; within
+     * one, its PERFORM, GO TO, ALTER, EXEC CICS HANDLE, CALL and EXEC CICS LINK/XCTL flows in
+     * source order, then the fall-through into the next paragraph. {@code PERFORM … THRU}
+     * contributes a single edge to the entry paragraph that records the THRU name as written —
+     * the fall-through edges already lead from there to the THRU target. Its THRU paragraph is
+     * the procedure the THRU name resolves to, set where that procedure is the target or one
+     * after it; a section THRU end names the section's own row. The THRU name is stored the way
+     * the target's name is, without the section that qualifies it. A PERFORM or GO TO whose
+     * target name matches no paragraph keeps the name and leaves the id empty; a CALL or XCTL
+     * leaves the program and never has one.
      *
-     * <p>A PERFORM belongs to the paragraph whose range holds it. Matching on the paragraph name
-     * instead would attach a PERFORM to every paragraph sharing that name.
+     * <p>A flow belongs to the paragraph whose own statements hold it. Matching on the paragraph
+     * name instead would attach a PERFORM to every paragraph sharing that name, and matching on
+     * line ranges would attach a paragraph's PERFORMs to its section too, or miss those a COPY
+     * member brings in with another file's lines.
      */
     private void writeParagraphEdges(long sourceId, CobolSemanticModel model,
-            List<Long> paragraphIds, Map<String, Long> paragraphIdByName) {
+            List<Long> paragraphIds, ProgramLines lines) {
         List<Procedure> procedures = model.procedures();
+        // A name resolves the way the control flow graph resolves it: see ProcedureNames.
+        ProcedureNames names = new ProcedureNames(procedures);
+        // A PERFORM relation belongs to the statement the control flow graph gives it to.
+        ProcedureMap procedureMap = new ProcedureMap(model);
         long edgeId = 0;
         for (int i = 0; i < procedures.size(); i++) {
             Procedure procedure = procedures.get(i);
-            Set<SourceRange> performRanges = new LinkedHashSet<>();
-            collectPerformRanges(procedure.statements(), performRanges);
+            Optional<String> section = ProcedureNames.sectionOf(procedure);
+            // Statement order as collected; the lines of a COPY member's statements are another
+            // file's, so they say nothing about the order here.
             List<ParagraphFlow> flows = new ArrayList<>();
-            for (PerformRelation perform : model.performs()) {
-                if (performRanges.contains(perform.range())) {
-                    flows.add(new ParagraphFlow("PERFORM", perform.targetProcedure(),
-                            perform.range().start().line()));
-                }
-            }
-            collectGoTo(procedure.statements(), flows);
-            flows.sort((a, b) -> Integer.compare(a.line(), b.line()));
-            if (i + 1 < procedures.size() && fallsThrough(procedure)) {
-                flows.add(new ParagraphFlow("FALLTHROUGH", procedures.get(i + 1).name(), null));
-            }
+            collectFlows(procedure.statements(), procedureMap, lines, flows);
             int seq = 0;
             for (ParagraphFlow flow : flows) {
+                boolean leavesProgram = "CALL".equals(flow.kind()) || "XCTL".equals(flow.kind());
+                int target = leavesProgram ? -1
+                        : names.indexOf(flow.toName(), flow.toSection(), section);
+                Long toParagraph = paragraphIdAt(paragraphIds, target);
+                int thru = flow.thruName() == null || target < 0 ? -1
+                        : names.indexOf(flow.thruName(), flow.thruSection(), section);
+                Long thruParagraph = thru >= target ? paragraphIdAt(paragraphIds, thru) : null;
                 dao.insertParagraphEdge(new ParagraphEdgeRecord(sourceId * ID_STRIDE + (++edgeId),
-                        sourceId, paragraphIds.get(i),
-                        paragraphIdByName.get(flow.toName().toUpperCase(Locale.ROOT)),
-                        flow.toName(), flow.kind(), flow.line(), ++seq));
+                        sourceId, paragraphIds.get(i), toParagraph, flow.toName(), thruParagraph,
+                        flow.thruName(), flow.kind(), flow.line(), ++seq));
             }
+            if (i + 1 < procedures.size() && fallsThrough(procedure)) {
+                // The next paragraph is known by its position, whatever else shares its name.
+                dao.insertParagraphEdge(new ParagraphEdgeRecord(sourceId * ID_STRIDE + (++edgeId),
+                        sourceId, paragraphIds.get(i), paragraphIds.get(i + 1),
+                        procedures.get(i + 1).name(), null, null, "FALLTHROUGH", null, ++seq));
+            }
+        }
+    }
+
+    /** The PARAGRAPH id of the procedure at {@code index}, null for a name that matched none. */
+    private static Long paragraphIdAt(List<Long> paragraphIds, int index) {
+        return index < 0 ? null : paragraphIds.get(index);
+    }
+
+    /**
+     * Whether the end of a paragraph falls into the next one: whether its statements can
+     * complete normally, by the rule the control flow graph's chains follow
+     * ({@link CfgBuilder#canCompleteNormally}).
+     */
+    private static boolean fallsThrough(Procedure procedure) {
+        return CfgBuilder.canCompleteNormally(procedure.statements());
+    }
+
+    /**
+     * Collects the flows of the statements in source order, including those nested inside IF,
+     * EVALUATE and the like. Each PERFORM relation yields a single edge, from the statement
+     * {@code procedureMap} gives it to.
+     */
+    private static void collectFlows(List<Statement> statements, ProcedureMap procedureMap,
+            ProgramLines lines, List<ParagraphFlow> flows) {
+        Statements.walk(statements, statement -> {
+            if (statement instanceof GoToStatement goTo) {
+                Integer copyLine = lines.copyLineOf(goTo);
+                int line = copyLine != null ? copyLine : goTo.range().start().line();
+                for (int t = 0; t < goTo.targets().size(); t++) {
+                    flows.add(ParagraphFlow.to("GOTO", goTo.targets().get(t),
+                            goTo.targetSections().get(t), line));
+                }
+            } else if (statement instanceof SimpleStatement simple) {
+                collectSimpleFlows(simple, procedureMap, lines, flows);
+            }
+        });
+    }
+
+    /**
+     * The flows of one simple statement, in the order their words stand in it. The PERFORM
+     * relations, CALL relations and EXEC CICS LINK/XCTL blocks {@code procedureMap} gives the
+     * statement cover the statement itself and what a phrase of it writes, such as
+     * {@code AT END PERFORM x}, {@code ON EXCEPTION PERFORM x} or
+     * {@code AT END EXEC CICS LINK ... END-EXEC}, and the INPUT and OUTPUT PROCEDURE of a SORT or
+     * MERGE. A GO TO written in a phrase is a GOTO row, one for every target of its DEPENDING ON
+     * form.
+     *
+     * <p>The GOTO rows hold transfers of control taken where they are written, and nothing else:
+     * the PROCEED TO target of an ALTER changes another paragraph's GO TO, the label of an
+     * EXEC CICS HANDLE is jumped to later by CICS, and the {@code GO TO} of an
+     * {@code EXEC SQL WHENEVER} is taken after a later statement. Those stay edges of the
+     * control flow graph, where reachability needs them, and give no row here.
+     *
+     * <p>Every row carries the line it is written on. A statement a COPY member brings in
+     * carries the line of the COPY statement in the program for every row.
+     */
+    private static void collectSimpleFlows(SimpleStatement simple, ProcedureMap procedureMap,
+            ProgramLines lines, List<ParagraphFlow> flows) {
+        List<PlacedFlow> placed = new ArrayList<>();
+        for (PerformRelation perform : procedureMap.performsOf(simple)) {
+            SourcePosition at = perform.range().start();
+            placed.add(new PlacedFlow(new ParagraphFlow("PERFORM", perform.targetProcedure(),
+                    perform.targetSection(), perform.thruProcedure().orElse(null),
+                    perform.thruSection(), at.line()), at.line(), at.column()));
+        }
+        for (CallRelation call : procedureMap.callsOf(simple)) {
+            SourcePosition at = call.range().start();
+            placed.add(new PlacedFlow(ParagraphFlow.to("CALL", call.target(), Optional.empty(),
+                    at.line()), at.line(), at.column()));
+        }
+        for (EmbeddedBlock block : procedureMap.blocksOf(simple)) {
+            String program = block.operands().get("PROGRAM");
+            String kind = block.kind() == EmbeddedBlockKind.CICS_LINK ? "CALL"
+                    : block.kind() == EmbeddedBlockKind.CICS_XCTL ? "XCTL" : null;
+            if (kind != null && program != null && !program.isBlank()) {
+                SourcePosition at = block.range().start();
+                placed.add(new PlacedFlow(ParagraphFlow.to(kind, program, Optional.empty(),
+                        at.line()), at.line(), at.column()));
+            }
+        }
+        if (!"EXEC SQL".equals(simple.verb())) {
+            for (NestedBranches.Branch branch : NestedBranches.goToBranches(simple.text())) {
+                SourcePosition at = positionOf(simple, branch);
+                placed.add(new PlacedFlow(ParagraphFlow.to("GOTO", branch.target(),
+                        branch.section(), at.line()), at.line(), at.column()));
+            }
+        }
+        // One statement's words lie in one file, so among them line and column give the order.
+        placed.sort(Comparator.comparingInt(PlacedFlow::line).thenComparingInt(PlacedFlow::column));
+        Integer copyLine = lines.copyLineOf(simple);
+        for (PlacedFlow flow : placed) {
+            flows.add(copyLine == null ? flow.flow() : new ParagraphFlow(flow.flow().kind(),
+                    flow.flow().toName(), flow.flow().toSection(), flow.flow().thruName(),
+                    flow.flow().thruSection(), copyLine));
         }
     }
 
     /**
-     * Whether the end of a paragraph falls into the next one. A paragraph ending in an
-     * unconditional GO TO, STOP RUN, GOBACK or EXIT PROGRAM does not, because control has already
-     * gone elsewhere. The test matches {@link CfgBuilder}'s.
+     * Where a branch read off a statement's text stands. The text starts at the statement's own
+     * column on its first line and at column 1 on every later one.
      */
-    private static boolean fallsThrough(Procedure procedure) {
-        List<Statement> statements = procedure.statements();
-        if (statements.isEmpty()) {
-            return true;
-        }
-        Statement last = statements.get(statements.size() - 1);
-        if (last instanceof GoToStatement goTo) {
-            // GO TO … DEPENDING ON falls through when no target matches.
-            return goTo.targets().size() > 1 || goTo.dependingOn().isPresent();
-        }
-        return !(last instanceof SimpleStatement simple && CfgBuilder.isTerminator(simple));
-    }
-
-    /** Collects PERFORM ranges, including those nested inside IF, EVALUATE and the like. */
-    private static void collectPerformRanges(List<Statement> statements, Set<SourceRange> ranges) {
-        for (Statement statement : statements) {
-            if (statement instanceof CompoundStatement compound) {
-                for (StatementBlock block : compound.blocks()) {
-                    collectPerformRanges(block.statements(), ranges);
-                }
-            } else if (statement instanceof SimpleStatement simple
-                    && "PERFORM".equalsIgnoreCase(simple.verb())) {
-                ranges.add(simple.range());
-            }
-        }
-    }
-
-    /** Collects GO TO statements in source order, including those nested inside compound ones. */
-    private static void collectGoTo(List<Statement> statements, List<ParagraphFlow> flows) {
-        for (Statement statement : statements) {
-            if (statement instanceof CompoundStatement compound) {
-                for (StatementBlock block : compound.blocks()) {
-                    collectGoTo(block.statements(), flows);
-                }
-            } else if (statement instanceof GoToStatement goTo) {
-                for (String target : goTo.targets()) {
-                    flows.add(new ParagraphFlow("GOTO", target, goTo.range().start().line()));
-                }
-            }
-        }
+    private static SourcePosition positionOf(SimpleStatement simple, NestedBranches.Branch branch) {
+        SourcePosition start = simple.range().start();
+        int column = branch.line() == 0 ? start.column() + branch.offset() : branch.offset() + 1;
+        return new SourcePosition(start.file(), start.line() + branch.line(), column,
+                SourcePosition.UNKNOWN_BYTE_OFFSET);
     }
 
     /**

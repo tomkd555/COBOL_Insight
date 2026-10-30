@@ -25,7 +25,7 @@ export const CODEPAGES: readonly CodepageChoice[] = [
 /**
  * Maps a recorded or hand-entered name onto one of the known codepages, ignoring case and the usual
  * separator and alias differences. Unknown names return null: the caller then shows the raw value
- * rather than guessing an encoding.
+ * and guesses no encoding.
  */
 export function normalizeCodepage(codepage: string | null | undefined): string | null {
   if (codepage === null || codepage === undefined) {

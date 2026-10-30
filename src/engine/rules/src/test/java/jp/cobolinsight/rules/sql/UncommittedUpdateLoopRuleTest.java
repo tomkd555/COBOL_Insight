@@ -6,6 +6,8 @@ import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -85,5 +87,56 @@ class UncommittedUpdateLoopRuleTest {
         List<Finding> findings = new UncommittedUpdateLoopRule()
                 .evaluate(SqlAdviceFixtures.programContext(model));
         assertEquals(List.of(), findings, () -> "繰り返しの外の更新は対象外: " + findings);
+    }
+
+    /**
+     * The loop runs U-1 OF LOOP-SECT THRU U-3, three paragraphs, and the third copies the UPDATE
+     * in; the finding stands in the copybook at the copybook's line. The UPDATE of
+     * WAIT-UNTIL-READY comes first, and a PERFORM of that name runs it once.
+     */
+    @Test
+    void anUpdateCopiedIntoTheLastParagraphOfAThruLoopIsReportedInItsCopybook()
+            throws IOException {
+        Path copybooks = Files.createDirectories(tempDir.resolve("cpy"));
+        Files.writeString(copybooks.resolve("UPDKEI.cpy"), String.join("\n",
+                "           EXEC SQL",
+                "               UPDATE MYDB.KEIYAKU SET SHORI_KBN = '1'",
+                "                WHERE KEIYAKU_NO = :WS-KEIYAKU-NO",
+                "           END-EXEC",
+                "           MOVE 'Y' TO WS-EOF-FLAG.",
+                ""));
+        String source = String.join("\n",
+                "       IDENTIFICATION DIVISION.",
+                "       PROGRAM-ID. FIX040D.",
+                "       DATA DIVISION.",
+                "       WORKING-STORAGE SECTION.",
+                "           EXEC SQL INCLUDE SQLCA END-EXEC.",
+                "       01  WS-EOF-FLAG       PIC X(01) VALUE 'N'.",
+                "       01  WS-KEIYAKU-NO     PIC X(10) VALUE SPACE.",
+                "       PROCEDURE DIVISION.",
+                "       MAIN-SECT SECTION.",
+                "       M-START.",
+                "           PERFORM WAIT-UNTIL-READY",
+                "           PERFORM U-1 OF LOOP-SECT THRU U-3 UNTIL WS-EOF-FLAG = 'Y'",
+                "           GOBACK.",
+                "       WAIT-UNTIL-READY.",
+                "           EXEC SQL UPDATE MYDB.SETTEI SET FLG = '1' END-EXEC.",
+                "       LOOP-SECT SECTION.",
+                "       U-1.",
+                "           DISPLAY 'U1'.",
+                "       U-2.",
+                "           DISPLAY 'U2'.",
+                "       U-3.",
+                "           COPY UPDKEI.",
+                "");
+        CobolSemanticModel model =
+                SqlAdviceFixtures.parse(tempDir, "FIX040D.cbl", source, copybooks);
+        List<Finding> findings = new UncommittedUpdateLoopRule()
+                .evaluate(SqlAdviceFixtures.programContext(model));
+
+        assertEquals(List.of("UPDKEI.cpy:1"), findings.stream()
+                .map(f -> Path.of(f.location().file()).getFileName() + ":" + f.location().line())
+                .toList());
+        assertTrue(findings.get(0).message().contains("MYDB.KEIYAKU"), findings.get(0).message());
     }
 }

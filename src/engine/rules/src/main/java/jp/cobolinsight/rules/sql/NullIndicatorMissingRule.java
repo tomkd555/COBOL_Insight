@@ -13,6 +13,7 @@ import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
 import jp.cobolinsight.rules.sql.Db2Schema.Column;
 import jp.cobolinsight.rules.sql.Db2Schema.Pair;
+import jp.cobolinsight.rules.cfg.CfgSupport;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -98,7 +99,6 @@ public final class NullIndicatorMissingRule implements Rule {
                 host + " に標識の指定がありません。NULL になり得る列 "
                         + String.join("、", columns)
                         + " を受けるため、NULL の行で値が更新されません。",
-                new SourcePosition(model.sourceFile(), Db2Schema.lineOf(block, host), 1,
-                        SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                CfgSupport.at(block.range(), Db2Schema.lineOf(block, host))));
     }
 }

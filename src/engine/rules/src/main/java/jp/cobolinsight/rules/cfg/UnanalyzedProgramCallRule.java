@@ -13,7 +13,11 @@ import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.semantic.CallKind;
+import jp.cobolinsight.core.semantic.CallRelation;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
+import jp.cobolinsight.core.semantic.EmbeddedBlock;
+import jp.cobolinsight.core.semantic.EmbeddedBlockKind;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
@@ -37,11 +41,12 @@ import java.util.Set;
  *
  * <p>Reported at the edge's call site. A {@code step:} node is placed at the step's own position,
  * which for a step expanded out of a catalogued PROC names the member the EXEC statement stands in
- * rather than the job that calls it; a {@code job:} node is placed in the job's file and a
- * {@code program:} node in the program's file, both at the edge's line. A step the job models do
- * not carry falls back to its job's file, the way the other two are placed. An edge whose line is
- * unknown, or whose "from" node is none of these three kinds, is not reported: there is nowhere to
- * place it.
+ * rather than the job that calls it; a {@code job:} node is placed in the job's file at the edge's
+ * line. A {@code program:} node is placed at the CALL or EXEC CICS LINK or XCTL the edge stands
+ * for, in that statement's own file, which is the copybook's for a call a COPY brings in; where no
+ * such statement stands at the edge's line, in the program's file at that line. A step the job
+ * models do not carry falls back to its job's file. An edge whose line is unknown, or whose "from"
+ * node is none of these three kinds, is not reported: there is nowhere to place it.
  */
 public final class UnanalyzedProgramCallRule implements Rule {
 
@@ -99,8 +104,10 @@ public final class UnanalyzedProgramCallRule implements Rule {
             }
         }
         Map<String, String> programFiles = new LinkedHashMap<>();
+        Map<String, CobolSemanticModel> programs = new LinkedHashMap<>();
         for (CobolSemanticModel model : context.cobolPrograms()) {
             programFiles.put(model.programId().toUpperCase(Locale.ROOT), model.sourceFile());
+            programs.putIfAbsent(model.programId().toUpperCase(Locale.ROOT), model);
         }
         List<Finding> findings = new ArrayList<>();
         for (CallGraphEdge edge : graph.edges()) {
@@ -113,8 +120,12 @@ public final class UnanalyzedProgramCallRule implements Rule {
                     || "true".equals(target.attributes().get("outsideScope"))) {
                 continue;
             }
-            SourcePosition position =
-                    positionOf(edge, stepPositions, jobFiles, programFiles);
+            SourcePosition position = edge.fromId().startsWith(PROGRAM_PREFIX)
+                    ? siteOf(programs.get(edge.fromId().substring(PROGRAM_PREFIX.length())), edge)
+                    : null;
+            if (position == null) {
+                position = positionOf(edge, stepPositions, jobFiles, programFiles);
+            }
             if (position == null) {
                 continue;
             }
@@ -143,6 +154,32 @@ public final class UnanalyzedProgramCallRule implements Rule {
         String file = sourceFileOf(edge.fromId(), jobFiles, programFiles);
         return file == null ? null
                 : new SourcePosition(file, edge.line(), 1, SourcePosition.UNKNOWN_BYTE_OFFSET);
+    }
+
+    /**
+     * Where a program's call site stands: the first CALL, or else EXEC CICS LINK or XCTL, of the
+     * edge's target at the edge's line, in its own file. The linker keeps the line of the first
+     * call of one target, in this order. Null when the model has none.
+     */
+    private static SourcePosition siteOf(CobolSemanticModel model, CallGraphEdge edge) {
+        if (model == null) {
+            return null;
+        }
+        String target = edge.toId().substring(PROGRAM_PREFIX.length());
+        for (CallRelation call : model.calls()) {
+            if (call.range().start().line() == edge.line()
+                    && (call.kind() == CallKind.DYNAMIC || call.target().equalsIgnoreCase(target))) {
+                return CfgSupport.at(call.range());
+            }
+        }
+        for (EmbeddedBlock block : model.embeddedBlocks()) {
+            if ((block.kind() == EmbeddedBlockKind.CICS_LINK
+                    || block.kind() == EmbeddedBlockKind.CICS_XCTL)
+                    && block.range().start().line() == edge.line()) {
+                return CfgSupport.at(block.range());
+            }
+        }
+        return null;
     }
 
     private static String sourceFileOf(String fromId, Map<String, String> jobFiles,

@@ -40,14 +40,16 @@ const GRAPH_DB = `
   INSERT INTO PARAGRAPH_EDGE VALUES
     (1, 2, 21, 22, 'READ-ORDER', 'PERFORM', 12, 1),
     (2, 2, 21, NULL, 'MISSING-PARA', 'GOTO', 13, 2),
-    (3, 5, 31, NULL, 'OTHER-PARA', 'GOTO', 14, 1);
+    (3, 5, 31, NULL, 'OTHER-PARA', 'GOTO', 14, 1),
+    (4, 2, 21, NULL, 'SYKSUB', 'CALL', 15, 3),
+    (5, 2, 21, NULL, 'SYKNEXT', 'XCTL', 16, 4);
 `;
 
 /** The folder under view in every test but the one that reads the other root. */
 const ROOT = "C:/assets";
 
 describe("readGraph", () => {
-  it("orders edges by execution order and pushes the unordered ones last", async () => {
+  it("orders edges by seq with the unordered ones last", async () => {
     const db = await openDatabaseWith(GRAPH_DB);
     try {
       expect(readGraph(db, ROOT).edges.map((edge) => edge.seq)).toEqual([1, 2, 0]);
@@ -56,7 +58,7 @@ describe("readGraph", () => {
     }
   });
 
-  it("keeps a null resolution and a null line as null rather than defaulting them", async () => {
+  it("keeps a null resolution and a null line as null", async () => {
     const db = await openDatabaseWith(GRAPH_DB);
     try {
       const unordered = readGraph(db, ROOT).edges[2];
@@ -67,11 +69,20 @@ describe("readGraph", () => {
     }
   });
 
-  it("passes the access through, and leaves it null where the engine recorded none", async () => {
+  it("passes the access through", async () => {
     const db = await openDatabaseWith(GRAPH_DB);
     try {
       const edges = readGraph(db, ROOT).edges;
       expect(edges[2].access).toBe("READ");
+    } finally {
+      db.close();
+    }
+  });
+
+  it("leaves access null where the engine recorded none", async () => {
+    const db = await openDatabaseWith(GRAPH_DB);
+    try {
+      const edges = readGraph(db, ROOT).edges;
       expect(edges[0].access).toBeNull();
     } finally {
       db.close();
@@ -110,7 +121,16 @@ describe("readGraph", () => {
     }
   });
 
-  it("leaves the other folder's assets, edges and paragraphs out", async () => {
+  it("leaves the calls of other programs out of the paragraph flows", async () => {
+    const db = await openDatabaseWith(GRAPH_DB);
+    try {
+      expect(readGraph(db, ROOT).paragraphEdges.map((edge) => edge.kind)).toEqual(["PERFORM", "GOTO"]);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("separates the graphs of two asset folders in one project file", async () => {
     // Same project file, two asset folders: reading one must not put the other on screen.
     const db = await openDatabaseWith(GRAPH_DB);
     try {

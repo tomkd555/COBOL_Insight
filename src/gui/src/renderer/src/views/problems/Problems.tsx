@@ -17,7 +17,7 @@ import {
   type FindingRow,
   type FindingSort,
 } from "../../model/findings";
-import { SEVERITIES, type Severity } from "../../model/severity";
+import { SEVERITIES, SEVERITY_ICON, type Severity } from "../../model/severity";
 
 /** The program a finding's file stands for: the file name without its folders and extension. */
 function programNameOf(file: string): string {
@@ -25,14 +25,6 @@ function programNameOf(file: string): string {
   const dot = name.lastIndexOf(".");
   return dot <= 0 ? name : name.slice(0, dot);
 }
-
-/** The codicon that stands for a severity, in place of the word the column no longer has room for. */
-const SEVERITY_ICON: Readonly<Record<Severity, string>> = {
-  high: "error",
-  medium: "warning",
-  low: "info",
-  warning: "circle-outline",
-};
 
 /**
  * How each sortable column reads when it is the one in force. Severity runs worst first, so its head
@@ -48,6 +40,8 @@ export interface ProblemsProps {
   onOpenAsset: (path: string, line: number | null) => void;
   /** Opens the fix diff for one asset. */
   onShowFix?: (path: string) => void;
+  /** Analyses the whole asset folder. */
+  onRunAll?: () => void;
 }
 
 interface DetailProps {
@@ -57,13 +51,13 @@ interface DetailProps {
 }
 
 /**
- * The selected finding, read in full: the engine's sentence, the lines it is about, why the rule
- * exists and how to fix it. Nothing here is authored by the GUI; every string comes from the
- * engine's finding or its rule catalog entry.
+ * The selected finding, read in full: which rule found it where, the engine's sentence, the lines it
+ * is about, why the rule exists and how to fix it. The rule's id and name, the file, the sentence,
+ * the labels of the related lines, the rationale and the remedy come from the engine's finding or its
+ * rule catalog entry; the severity's word, the action buttons, the line numbers' wording and the two
+ * section headings come from text.ts.
  *
- * The fix action, where there is one, sits above the message because it is the one thing worth
- * doing before reading further. The rule-explanation action follows the message instead of leading
- * it, since the table row above already carries the severity and the rule.
+ * The actions sit under the head, so they stay in view however long the text beneath them runs.
  */
 function Detail({ row, onOpenAsset, onShowFix }: DetailProps): ReactElement {
   const project = useProject();
@@ -79,11 +73,21 @@ function Detail({ row, onOpenAsset, onShowFix }: DetailProps): ReactElement {
       aria-label={text.problems.title}
       data-testid="problem-detail"
     >
+      <div className="ci-problems__detail-head">
+        <span className={`ci-problems__detail-severity ci-severity--${row.severity}`}>
+          <span className={`codicon codicon-${SEVERITY_ICON[row.severity]}`} aria-hidden="true" />
+          {text.severity[row.severity]}
+        </span>
+        <h3 className="ci-problems__detail-title">
+          {row.ruleName === "" ? finding.ruleId : `${finding.ruleId} ${row.ruleName}`}
+        </h3>
+        <span className="ci-problems__detail-file">{finding.file}</span>
+      </div>
       <div className="ci-problems__detail-actions">
         {row.hasFix && onShowFix !== undefined ? (
           <button
             type="button"
-            className="ci-button ci-button--primary"
+            className="ci-button"
             onClick={() => onShowFix(finding.file)}
             data-testid="problem-detail-fix"
           >
@@ -99,6 +103,20 @@ function Detail({ row, onOpenAsset, onShowFix }: DetailProps): ReactElement {
         >
           {text.problems.detailRule}
         </button>
+        {/* The row's own button is hidden with its column in a narrow table; this one stays. */}
+        <button
+          type="button"
+          className="ci-button"
+          onClick={() =>
+            dispatch({
+              type: "OPEN_TAB",
+              tab: graphTab(text.graph.title, programNameOf(finding.file)),
+            })
+          }
+          data-testid="problem-detail-graph"
+        >
+          {text.command.showGraph}
+        </button>
       </div>
       <p className="ci-problems__detail-message">{finding.message}</p>
       {related.length > 0 ? (
@@ -110,10 +128,11 @@ function Detail({ row, onOpenAsset, onShowFix }: DetailProps): ReactElement {
                 <button
                   type="button"
                   className="ci-problems__jump"
+                  aria-label={text.problems.jumpTo(place.file, place.line)}
                   title={text.problems.jumpTo(place.file, place.line)}
                   onClick={() => onOpenAsset(place.file, place.line)}
                 >
-                  {place.line}
+                  {text.problems.line(place.line)}
                 </button>
                 <span className="ci-problems__related-label">
                   {place.label}
@@ -125,17 +144,17 @@ function Detail({ row, onOpenAsset, onShowFix }: DetailProps): ReactElement {
       ) : null}
       {entry === undefined || entry.rationale === "" ? null : (
         <section className="ci-problems__detail-section">
-          <h3 className="ci-problems__detail-label">
+          <h4 className="ci-problems__detail-label">
             {text.rules.detailRationale}
-          </h3>
+          </h4>
           <p className="ci-problems__detail-prose">{entry.rationale}</p>
         </section>
       )}
       {entry === undefined || entry.remedy === "" ? null : (
         <section className="ci-problems__detail-section">
-          <h3 className="ci-problems__detail-label">
+          <h4 className="ci-problems__detail-label">
             {text.rules.detailRemedy}
-          </h3>
+          </h4>
           <p className="ci-problems__detail-prose">{entry.remedy}</p>
         </section>
       )}
@@ -145,12 +164,12 @@ function Detail({ row, onOpenAsset, onShowFix }: DetailProps): ReactElement {
 
 /**
  * The problems table. Selecting a row opens that asset's tab at the offending line, so a finding is
- * a route into the source rather than a dead end.
+ * a route into the source.
  *
  * The five states — empty, loading, results, no match and error — are all reachable, and a failed
  * analysis is never shown as "no findings".
  */
-export function Problems({ onOpenAsset, onShowFix }: ProblemsProps): ReactElement {
+export function Problems({ onOpenAsset, onShowFix, onRunAll }: ProblemsProps): ReactElement {
   const project = useProject();
   const settings = useSettings();
   const dispatch = useWorkbenchDispatch();
@@ -183,7 +202,7 @@ export function Problems({ onOpenAsset, onShowFix }: ProblemsProps): ReactElemen
   );
 
   const selected = rows.find((row) => row.key === selectedKey) ?? null;
-  // A selection that filtering or a re-run removed is dropped rather than shown stale.
+  // A selection that filtering or a re-run removed is dropped, so no stale selection is shown.
   useEffect(() => {
     if (selectedKey !== null && selected === null) setSelectedKey(null);
   }, [selectedKey, selected]);
@@ -225,11 +244,8 @@ export function Problems({ onOpenAsset, onShowFix }: ProblemsProps): ReactElemen
     project.findings.status === "none" &&
     project.sqlFindings.status === "none"
   ) {
-    return project.inputDir === null ? (
-      <p className="ci-problems__state">{text.empty.noFolder}</p>
-    ) : (
-      <p className="ci-problems__state">{text.empty.notAnalysed}</p>
-    );
+    // The side bar is where a missing folder is said; this panel speaks for the analysis alone.
+    return <p className="ci-problems__state">{text.empty.notAnalysed}</p>;
   }
 
   return (
@@ -275,8 +291,18 @@ export function Problems({ onOpenAsset, onShowFix }: ProblemsProps): ReactElemen
       </div>
 
       {project.rulesChangedAfterRun ? (
-        <p className="ci-problems__note">
+        <p className="ci-problems__note ci-problems__note--stale">
           <span>{text.problems.staleRules}</span>
+          {/* Only a whole-folder run clears the stale mark (state/projectStore.tsx). */}
+          <button
+            type="button"
+            className="ci-button"
+            onClick={onRunAll}
+            disabled={project.mode === "running"}
+            data-testid="problems-stale-run"
+          >
+            {text.command.runAll}
+          </button>
         </p>
       ) : null}
 
@@ -347,11 +373,14 @@ export function Problems({ onOpenAsset, onShowFix }: ProblemsProps): ReactElemen
                     <td className="ci-problems__rule" title={`${row.finding.ruleId} ${row.ruleName}`}>
                       {row.finding.ruleId}
                     </td>
-                    <td className="ci-problems__message">
+                    <td className="ci-problems__message" title={row.finding.message}>
                       {row.finding.message}
                     </td>
                     <td className="ci-problems__file">
-                      <span className="ci-problems__file-path">{row.finding.file}</span>
+                      {/* The path is cut from its head (styles/lists.css), so the file name stays. */}
+                      <span className="ci-problems__file-path" title={row.finding.file}>
+                        <bdi>{row.finding.file}</bdi>
+                      </span>
                       <button
                         type="button"
                         className="ci-problems__graph"
@@ -383,11 +412,8 @@ export function Problems({ onOpenAsset, onShowFix }: ProblemsProps): ReactElemen
               </tbody>
             </table>
           </div>
-          {selected === null ? (
-            <p className="ci-problems__detail ci-problems__detail--empty ci-problems__state">
-              {text.problems.selectOne}
-            </p>
-          ) : (
+          {/* Until a row is chosen the list has the panel's whole width. */}
+          {selected === null ? null : (
             <Detail
               row={selected}
               onOpenAsset={onOpenAsset}

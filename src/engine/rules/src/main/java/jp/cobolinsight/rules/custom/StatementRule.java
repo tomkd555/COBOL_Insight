@@ -12,6 +12,7 @@ import jp.cobolinsight.core.semantic.StatementBlock;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
+import jp.cobolinsight.rules.cfg.CfgSupport;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -79,8 +80,7 @@ final class StatementRule implements Rule {
                 continue;
             }
             findings.add(Finding.of(meta.id(), meta.defaultSeverity().toLevel(), message,
-                    new SourcePosition(model.sourceFile(), simple.range().start().line(), 1,
-                            SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                    CfgSupport.at(simple.range())));
         }
     }
 

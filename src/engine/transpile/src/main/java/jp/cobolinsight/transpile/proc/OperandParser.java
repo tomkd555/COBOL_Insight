@@ -3,6 +3,7 @@ package jp.cobolinsight.transpile.proc;
 import jp.cobolinsight.core.semantic.CompoundStatement;
 import jp.cobolinsight.core.semantic.EmbeddedBlock;
 import jp.cobolinsight.core.semantic.EmbeddedBlockKind;
+import jp.cobolinsight.core.semantic.ProcedureNames;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.StatementBlock;
 import jp.cobolinsight.core.source.SourcePosition;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 
 /**
  * A lightweight tokenizer that re-parses {@code SimpleStatement.text} per verb to obtain operands.
@@ -29,16 +31,48 @@ public final class OperandParser {
     private static final String NOTE_FILE_IO = "ファイル I/O は実行時ファイルモデルを持たないため注記のみ";
     private static final String NOTE_STRING = "文字列操作(STRING/INSPECT 等)は逐語コメントのみ";
     private static final String NOTE_CALL = "BY REFERENCE 渡し。プログラム間の実呼出・値渡しは模擬しない";
+    /** The note of a THRU whose range the model does not resolve: its two ends are called. */
+    private static final String NOTE_THRU = "THRU 範囲は端点を順次呼出(中間段落は省略)";
+    /** The note of a THRU end that resolves to no procedure, or to one ahead of the target. */
+    private static final String NOTE_TARGET_ONLY =
+            "THRU の終端が解決できないか対象より前にあるため、対象の段落だけを呼出";
+    /** The note of a range a GO TO inside it keeps from being run as COBOL runs it. */
+    private static final String NOTE_GOTO_IN_RANGE =
+            "THRU 範囲内の GO TO は再現していない(範囲の段落を順に呼出)";
+
+    /**
+     * The notes on how a PERFORM runs its THRU range that the generated code states in a
+     * comment beside the call, besides the line map.
+     */
+    static final List<String> PERFORM_NOTES =
+            List.of(NOTE_THRU, NOTE_TARGET_ONLY, NOTE_GOTO_IN_RANGE);
 
     private final ProgramSymbols symbols;
     private final Map<SourceRange, EmbeddedBlock> embeddedByRange;
     private final SourceSlicer slicer;
+    private final MethodNames methods;
 
     public OperandParser(ProgramSymbols symbols, Map<SourceRange, EmbeddedBlock> embeddedByRange,
-            SourceSlicer slicer) {
+            SourceSlicer slicer, MethodNames methods) {
         this.symbols = symbols;
         this.embeddedByRange = embeddedByRange;
         this.slicer = slicer;
+        this.methods = methods;
+    }
+
+    /**
+     * How a PERFORM runs a THRU range of two procedures or more: the method that runs the whole
+     * range as one, or {@code unreproduced} when a GO TO inside the range keeps it from becoming
+     * one; null when calling the procedures one by one runs the range as COBOL does.
+     */
+    record RangeCall(String method, boolean unreproduced) {
+    }
+
+    /** Gives the {@link RangeCall} of a range; set by {@link ProcedureModelBuilder}. */
+    private Function<ProcedureNames.Range, RangeCall> rangeCalls = range -> null;
+
+    void rangeCalls(Function<ProcedureNames.Range, RangeCall> value) {
+        this.rangeCalls = value;
     }
 
     // ---- Entry point for simple statements ----
@@ -52,7 +86,7 @@ public final class OperandParser {
             case "COMPUTE" -> parseCompute(s.text(), range);
             case "DISPLAY" -> parseDisplay(s.text(), range);
             case "CALL" -> parseCall(s.text(), range);
-            case "PERFORM" -> parsePerform(s.text(), range);
+            case "PERFORM" -> parsePerform(s, range);
             case "STOP" -> one(new ProcStmt.Return("STOP RUN", range, ""));
             case "GOBACK" -> one(new ProcStmt.Return("GOBACK", range, ""));
             case "EXIT" -> one(s.text().toUpperCase(Locale.ROOT).contains("PROGRAM")
@@ -320,16 +354,43 @@ public final class OperandParser {
 
     // ---- PERFORM(out-of-line)----
 
-    private List<ProcStmt> parsePerform(String text, SourceRange range) {
+    /**
+     * An out-of-line PERFORM. It calls the method of every procedure of its range, in written
+     * order, as {@link MethodNames} resolves them. A PERFORM the model holds no relation for calls
+     * the methods spelled as written, the two ends of a THRU with a note. An UNTIL, VARYING or
+     * TIMES loop runs the same calls a PERFORM without them makes.
+     */
+    private List<ProcStmt> parsePerform(SimpleStatement s, SourceRange range) {
+        String text = s.text();
         List<String> toks = splitTokens(stripFirstWord(text));
         if (toks.isEmpty()) {
             return untranslated(text, range, "PERFORM の対象を解釈できない");
         }
-        String method = Identifiers.sanitize(toks.get(0));
+        Optional<List<String>> resolved = methods.performed(s);
+        String target = resolved.map(List::getFirst)
+                .orElseGet(() -> Identifiers.sanitize(toks.get(0)));
         int varyingIdx = indexOfKeyword(toks, "VARYING");
         int untilIdx = indexOfKeyword(toks, "UNTIL");
         int timesIdx = indexOfKeyword(toks, "TIMES");
         int thruIdx = indexOfAnyKeyword(toks, "THRU", "THROUGH");
+        boolean thruWritten = thruIdx >= 0 && thruIdx + 1 < toks.size();
+        List<String> called = resolved.orElseGet(() -> thruWritten
+                ? List.of(target, Identifiers.sanitize(toks.get(thruIdx + 1)))
+                : List.of(target));
+        String note = resolved.isEmpty() && called.size() > 1 ? NOTE_THRU
+                : resolved.isPresent() && thruWritten && called.size() == 1 ? NOTE_TARGET_ONLY
+                : "";
+        RangeCall rangeCall = called.size() > 1
+                ? methods.range(s).map(rangeCalls).orElse(null) : null;
+        if (rangeCall != null && rangeCall.method() != null) {
+            called = List.of(rangeCall.method());
+        } else if (rangeCall != null && rangeCall.unreproduced()) {
+            note = NOTE_GOTO_IN_RANGE;
+        }
+        String method = called.getFirst();
+        ProcStmt call = called.size() > 1
+                ? new ProcStmt.PerformThru(called, thruWritten, range, note)
+                : new ProcStmt.PerformCall(method, range, note);
 
         if (varyingIdx >= 0 && untilIdx > varyingIdx) {
             int fromIdx = indexOfKeyword(toks, "FROM");
@@ -341,7 +402,7 @@ public final class OperandParser {
                 PCond until = parseCondition(String.join(" ", toks.subList(untilIdx + 1, toks.size())));
                 if (var.isPresent() && var.get() instanceof PExpr.Ref varRef && from.isPresent()
                         && by.isPresent()) {
-                    List<ProcStmt> body = List.of(new ProcStmt.PerformCall(method, range, ""));
+                    List<ProcStmt> body = List.of(call);
                     return one(new ProcStmt.Loop(until, body, varRef, from.get(), by.get(), range,
                             PCond.untranslatableNote(until)));
                 }
@@ -350,23 +411,18 @@ public final class OperandParser {
         }
         if (untilIdx >= 0) {
             PCond until = parseCondition(String.join(" ", toks.subList(untilIdx + 1, toks.size())));
-            List<ProcStmt> body = List.of(new ProcStmt.PerformCall(method, range, ""));
+            List<ProcStmt> body = List.of(call);
             return one(new ProcStmt.Loop(until, body, null, null, null, range,
                     PCond.untranslatableNote(until)));
         }
         if (timesIdx >= 1) {
             Optional<PExpr> count = parseOperand(toks.get(timesIdx - 1));
             if (count.isPresent()) {
-                return one(new ProcStmt.PerformTimes(method, count.get(), range, ""));
+                return one(new ProcStmt.PerformTimes(called, count.get(), range, note));
             }
             return untranslated(text, range, "PERFORM TIMES の回数が未解決");
         }
-        if (thruIdx >= 0 && thruIdx + 1 < toks.size()) {
-            String method2 = Identifiers.sanitize(toks.get(thruIdx + 1));
-            return one(new ProcStmt.PerformThru(List.of(method, method2), range,
-                    "THRU 範囲は端点を順次呼出(中間段落は省略)"));
-        }
-        return one(new ProcStmt.PerformCall(method, range, ""));
+        return one(call);
     }
 
     // ---- Operand resolution ----

@@ -45,7 +45,19 @@ describe("openDocuments", () => {
     rememberDocument(TAB, "cobol/A.cbl", decoded("first"));
     rememberDocument(TAB, "cobol/A.cbl", decoded("second", 2000));
     expect(openDocument(TAB)?.text).toBe("second");
-    expect(openDocument(TAB)?.stamp.mtimeMs).toBe(2000);
+    expect(openDocument(TAB)?.stamp?.mtimeMs).toBe(2000);
+  });
+
+  it("keeps the earlier stamp when decoded again while the tab holds a draft", () => {
+    rememberDocument(TAB, "cobol/A.cbl", decoded("first"));
+    rememberDocument(TAB, "cobol/A.cbl", decoded("second", 2000), true);
+    expect(openDocument(TAB)?.text).toBe("second");
+    expect(openDocument(TAB)?.stamp).toEqual({ mtimeMs: 1000, byteSize: 5 });
+  });
+
+  it("takes the decode's stamp on a first decode even when the tab holds a draft", () => {
+    rememberDocument(TAB, "cobol/A.cbl", decoded("first", 2000), true);
+    expect(openDocument(TAB)?.stamp?.mtimeMs).toBe(2000);
   });
 
   it("moves the stamp and the text on after a save, keeping the rest", () => {
@@ -65,10 +77,15 @@ describe("openDocuments", () => {
     expect(openDocument(TAB)).toBeNull();
   });
 
-  it("forgets a closed tab, and forgetting an unknown one is not an error", () => {
+  it("forgets a closed tab", () => {
     rememberDocument(TAB, "cobol/A.cbl", decoded("first"));
     forgetDocument(TAB);
     expect(openDocument(TAB)).toBeNull();
+  });
+
+  it("ignores forgetting an unknown tab", () => {
+    rememberDocument(TAB, "cobol/A.cbl", decoded("first"));
+    forgetDocument(TAB);
     expect(() => forgetDocument(TAB)).not.toThrow();
   });
 });

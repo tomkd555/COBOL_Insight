@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import type { DecodeRequest, EngineResult } from "../../shared/ipc";
-import { decodeSource, parseDecodeJson, type DecodeDeps, type DecodeFileSystem } from "./decode";
+import {
+  decodeSource,
+  parseDecodeJson,
+  stampOf,
+  type DecodeDeps,
+  type DecodeFileSystem,
+} from "./decode";
 
 const RESULT_JSON = JSON.stringify({
   text: "000100 IDENTIFICATION DIVISION.\n",
@@ -51,8 +57,17 @@ function deps(overrides: {
   };
 }
 
+describe("stampOf", () => {
+  it("cuts a fractional modification time to whole milliseconds", () => {
+    expect(stampOf({ mtimeMs: 1790872329627.3699, size: 120 })).toEqual({
+      mtimeMs: 1790872329627,
+      byteSize: 120,
+    });
+  });
+});
+
 describe("parseDecodeJson", () => {
-  it("reads the text, codepage, geometry and stamp", () => {
+  it("reads the codepage, line geometry and stamp from the result JSON", () => {
     const result = parseDecodeJson(RESULT_JSON);
     expect(result.codepage).toBe("IBM930");
     expect(result.detected).toBe(true);
@@ -114,7 +129,7 @@ describe("decodeSource", () => {
     expect(result.error).toContain("終了コード2");
   });
 
-  it("removes the scratch file whether or not the decode succeeded", async () => {
+  it("removes the scratch file after every decode, successful or failed", async () => {
     const removed: string[] = [];
     await decodeSource(deps({ json: RESULT_JSON, removed }), {
       baseDir: "C:/assets",

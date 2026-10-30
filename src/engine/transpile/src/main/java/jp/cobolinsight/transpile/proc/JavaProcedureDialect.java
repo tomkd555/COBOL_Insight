@@ -190,10 +190,12 @@ public final class JavaProcedureDialect implements ProcedureDialect {
     }
 
     @Override
-    public void emitTimesLoop(LineTrackingEmitter out, String methodName, String count) {
+    public void emitTimesLoop(LineTrackingEmitter out, List<String> methodNames, String count) {
         out.emit("for (int _i = 0; _i < " + count + "; _i++) {");
         out.indent();
-        out.emit(methodName + "();");
+        for (String methodName : methodNames) {
+            out.emit(methodName + "();");
+        }
         out.dedent();
         out.emit("}");
     }

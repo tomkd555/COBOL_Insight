@@ -92,7 +92,8 @@ public interface ProcedureDialect {
 
     void closeWhile(LineTrackingEmitter out);
 
-    void emitTimesLoop(LineTrackingEmitter out, String methodName, String count);
+    /** A loop that calls the methods, in order, {@code count} times. */
+    void emitTimesLoop(LineTrackingEmitter out, List<String> methodNames, String count);
 
     // ---- Simple statements ----
 

@@ -76,8 +76,7 @@ public final class UndefinedBmsMapReferenceRule implements Rule {
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                         map + " が BMS のマップ定義にありません"
                                 + (mapset == null ? "" : "（マップセット " + mapset + "）") + "。",
-                        new SourcePosition(model.sourceFile(), mapOperandLine(block), 1,
-                                SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                        CfgSupport.at(block.range(), mapOperandLine(block))));
             }
         }
         return findings;

@@ -20,6 +20,9 @@ public interface ProgramDataFlow {
     /** PROGRAM-ID of the target program. */
     String programId();
 
+    /** The source file of the target program, the model's {@code sourceFile}. */
+    String sourceFile();
+
     /**
      * Whether a WORKING-STORAGE / LINKAGE item without a VALUE clause can reach the entry of
      * useNode still uninitialized (R001). Determined by whether the synthetic "uninitialized

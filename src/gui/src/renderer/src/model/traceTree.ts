@@ -22,7 +22,25 @@ import type {
 import { isGraphNodeKind } from "./graphLayout";
 import { nodeAssetPath } from "./graphDetail";
 
-export type TraceKind = "job" | "step" | "program" | "paragraph" | "perform" | "goto" | "unresolved";
+/**
+ * The kinds of row a trace tree draws. The first seven are the call graph's; the rest belong to the
+ * source view, whose outline (division, declaratives) and paragraph trace (section, fallthrough,
+ * call, xctl) are drawn by the same tree.
+ */
+export type TraceKind =
+  | "job"
+  | "step"
+  | "program"
+  | "paragraph"
+  | "perform"
+  | "goto"
+  | "unresolved"
+  | "division"
+  | "declaratives"
+  | "section"
+  | "fallthrough"
+  | "call"
+  | "xctl";
 
 export interface TraceNode {
   /** Unique within the tree: the parent's key with this node's position appended. */
@@ -55,7 +73,7 @@ function bySeq<T extends { readonly seq: number }>(edges: readonly T[]): T[] {
 /**
  * How many PERFORM rows one build may create.
  *
- * The tree is an execution order, not a graph: a paragraph performed from three places is drawn
+ * The tree is an execution order: a paragraph performed from three places is drawn
  * three times, and only a paragraph already on the current path stops the descent. Paragraphs that
  * perform two others which in turn perform a common one — an ordinary shape in a long program —
  * therefore double the work at every level, and the build is eager and runs on the render thread.
@@ -194,7 +212,7 @@ function stepNode(
   };
 }
 
-/** A target the node table does not hold. It is shown as unresolved rather than dropped. */
+/** A target the node table does not hold. It is shown as unresolved and kept. */
 function unknownNode(id: string, label: string): TraceNode {
   return {
     id,

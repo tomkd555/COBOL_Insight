@@ -18,14 +18,19 @@
  *  10. the console carries no error and no CSP refusal ("Refused to ...")
  *  11. Ctrl+Shift+P opens the palette, typing filters it, and Enter runs the command
  *  12. a CP930 asset opens as readable text and its identification area is marked at the
- *      byte-correct character, not the 73rd character
+ *      character that byte column 73 falls on
  *  13. switching away from an edited tab and back keeps the edit, and Ctrl+Z takes it back
- *  14. saving a file that changed underneath raises the conflict dialog instead of overwriting
+ *  14. saving a file that changed underneath raises the conflict dialog and leaves the file on disk as it was
  *  15. a finding whose rule has a fix offers a quick fix, which opens the diff tab
  *  17. the transpile view lines the generated code up with the COBOL through the line map
  *  19. a COPY statement carries its expansion as a view zone, which its own control collapses
+ *  20. the code column is 80 columns wide under its scale, and the pane beside it takes the rest
+ *  21. the pane lists the structure, shows a pressed paragraph and traces from one; a paragraph folds
+ *  22. Ctrl+K S saves from inside the code editor, ahead of the editor's own Ctrl+K sequences
+ *  23. the import dialog reads a copy of ISPF edit screens and keeps a line two screens share once
  *
- * TODO 18: the report view renders the engine's HTML.
+ * Four screens are drawn for the screenshots and checked only for having drawn: the rule
+ * description, the report with the engine's HTML, the run log, and the call graph with a node selected.
  *
  * Elements are selected by data-testid: selecting by visible text or class name would break this
  * smoke every time the wording or the styling changed. The engine is never launched — the preload is
@@ -38,6 +43,10 @@
  * With `--shots <dir>` the suite runs once per theme, dark then light, and writes a PNG of the
  * window after every check into <dir>/<theme>/. That is how the design review sees the screens:
  * the renderer needs the preload bridge, so a browser cannot open it on its own.
+ *
+ * `--width <px>` sets the window width (1440 by default, the production default size). `--dom`, with
+ * `--shots`, also writes each capture's text elements — computed font size, colour, background and
+ * box — to <dir>/dom/<theme>-<name>.json, in the shape review-team's check_render.py reads.
  */
 
 const { app, BrowserWindow } = require("electron");
@@ -49,6 +58,16 @@ const SHOTS_DIR = (() => {
   const at = process.argv.indexOf("--shots");
   return at < 0 || process.argv[at + 1] === undefined ? null : process.argv[at + 1];
 })();
+
+/** The window width; the minimum the main process allows is 1120 (src/main/window.ts). */
+const WINDOW_WIDTH = (() => {
+  const at = process.argv.indexOf("--width");
+  const width = at < 0 ? NaN : Number(process.argv[at + 1]);
+  return Number.isFinite(width) && width > 0 ? width : 1440;
+})();
+
+/** Whether each capture also writes its DOM measurements. */
+const DOM_DUMP = process.argv.includes("--dom");
 
 /** The ceiling on each wait. Generous, because it covers rendering start-up. */
 const WAIT_TIMEOUT_MS = 30000;
@@ -79,18 +98,111 @@ function record(name, ok, detail) {
 /** The theme of the suite in progress; `snap` files its captures under it. */
 let currentTheme = "dark";
 
-/** Writes the window as it stands to <shots>/<theme>/<name>.png. A no-op in the plain smoke. */
+/**
+ * Resolves once the icon font is in, every finite animation (a dialog rising, a toast, a transition)
+ * has finished, and two frames have been drawn after that. Capped, so a frame that never comes only
+ * delays the capture.
+ */
+const SETTLED = `(async () => {
+  const settle = (async () => {
+    await document.fonts.ready;
+    await Promise.all(
+      document
+        .getAnimations()
+        .filter((animation) => animation.effect?.getTiming().iterations !== Infinity)
+        .map((animation) => animation.finished.catch(() => undefined)),
+    );
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  })();
+  await Promise.race([settle, new Promise((resolve) => setTimeout(resolve, 3000))]);
+  return true;
+})()`;
+
+/**
+ * Every element that holds text of its own, with what check_render.py measures: computed font size,
+ * colour, the background the nearest painted ancestor gives it, and its box. The controls and the
+ * headings go along for its hit-area and heading checks. The shape follows review-team's cdp.js.
+ */
+const DOM_EXPR = `(() => {
+  const bg = (el) => {
+    for (let at = el; at; at = at.parentElement) {
+      const colour = getComputedStyle(at).backgroundColor;
+      if (colour && colour !== 'rgba(0, 0, 0, 0)' && colour !== 'transparent') return [colour, false];
+    }
+    return ['rgb(255, 255, 255)', true];
+  };
+  const ownText = (el) => [...el.childNodes].filter((node) => node.nodeType === 3)
+    .map((node) => node.textContent).join(' ').replace(/\\s+/g, ' ').trim();
+  const text = [];
+  for (const el of document.body.querySelectorAll('*')) {
+    const own = ownText(el);
+    if (!own) continue;
+    const style = getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden') continue;
+    const box = el.getBoundingClientRect();
+    if (!box.width && !box.height) continue;
+    const [background, backgroundFallback] = bg(el);
+    text.push({
+      tag: el.tagName.toLowerCase(), id: el.id || undefined,
+      cls: typeof el.className === 'string' && el.className !== '' ? el.className.slice(0, 60) : undefined,
+      text: own.slice(0, 80), color: style.color, background, backgroundFallback: backgroundFallback || undefined,
+      opacity: style.opacity !== '1' ? style.opacity : undefined,
+      fontSize: style.fontSize, fontWeight: style.fontWeight, lineHeight: style.lineHeight,
+      rect: { x: Math.round(box.x), y: Math.round(box.y), w: Math.round(box.width), h: Math.round(box.height) },
+      clipped: el.scrollWidth > el.clientWidth + 1 && style.overflowX !== 'visible',
+      disabled: el.closest('[disabled],[aria-disabled="true"]') ? true : undefined,
+    });
+  }
+  const controlEls = [...document.querySelectorAll('a,button,input,select,textarea,[role=button],[tabindex]')];
+  return {
+    title: document.title,
+    viewport: { width: innerWidth, height: innerHeight },
+    htmlClass: document.documentElement.className || '',
+    horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+    headings: [...document.querySelectorAll('h1,h2,h3,h4,h5,h6')]
+      .map((h) => ({ level: Number(h.tagName[1]), text: h.textContent.trim().slice(0, 80) })),
+    controlsTotal: controlEls.length,
+    controls: controlEls.map((el) => {
+      const box = el.getBoundingClientRect();
+      return {
+        tag: el.tagName.toLowerCase(),
+        text: (el.textContent || el.value || el.getAttribute('aria-label') || '').trim().slice(0, 40),
+        w: Math.round(box.width), h: Math.round(box.height),
+        labelled: el.tagName !== 'INPUT' || (el.labels !== null && el.labels.length > 0) ||
+          el.hasAttribute('aria-label') || el.hasAttribute('aria-labelledby') || el.hasAttribute('title'),
+        href: el.tagName === 'A' ? el.getAttribute('href') : undefined,
+        type: el.getAttribute('type') || undefined,
+        disabled: el.disabled === true || el.getAttribute('aria-disabled') === 'true' || undefined,
+        inline: getComputedStyle(el).display === 'inline' || undefined,
+      };
+    }),
+    text,
+  };
+})()`;
+
+/**
+ * Writes the window as it stands to <shots>/<theme>/<name>.png, and with --dom its measurements to
+ * <shots>/dom/<theme>-<name>.json. A no-op in the plain smoke.
+ */
 async function snap(win, name) {
   if (SHOTS_DIR === null) {
     return;
   }
   const dir = join(SHOTS_DIR, currentTheme);
   mkdirSync(dir, { recursive: true });
-  // Let the icon font, the last click's re-render and Monaco's next frame land before the capture.
-  await evaluate(win, "document.fonts.ready.then(() => true)");
-  await delay(250);
+  await evaluate(win, SETTLED);
+  // An offscreen window paints on demand; this makes the capture the frame just settled.
+  win.webContents.invalidate();
+  await delay(100);
   const image = await win.webContents.capturePage();
   writeFileSync(join(dir, `${name}.png`), image.toPNG());
+  if (DOM_DUMP) {
+    const domDir = join(SHOTS_DIR, "dom");
+    mkdirSync(domDir, { recursive: true });
+    const dump = await evaluate(win, DOM_EXPR);
+    writeFileSync(join(domDir, `${currentTheme}-${name}.json`), JSON.stringify(dump, null, 1));
+  }
 }
 
 function delay(ms) {
@@ -165,8 +277,17 @@ async function checkAssetTree(win) {
   );
 }
 
-/** The one editor of the group, reached through the handle vendor/monacoEditor publishes. */
-const EDITOR = `window.ciMonaco.editor.getEditors()[0]`;
+/**
+ * The source editor of the group, reached through the handle vendor/monacoEditor publishes. It is
+ * picked by the element it is mounted in: the pane beside the code holds a second editor.
+ */
+const EDITOR = `window.ciMonaco.editor.getEditors().find((each) => each.getContainerDomNode().closest('[data-testid="source-code"]') !== null)`;
+
+/** The read-only editor of the pane, which shows one paragraph of the same text. */
+const PEEK = `window.ciMonaco.editor.getEditors().find((each) => each.getContainerDomNode().closest('[data-testid="paragraph-peek"]') !== null)`;
+
+/** Whether the window is wide enough for the pane beside the 80 columns of code. */
+const PANE_FITS = WINDOW_WIDTH >= 1400;
 
 /** Opens one asset from the tree and waits until the editor is showing it. */
 async function openAsset(win, path) {
@@ -227,20 +348,25 @@ async function checkEditorLayout(win) {
       const lines = [...document.querySelectorAll('.monaco-editor .view-line')];
       if (lines.length < 3) return null;
       const tops = new Set(lines.map((line) => Math.round(line.getBoundingClientRect().top)));
-      return { lines: lines.length, distinct: tops.size };
+      // Whether the 80 columns of the fixed format, identification area included, fit unscrolled.
+      const editor = ${EDITOR};
+      const info = editor.getLayoutInfo();
+      const half = editor.getOption(window.ciMonaco.editor.EditorOption.fontInfo).typicalHalfwidthCharacterWidth;
+      const visible = info.width - info.contentLeft - info.verticalScrollbarWidth - info.minimap.minimapWidth;
+      return { lines: lines.length, distinct: tops.size, visible, needed: 80 * half };
     })()`,
     "the editor's rendered lines",
   );
   record(
     "3. Monaco renders its lines at distinct y coordinates",
     layout.lines >= 3 && layout.distinct === layout.lines,
-    `${layout.lines} lines, ${layout.distinct} distinct tops`,
+    `${layout.lines} lines, ${layout.distinct} distinct tops; 80 columns need ${layout.needed}px of ${layout.visible}px`,
   );
 }
 
 /**
  * Check 19: the COPY expansion. The scan's table puts the copybook's lines under the COPY statement
- * on line 5 of the first asset, and they are drawn as a Monaco view zone rather than as text — so the
+ * on line 5 of the first asset, and they are drawn as a Monaco view zone outside the text — so the
  * model must not carry them, or a save would write the copybook into the program.
  */
 async function checkCopyExpansion(win) {
@@ -256,6 +382,24 @@ async function checkCopyExpansion(win) {
       };
     })()`,
     "the COPY expansion view zone",
+  );
+  // The copybook's text has to start at the x the source's text starts at, so its sequence area
+  // (columns 1-6) sits under the source's.
+  const columns = await evaluate(
+    win,
+    `(() => {
+      const editor = ${EDITOR};
+      const line = [...document.querySelectorAll('.monaco-editor .view-line')]
+        .find((element) => element.textContent.startsWith('000500'));
+      const copied = document.querySelector('[data-testid="copy-zone-5"] .ci-copy__text');
+      const fontInfo = editor.getOption(window.ciMonaco.editor.EditorOption.fontInfo);
+      return {
+        contentLeft: editor.getLayoutInfo().contentLeft,
+        charWidth: fontInfo.typicalHalfwidthCharacterWidth,
+        source: line === undefined ? null : line.getBoundingClientRect().left,
+        copy: copied === null ? null : copied.getBoundingClientRect().left,
+      };
+    })()`,
   );
 
   await waitUntil(win, clickTestId("copy-zone-toggle-5"), "the collapse control");
@@ -310,7 +454,7 @@ async function checkCopyExpansion(win) {
   await waitUntil(
     win,
     // The dot lives in the close button's own slot now (B14) and stays in the DOM, hidden by CSS,
-    // so dirtiness is read off the button's modifier class rather than the dot's presence.
+    // so dirtiness is read off the button's modifier class.
     `document.querySelector('[data-testid="close-source:cobol/SYK001.cbl"]')?.classList.contains('ci-tab__close--dirty') === false ? 'clean' : null`,
     "the inserted line undone",
   );
@@ -320,8 +464,131 @@ async function checkCopyExpansion(win) {
     zone.text.includes("SYK-ORDER-REC") &&
       zone.inModel === false &&
       collapsed === "collapsed" &&
-      followed === "followed",
-    `zone held ${JSON.stringify(zone.text.slice(0, 48))}`,
+      followed === "followed" &&
+      columns.source !== null &&
+      columns.copy !== null &&
+      Math.abs(columns.source - columns.copy) < 0.5,
+    `zone held ${JSON.stringify(zone.text.slice(0, 48))}; sequence x ${columns.source} (source) / ${columns.copy} (copy), contentLeft ${columns.contentLeft}, half-width ${columns.charWidth}px`,
+  );
+}
+
+/**
+ * Check 20: the code column is 80 columns wide with the scale standing over its columns, and the
+ * pane takes the rest of the row — or, on a window too narrow for it, the code keeps the row.
+ * Check 21: the outline lists the program's structure; running the show-paragraph command on a
+ * PERFORM operand puts that paragraph in the pane and leaves the source where it was; a paragraph
+ * folds; and the trace from a paragraph is listed and drawn.
+ */
+async function checkSourcePane(win) {
+  await openAsset(win, "cobol/SYK001.cbl");
+  const layout = await waitUntil(
+    win,
+    `(() => {
+      const editor = ${EDITOR};
+      const scale = document.querySelector('.ci-scale > span');
+      if (editor === undefined || scale === null) return null;
+      const info = editor.getLayoutInfo();
+      const host = editor.getContainerDomNode().getBoundingClientRect();
+      const pane = document.querySelector('[data-testid="paragraph-pane"]') !== null;
+      if (${PANE_FITS} && (!pane || info.viewportColumn !== 80)) return null;
+      return {
+        columns: info.viewportColumn,
+        pane,
+        scaleOffset: Math.abs(scale.getBoundingClientRect().left - (host.left + info.contentLeft - editor.getScrollLeft())),
+      };
+    })()`,
+    "the code column, its scale and the pane",
+  );
+  record(
+    "20. the code column holds 80 columns under its scale, and the pane takes the rest",
+    layout.scaleOffset < 1 && layout.pane === PANE_FITS && (PANE_FITS ? layout.columns === 80 : layout.columns >= 80),
+    `${layout.columns} columns, scale off by ${layout.scaleOffset}px, pane ${layout.pane ? "shown" : "hidden"}`,
+  );
+
+  // The folding ranges are computed a moment after the model is set, so the fold is asked for until
+  // it takes. What the editor holds is reported when it never does.
+  let folded = 0;
+  let folding = null;
+  for (let attempt = 0; attempt < 40 && folded <= 1; attempt++) {
+    folding = await evaluate(
+      win,
+      `(async () => {
+        const editor = ${EDITOR};
+        const model = await editor.getContribution('editor.contrib.folding').getFoldingModel();
+        // The line that opens SUB-PROC, found in the text; the folding command counts from zero.
+        const header = editor.getModel().getLinesContent()
+          .findIndex((line) => /^.{6} SUB-PROC\\./.test(line));
+        editor.trigger('smoke', 'editor.fold', { selectionLines: [header] });
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        return {
+          ranges: editor.getVisibleRanges().length,
+          // The fold is the paragraph's own: the lines hidden start right under its header.
+          header: header + 1,
+          firstHidden: editor.getVisibleRanges()[0].endLineNumber + 1,
+          regions: model === null ? null : model.regions.length,
+          language: editor.getModel().getLanguageId(),
+        };
+      })()`,
+    );
+    folded = folding.ranges;
+  }
+  if (folded <= 1 || folding.firstHidden !== folding.header + 1) {
+    throw new Error(`the paragraph never folded: ${JSON.stringify(folding)}`);
+  }
+  await evaluate(win, `${EDITOR}.trigger('smoke', 'editor.unfoldAll', null)`);
+  if (!PANE_FITS) {
+    record("21. a paragraph folds (the pane is hidden at this width)", folded > 1);
+    return;
+  }
+
+  const rows = await waitUntil(
+    win,
+    countOf('[data-testid^="outline-"][role="treeitem"]'),
+    "the outline",
+  );
+  const before = await evaluate(
+    win,
+    `(() => {
+      const editor = ${EDITOR};
+      // The PERFORM that names CHECK-PROC, found in the text.
+      const lines = editor.getModel().getLinesContent();
+      const lineNumber = lines.findIndex((line) => line.includes('PERFORM CHECK-PROC')) + 1;
+      const column = lines[lineNumber - 1].indexOf('CHECK-PROC') + 2;
+      editor.setPosition({ lineNumber, column });
+      editor.getAction('cobolInsight.showParagraph').run();
+      return editor.getScrollTop();
+    })()`,
+  );
+  const shown = await waitUntil(
+    win,
+    `(() => {
+      const name = document.querySelector('.ci-pane__name')?.textContent;
+      const peek = ${PEEK};
+      // The pane brings the line that opens CHECK-PROC to its top.
+      const start = ${EDITOR}.getModel().getLinesContent()
+        .findIndex((line) => /^.{6} CHECK-PROC\\./.test(line)) + 1;
+      const first = peek === undefined ? undefined : peek.getVisibleRanges()[0]?.startLineNumber;
+      return name === 'CHECK-PROC' && first === start ? { name, first, top: ${EDITOR}.getScrollTop() } : null;
+    })()`,
+    "the pressed paragraph in the pane",
+  );
+
+  // The trace starts at the paragraph chosen in the outline.
+  await waitUntil(win, clickTestId("outline-SUB-SECT/SUB-PROC"), "the outline row of SUB-PROC");
+  await waitUntil(win, clickTestId("pane-tab-trace"), "the trace tab");
+  const traced = await waitUntil(
+    win,
+    `(() => {
+      const count = document.querySelectorAll('[data-testid^="paragraph-trace-"][role="treeitem"]').length;
+      const drawn = document.querySelectorAll('[data-testid="paragraph-pane"] canvas').length;
+      return count >= 4 && drawn > 0 ? { count, drawn } : null;
+    })()`,
+    "the trace rows and the drawing",
+  );
+  record(
+    "21. the pane lists the structure, shows a pressed paragraph, and traces from one; a paragraph folds",
+    rows >= 10 && shown.top === before && folded > 1 && traced.count >= 4,
+    `${rows} outline rows, ${shown.name} from line ${shown.first}, ${traced.count} trace rows`,
   );
 }
 
@@ -337,8 +604,8 @@ async function checkDirtyMark(win) {
 }
 
 /**
- * Check 13: the text model belongs to the tab, not to the editor, so switching away and back keeps
- * both the edit and the undo stack. The edit made by check 4 is the one carried across.
+ * Check 13: the text model belongs to the tab and outlives the editor, so switching away and back
+ * keeps both the edit and the undo stack. The edit made by check 4 is the one carried across.
  */
 async function checkEditSurvivesSwitch(win) {
   await openAsset(win, "cobol/SYK002.cbl");
@@ -441,13 +708,45 @@ async function checkSaveConflict(win) {
   if (raised.ok !== true) {
     return;
   }
-  // Take the overwrite, so the later checks start from a saved file rather than a dialog.
+  // Take the overwrite, so the later checks start from a saved file with no dialog open.
   await waitUntil(win, clickTestId("save-conflict-overwrite"), "the overwrite button");
   await waitUntil(
     win,
     `document.querySelector('[data-testid="save-conflict"]') === null ? 'closed' : null`,
     "the dialog closing",
   );
+}
+
+/**
+ * Check 22: Ctrl+K S saves everything while the caret is in the code. The editor has Ctrl+K
+ * sequences of its own, so the two keys are sent to the editor's own input and have to reach the
+ * shell ahead of it.
+ */
+async function checkSaveAllChord(win) {
+  await activateSourceTab(win, "cobol/SYK001.cbl", SYK001_MARK);
+  await waitUntil(win, typeAtStart("Q"), "an unsaved edit");
+  await waitUntil(
+    win,
+    `document.querySelector('[data-testid="close-source:cobol/SYK001.cbl"]')?.classList.contains('ci-tab__close--dirty') === true`,
+    "the unsaved mark before the chord",
+  );
+  await evaluate(
+    win,
+    `(() => {
+      const input = ${EDITOR}.getContainerDomNode().querySelector('textarea, .native-edit-context');
+      const press = (key, code, keyCode, ctrlKey) =>
+        input.dispatchEvent(new KeyboardEvent('keydown', { key, code, keyCode, ctrlKey, bubbles: true, cancelable: true }));
+      press('k', 'KeyK', 75, true);
+      press('s', 'KeyS', 83, false);
+      return true;
+    })()`,
+  );
+  const saved = await waitUntil(
+    win,
+    `document.querySelector('[data-testid="close-source:cobol/SYK001.cbl"]')?.classList.contains('ci-tab__close--dirty') === false`,
+    "the unsaved mark going after Ctrl+K S",
+  ).catch(() => false);
+  record("22. Ctrl+K S saves from inside the code editor", saved === true);
 }
 
 /**
@@ -469,8 +768,8 @@ async function checkQuickFix(win) {
       }
       editor.focus();
       editor.setPosition({ lineNumber: 10, column: 1 });
-      // Through trigger rather than getAction: the code-action commands are contributed as editor
-      // commands, which getAction does not list.
+      // Through trigger, because the code-action commands are contributed as editor commands, which
+      // getAction does not list.
       editor.trigger('smoke', 'editor.action.quickFix', {});
       return { ok: true };
     })()`,
@@ -616,11 +915,34 @@ async function checkTranspile(win) {
     "the caret the Java pane followed to",
   );
 
+  // The model holds the Java before the pane has drawn it; the capture waits for the drawn lines.
+  await waitUntil(
+    win,
+    `[...document.querySelectorAll('[data-testid="transpile-generated"] .view-line')]
+       .some((line) => line.textContent.replace(/\\u00a0/g, ' ').includes('public final class'))
+       ? true
+       : null`,
+    "the Java drawn in its pane",
+  );
+  // The line number 10 and the tenth line of the COBOL are drawn on one row after the panes moved.
+  const gutter = await waitUntil(
+    win,
+    `(() => {
+      const host = document.querySelector('[data-testid="transpile-cobol"]');
+      const number = [...host.querySelectorAll('.margin-view-overlays .line-numbers')]
+        .find((each) => each.textContent.trim() === '10');
+      const line = [...host.querySelectorAll('.view-lines .view-line')]
+        .find((each) => each.textContent.startsWith('001000'));
+      if (number === undefined || line === undefined) return null;
+      return { number: number.getBoundingClientRect().top, line: line.getBoundingClientRect().top };
+    })()`,
+    "line 10 of the COBOL pane and its number",
+  );
   await snap(win, "checkTranspile-panes");
   record(
     "17. the transpile view lines the generated code up through the line map",
-    python === 3 && java === 4,
-    `COBOL line 10 reached Python line ${python} and Java line ${java}`,
+    python === 3 && java === 4 && Math.abs(gutter.number - gutter.line) <= 1,
+    `COBOL line 10 reached Python line ${python} and Java line ${java}; its number is drawn at ${gutter.number} and its text at ${gutter.line}`,
   );
 
   // Back to the source, so the pane is unmounted and its two editors are disposed.
@@ -657,7 +979,7 @@ async function checkFindings(win) {
     win,
     `(() => {
       const detail = document.querySelector('[data-testid="problem-detail"]');
-      return detail !== null && detail.textContent.includes('宣言 12行');
+      return detail !== null && detail.textContent.includes('宣言 4行');
     })()`,
     "the finding detail",
   );
@@ -757,8 +1079,8 @@ async function checkCallGraph(win) {
 
 /**
  * Check 8: the rules view. Its toggles are drawn from the engine's catalogue, and switching one off
- * has to travel out through the rule file and back through the catalogue, not merely flip a
- * checkbox on screen.
+ * has to travel out through the rule file and back through the catalogue, a longer path than
+ * flipping a checkbox on screen.
  */
 async function checkRules(win) {
   await waitUntil(win, clickTestId("activity-rules"), "the rules view");
@@ -778,6 +1100,13 @@ async function checkRules(win) {
       return box.checked === false && written.enabled === false ? 'round-tripped' : null;
     })()`,
     "the toggle round trip through the rule file",
+  );
+  // The catalogue comes back through the engine after the write; the problems panel marks its list as
+  // stale once it has, which is the last thing this change draws.
+  await waitUntil(
+    win,
+    `document.querySelector('[data-testid="problems-stale-run"]') !== null ? true : null`,
+    "the stale-rules note in the problems panel",
   );
   await snap(win, "checkRules-view");
   record(
@@ -859,6 +1188,73 @@ async function checkRuleAndSettingsEditors(win) {
   );
 }
 
+/**
+ * The call graph with a node chosen, so the detail pane is filled. It is chosen from a problems row:
+ * a trace row would also open the step's JCL, which takes the graph tab out of view.
+ */
+async function checkGraphSelection(win) {
+  await waitUntil(
+    win,
+    `(() => {
+      const button = [...document.querySelectorAll('[data-testid^="finding-graph-"]')]
+        .find((element) => element.closest('tr').textContent.includes('cobol/SYK001.cbl'));
+      if (button === undefined) return null;
+      button.click();
+      return true;
+    })()`,
+    "the graph button of a SYK001 finding",
+  );
+  const label = await waitUntil(
+    win,
+    `document.querySelector('[data-testid="graph-detail-label"]')?.textContent ?? null`,
+    "the detail pane of the chosen node",
+  );
+  record("the call graph shows the chosen node's detail", label.includes("SYK001"), label);
+}
+
+/** The description of one rule, opened from the rules view. */
+async function checkRuleDetail(win) {
+  await waitUntil(win, clickTestId("activity-rules"), "the rules view");
+  await waitUntil(win, clickTestId("rule-open-R004"), "the name of R004");
+  const shown = await waitUntil(
+    win,
+    `document.querySelector('[data-testid="rule-detail-R004"]') !== null ? true : null`,
+    "the description of R004",
+  );
+  record("the rule description renders", shown === true);
+  await waitUntil(win, clickTestId("activity-explorer"), "the explorer");
+}
+
+/** The report tab, with the HTML report the engine wrote. */
+async function checkReport(win) {
+  await waitUntil(win, clickTestId("activity-report"), "the report tab");
+  await waitUntil(
+    win,
+    `(() => {
+      const button = document.querySelector('[data-testid="report-generate-html"]');
+      if (button === null || button.disabled) return null;
+      button.click();
+      return true;
+    })()`,
+    "the HTML report button",
+  );
+  const shown = await waitUntil(
+    win,
+    `document.querySelector('[data-testid="report-html"]') !== null ? true : null`,
+    "the HTML report",
+  );
+  record("the report renders the engine's HTML", shown === true);
+}
+
+/** The run log in the panel. The problems view is put back afterwards. */
+async function checkOutput(win) {
+  await waitUntil(win, clickTestId("panel-tab-output"), "the output tab");
+  const lines = await waitUntil(win, countOf('[data-testid^="log-"]'), "the run log lines");
+  record("the run log lists the runs", lines > 0, `${lines} lines`);
+  await snap(win, "checkOutput");
+  await waitUntil(win, clickTestId("panel-tab-problems"), "the problems tab");
+}
+
 /** Sets a field's value the way a person typing into it would, so React sees the change. */
 function typeInto(testId, value, prototype) {
   return `(() => {
@@ -872,7 +1268,7 @@ function typeInto(testId, value, prototype) {
 }
 
 /**
- * Check 15: the terminal import. The pasted screen carries a line-number area the column range has
+ * Check 16: the terminal import. The pasted screen carries a line-number area the column range has
  * to cut away, and the preview is what the user checks that against before saving.
  */
 async function checkImportDialog(win) {
@@ -882,11 +1278,12 @@ async function checkImportDialog(win) {
   await waitUntil(win, typeInto("import-column-from", "8", "HTMLInputElement"), "the first column");
   await waitUntil(win, typeInto("import-column-to", "72", "HTMLInputElement"), "the last column");
   await waitUntil(win, typeInto("import-filename", "SYK900.cbl", "HTMLInputElement"), "the name");
+  // Waited for whole: the preview is cut again on every field the four inputs above set.
   const preview = await waitUntil(
     win,
     `(() => {
       const block = document.querySelector('[data-testid="import-preview"]');
-      return block === null ? null : block.textContent;
+      return block === null || !block.textContent.includes('PROGRAM-ID. SYK900.') ? null : block.textContent;
     })()`,
     "the preview of the cut text",
   );
@@ -899,11 +1296,69 @@ async function checkImportDialog(win) {
     "the saved message",
   );
   await waitUntil(win, clickTestId("import-close"), "the close button");
-  await delay(200);
+  // The scan that follows the import is what puts the new file into the tree.
+  const listed = await waitUntil(
+    win,
+    `[...document.querySelectorAll('[data-testid="asset-tree"] .ci-tree__name')]
+       .some((name) => name.textContent === 'SYK900.cbl') ? true : null`,
+    "the imported file in the asset tree",
+  );
   record(
-    "16. the import dialog cuts the columns and writes the file",
-    preview.includes("IDENTIFICATION DIVISION.") && !preview.includes("000100") && saved === true,
+    "16. the import dialog cuts the columns, writes the file, and the tree lists it",
+    preview.includes("IDENTIFICATION DIVISION.") &&
+      !preview.includes("000100") &&
+      saved === true &&
+      listed === true,
     "the line-number area was cut away",
+  );
+}
+
+/**
+ * Check 23: a copy of two overlapping ISPF edit screens is recognised from its title rows, and the
+ * preview holds the source alone: the panel rows and line numbers are gone, the shared line is there
+ * once, and each line is back at the column the title names.
+ */
+async function checkImportScreen(win) {
+  const screen = (rows) => [
+    " EDIT       USER01.SRC.COBOL(SYK901) - 01.00                Columns 00001 00072",
+    " Command ===>                                                  Scroll ===> CSR",
+    ...rows,
+  ];
+  const pasted = [
+    ...screen([
+      " ****** ***************************** Top of Data ******************************",
+      " 000100        IDENTIFICATION DIVISION.",
+      " 000200        PROGRAM-ID. SYK901.",
+    ]),
+    ...screen([" 000200        PROGRAM-ID. SYK901.", " 000300        PROCEDURE DIVISION."]),
+  ].join("\n");
+  await waitUntil(win, clickTestId("explorer-import"), "the import dialog");
+  await waitUntil(win, typeInto("import-paste", pasted, "HTMLTextAreaElement"), "the pasted screens");
+  const read = await waitUntil(
+    win,
+    `(() => {
+      const note = document.querySelector('[data-testid="import-read"]');
+      const block = document.querySelector('[data-testid="import-preview"]');
+      if (note === null || block === null) return null;
+      return {
+        note: note.textContent,
+        preview: block.textContent,
+        columnsHidden: document.querySelector('[data-testid="import-column-from"]') === null,
+      };
+    })()`,
+    "the screens read as an ISPF edit panel",
+  );
+  await snap(win, "checkImportScreen-open");
+  await waitUntil(win, clickTestId("import-cancel"), "the cancel button");
+  await delay(200);
+  const lines = read.preview.split("\n").slice(2);
+  record(
+    "23. the import dialog reads an ISPF edit screen and keeps a shared line once",
+    read.columnsHidden &&
+      lines.length === 3 &&
+      lines[1] === "       PROGRAM-ID. SYK901." &&
+      !read.preview.includes("Command ===>"),
+    read.note,
   );
 }
 
@@ -920,9 +1375,12 @@ async function checkCommandPalette(win) {
     win,
     `window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true, bubbles: true }))`,
   );
-  await waitUntil(
+  const COMMANDS = '[data-testid^="command-"]:not([data-testid$="input"]):not([data-testid$="empty"])';
+  const unfiltered = await waitUntil(
     win,
-    `document.querySelector('[data-testid="command-palette-input"]') !== null`,
+    `document.querySelector('[data-testid="command-palette-input"]') === null
+       ? null
+       : document.querySelectorAll(${JSON.stringify(COMMANDS)}).length`,
     "the command palette",
   );
 
@@ -938,9 +1396,13 @@ async function checkCommandPalette(win) {
     })()`,
     "typing into the palette",
   );
+  // The list is counted once the filter has drawn it shorter, so the capture shows the filtered list.
   const matches = await waitUntil(
     win,
-    countOf('[data-testid^="command-"]:not([data-testid$="input"]):not([data-testid$="empty"])'),
+    `(() => {
+      const count = document.querySelectorAll(${JSON.stringify(COMMANDS)}).length;
+      return count > 0 && count < ${unfiltered} ? count : null;
+    })()`,
     "the filtered commands",
   );
 
@@ -1033,8 +1495,8 @@ async function runSuite(theme) {
   consoleErrors.length = 0;
   currentTheme = theme;
   const win = new BrowserWindow({
-    // The production default size (see src/main/window.ts).
-    width: 1440,
+    // The production default size (see src/main/window.ts) unless --width asks for another.
+    width: WINDOW_WIDTH,
     height: 900,
     show: false,
     webPreferences: {
@@ -1069,6 +1531,9 @@ async function runSuite(theme) {
 
   try {
     await win.loadFile(RENDERER_HTML);
+    // Chromium keeps a zoom level per origin in the profile, which a run stopped inside the zoom
+    // check, or another smoke running beside this one, can leave at 200%.
+    win.webContents.setZoomFactor(1);
     // Each check is run on its own: one that fails should not hide the ones that follow it, and the
     // order matters only in that the editor checks build on the tab the one before them opened.
     for (const check of [
@@ -1077,17 +1542,24 @@ async function runSuite(theme) {
       checkFindings,
       checkAnalyseAll,
       checkCallGraph,
+      checkGraphSelection,
       checkEditorLayout,
       checkCopyExpansion,
+      checkSourcePane,
       checkDirtyMark,
       checkEditSurvivesSwitch,
       checkEbcdicColumns,
       checkSaveConflict,
+      checkSaveAllChord,
       checkQuickFix,
       checkTranspile,
       checkRules,
+      checkRuleDetail,
       checkRuleAndSettingsEditors,
+      checkReport,
+      checkOutput,
       checkImportDialog,
+      checkImportScreen,
       checkCommandPalette,
       checkZoomReflow,
     ]) {
@@ -1100,8 +1572,9 @@ async function runSuite(theme) {
           error instanceof Error ? error.message : String(error),
         );
       }
-      // The zoom check captures its own shot, before it puts the zoom factor back.
-      if (check !== checkZoomReflow) {
+      // These two capture their own shot: the zoom check before it puts the zoom factor back, the
+      // run log before the problems view returns.
+      if (check !== checkZoomReflow && check !== checkOutput) {
         await snap(win, check.name);
       }
     }
@@ -1117,4 +1590,10 @@ async function runSuite(theme) {
 app.on("window-all-closed", () => undefined);
 app.commandLine.appendSwitch("disable-gpu");
 app.disableHardwareAcceleration();
-app.whenReady().then(main);
+app
+  .whenReady()
+  .then(main)
+  .catch((error) => {
+    console.error(error);
+    app.exit(1);
+  });

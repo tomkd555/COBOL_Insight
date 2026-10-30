@@ -19,15 +19,24 @@ import java.util.Set;
 public final class ControlFlowGraph {
 
     private final String programId;
+    private final String sourceFile;
     private final List<CfgNode> nodes;
     private final CfgNode entry;
     private final CfgNode exit;
     private final Map<CfgNode, List<CfgNode>> successors;
     private final Map<CfgNode, List<CfgNode>> predecessors;
 
+    /** A graph that belongs to no source file: one built for a part of a program. */
     public ControlFlowGraph(String programId, List<CfgNode> nodes, CfgNode entry, CfgNode exit,
             Map<CfgNode, List<CfgNode>> successors) {
+        this(programId, "", nodes, entry, exit, successors);
+    }
+
+    /** The graph of the program {@code programId} that the file {@code sourceFile} writes. */
+    public ControlFlowGraph(String programId, String sourceFile, List<CfgNode> nodes,
+            CfgNode entry, CfgNode exit, Map<CfgNode, List<CfgNode>> successors) {
         this.programId = Objects.requireNonNull(programId, "programId");
+        this.sourceFile = Objects.requireNonNull(sourceFile, "sourceFile");
         this.nodes = List.copyOf(nodes);
         this.entry = Objects.requireNonNull(entry, "entry");
         this.exit = Objects.requireNonNull(exit, "exit");
@@ -49,6 +58,11 @@ public final class ControlFlowGraph {
 
     public String programId() {
         return programId;
+    }
+
+    /** The source file of the program, the model's {@code sourceFile}; empty for a part graph. */
+    public String sourceFile() {
+        return sourceFile;
     }
 
     /** All nodes (generation order). */

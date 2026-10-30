@@ -73,10 +73,39 @@ describe("stylesheet and layout", () => {
     }
   });
 
+  it("draws the node labels at 14px", () => {
+    const node = graphStylesheet("light").find((block) => block.selector === "node");
+    expect(node).toMatchObject({ style: { "font-size": 14 } });
+  });
+
+  it("turns fit off for a readable drawing", () => {
+    expect(graphLayoutOptions("DOWN", true).fit).toBe(false);
+  });
+
+  it("turns fit on by default", () => {
+    expect(graphLayoutOptions("RIGHT").fit).toBe(true);
+  });
+
   it("lays the layers out from left to right", () => {
     const options = graphLayoutOptions();
     expect(options.name).toBe("elk");
     expect(options.elk["algorithm"]).toBe("layered");
     expect(options.elk["elk.direction"]).toBe("RIGHT");
+  });
+
+  it("lays the layers out downwards for a narrow pane", () => {
+    expect(graphLayoutOptions("DOWN").elk["elk.direction"]).toBe("DOWN");
+  });
+
+  it("gives each flow of a paragraph trace its own line style", () => {
+    const blocks = graphStylesheet("light");
+    const lineStyleOf = (kind: string): unknown =>
+      blocks
+        .filter((block) => block.selector === `edge[kind="${kind}"]`)
+        .map((block) => ("style" in block ? (block.style as Record<string, unknown>)["line-style"] : undefined))
+        .find((style) => style !== undefined);
+    expect(lineStyleOf("PERFORM")).toBe("solid");
+    expect(lineStyleOf("GOTO")).toBe("dashed");
+    expect(lineStyleOf("FALLTHROUGH")).toBe("dotted");
   });
 });

@@ -18,6 +18,7 @@ import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
 import jp.cobolinsight.rules.SourceTextIndex;
+import jp.cobolinsight.rules.cfg.CfgSupport;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -134,8 +135,7 @@ public final class UntestedNumericInputArithmeticRule implements Rule {
             findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                     candidate + " は NUMERIC 検査を経ずに" + use + "に使われます。"
                             + "数字として不正な値のまま処理が進み得ます。",
-                    new SourcePosition(model.sourceFile(), statement.range().start().line(), 1,
-                            SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                    CfgSupport.at(statement.range())));
             return;
         }
     }

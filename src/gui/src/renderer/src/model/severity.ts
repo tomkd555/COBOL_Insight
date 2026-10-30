@@ -13,6 +13,14 @@ export const SEVERITIES: readonly Severity[] = ["high", "medium", "low", "warnin
 
 const RANK: Readonly<Record<Severity, number>> = { high: 0, medium: 1, low: 2, warning: 3 };
 
+/** The codicon that stands for a severity, beside its word or in its place where a column is narrow. */
+export const SEVERITY_ICON: Readonly<Record<Severity, string>> = {
+  high: "error",
+  medium: "warning",
+  low: "info",
+  warning: "circle-outline",
+};
+
 /** Maps an engine severity onto the interface's vocabulary. Anything unknown becomes medium. */
 export function severityOf(engineSeverity: string): Severity {
   switch (engineSeverity.toUpperCase()) {
@@ -30,8 +38,8 @@ export function severityOf(engineSeverity: string): Severity {
 /**
  * Maps a SARIF level onto the interface's vocabulary, for a finding no rule grades: the engine's
  * own diagnostics (a parse failure, a JCL statement it recovered from, an SQL statement it read
- * only in part) carry a level and nothing else. A diagnostic the engine graded note is advisory
- * rather than a mild defect, so it lands in 参考 and a threshold of 低 takes it off the table.
+ * only in part) carry a level and nothing else. A diagnostic the engine graded note is advisory,
+ * so it lands in 参考 and a threshold of 低 takes it off the table.
  */
 export function severityOfLevel(level: string | undefined): Severity {
   switch (level?.toLowerCase()) {

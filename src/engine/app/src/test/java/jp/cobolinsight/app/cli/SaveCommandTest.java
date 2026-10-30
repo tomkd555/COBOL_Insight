@@ -1,5 +1,6 @@
 package jp.cobolinsight.app.cli;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import picocli.CommandLine;
@@ -11,6 +12,9 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -97,6 +101,43 @@ class SaveCommandTest {
         assertArrayEquals(editedText.getBytes(SJIS), Files.readAllBytes(file));
         assertEquals(5, intField(run.stdout(), "changedLineFrom"), run.stdout());
         assertEquals(5, intField(run.stdout(), "changedLineTo"), run.stdout());
+    }
+
+    /** Saving through a symbolic link edits the file it points at and leaves the link a link. */
+    @Test
+    void savingThroughALinkEditsTheFileItPointsAt() throws IOException {
+        Path file = writeSource(PROGRAM, SJIS);
+        Path link = tempDir.resolve("LINKED.cbl");
+        try {
+            Files.createSymbolicLink(link, file);
+        } catch (IOException | UnsupportedOperationException e) {
+            Assumptions.abort("symbolic links cannot be made here: " + e);
+        }
+        String editedText = PROGRAM.replace("'日次処理'", "'月次処理'");
+
+        Run run = execute("save", "--file", link.toString(), "--edited",
+                writeEdited(editedText).toString());
+
+        assertEquals(0, run.exitCode(), run.stdout());
+        assertTrue(Files.isSymbolicLink(link));
+        assertArrayEquals(editedText.getBytes(SJIS), Files.readAllBytes(file));
+    }
+
+    /** Where the file system has POSIX permissions, the saved file keeps those it had. */
+    @Test
+    void theSavedFileKeepsItsPosixPermissions() throws IOException {
+        Path file = writeSource(PROGRAM, SJIS);
+        Assumptions.assumeTrue(Files.getFileAttributeView(file,
+                java.nio.file.attribute.PosixFileAttributeView.class) != null,
+                "this file system has no POSIX permissions");
+        Set<PosixFilePermission> permissions = PosixFilePermissions.fromString("rw-r-----");
+        Files.setPosixFilePermissions(file, permissions);
+
+        Run run = execute("save", "--file", file.toString(), "--edited",
+                writeEdited(PROGRAM.replace("'日次処理'", "'月次処理'")).toString());
+
+        assertEquals(0, run.exitCode(), run.stdout());
+        assertEquals(permissions, Files.getPosixFilePermissions(file));
     }
 
     @Test

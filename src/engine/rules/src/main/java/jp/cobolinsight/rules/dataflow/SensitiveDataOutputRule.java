@@ -18,6 +18,7 @@ import jp.cobolinsight.core.rule.RuleMeta;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
+import jp.cobolinsight.rules.cfg.CfgSupport;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -97,8 +98,7 @@ public final class SensitiveDataOutputRule implements Rule {
             Set<String> exposed = new LinkedHashSet<>(df.usesAt(node));
             exposed.retainAll(sensitive);
             if (!exposed.isEmpty()) {
-                SourcePosition position = new SourcePosition(model.sourceFile(),
-                        simple.range().start().line(), 1, SourcePosition.UNKNOWN_BYTE_OFFSET);
+                SourcePosition position = CfgSupport.at(simple.range());
                 findings.add(new Finding(META.id(), META.defaultSeverity().toLevel(),
                         String.join(", ", exposed) + " をマスキングせずに "
                                 + simple.verb().toUpperCase(Locale.ROOT)

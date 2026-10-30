@@ -57,9 +57,13 @@ class PersistenceDaoRoundTripTest {
         dao.insertProgram(program);
         assertEquals(program, dao.findProgram(1L).orElseThrow());
 
-        ParagraphRecord paragraph = new ParagraphRecord(1L, 1L, "MAIN-PARA", 10, 20);
+        ParagraphRecord section = new ParagraphRecord(1L, 1L, "MAIN-SECT", "SECTION", null, 9, 20);
+        ParagraphRecord paragraph =
+                new ParagraphRecord(2L, 1L, "MAIN-PARA", "PARAGRAPH", "MAIN-SECT", 10, 20);
+        dao.insertParagraph(section);
         dao.insertParagraph(paragraph);
-        assertEquals(paragraph, dao.findParagraph(1L).orElseThrow());
+        assertEquals(section, dao.findParagraph(1L).orElseThrow());
+        assertEquals(paragraph, dao.findParagraph(2L).orElseThrow());
     }
 
     @Test
@@ -96,21 +100,31 @@ class PersistenceDaoRoundTripTest {
     void paragraphEdgeRoundTripIncludingUnresolvedTarget() {
         dao.insertSource(new SourceRecord(1L, "/assets", "A.cbl", "IBM930", "hash-1", 10L));
         dao.insertProgram(new ProgramRecord(1L, 1L, "PROGA"));
-        dao.insertParagraph(new ParagraphRecord(1L, 1L, "MAIN-RTN", 10, 20));
-        dao.insertParagraph(new ParagraphRecord(2L, 1L, "SUB-RTN", 21, 30));
+        dao.insertParagraph(new ParagraphRecord(1L, 1L, "MAIN-RTN", "PARAGRAPH", null, 10, 20));
+        dao.insertParagraph(new ParagraphRecord(2L, 1L, "SUB-RTN", "PARAGRAPH", null, 21, 30));
 
-        ParagraphEdgeRecord perform =
-                new ParagraphEdgeRecord(1L, 1L, 1L, 2L, "SUB-RTN", "PERFORM", 12, 1);
-        ParagraphEdgeRecord fallthrough =
-                new ParagraphEdgeRecord(2L, 1L, 1L, 2L, "SUB-RTN", "FALLTHROUGH", null, 2);
+        ParagraphEdgeRecord perform = new ParagraphEdgeRecord(1L, 1L, 1L, 2L, "SUB-RTN", 2L,
+                "SUB-RTN", "PERFORM", 12, 1);
+        ParagraphEdgeRecord fallthrough = new ParagraphEdgeRecord(2L, 1L, 1L, 2L, "SUB-RTN", null,
+                null, "FALLTHROUGH", null, 2);
         // A GO TO with no target paragraph keeps only the name and has no target ID
-        ParagraphEdgeRecord unresolved =
-                new ParagraphEdgeRecord(3L, 1L, 2L, null, "NO-SUCH-RTN", "GOTO", 25, 1);
+        ParagraphEdgeRecord unresolved = new ParagraphEdgeRecord(3L, 1L, 2L, null, "NO-SUCH-RTN",
+                null, null, "GOTO", 25, 1);
+        // A THRU name with no paragraph keeps only the name, as the target does
+        ParagraphEdgeRecord unresolvedThru = new ParagraphEdgeRecord(4L, 1L, 2L, 1L, "MAIN-RTN",
+                null, "NO-SUCH-EXIT", "PERFORM", 26, 2);
+        ParagraphEdgeRecord call = new ParagraphEdgeRecord(5L, 1L, 2L, null, "PROGB", null, null,
+                "CALL", 27, 3);
+        ParagraphEdgeRecord xctl = new ParagraphEdgeRecord(6L, 1L, 2L, null, "PROGC", null, null,
+                "XCTL", 28, 4);
         dao.insertParagraphEdge(perform);
         dao.insertParagraphEdge(fallthrough);
         dao.insertParagraphEdge(unresolved);
+        dao.insertParagraphEdge(unresolvedThru);
+        dao.insertParagraphEdge(call);
+        dao.insertParagraphEdge(xctl);
 
-        assertEquals(List.of(perform, fallthrough, unresolved),
+        assertEquals(List.of(perform, fallthrough, unresolved, unresolvedThru, call, xctl),
                 dao.findParagraphEdgesByProgram(1L));
     }
 
@@ -118,18 +132,26 @@ class PersistenceDaoRoundTripTest {
     void paragraphEdgeRejectsUnknownKind() {
         dao.insertSource(new SourceRecord(1L, "/assets", "A.cbl", "IBM930", "hash-1", 10L));
         dao.insertProgram(new ProgramRecord(1L, 1L, "PROGA"));
-        dao.insertParagraph(new ParagraphRecord(1L, 1L, "MAIN-RTN", 10, 20));
+        dao.insertParagraph(new ParagraphRecord(1L, 1L, "MAIN-RTN", "PARAGRAPH", null, 10, 20));
         assertThrows(PersistenceException.class, () -> dao.insertParagraphEdge(
-                new ParagraphEdgeRecord(1L, 1L, 1L, 1L, "MAIN-RTN", "CALL", 12, 1)));
+                new ParagraphEdgeRecord(1L, 1L, 1L, 1L, "MAIN-RTN", null, null, "ALTER", 12, 1)));
+    }
+
+    @Test
+    void paragraphRejectsUnknownKind() {
+        dao.insertSource(new SourceRecord(1L, "/assets", "A.cbl", "IBM930", "hash-1", 10L));
+        dao.insertProgram(new ProgramRecord(1L, 1L, "PROGA"));
+        assertThrows(PersistenceException.class, () -> dao.insertParagraph(
+                new ParagraphRecord(1L, 1L, "MAIN-RTN", "DECLARATIVES", null, 10, 20)));
     }
 
     @Test
     void deletingSourceRemovesItsParagraphEdges() {
         dao.insertSource(new SourceRecord(1L, "/assets", "A.cbl", "IBM930", "hash-1", 10L));
         dao.insertProgram(new ProgramRecord(1L, 1L, "PROGA"));
-        dao.insertParagraph(new ParagraphRecord(1L, 1L, "MAIN-RTN", 10, 20));
-        dao.insertParagraphEdge(
-                new ParagraphEdgeRecord(1L, 1L, 1L, 1L, "MAIN-RTN", "GOTO", 12, 1));
+        dao.insertParagraph(new ParagraphRecord(1L, 1L, "MAIN-RTN", "PARAGRAPH", null, 10, 20));
+        dao.insertParagraphEdge(new ParagraphEdgeRecord(1L, 1L, 1L, 1L, "MAIN-RTN", null, null,
+                "GOTO", 12, 1));
 
         dao.deleteSourceCascade(1L);
         assertEquals(List.of(), dao.findParagraphEdgesByProgram(1L));

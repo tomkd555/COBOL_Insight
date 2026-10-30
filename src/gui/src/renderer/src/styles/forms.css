@@ -55,18 +55,10 @@
   white-space: nowrap;
 }
 
-/* Pinned to the same right edge as the toolbar's button and a row's severity select, rather than
-   left to however far the name's own growth happens to push them. */
+/* Pinned to the same right edge as the toolbar's button and a row's severity select, wherever the
+   name's own growth would have pushed them. */
 .ci-rules__grouphead .ci-button--quiet:first-of-type {
   margin-inline-start: auto;
-}
-
-.ci-rules__grouphead .ci-button--quiet {
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
 }
 
 /* Two lines per rule: the toggle, name and severity on the first, the badges and override on the
@@ -93,12 +85,22 @@
 }
 
 .ci-rules__meta .ci-select {
-  height: 24px;
+  height: 28px;
   margin-inline-start: auto;
+}
+
+/* The checkbox keeps its native size; the label around it is the 24px target. */
+.ci-rules__toggle {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
 }
 
 .ci-rules__name {
   min-width: 0;
+  min-height: 24px;
   padding: 0;
   overflow: hidden;
   background: transparent;
@@ -115,7 +117,7 @@
 }
 
 /* A rule switched off reads as off, the way an off chip does. */
-.ci-rules__row:has(> input:not(:checked)) .ci-rules__name {
+.ci-rules__row:has(.ci-rules__toggle > input:not(:checked)) .ci-rules__name {
   color: var(--color-muted-foreground);
   text-decoration: line-through;
 }
@@ -130,11 +132,15 @@
 
 .ci-ruledetail {
   overflow: auto;
-  max-width: 48rem;
   height: 100%;
   padding: var(--ci-space-4);
   font-size: var(--ci-size-md);
   line-height: var(--ci-line);
+}
+
+/* The measure belongs to the text; the scrolling box is the editor's whole width. */
+.ci-ruledetail > * {
+  max-width: 48rem;
 }
 
 .ci-ruledetail__head {
@@ -154,9 +160,10 @@
   margin-top: var(--ci-space-4);
 }
 
+/* One step under the rule's title, so the title is what is read first. */
 .ci-ruledetail__label {
   margin: 0 0 var(--ci-space-1);
-  font-size: var(--ci-size-lg);
+  font-size: var(--ci-size-md);
   font-weight: 600;
 }
 
@@ -164,6 +171,7 @@
   margin: 0;
   font-size: var(--ci-size-md);
   line-height: var(--ci-line);
+  word-break: auto-phrase;
 }
 
 .ci-ruledetail__code {
@@ -193,8 +201,13 @@
   border: none;
 }
 
+/* A legend heads its group the way a label heads its field, so it also carries .ci-form__label. */
 .ci-form__legend {
   padding: 0;
+}
+
+/* A legend on its own is the title of a card: the id of the rule a custom-rule form edits. */
+.ci-form__legend:not(.ci-form__label) {
   color: var(--color-foreground);
   font-size: var(--ci-size-md);
   font-weight: 600;
@@ -239,6 +252,8 @@
   display: flex;
   align-items: center;
   gap: var(--ci-space-1);
+  min-height: 24px;
+  cursor: pointer;
 }
 
 .ci-input--code {
@@ -261,7 +276,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--ci-space-1);
-  height: 24px;
+  height: 28px;
   padding: 0 var(--ci-space-2);
   background: transparent;
   border: 1px dashed var(--ci-border-strong);
@@ -279,9 +294,10 @@
   background: var(--ci-bg-hover);
 }
 
+/* One sign for "on" in both families: the selected tint and the primary edge. */
 .ci-chip--on {
-  background: var(--color-surface);
-  border: 1px solid var(--ci-border-strong);
+  background: var(--ci-bg-selected);
+  border: 1px solid var(--color-primary);
   color: var(--color-foreground);
   text-decoration: none;
 }
@@ -291,8 +307,8 @@
 }
 
 /* Single-choice groups (settings theme, custom-rule pane switch): every option reads as a live
-   choice, not an exclusion, so the off state keeps no strikethrough and no dashed border — dashed
-   reads as disabled, and an unselected radio option is neither. */
+   choice, so the off state has a solid border and plain text. Dashed and struck-through are the
+   signs of a filter switched off. */
 [role="radiogroup"] .ci-chip {
   border-style: solid;
   text-decoration: none;
@@ -302,11 +318,6 @@
 .ci-chip:has(:focus-visible) {
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
-}
-
-[role="radiogroup"] .ci-chip--on {
-  background: color-mix(in oklch, var(--color-primary) 15%, var(--color-surface));
-  border-color: var(--color-primary);
 }
 
 /* ---------------------------------------------------------------- custom rules */
@@ -341,8 +352,8 @@
 }
 
 /* An editable surface carries the same ground as every other one: the muted ground it had read as a
-   read-only block beside the inputs above it. It fills the rest of the pane rather than a fixed
-   height with dead space below it, so a manual resize handle is not needed either. */
+   read-only block beside the inputs above it. It fills the rest of the pane, so there is no dead
+   space below it and no call for a manual resize handle. */
 .ci-custom__raw {
   flex: 1 1 auto;
   min-height: 0;
@@ -365,6 +376,13 @@
   overflow: auto;
   height: 100%;
   padding: var(--ci-space-4);
+}
+
+/* Each group's name stands as its heading: the screen is a list of groups and is read by them. */
+.ci-settings .ci-form__label {
+  color: var(--color-foreground);
+  font-size: var(--ci-size-md);
+  font-weight: 600;
 }
 
 .ci-settings__path {

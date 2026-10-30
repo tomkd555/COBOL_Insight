@@ -12,7 +12,7 @@ export interface CommandPaletteProps {
  * The command palette. Typing filters the list, the arrow keys move the highlight, Enter runs the
  * highlighted command and Escape closes without running anything.
  *
- * Commands whose `when` is false are left out entirely rather than shown disabled: a palette exists
+ * Commands whose `when` is false are left out entirely: a palette exists
  * to be typed into and run, so an entry that cannot run is only in the way.
  */
 export function CommandPalette({ commands, onClose }: CommandPaletteProps): ReactElement {

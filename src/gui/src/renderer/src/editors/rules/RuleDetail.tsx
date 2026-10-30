@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { text } from "../../i18n/text";
 import { useProject } from "../../state/projectStore";
-import { severityOf } from "../../model/severity";
+import { SEVERITY_ICON, severityOf } from "../../model/severity";
 
 export interface RuleDetailProps {
   ruleId: string;
@@ -29,7 +29,7 @@ function example(label: string, value: string): ReactElement | null {
 
 /**
  * One rule's description, exactly as the engine wrote it. The GUI authors no rule text of its own:
- * a field the engine left empty is left out rather than filled in with a stand-in sentence.
+ * a field the engine left empty is left out and gets no stand-in sentence.
  */
 export function RuleDetail({ ruleId }: RuleDetailProps): ReactElement {
   const project = useProject();
@@ -51,7 +51,10 @@ export function RuleDetail({ ruleId }: RuleDetailProps): ReactElement {
           <span className="ci-rules__id">{entry.id}</span>
           {entry.name}
         </h2>
-        <span className={`ci-severity ci-severity--${severity}`}>{text.severity[severity]}</span>
+        <span className={`ci-problems__detail-severity ci-severity--${severity}`}>
+          <span className={`codicon codicon-${SEVERITY_ICON[severity]}`} aria-hidden="true" />
+          {text.severity[severity]}
+        </span>
         <span className="ci-badge">{entry.category}</span>
         <span className={`ci-badge ci-badge--${entry.source === "user" ? "copybook" : "other"}`}>
           {entry.source === "user" ? text.rules.user : text.rules.builtin}
@@ -65,8 +68,8 @@ export function RuleDetail({ ruleId }: RuleDetailProps): ReactElement {
       {section(text.rules.detailRemedy, entry.remedy)}
       {example(text.rules.detailBad, entry.badExample)}
       {example(text.rules.detailGood, entry.goodExample)}
-      {section(text.rules.detailCommands, entry.commands.join(" / "))}
-      {section(text.rules.detailTargets, entry.targets.join(" / "))}
+      {section(text.rules.detailCommands, entry.commands.map(text.rules.commandName).join(" / "))}
+      {section(text.rules.detailTargets, entry.targets.map(text.rules.targetName).join(" / "))}
     </article>
   );
 }

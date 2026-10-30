@@ -4,6 +4,8 @@ import type {
   SaveRequest,
   SaveResult,
   SaveSourceRequest,
+  SourceStamp,
+  StatRequest,
 } from "../../shared/ipc";
 import { resolveSourceFile, type RealPathResolver } from "../fs/pathGuard";
 
@@ -22,7 +24,7 @@ import { resolveSourceFile, type RealPathResolver } from "../fs/pathGuard";
 /** The filesystem the write-back needs: the boundary check plus the scratch file. */
 export interface SaveFileSystem extends RealPathResolver {
   writeText(absPath: string, text: string): Promise<void>;
-  /** Removes a file; an absent file is not an error. */
+  /** Removes a file; removing an absent file succeeds. */
   remove(absPath: string): Promise<void>;
 }
 
@@ -32,6 +34,8 @@ export interface SaveDeps {
   tempFile(): string;
   /** The project file the engine reads the recorded codepage from. */
   dbPath: string;
+  /** The file's current stamp, as the stat channel reads it; null when it cannot be read. */
+  stat(request: StatRequest): Promise<SourceStamp | null>;
   /** Runs the engine's save subcommand once. */
   run(request: SaveRequest): Promise<EngineResult>;
 }
@@ -65,6 +69,18 @@ export async function saveSource(
   request: SaveSourceRequest,
 ): Promise<SaveResult> {
   const target = await resolveSourceFile(deps.fs, request.baseDir, request.path);
+  const expected = request.expectedStamp;
+  if (expected !== undefined) {
+    // Checked here, inside the save's turn: a save can wait behind a scan, and the file can change
+    // while it waits. A stamp that cannot be read is left to the engine, which reports it precisely.
+    const current = await deps.stat({ baseDir: request.baseDir, path: request.path });
+    const changed =
+      current !== null &&
+      (current.mtimeMs !== expected.mtimeMs || current.byteSize !== expected.byteSize);
+    if (changed) {
+      return { written: false, path: target, reparseErrors: [], error: "", exitCode: 2, stale: true };
+    }
+  }
   const tempFile = deps.tempFile();
   await deps.fs.writeText(tempFile, request.editedText);
   try {

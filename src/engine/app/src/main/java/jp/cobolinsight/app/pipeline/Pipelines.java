@@ -8,6 +8,7 @@ import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.CopyInlineExpansion;
+import jp.cobolinsight.core.source.ExpandedCopyLine;
 import jp.cobolinsight.rules.RuleSet;
 
 import java.nio.file.Path;
@@ -208,8 +209,9 @@ public final class Pipelines {
 
     /**
      * How many places of each file this run read only in part, in relative-path order. Every file of
-     * the walk is parsed on every run — only the writing of its rows is skipped when its content has
-     * not changed — so the counts cover the whole folder, not just the files that were rewritten.
+     * the walk has its findings on every run, from a fresh parse or from the parse cache, and only
+     * the writing of its rows is skipped when its content has not changed, so the counts cover every
+     * file of the folder, the rewritten ones and the rest alike.
      */
     private static Map<String, Integer> diagnosticsOf(SourceSet s) {
         Map<String, Integer> counts = new TreeMap<>();
@@ -247,7 +249,11 @@ public final class Pipelines {
                 .map(expansion -> new CopyInlineExpansion(expansion.copyStatementLine(),
                         expansion.copybookName(),
                         Paths.relativizeOrAbsolute(s.root(), Path.of(expansion.copybookPath())),
-                        expansion.lines()))
+                        expansion.lines().stream()
+                                .map(line -> new ExpandedCopyLine(line.copybookLine(), line.text(),
+                                        line.copybookPath().map(path -> Paths.relativizeOrAbsolute(
+                                                s.root(), Path.of(path)))))
+                                .toList()))
                 .toList();
     }
 }

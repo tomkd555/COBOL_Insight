@@ -92,18 +92,20 @@ public final class ReturnCodeUncheckedRule implements Rule {
                 Statement call = node.statement().orElseThrow();
                 int line = call.range().start().line();
                 findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                        subjectOf(model, line) + " RETURN-CODE を検査していません。"
+                        subjectOf(model, call) + " RETURN-CODE を検査していません。"
                                 + "呼び出し先の失敗に気づかないまま後続が進みます。",
-                        new SourcePosition(model.sourceFile(), line, 1,
-                                SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                        CfgSupport.at(call.range(), line)));
             }
         }
     }
 
-    /** The CALL as the semantic model resolved it on that line, or the bare statement. */
-    private static String subjectOf(CobolSemanticModel model, int line) {
+    /**
+     * The CALL as the semantic model resolved it, its relation starting where the statement does
+     * in the statement's own file, or the bare statement.
+     */
+    private static String subjectOf(CobolSemanticModel model, Statement call) {
         return model.calls().stream()
-                .filter(relation -> relation.range().start().line() == line)
+                .filter(relation -> relation.range().start().equals(call.range().start()))
                 .map(CallRelation::target)
                 .findFirst()
                 .map(target -> "CALL " + target + " の後で")

@@ -57,6 +57,12 @@ public final class PersistenceDao {
                 root);
     }
 
+    /** Every asset folder the SOURCE table holds a row of. */
+    public List<String> findSourceRoots() {
+        return queryList("SELECT DISTINCT root FROM SOURCE ORDER BY root",
+                rs -> rs.getString("root"));
+    }
+
     /** The maximum SOURCE.id across all asset folders. Used as the starting point for numbering new rows. 0 if none exist. */
     public long maxSourceId() {
         return queryOne("SELECT COALESCE(MAX(id), 0) AS max_id FROM SOURCE",
@@ -99,14 +105,17 @@ public final class PersistenceDao {
     }
 
     public void insertParagraph(ParagraphRecord paragraph) {
-        update("INSERT INTO PARAGRAPH(id, program_id, name, start_line, end_line) VALUES (?,?,?,?,?)",
-                paragraph.id(), paragraph.programId(), paragraph.name(), paragraph.startLine(),
-                paragraph.endLine());
+        update("INSERT INTO PARAGRAPH(id, program_id, name, kind, section_name, start_line, end_line) "
+                        + "VALUES (?,?,?,?,?,?,?)",
+                paragraph.id(), paragraph.programId(), paragraph.name(), paragraph.kind(),
+                paragraph.sectionName(), paragraph.startLine(), paragraph.endLine());
     }
 
     public Optional<ParagraphRecord> findParagraph(long id) {
-        return queryOne("SELECT id, program_id, name, start_line, end_line FROM PARAGRAPH WHERE id = ?",
+        return queryOne("SELECT id, program_id, name, kind, section_name, start_line, end_line "
+                        + "FROM PARAGRAPH WHERE id = ?",
                 rs -> new ParagraphRecord(rs.getLong("id"), rs.getLong("program_id"), rs.getString("name"),
+                        rs.getString("kind"), rs.getString("section_name"),
                         rs.getInt("start_line"), rs.getInt("end_line")),
                 id);
     }
@@ -115,9 +124,11 @@ public final class PersistenceDao {
 
     public void insertParagraphEdge(ParagraphEdgeRecord edge) {
         update("INSERT INTO PARAGRAPH_EDGE(id, program_source_id, from_paragraph, to_paragraph, "
-                        + "to_name, kind, line, seq) VALUES (?,?,?,?,?,?,?,?)",
+                        + "to_name, thru_paragraph, thru_name, kind, line, seq) "
+                        + "VALUES (?,?,?,?,?,?,?,?,?,?)",
                 edge.id(), edge.programSourceId(), edge.fromParagraph(), edge.toParagraph(),
-                edge.toName(), edge.kind(), edge.line(), edge.seq());
+                edge.toName(), edge.thruParagraph(), edge.thruName(), edge.kind(), edge.line(),
+                edge.seq());
     }
 
     /** Returns the flow between the given program's paragraphs, ordered by edge ID (= paragraph definition order / outgoing-edge order). */
@@ -127,8 +138,8 @@ public final class PersistenceDao {
     }
 
     private static final String SELECT_PARAGRAPH_EDGE =
-            "SELECT id, program_source_id, from_paragraph, to_paragraph, to_name, kind, line, seq "
-                    + "FROM PARAGRAPH_EDGE";
+            "SELECT id, program_source_id, from_paragraph, to_paragraph, to_name, thru_paragraph, "
+                    + "thru_name, kind, line, seq FROM PARAGRAPH_EDGE";
 
     private static ParagraphEdgeRecord mapParagraphEdge(ResultSet rs) throws SQLException {
         long id = rs.getLong("id");
@@ -137,11 +148,14 @@ public final class PersistenceDao {
         long toParagraph = rs.getLong("to_paragraph");
         Long to = rs.wasNull() ? null : toParagraph;
         String toName = rs.getString("to_name");
+        long thruParagraph = rs.getLong("thru_paragraph");
+        Long thru = rs.wasNull() ? null : thruParagraph;
+        String thruName = rs.getString("thru_name");
         String kind = rs.getString("kind");
         int line = rs.getInt("line");
         Integer lineOrNull = rs.wasNull() ? null : line;
-        return new ParagraphEdgeRecord(id, programSourceId, fromParagraph, to, toName, kind,
-                lineOrNull, rs.getInt("seq"));
+        return new ParagraphEdgeRecord(id, programSourceId, fromParagraph, to, toName, thru,
+                thruName, kind, lineOrNull, rs.getInt("seq"));
     }
 
     // ---- NODE / CALL_EDGE ----

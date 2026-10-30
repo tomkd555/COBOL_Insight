@@ -15,8 +15,8 @@ import { CODE_FONT, type ThemeName } from "../vendor/monarch";
  * The node kinds the graph draws: the engine's ten NodeKind values plus UNANALYZABLE, which the
  * engine's enum does not carry and which marks an asset whose parse failed.
  *
- * NODE also holds rows for the assets themselves (JCL, COPYBOOK, BMS). Those are not call-graph
- * nodes and are left out of the drawing; `isGraphNodeKind` is the test.
+ * NODE also holds rows for the assets themselves (JCL, COPYBOOK, BMS). The drawing leaves those asset
+ * rows out; `isGraphNodeKind` is the test.
  */
 export type GraphNodeKind =
   | "JOB"
@@ -87,7 +87,7 @@ export const NODE_KINDS: readonly GraphNodeKind[] = NODE_KIND_SHAPES.map((entry)
 
 const NODE_KIND_SET = new Set<string>(NODE_KINDS);
 
-/** Whether the NODE.type is one the graph draws. Asset rows (JCL, COPYBOOK, BMS) are not. */
+/** Whether the NODE.type is one of the call-graph kinds the drawing shows. */
 export function isGraphNodeKind(type: string): type is GraphNodeKind {
   return NODE_KIND_SET.has(type);
 }
@@ -111,6 +111,9 @@ const EDGE_KIND_SHAPES: readonly { kind: string; color: Pair; arrowShape: cytosc
 /** The colour of a line that carries no kind: the theme's muted foreground. */
 const PLAIN_EDGE: Pair = ["#a3a8b3", "#666c78"];
 
+/** The colour of a transfer that does not return (XCTL): the call graph's transaction transition. */
+const TRANSFER_EDGE: Pair = ["#c586c0", "#6d2f80"];
+
 /** The edge kinds in legend order, coloured for the theme. */
 export function edgeKindStyles(theme: ThemeName): EdgeKindStyle[] {
   return EDGE_KIND_SHAPES.map((entry) => ({
@@ -120,7 +123,19 @@ export function edgeKindStyles(theme: ThemeName): EdgeKindStyle[] {
   }));
 }
 
-/** Whether the edge is drawn dashed: a dataflow-derived or unresolved target is not a certainty. */
+/**
+ * How the flows of a paragraph trace are drawn: by the line itself, since the three of them run
+ * between the same kind of node. These sit outside {@link EDGE_KIND_SHAPES}, so the call graph's
+ * legend and filter stay the engine's five kinds. A call out of a paragraph is drawn as the call
+ * graph draws CALL.
+ */
+export const FLOW_LINE_STYLES: readonly { kind: string; lineStyle: "solid" | "dashed" | "dotted" }[] = [
+  { kind: "PERFORM", lineStyle: "solid" },
+  { kind: "GOTO", lineStyle: "dashed" },
+  { kind: "FALLTHROUGH", lineStyle: "dotted" },
+];
+
+/** Whether the edge is drawn dashed: a dataflow-derived or unresolved target is uncertain. */
 export function isDashedEdge(resolution: string | null): boolean {
   return resolution === "DATAFLOW" || resolution === "UNRESOLVED";
 }
@@ -145,6 +160,8 @@ export interface GraphEdgeElement {
     readonly source: string;
     readonly target: string;
     readonly kind: string;
+    /** What is written on the line: the order a paragraph trace took it in. The call graph sets none. */
+    readonly label?: string;
   };
   readonly classes?: string;
 }
@@ -159,7 +176,7 @@ function edgeElementId(edge: GraphEdge): string {
 /**
  * The cytoscape elements for the visible node set. An edge is kept only when both of its ends are
  * visible, and repeated edges collapse into one line: the execution order of the repeats is what the
- * execution-order tree and the detail pane show, not the drawing.
+ * execution-order tree and the detail pane show; the drawing leaves it out.
  */
 export function buildGraphElements(
   data: GraphData,
@@ -212,14 +229,16 @@ export function graphStylesheet(theme: ThemeName): cytoscape.StylesheetJsonBlock
         "border-style": "dashed",
         label: "data(label)",
         "font-family": CODE_FONT.fontFamily,
-        // A node label may be a Japanese name, and 11px was the smallest type in the product.
-        "font-size": 12,
+        // A node label may be a Japanese name, and 14px is the smallest type the product draws.
+        "font-size": 14,
         "font-weight": "bold",
         color: dark ? "#e3e5ea" : "#2b2f38",
         "text-valign": "center",
         "text-halign": "center",
         "text-wrap": "ellipsis",
-        "text-max-width": "150px",
+        // The node is as wide as its label up to this, which holds as many characters at 14px as
+        // 150px held at the 12px the labels were drawn at before.
+        "text-max-width": "175px",
         width: "label",
         height: 36,
         padding: "8px",
@@ -259,6 +278,35 @@ export function graphStylesheet(theme: ThemeName): cytoscape.StylesheetJsonBlock
       }),
     ),
     { selector: `edge.${DASHED_EDGE_CLASS}`, style: { "line-style": "dashed" } },
+    // The paragraph trace: a section among paragraphs, the three flows, the transfer, the order.
+    { selector: 'node[kind="SECTION"]', style: { shape: "round-rectangle", "border-style": "solid" } },
+    ...FLOW_LINE_STYLES.map(
+      (style): cytoscape.StylesheetJsonBlock => ({
+        selector: `edge[kind="${style.kind}"]`,
+        style: { "line-style": style.lineStyle },
+      }),
+    ),
+    {
+      selector: 'edge[kind="XCTL"]',
+      style: {
+        "line-color": pick(TRANSFER_EDGE, theme),
+        "target-arrow-color": pick(TRANSFER_EDGE, theme),
+        "target-arrow-shape": "diamond",
+      },
+    },
+    {
+      selector: "edge[label]",
+      style: {
+        label: "data(label)",
+        "font-family": CODE_FONT.fontFamily,
+        // Digits only, so the Latin-short size applies.
+        "font-size": 12,
+        color: dark ? "#e3e5ea" : "#2b2f38",
+        "text-background-color": dark ? "#1e2127" : "#ffffff",
+        "text-background-opacity": 0.85,
+        "text-background-padding": "2px",
+      },
+    },
     {
       selector: `node.${SELECTED_NODE_CLASS}`,
       style: {
@@ -271,7 +319,7 @@ export function graphStylesheet(theme: ThemeName): cytoscape.StylesheetJsonBlock
 }
 
 /**
- * The ceiling on the zoom `fit` may reach. maxZoom belongs to the core, not to the layout: a graph
+ * The ceiling on the zoom `fit` may reach. maxZoom belongs to the core and is set there: a graph
  * of two nodes would otherwise be blown up until one node filled the viewport.
  */
 export const GRAPH_MAX_ZOOM = 1.6;
@@ -301,19 +349,27 @@ export interface GraphLayoutOptions {
   readonly elk: Readonly<Record<string, string | number>>;
 }
 
+/** Which way the layers of the layout run. */
+export type GraphDirection = "RIGHT" | "DOWN";
+
 /**
- * The layered layout: job to step to program to dataset, laid out left to right. The same options
- * are handed to elkjs directly by the layout timing test.
+ * The layered layout: job to step to program to dataset, laid out left to right, or downwards for a
+ * drawing in a narrow pane. The same options are handed to elkjs directly by the layout timing test.
+ * A readable drawing is framed by the canvas once the layout stops, so the layout leaves the view as
+ * it is; every other drawing is fitted by the layout.
  */
-export function graphLayoutOptions(): GraphLayoutOptions {
+export function graphLayoutOptions(
+  direction: GraphDirection = "RIGHT",
+  readable = false,
+): GraphLayoutOptions {
   return {
     name: "elk",
     nodeDimensionsIncludeLabels: true,
-    fit: true,
+    fit: !readable,
     padding: 24,
     elk: {
       algorithm: "layered",
-      "elk.direction": "RIGHT",
+      "elk.direction": direction,
       "elk.spacing.nodeNode": 24,
       "elk.layered.spacing.nodeNodeBetweenLayers": 64,
       "elk.edgeRouting": "SPLINES",

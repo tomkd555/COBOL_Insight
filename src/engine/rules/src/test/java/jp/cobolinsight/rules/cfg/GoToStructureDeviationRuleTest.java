@@ -67,4 +67,56 @@ class GoToStructureDeviationRuleTest {
                 CfgFixtures.context(List.of(model), Map.of(model.sourceFile(), INTRA_SECTION)));
         assertEquals(List.of(), findings, () -> "同一節内のGO TOは対象外: " + findings);
     }
+
+    /** A GO TO among a section's own leading statements, before any paragraph, is judged too. */
+    @Test
+    void aGoToAmongASectionsLeadingStatementsIsJudged() {
+        String text = String.join("\n",
+                /*  1 */ "       IDENTIFICATION DIVISION.",
+                /*  2 */ "       PROGRAM-ID. FIX009D.",
+                /*  3 */ "       PROCEDURE DIVISION.",
+                /*  4 */ "       SEC-A SECTION.",
+                /*  5 */ "           GO TO B-1.",
+                /*  6 */ "       SEC-B SECTION.",
+                /*  7 */ "       B-1.",
+                /*  8 */ "           GOBACK.",
+                "");
+        CobolSemanticModel model = CfgFixtures.parse(tempDir, "FIX009D.cbl", text);
+        List<Finding> findings = new GoToStructureDeviationRule().evaluate(
+                CfgFixtures.context(List.of(model), Map.of(model.sourceFile(), text)));
+        assertEquals(List.of(5), findings.stream().map(f -> f.location().line()).toList());
+    }
+
+    /**
+     * P1 is a paragraph of SEC-A and of SEC-B. The unqualified GO TO P1 of SEC-A means SEC-A's
+     * own, the GO TO P1 OF SEC-B leaves the section, and the GO TO between two paragraphs of the
+     * THRU range B-1 THRU B-3 stays in SEC-B.
+     */
+    @Test
+    void aQualifierNamesTheSectionAndAThruRangeKeepsItsGoTo() {
+        String text = String.join("\n",
+                /*  1 */ "       IDENTIFICATION DIVISION.",
+                /*  2 */ "       PROGRAM-ID. FIX009C.",
+                /*  3 */ "       PROCEDURE DIVISION.",
+                /*  4 */ "       SEC-A SECTION.",
+                /*  5 */ "       A-1.",
+                /*  6 */ "           PERFORM B-1 THRU B-3",
+                /*  7 */ "           GO TO P1.",
+                /*  8 */ "       P1.",
+                /*  9 */ "           GO TO P1 OF SEC-B.",
+                /* 10 */ "       SEC-B SECTION.",
+                /* 11 */ "       B-1.",
+                /* 12 */ "           GO TO B-3.",
+                /* 13 */ "       B-2.",
+                /* 14 */ "           DISPLAY 'B2'.",
+                /* 15 */ "       B-3.",
+                /* 16 */ "           EXIT.",
+                /* 17 */ "       P1.",
+                /* 18 */ "           GOBACK.",
+                "");
+        CobolSemanticModel model = CfgFixtures.parse(tempDir, "FIX009C.cbl", text);
+        List<Finding> findings = new GoToStructureDeviationRule().evaluate(
+                CfgFixtures.context(List.of(model), Map.of(model.sourceFile(), text)));
+        assertEquals(List.of(9), findings.stream().map(f -> f.location().line()).toList());
+    }
 }

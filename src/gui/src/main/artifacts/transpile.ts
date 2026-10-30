@@ -42,7 +42,7 @@ export function readLineMap(db: QueryableDatabase, cobolRelPath: string): LineMa
   }));
 }
 
-/** Derives the language from the generated file's name; anything else is not a translation. */
+/** Derives the language from the generated file's name; any other name yields null. */
 export function generatedLanguage(fileName: string): TranspileLanguage | null {
   const lower = fileName.toLowerCase();
   if (lower.endsWith(".py")) return "python";

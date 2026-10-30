@@ -106,8 +106,9 @@ class SYK002Program:
 
     def _3030_更新登録処理(self):
         self.WS_金額集計エリア = self.SYK2_受注金額合計
-        # PERFORM THRU: _4000_マスタ更新処理 .. _4000_マスタ更新処理_EXIT
+        # PERFORM THRU: _4000_マスタ更新処理 .. _4010_マスタ書込 .. _4000_マスタ更新処理_EXIT
         self._4000_マスタ更新処理()
+        self._4010_マスタ書込()
         self._4000_マスタ更新処理_EXIT()
         self.WS_更新件数 = self.WS_更新件数 + 1
 

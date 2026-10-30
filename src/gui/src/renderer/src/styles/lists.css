@@ -67,7 +67,7 @@
   display: flex;
   align-items: center;
   gap: var(--ci-space-1);
-  height: 24px;
+  height: 28px;
   padding: 0 var(--ci-space-2);
   cursor: pointer;
   white-space: nowrap;
@@ -109,7 +109,13 @@
   font-size: var(--ci-size-sm);
 }
 
-/* An unresolved codepage is informational, not a warning, so it reads in the muted tone. */
+/* The rules view stands on the badge's own fill, so there the badge takes the editor's ground and
+   keeps the look it has in the rule description. */
+.ci-rules .ci-badge {
+  background: var(--color-background);
+}
+
+/* An unresolved codepage is informational, so it reads in the muted tone. */
 .ci-badge--warn {
   background: var(--color-muted);
   color: var(--color-muted-foreground);
@@ -124,12 +130,14 @@
 
 /* ---------------------------------------------------------------- problems */
 
+/* The table scrolls inside the panel. In a panel too short to show three rows under the filter the
+   whole view scrolls, so the rows can still be reached. */
 .ci-problems {
   display: flex;
   flex-direction: column;
   height: 100%;
   min-width: 0;
-  overflow: hidden;
+  overflow: auto;
 }
 
 /* One line per finding; the full sentence is read in the detail pane. */
@@ -142,22 +150,25 @@
 
 .ci-problems__filters {
   display: flex;
+  flex: 0 0 auto;
   padding: var(--ci-space-2) var(--ci-space-3);
   border-bottom: 1px solid var(--color-border);
 }
 
 /*
- * One control instead of five: the text filter, with the severity toggles inside its right edge. The
- * rule and the asset are typed into the same box, and the order is set from the column heads, so the
- * panel spends one row on filtering rather than a row taller than the table it filters.
+ * One control where there were five: the text filter, with the severity toggles inside its right edge. The
+ * rule and the asset are typed into the same box, and the order is set from the column heads, so
+ * filtering takes a single row and leaves the table most of a short panel.
  */
 .ci-problems__filter {
   display: flex;
+  /* In a narrow panel the toggles drop under the input, which keeps a width a word fits in. */
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--ci-space-1);
   flex: 1 1 auto;
   min-width: 0;
-  height: 28px;
+  min-height: 32px;
   padding-inline-end: var(--ci-space-1);
   background: var(--color-surface);
   border: 1px solid var(--ci-border-strong);
@@ -172,9 +183,9 @@
 }
 
 .ci-problems__filter input {
-  flex: 1 1 auto;
+  flex: 1 1 12rem;
   min-width: 0;
-  height: 100%;
+  height: 30px;
   padding: 0 var(--ci-space-2);
   background: transparent;
   border: none;
@@ -186,6 +197,11 @@
 
 .ci-problems__filter input::placeholder {
   color: var(--color-muted-foreground);
+}
+
+.ci-problems__filter .ci-chips {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
 }
 
 .ci-problems__state {
@@ -210,6 +226,7 @@
 
 .ci-problems__note {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--ci-space-3);
@@ -219,12 +236,19 @@
   font-size: var(--ci-size-sm);
 }
 
+/* The list no longer matches the rules: a band in the warning colour, with the run that fixes it. */
+.ci-problems__note--stale {
+  /* oklab, so the mix keeps the accent's hue; oklch would turn it towards the ground's blue. */
+  background: color-mix(in oklab, var(--color-accent) 16%, var(--color-background));
+  border-inline-start: 3px solid var(--color-accent);
+  color: var(--color-foreground);
+}
+
 .ci-problems__table {
   width: 100%;
   table-layout: fixed;
   border-collapse: collapse;
   text-align: left;
-  padding-inline: var(--ci-space-3);
 }
 
 /* The message is the cell the engineer reads, and under table-layout: fixed it takes whatever the
@@ -239,8 +263,15 @@
 }
 
 .ci-problems__table th:nth-child(4) {
-  min-width: 8em;
-  max-width: 10em;
+  width: 14em;
+}
+
+/* The asset gives way before the message does: beside the detail pane its path is cut first. A
+   fixed table reads a width that mixes a share with a length as none at all, hence the two steps. */
+@container problems (max-width: 760px) {
+  .ci-problems__table th:nth-child(4) {
+    width: 11em;
+  }
 }
 
 .ci-problems__table th:nth-child(5) {
@@ -296,6 +327,7 @@
   align-items: center;
   gap: var(--ci-space-1);
   width: 100%;
+  min-height: 24px;
   padding: 0;
   background: none;
   border: none;
@@ -322,7 +354,7 @@
 }
 
 .ci-problems__row td {
-  height: 24px;
+  height: 28px;
   padding: 0 var(--ci-space-2);
   vertical-align: middle;
   font-size: var(--ci-size-sm);
@@ -341,7 +373,7 @@
   color: var(--color-muted-foreground);
 }
 
-/* A flex row rather than one ellipsized text node: the path and the graph button are separate boxes,
+/* A flex row: the path and the graph button are separate boxes,
    so a path that fits the column shows no ellipsis just because the button follows it. */
 .ci-problems__file {
   display: flex;
@@ -349,9 +381,12 @@
   white-space: nowrap;
 }
 
+/* A path too long for the column loses its head and keeps the file name: the box runs right to
+   left, so the ellipsis lands on the left, and the <bdi> inside keeps the path itself in order. */
 .ci-problems__file-path {
   min-width: 0;
   overflow: hidden;
+  direction: rtl;
   text-overflow: ellipsis;
 }
 
@@ -359,6 +394,7 @@
    are: every row carrying its own button would be the loudest thing in the table. */
 .ci-problems__graph {
   flex: 0 0 auto;
+  min-height: 24px;
   margin-inline-start: var(--ci-space-1);
   padding: 0 var(--ci-space-1);
   background: none;
@@ -403,7 +439,7 @@
 .ci-problems__body {
   display: flex;
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 7rem;
 }
 
 .ci-problems__list {
@@ -421,15 +457,38 @@
   border-inline-start: 1px solid var(--color-border);
 }
 
-.ci-problems__detail--empty {
-  flex: 0 1 auto;
-  width: max-content;
+.ci-problems__detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--ci-space-2);
+}
+
+.ci-problems__detail-severity {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ci-space-1);
+}
+
+.ci-problems__detail-title {
+  margin: 0;
+  text-wrap: balance;
+  font-size: var(--ci-size-md);
+  font-weight: 600;
+}
+
+.ci-problems__detail-file {
+  flex-basis: 100%;
+  color: var(--color-muted-foreground);
+  font-size: var(--ci-size-sm);
+  overflow-wrap: anywhere;
 }
 
 .ci-problems__detail-message {
   margin: var(--ci-space-2) 0 0;
   font-size: var(--ci-size-md);
   line-height: var(--ci-line);
+  word-break: auto-phrase;
 }
 
 .ci-problems__detail-section {
@@ -447,6 +506,7 @@
   margin: 0;
   font-size: var(--ci-size-md);
   line-height: var(--ci-line);
+  word-break: auto-phrase;
 }
 
 .ci-problems__related {
@@ -464,7 +524,9 @@
 }
 
 .ci-problems__jump {
+  flex: 0 0 auto;
   min-width: 3.5em;
+  min-height: 24px;
   padding: 0 var(--ci-space-1);
   background: none;
   border: 1px solid var(--ci-border-strong);
@@ -480,14 +542,15 @@
   background: var(--ci-bg-hover);
 }
 
-/* The actions open the pane, so they carry no leading gap; the message's own margin follows them. */
 .ci-problems__detail-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--ci-space-2);
+  margin-top: var(--ci-space-2);
 }
 
 /* The glyph alone. The word is the cell's title and the row's accessible name, so the column costs
-   the table four characters' width instead of a header that wraps to 重大/度. */
+   the table four characters' width and its header stays on one line. */
 .ci-severity {
   display: block;
   text-align: left;
@@ -536,10 +599,14 @@
   font-size: var(--ci-size-md);
 }
 
+/* Kept at the top of the panel while the log scrolls under it. */
 .ci-output__toolbar {
+  position: sticky;
+  top: 0;
   display: flex;
   justify-content: flex-end;
   padding: var(--ci-space-1) var(--ci-space-2);
+  background: var(--color-muted);
 }
 
 .ci-output__lines {
@@ -587,8 +654,7 @@
   color: var(--color-muted-foreground);
 }
 
-/* Static text, not a second action beside the primary button: a smaller size keeps it read as a
-   hint rather than a competing call to act. */
+/* Static text beside the primary button: a smaller size keeps it read as a hint. */
 .ci-welcome__hint {
   font-size: var(--ci-size-sm);
 }

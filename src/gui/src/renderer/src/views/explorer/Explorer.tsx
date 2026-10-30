@@ -45,7 +45,7 @@ function badgeIcon(type: AssetTypeCode): string {
  *
  * The tree is a real ARIA tree: rows carry their level and their expanded state, one row holds the
  * tab stop, and the arrow keys move between rows and open and close folders. With no folder open
- * the view is empty: the welcome screen is where that is said, and once, not in every region.
+ * the view is empty: the welcome screen is where that is said, once for all regions.
  */
 export function Explorer({ onOpenAsset }: ExplorerProps): ReactElement {
   const project = useProject();
@@ -56,9 +56,11 @@ export function Explorer({ onOpenAsset }: ExplorerProps): ReactElement {
   const [typeFilter, setTypeFilter] = useState<AssetTypeFilter>("all");
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const [importing, setImporting] = useState(false);
-  // The focused row is the selection: it is what the run command analyses, so it is held in the
-  // workbench store rather than here, where the title bar and the palette could not reach it.
-  const focusedPath = workbench.selection?.path ?? null;
+  // The selection is what the run command analyses, held in the workbench store where the title bar
+  // and the palette reach it, and it follows the active tab. The keyboard focus is this tree's own,
+  // so a tab switch leaves it on the row the arrow keys last reached.
+  const selectedPath = workbench.selection?.path ?? activeTabPath;
+  const [focusedPath, setFocusedPath] = useState<string | null>(null);
   const select = (row: TreeRow): void => {
     workbenchDispatch({ type: "SELECT", selection: { path: row.path, kind: row.kind } });
   };
@@ -93,7 +95,7 @@ export function Explorer({ onOpenAsset }: ExplorerProps): ReactElement {
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
-    const index = rows.findIndex((row) => row.path === focusedPath);
+    const index = rows.findIndex((row) => row.path === (focusedPath ?? selectedPath));
     const current = index < 0 ? 0 : index;
     const row = rows[current];
     if (row === undefined) {
@@ -102,6 +104,7 @@ export function Explorer({ onOpenAsset }: ExplorerProps): ReactElement {
     const move = (to: number): void => {
       event.preventDefault();
       const target = rows[Math.min(Math.max(to, 0), rows.length - 1)];
+      setFocusedPath(target.path);
       select(target);
       queueMicrotask(() =>
         treeRef.current
@@ -166,7 +169,9 @@ export function Explorer({ onOpenAsset }: ExplorerProps): ReactElement {
         </p>
       );
     }
-    const tabStop = focusedPath ?? rows[0].path;
+    const tabStop =
+      [focusedPath, selectedPath].find((path) => rows.some((row) => row.path === path)) ??
+      rows[0].path;
     return (
       <div
         ref={treeRef}
@@ -184,19 +189,18 @@ export function Explorer({ onOpenAsset }: ExplorerProps): ReactElement {
             aria-expanded={row.kind === "folder" ? row.expanded : undefined}
             // The selected row is what the run command analyses, so it is the row that is marked.
             // Until anything is selected the open asset is, as it was before the tree had one.
-            aria-selected={
-              focusedPath === null ? activeTabPath === row.path : focusedPath === row.path
-            }
+            aria-selected={selectedPath === row.path}
             tabIndex={row.path === tabStop ? 0 : -1}
             className={`ci-tree__row ci-tree__row--${row.kind}`}
             // One inset down the whole column: a root row starts where the toolbar and the filters
             // above it start (12px, styles/lists.css), and each level indents by 12 from there.
             style={{ paddingInlineStart: `${row.depth * 12 + 12}px` }}
             onClick={() => {
+              setFocusedPath(row.path);
               select(row);
               activate(row);
             }}
-            onFocus={() => select(row)}
+            onFocus={() => setFocusedPath(row.path)}
             data-testid={`tree-${row.path}`}
           >
             <span
@@ -209,7 +213,9 @@ export function Explorer({ onOpenAsset }: ExplorerProps): ReactElement {
               }`}
               aria-hidden="true"
             />
-            <span className="ci-tree__name">{row.name}</span>
+            <span className="ci-tree__name" title={row.name}>
+              {row.name}
+            </span>
             {/* The kind is the glyph alone: its name repeats the extension the row already shows,
                 and the codepage is in the status bar once the asset is open. */}
             {row.type !== null ? (

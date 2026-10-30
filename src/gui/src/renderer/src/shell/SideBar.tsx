@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 import { text } from "../i18n/text";
+import { ErrorBoundary } from "../ui/ErrorBoundary";
 import { useWorkbench, type SideView } from "../state/workbenchStore";
 import type { Notify } from "../state/useShellStartup";
 import { Explorer } from "../views/explorer/Explorer";
@@ -25,11 +26,9 @@ export function SideBar({ onOpenAsset, notify }: SideBarProps): ReactElement {
     <aside className="ci-sidebar" aria-label={text.sideBar.label} data-testid="sidepanel">
       <h2 className="ci-sidebar__title">{TITLES[view]}</h2>
       <div className="ci-sidebar__body">
-        {view === "explorer" ? (
-          <Explorer onOpenAsset={onOpenAsset} />
-        ) : (
-          <Rules notify={notify} />
-        )}
+        <ErrorBoundary resetKey={view} message={text.editor.viewFailed}>
+          {view === "explorer" ? <Explorer onOpenAsset={onOpenAsset} /> : <Rules notify={notify} />}
+        </ErrorBoundary>
       </div>
     </aside>
   );

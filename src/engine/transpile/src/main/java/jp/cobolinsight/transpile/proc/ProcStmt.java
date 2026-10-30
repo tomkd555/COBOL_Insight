@@ -53,12 +53,19 @@ public sealed interface ProcStmt {
     }
 
     /** PERFORM paragraph n TIMES (counted repetition). */
-    record PerformTimes(String methodName, PExpr count, SourceRange range, String note)
+    record PerformTimes(List<String> methodNames, PExpr count, SourceRange range, String note)
             implements ProcStmt {
+        public PerformTimes {
+            methodNames = List.copyOf(methodNames);
+        }
     }
 
-    /** PERFORM paragraph THRU paragraph (sequential call over the range). */
-    record PerformThru(List<String> methodNames, SourceRange range, String note) implements ProcStmt {
+    /**
+     * PERFORM of a range: a THRU, or a section of several paragraphs (sequential call over the
+     * range). {@code thru} says whether the source wrote THRU.
+     */
+    record PerformThru(List<String> methodNames, boolean thru, SourceRange range, String note)
+            implements ProcStmt {
         public PerformThru {
             methodNames = List.copyOf(methodNames);
         }

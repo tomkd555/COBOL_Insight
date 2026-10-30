@@ -92,7 +92,7 @@ export function indexGraph(data: GraphData): GraphIndex {
 /**
  * Where the graph starts when nothing is focused: the jobs and the transactions. A folder holding
  * only COBOL has neither, so the nodes nothing points at stand in; a graph that is all cycles falls
- * back to every node, rather than drawing nothing at all.
+ * back to every node, so something is always drawn.
  *
  * Nodes with no edge (an unanalysable asset, say) can never be reached by walking outward, so they
  * are always roots.

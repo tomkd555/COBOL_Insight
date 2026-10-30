@@ -9,7 +9,7 @@
  * symlinks and junctions resolved, so a symlink planted inside the base folder cannot lead out of it.
  */
 
-import { isAbsolute, relative, resolve } from "node:path";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 
 /** The minimum filesystem the boundary check needs. */
 export interface RealPathResolver {
@@ -21,13 +21,13 @@ export interface RealPathResolver {
  * Resolves a target inside the base directory. Relative paths resolve against the base.
  *
  * Returns null for anything that escapes: a relative path climbing out, an absolute path in another
- * folder, or the base directory itself (which is not a file).
+ * folder, or the base directory itself: a target is a file inside the base.
  */
 export function resolveWithinBase(baseDir: string, path: string): string | null {
   const base = resolve(baseDir);
   const target = isAbsolute(path) ? resolve(path) : resolve(base, path);
   const rel = relative(base, target);
-  if (rel === "" || rel.startsWith("..") || isAbsolute(rel)) {
+  if (rel === "" || rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
     return null;
   }
   return target;

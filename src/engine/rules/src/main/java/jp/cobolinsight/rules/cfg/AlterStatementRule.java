@@ -62,9 +62,7 @@ public final class AlterStatementRule implements Rule {
                         findings.add(Finding.of(META.id(), META.defaultSeverity().toLevel(),
                                 procedure.name()
                                         + " の ALTER 文が GO TO 文の移行先を実行時に書き換えます。",
-                                new SourcePosition(model.sourceFile(),
-                                        simple.range().start().line(), 1,
-                                        SourcePosition.UNKNOWN_BYTE_OFFSET)));
+                                CfgSupport.at(simple.range())));
                     }
                 });
             }
