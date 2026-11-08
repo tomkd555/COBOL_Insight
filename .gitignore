@@ -1,3 +1,32 @@
+# ルート直下は、下で許可したもの以外をすべて無視する
+/*
+# 公開するファイルとフォルダー（ソースからビルドするのに必要なものだけ）
+!/.gitignore
+!/.gitattributes
+!/.gitmodules
+!/LICENSE
+!/README.md
+!/THIRD_PARTY_NOTICES.md
+!/build.gradle.kts
+!/settings.gradle.kts
+!/gradle.properties
+!/gradlew
+!/gradlew.bat
+!/src/
+
+# 公開するフォルダーの中のテスト、開発用ツール、手動確認用のファイル
+/src/**/src/test/
+tests/
+__tests__/
+*.test.*
+*.spec.*
+/src/tools/
+/src/gui/smoke/
+/src/gui/e2e-scratch.cjs
+/src/gui/ui-brief.md
+/src/gui/vitest.config.ts
+/src/gui/vitest.setup.ts
+
 # Gradle
 .gradle/
 build/
