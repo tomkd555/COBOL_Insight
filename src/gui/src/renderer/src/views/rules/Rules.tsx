@@ -4,7 +4,7 @@ import { useProject } from "../../state/projectStore";
 import { useRulesState } from "../../state/rulesStore";
 import { useRules } from "../../state/useRules";
 import { useWorkbenchDispatch, customRulesTab, ruleTab } from "../../state/workbenchStore";
-import { filterRules, groupByCategory, overrideOf } from "../../model/rulesView";
+import { filterRules, groupByCategory, headingOf, overrideOf } from "../../model/rulesView";
 import { CUSTOM_SEVERITIES } from "../../model/customRules";
 import { severityOf } from "../../model/severity";
 import type { RuleCatalogEntry } from "../../../../shared/ipc";
@@ -25,7 +25,8 @@ function defaultSeverityLabel(entry: RuleCatalogEntry, override: string): string
 }
 
 /**
- * The rule list: every rule the engine knows, grouped by category, with its state and its severity.
+ * The rule list: every rule the engine knows, grouped by the technology it is about, with what goes
+ * wrong when it is ignored, its state and its severity.
  *
  * A toggle writes the rule configuration file and then asks the engine again, so what the checkbox
  * shows is always the engine's own answer to the file just written.
@@ -147,6 +148,10 @@ export function Rules({ notify }: RulesProps): ReactElement {
                   {entry.name}
                 </button>
                 <div className="ci-rules__meta">
+                {/* The heading already says it for a rule listed under its own category. */}
+                {entry.category !== "" && entry.category !== headingOf(entry) ? (
+                  <span className="ci-badge ci-badge--other">{entry.category}</span>
+                ) : null}
                 {entry.hasFix ? (
                   <span className="ci-badge">{text.rules.hasFix}</span>
                 ) : null}

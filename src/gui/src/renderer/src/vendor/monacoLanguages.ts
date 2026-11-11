@@ -23,8 +23,11 @@ import {
   bmsLanguage,
   cobolInsightTheme,
   cobolLanguage,
+  easytrieveLanguage,
+  imsLanguage,
   jclLanguage,
   jsonLanguage,
+  sqlLanguage,
   type MonacoThemeData,
   type MonarchLanguage,
 } from "./monarch";
@@ -42,7 +45,10 @@ export interface LanguageRegistrationTarget {
 
 let registered = false;
 
-/** Registers the COBOL, JCL, BMS and JSON grammars and the theme. Repeated calls do nothing. */
+/**
+ * Registers the COBOL, JCL, BMS, Easytrieve, Db2 SQL, IMS macro and JSON grammars and the theme.
+ * Repeated calls do nothing.
+ */
 export function registerLanguages(monaco: LanguageRegistrationTarget): void {
   if (registered) {
     return;
@@ -51,6 +57,9 @@ export function registerLanguages(monaco: LanguageRegistrationTarget): void {
     [LANGUAGE_ID.cobol, cobolLanguage()],
     [LANGUAGE_ID.jcl, jclLanguage()],
     [LANGUAGE_ID.bms, bmsLanguage()],
+    [LANGUAGE_ID.easytrieve, easytrieveLanguage()],
+    [LANGUAGE_ID.sql, sqlLanguage()],
+    [LANGUAGE_ID.ims, imsLanguage()],
     [LANGUAGE_ID.json, jsonLanguage()],
   ];
   for (const [id, definition] of definitions) {

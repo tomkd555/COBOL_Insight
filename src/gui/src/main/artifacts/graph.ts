@@ -81,7 +81,7 @@ const PARAGRAPH_EDGE_QUERY = `
 
 export function readGraph(db: QueryableDatabase, root: string): GraphData {
   const params = { $root: root };
-  const nodes = mapRows<GraphNode>(db.exec(NODE_QUERY, params), (row) => ({
+  const assetNodes = mapRows<GraphNode>(db.exec(NODE_QUERY, params), (row) => ({
     id: row.int("id", 0),
     type: row.text("type", "UNKNOWN"),
     label: row.text("label", ""),
@@ -95,6 +95,7 @@ export function readGraph(db: QueryableDatabase, root: string): GraphData {
     line: row.intOrNull("line"),
     access: row.textOrNull("access"),
   }));
+  const { nodes, edges: graphEdges } = withGraphKinds(assetNodes, edges);
   const paragraphs = mapRows<GraphParagraph>(db.exec(PARAGRAPH_QUERY, params), (row) => ({
     id: row.int("id", 0),
     programSourceId: row.int("programSourceId", 0),
@@ -114,5 +115,56 @@ export function readGraph(db: QueryableDatabase, root: string): GraphData {
       seq: row.int("seq", 0),
     }),
   );
-  return { nodes, edges, paragraphs, paragraphEdges };
+  return { nodes, edges: graphEdges, paragraphs, paragraphEdges };
+}
+
+/**
+ * The nodes with the kind the call graph knows each by, and the edges that belong to the graph.
+ *
+ * The engine gives a job and a program the NODE row of the file they stand in, so that row carries
+ * the asset's type: `JCL` for the file of a job, `EASYTRIEVE` for an Easytrieve member. In the graph
+ * those rows are the job and the program themselves, and every screen that draws or walks the graph
+ * asks for JOB and PROGRAM.
+ *
+ * A JCL row is a job when it starts a step; a PROC or INCLUDE member has no step of its own and
+ * stays an asset row, which the graph leaves out. An Easytrieve row is a program when an edge of the
+ * graph touches it; a macro member is touched by none.
+ *
+ * A JCL file also carries an EXECUTION row straight to each program it runs. That row is what the
+ * engine's incremental scan follows from a program back to the jobs that depend on it; it has no
+ * step and no order, and the same execution is in the graph as job, step, program. Read as an edge
+ * of the job it would be a step that is no step, so it is left out.
+ */
+function withGraphKinds(
+  assetNodes: GraphNode[],
+  edges: GraphEdge[],
+): { nodes: GraphNode[]; edges: GraphEdge[] } {
+  const typeById = new Map(assetNodes.map((node) => [node.id, node.type]));
+  const jobs = new Set<number>();
+  const linked = new Set<number>();
+  for (const edge of edges) {
+    linked.add(edge.from);
+    linked.add(edge.to);
+    if (edge.kind === "EXECUTION" && typeById.get(edge.to) === "STEP") {
+      jobs.add(edge.from);
+    }
+  }
+  const nodes = assetNodes.map((node) => {
+    if (node.type === "JCL" && jobs.has(node.id)) {
+      return { ...node, type: "JOB" };
+    }
+    if (node.type === "EASYTRIEVE" && linked.has(node.id)) {
+      return { ...node, type: "PROGRAM" };
+    }
+    return node;
+  });
+  const graphEdges = edges.filter(
+    (edge) =>
+      !(
+        edge.kind === "EXECUTION" &&
+        typeById.get(edge.from) === "JCL" &&
+        typeById.get(edge.to) !== "STEP"
+      ),
+  );
+  return { nodes, edges: graphEdges };
 }

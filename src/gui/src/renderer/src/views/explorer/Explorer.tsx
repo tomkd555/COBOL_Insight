@@ -35,6 +35,10 @@ function badgeIcon(type: AssetTypeCode): string {
       return "layout";
     case "sql":
       return "database";
+    case "easytrieve":
+      return "table";
+    case "ims":
+      return "type-hierarchy";
     case "other":
       return "file";
   }

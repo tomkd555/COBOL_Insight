@@ -58,7 +58,13 @@ const PANE_MIN_WIDTH = 300;
 const OUTLINE_DELAY_MS = 300;
 
 /** The languages laid out in fixed columns, which the column scale is drawn for. */
-const SCALED_LANGUAGES: ReadonlySet<string> = new Set([LANGUAGE_ID.cobol, LANGUAGE_ID.jcl, LANGUAGE_ID.bms]);
+const SCALED_LANGUAGES: ReadonlySet<string> = new Set([
+  LANGUAGE_ID.cobol,
+  LANGUAGE_ID.jcl,
+  LANGUAGE_ID.bms,
+  LANGUAGE_ID.easytrieve,
+  LANGUAGE_ID.ims,
+]);
 
 export interface SourceEditorProps {
   /** The asset's path, relative to the asset folder. */

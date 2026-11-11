@@ -47,6 +47,7 @@ export interface MonarchLanguage {
   figurative?: string[];
   operations?: string[];
   macros?: string[];
+  sections?: string[];
   tokenizer: MonarchTokenizer;
 }
 
@@ -70,6 +71,9 @@ export const LANGUAGE_ID = {
   cobol: "cobol-fixed",
   jcl: "jcl",
   bms: "bms",
+  easytrieve: "easytrieve",
+  sql: "db2-sql",
+  ims: "ims-macro",
   json: "json",
 } as const;
 
@@ -268,15 +272,31 @@ export function jclLanguage(): MonarchLanguage {
 /** The BMS assembler macros. */
 const BMS_MACROS: string[] = ["DFHMSD", "DFHMDI", "DFHMDF", "DFHMDX", "END"];
 
+/** The macros of an IMS DBDGEN and PSBGEN source. */
+const IMS_MACROS: string[] = [
+  "DBD", "DATASET", "AREA", "SEGM", "FIELD", "LCHILD", "XDFLD", "DBDGEN", "FINISH",
+  "PCB", "SENSEG", "SENFLD", "PSBGEN", "END",
+];
+
 /**
  * The BMS grammar. A macro statement carries its label in column 1, the macro name after the blanks,
  * and keyword parameters after that; an asterisk in column 1 makes the whole line a comment.
  */
 export function bmsLanguage(): MonarchLanguage {
+  return macroLanguage(BMS_MACROS);
+}
+
+/** The IMS DBD and PSB grammar: the same assembler macro form as BMS, with the IMS macro names. */
+export function imsLanguage(): MonarchLanguage {
+  return macroLanguage(IMS_MACROS);
+}
+
+/** An assembler macro source whose operations are the given macros. */
+function macroLanguage(macros: readonly string[]): MonarchLanguage {
   return {
     ignoreCase: true,
     defaultToken: "identifier",
-    macros: [...BMS_MACROS],
+    macros: [...macros],
     tokenizer: {
       root: [
         [/^\*.*$/, "comment"],
@@ -292,6 +312,117 @@ export function bmsLanguage(): MonarchLanguage {
         [/[=,()]/, "delimiter"],
         [/\s+/, "white"],
         [/./, "identifier"],
+      ],
+    },
+  };
+}
+
+/* ------------------------------------------------------------------ Easytrieve */
+
+/** The statements that open a part of an Easytrieve program: the library, an activity, a procedure. */
+const EASYTRIEVE_SECTIONS: string[] = [
+  "PARM", "FILE", "JOB", "SORT", "PROGRAM", "SCREEN", "REPORT", "PROC", "END-PROC",
+  "MACRO", "MSTART", "MEND",
+];
+
+const EASYTRIEVE_KEYWORDS: string[] = [
+  "DEFINE", "IF", "ELSE", "ELSE-IF", "END-IF", "DO", "WHILE", "UNTIL", "END-DO", "CASE", "WHEN",
+  "OTHERWISE", "END-CASE", "GET", "PUT", "READ", "WRITE", "POINT", "PRINT", "DISPLAY", "STOP",
+  "EXECUTE", "PERFORM", "GOTO", "GO", "TO", "CALL", "LINK", "TRANSFER", "USING", "RETURNS", "MOVE",
+  "LIKE", "FILL", "SEARCH", "WITH", "GIVING", "SQL", "DLI", "IDMS", "RETRIEVE", "SELECT", "COPY",
+  "INPUT", "NULL", "KEY", "NAME", "START", "FINISH", "BEFORE", "STATUS", "EOF", "MATCHED",
+  "DUPLICATE", "FIRST-DUP", "LAST-DUP", "NUMERIC", "ALPHABETIC", "SPACE", "SPACES", "ZERO", "ZEROS",
+  "ZEROES", "HIGH-VALUES", "LOW-VALUES", "NOT", "AND", "OR", "EQ", "NE", "LT", "LE", "GT", "GE",
+  "TABLE", "INSTREAM", "ENDTABLE", "VIRTUAL", "PRINTER", "PUNCH", "CARD", "VS", "IS", "FB", "VB",
+  "VALUE", "OCCURS", "INDEX", "MASK", "HEADING", "RESET", "SEQUENCE", "CONTROL", "SUM", "TITLE",
+  "LINE", "LINESIZE", "PAGESIZE", "SKIP", "NEWPAGE", "SUMMARY", "DTLCTL", "SUMCTL", "NOADJUST",
+  "UPDATE", "ADD", "DELETE", "FROM", "COL", "POS",
+];
+
+/**
+ * The Easytrieve Plus grammar. A line whose first non-blank character is an asterisk is a comment;
+ * a word that starts with a percent sign invokes a macro; everything else is words, literals in
+ * apostrophes, numbers and operators.
+ */
+export function easytrieveLanguage(): MonarchLanguage {
+  return {
+    ignoreCase: true,
+    defaultToken: "identifier",
+    sections: [...EASYTRIEVE_SECTIONS],
+    keywords: [...EASYTRIEVE_KEYWORDS],
+    tokenizer: {
+      root: [
+        [/^\s*\*.*$/, "comment"],
+        [/%[A-Za-z#@$][A-Za-z0-9#@$_-]*/, "identifier.name"],
+        [/X?'([^']|'')*'/, "string"],
+        [/[+-]?\d+(\.\d+)?/, "number"],
+        [
+          new RegExp(`[A-Za-z#@$&:${WIDE}][A-Za-z0-9#@$&:_${WIDE}-]*`),
+          {
+            cases: {
+              "@sections": "keyword.division",
+              "@keywords": "keyword",
+              "@default": "identifier",
+            },
+          },
+        ],
+        [/[.,()]/, "delimiter"],
+        [/[*/+=<>^!¬-]+/, "operator"],
+        [/\s+/, "white"],
+        [/./, "identifier"],
+      ],
+    },
+  };
+}
+
+/* ------------------------------------------------------------------ SQL */
+
+/** The words that head an SQL statement or one of its clauses. */
+const SQL_KEYWORDS: string[] = [
+  "SELECT", "INSERT", "UPDATE", "DELETE", "MERGE", "INTO", "VALUES", "SET", "FROM", "WHERE",
+  "GROUP", "BY", "HAVING", "ORDER", "UNION", "ALL", "EXCEPT", "INTERSECT", "JOIN", "INNER", "LEFT",
+  "RIGHT", "FULL", "OUTER", "CROSS", "ON", "AS", "DISTINCT", "AND", "OR", "NOT", "IN", "EXISTS",
+  "BETWEEN", "LIKE", "IS", "NULL", "CASE", "WHEN", "THEN", "ELSE", "END", "CREATE", "ALTER", "DROP",
+  "TABLE", "INDEX", "VIEW", "TABLESPACE", "DATABASE", "STOGROUP", "SEQUENCE", "TRIGGER",
+  "PROCEDURE", "FUNCTION", "ALIAS", "SYNONYM", "GRANT", "REVOKE", "TO", "PUBLIC", "COMMENT",
+  "LABEL", "RENAME", "COMMIT", "ROLLBACK", "SAVEPOINT", "DECLARE", "CURSOR", "OPEN", "FETCH",
+  "CLOSE", "FOR", "ONLY", "READ", "FIRST", "ROWS", "ROW", "WITH", "HOLD", "UR", "CS", "RS", "RR",
+  "LOCK", "SHARE", "EXCLUSIVE", "MODE", "PRIMARY", "FOREIGN", "KEY", "REFERENCES", "UNIQUE",
+  "DEFAULT", "CONSTRAINT", "CHECK", "ASC", "DESC", "CALL", "BEGIN", "IF", "ELSEIF", "WHILE", "DO",
+  "LOOP", "REPEAT", "UNTIL", "LEAVE", "ITERATE", "RETURN", "RETURNS", "LANGUAGE", "SQL", "GLOBAL",
+  "TEMPORARY", "TRUNCATE", "EXPLAIN", "CONNECT", "CURRENT", "OPTIMIZE", "USING", "INCLUDE",
+  "CHAR", "VARCHAR", "DECIMAL", "INTEGER", "SMALLINT", "BIGINT", "DATE", "TIME", "TIMESTAMP",
+  "GRAPHIC", "VARGRAPHIC", "BLOB", "CLOB", "DBCLOB", "FLOAT", "DOUBLE", "REAL", "NUMERIC",
+];
+
+/**
+ * The Db2 SQL script grammar: `--` and block comments, literals in apostrophes, host variables after
+ * a colon, and the statement and clause keywords.
+ */
+export function sqlLanguage(): MonarchLanguage {
+  return {
+    ignoreCase: true,
+    defaultToken: "identifier",
+    keywords: [...SQL_KEYWORDS],
+    tokenizer: {
+      root: [
+        [/--.*$/, "comment"],
+        [/\/\*/, { token: "comment", next: "@comment" }],
+        [/'([^']|'')*'/, "string"],
+        [/:[A-Za-z#@$][A-Za-z0-9#@$_-]*/, "identifier.name"],
+        [/\d+(\.\d+)?/, "number"],
+        [
+          new RegExp(`[A-Za-z#@$_${WIDE}][A-Za-z0-9#@$_${WIDE}]*`),
+          { cases: { "@keywords": "keyword", "@default": "identifier" } },
+        ],
+        [/[.,;()]/, "delimiter"],
+        [/[*/+=<>|!-]+/, "operator"],
+        [/\s+/, "white"],
+        [/./, "identifier"],
+      ],
+      comment: [
+        [/\*\//, { token: "comment", next: "@pop" }],
+        [/./, "comment"],
       ],
     },
   };
@@ -391,14 +522,31 @@ export function cobolInsightTheme(theme: ThemeName): MonacoThemeData {
   };
 }
 
+/** The extensions of each language other than COBOL, in step with the engine's AssetKind table. */
+const LANGUAGE_BY_EXTENSION: Readonly<Record<string, string>> = {
+  jcl: LANGUAGE_ID.jcl,
+  job: LANGUAGE_ID.jcl,
+  prc: LANGUAGE_ID.jcl,
+  bms: LANGUAGE_ID.bms,
+  map: LANGUAGE_ID.bms,
+  ezt: LANGUAGE_ID.easytrieve,
+  ezy: LANGUAGE_ID.easytrieve,
+  ezp: LANGUAGE_ID.easytrieve,
+  easy: LANGUAGE_ID.easytrieve,
+  sql: LANGUAGE_ID.sql,
+  ddl: LANGUAGE_ID.sql,
+  dml: LANGUAGE_ID.sql,
+  spufi: LANGUAGE_ID.sql,
+  dbd: LANGUAGE_ID.ims,
+  psb: LANGUAGE_ID.ims,
+};
+
 /** The language a path is opened in. Anything not recognised is shown as fixed-format COBOL. */
 export function languageIdFor(path: string): string {
   const extension = path.slice(path.lastIndexOf(".") + 1).toLowerCase();
-  if (extension === "jcl" || extension === "job" || extension === "prc") {
-    return LANGUAGE_ID.jcl;
-  }
-  if (extension === "bms" || extension === "map") {
-    return LANGUAGE_ID.bms;
+  const language = LANGUAGE_BY_EXTENSION[extension];
+  if (language !== undefined) {
+    return language;
   }
   if (extension === "json") {
     return LANGUAGE_ID.json;

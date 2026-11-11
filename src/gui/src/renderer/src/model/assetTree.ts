@@ -10,7 +10,15 @@ import type { AssetInventoryItem, SarifFinding } from "../../../shared/ipc";
  * The asset-kind filter value. Held as a code: storing the display name
  * would break the filter the moment the wording changed.
  */
-export type AssetTypeCode = "cobol" | "copybook" | "jcl" | "bms" | "sql" | "other";
+export type AssetTypeCode =
+  | "cobol"
+  | "copybook"
+  | "jcl"
+  | "bms"
+  | "sql"
+  | "easytrieve"
+  | "ims"
+  | "other";
 
 /** The filter selection; "all" lets every kind through. */
 export type AssetTypeFilter = "all" | AssetTypeCode;
@@ -23,6 +31,8 @@ export const ASSET_TYPE_FILTERS: readonly AssetTypeFilter[] = [
   "jcl",
   "bms",
   "sql",
+  "easytrieve",
+  "ims",
   "other",
 ];
 
@@ -39,6 +49,12 @@ export function assetTypeOf(nodeType: string): AssetTypeCode {
       return "bms";
     case "SQL":
       return "sql";
+    case "EASYTRIEVE":
+      return "easytrieve";
+    // The two IMS generations carry the kind of the graph node they stand for.
+    case "IMS_DATABASE":
+    case "IMS_PSB":
+      return "ims";
     default:
       return "other";
   }

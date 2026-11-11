@@ -55,7 +55,8 @@ export function RuleDetail({ ruleId }: RuleDetailProps): ReactElement {
           <span className={`codicon codicon-${SEVERITY_ICON[severity]}`} aria-hidden="true" />
           {text.severity[severity]}
         </span>
-        <span className="ci-badge">{entry.category}</span>
+        {entry.technology === "" ? null : <span className="ci-badge">{entry.technology}</span>}
+        <span className="ci-badge ci-badge--other">{entry.category}</span>
         <span className={`ci-badge ci-badge--${entry.source === "user" ? "copybook" : "other"}`}>
           {entry.source === "user" ? text.rules.user : text.rules.builtin}
         </span>
@@ -63,6 +64,7 @@ export function RuleDetail({ ruleId }: RuleDetailProps): ReactElement {
       </header>
 
       {section(text.rules.detailSummary, entry.summary)}
+      {entry.symptom === "" ? null : section(text.rules.detailSymptom, entry.symptom)}
       {section(text.rules.detailRationale, entry.rationale)}
       {section(text.rules.detailDetection, entry.detection)}
       {section(text.rules.detailRemedy, entry.remedy)}
