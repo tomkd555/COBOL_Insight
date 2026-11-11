@@ -35,7 +35,8 @@ public final class Pipelines {
 
     /** What {@code lint} looks at: every kind a bug-detection rule targets. */
     private static final Set<AssetKind> LINTABLE = EnumSet.of(AssetKind.COBOL,
-            AssetKind.COPYBOOK, AssetKind.BMS, AssetKind.JCL, AssetKind.SQL);
+            AssetKind.COPYBOOK, AssetKind.BMS, AssetKind.JCL, AssetKind.SQL,
+            AssetKind.EASYTRIEVE, AssetKind.IMS_DBD, AssetKind.IMS_PSB);
 
     private static final Set<AssetKind> COBOL_ONLY = EnumSet.of(AssetKind.COBOL);
 
@@ -90,8 +91,9 @@ public final class Pipelines {
     }
 
     /**
-     * {@code lint}: bug detection over COBOL, copybooks, BMS and JCL, and SQL advice over the
-     * embedded SQL of the COBOL sources, kept apart so each is written to its own SARIF file.
+     * {@code lint}: bug detection over every kind of asset the walk takes in — COBOL, copybooks,
+     * BMS, JCL, SQL scripts, Easytrieve and the IMS generations — and SQL advice over the SQL of
+     * the programs and scripts, kept apart so each is written to its own SARIF file.
      */
     public static SourceSet lint(Path inputDir, List<Path> copybookPaths,
             Map<String, String> codepages, RuleSet ruleSet) {

@@ -17,7 +17,9 @@ import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.source.SourceRange;
@@ -51,7 +53,9 @@ import jp.cobolinsight.rules.dataflow.DataFlowSupport.Section;
  */
 public final class UninitializedVariableRule implements Rule {
 
-    private static final RuleMeta META = RuleMeta.named("R001", "未初期化のデータ項目の参照", "データフロー")
+    private static final RuleMeta META = RuleMeta.named("R001", "未初期化のデータ項目の参照", RuleCategory.INTEGRITY)
+            .technology(Technology.COBOL)
+            .symptom("S0C7・不定値の参照")
             .summary("値を設定する前に参照し得るデータ項目を検出します。")
             .rationale("記憶域に残った値をそのまま使うため、"
                     + "実行のたびに結果が変わり、再現しない不具合になります。")

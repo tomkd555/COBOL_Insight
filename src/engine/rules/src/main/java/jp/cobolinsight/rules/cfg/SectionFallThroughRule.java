@@ -11,7 +11,9 @@ import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
@@ -32,7 +34,9 @@ public final class SectionFallThroughRule implements Rule {
     }
 
     private static final RuleMeta META = RuleMeta
-            .named("R014", "節末尾の EXIT 文欠如", "制御フロー")
+            .named("R014", "節末尾の EXIT 文欠如", RuleCategory.INTEGRITY)
+            .technology(Technology.COBOL)
+            .symptom("意図しない節の実行")
             .summary("末尾が EXIT 文・終了文・無条件の GO TO 文のいずれでもなく、"
                     + "次の節へ制御が移る節を検出します。")
             .rationale("PERFORM 文で呼び出す設計の節が、直接実行されたときに次の節まで続けて"

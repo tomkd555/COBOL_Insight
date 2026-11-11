@@ -5,7 +5,9 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.spi.AnalysisContext;
 import jp.cobolinsight.core.sql.SqlStatementKind;
@@ -28,7 +30,8 @@ import java.util.List;
 public final class SchemaQualifiedTableRule implements Rule {
 
     private static final RuleMeta META =
-            RuleMeta.named("R058", "スキーマ名で修飾した表の参照", "可読性・保守性")
+            RuleMeta.named("R058", "スキーマ名で修飾した表の参照", RuleCategory.MAINTAINABILITY)
+            .technology(Technology.DB2)
             .summary("DECLARE TABLE 以外の SQL 文で、"
                     + "スキーマ名を付けて表を参照しているものを検出します。")
             .rationale("プログラムが 1 つの Db2 サブシステムに固定され、"
@@ -49,7 +52,7 @@ public final class SchemaQualifiedTableRule implements Rule {
             .severity(Severity.LOW)
             .defaultEnabled(false)
             .commands(Command.LINT)
-            .targets(AssetKind.COBOL, AssetKind.SQL)
+            .targets(AssetKind.COBOL, AssetKind.SQL, AssetKind.EASYTRIEVE)
             .needs(Needs.SQL)
             .build();
 

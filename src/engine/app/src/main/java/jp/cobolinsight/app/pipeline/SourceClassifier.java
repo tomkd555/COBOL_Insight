@@ -20,7 +20,10 @@ import java.util.regex.Pattern;
  * would produce a loss the user could not otherwise explain.
  *
  * <p><b>Which kind wins.</b> A marker that cannot belong to another kind decides on the spot: JCL's
- * {@code //} statement, BMS's DFHMSD macro, COBOL's DIVISION and PROGRAM-ID. SQL is decided last and
+ * {@code //} statement, BMS's DFHMSD macro, the DBD and PCB macros of an IMS generation, COBOL's
+ * DIVISION and PROGRAM-ID, and the JOB INPUT, SORT … TO … USING and FILE … FB(…) statements of
+ * Easytrieve. An Easytrieve source that writes none of those three is decided at the end from a
+ * FILE and a JOB statement between them, the way a copybook is decided from its level number. SQL is decided last and
  * only from the first significant line, so a {@code .sql} file holding COBOL or JCL stays COBOL or
  * JCL — the marker of either appears somewhere in it and takes the decision before the end is
  * reached. A copybook is decided the same way, from the level number on its first significant line.
@@ -66,6 +69,54 @@ final class SourceClassifier {
     /** A BMS macro call. The name field may be empty. */
     private static final Pattern BMS_MACRO =
             Pattern.compile("^\\S*\\s+DFH(MSD|MDI|MDF)\\b", Pattern.CASE_INSENSITIVE);
+
+    /** The DBD statement that opens an IMS DBDGEN source. The label field may be empty. */
+    private static final Pattern DBD_MACRO =
+            Pattern.compile("^\\S*\\s+DBD\\s+NAME=", Pattern.CASE_INSENSITIVE);
+
+    /** A PCB statement, or the PSBGEN that closes the source, of an IMS PSBGEN source. */
+    private static final Pattern PSB_MACRO =
+            Pattern.compile("^\\S*\\s+(PCB\\s+TYPE=|PSBGEN(\\s|$))", Pattern.CASE_INSENSITIVE);
+
+    /**
+     * A statement only Easytrieve writes: a JOB activity with its INPUT, a SORT activity, or a FILE
+     * statement carrying a record format. Any one of them decides, because none of the three is a
+     * line another kind could begin with: COBOL and JCL have declared themselves by the time such
+     * a line is reached, and a copybook or an SQL script has no such line at all.
+     */
+    private static final Pattern EASYTRIEVE_STATEMENT = Pattern.compile(
+            "^\\s*(JOB\\s+INPUT(\\s|$)|SORT\\s+\\S+\\s+TO\\s+\\S+\\s+USING(\\s|$)"
+                    + "|FILE\\s+[A-Z@#$][A-Z0-9@#$_-]*\\s+(?:FB|VB|VBS|F|V|U)\\s*\\()",
+            Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Weaker Easytrieve evidence, which takes two lines to decide: a FILE statement and a JOB
+     * activity. Each has to be a whole statement of the language — FILE with a name and nothing
+     * after it but the attributes a FILE statement takes, JOB alone or with one of its own
+     * keywords — because a line of prose can begin with either word, and so can the FILE SECTION,
+     * FILE STATUS and FILE-CONTROL of COBOL.
+     */
+    private static final Pattern EASYTRIEVE_FILE = Pattern.compile(
+            "^\\s*FILE\\s+[A-Z@#$][A-Z0-9@#$_-]{0,39}(\\s+(VS|IS|SQL|DLI|IDMS|VIRTUAL|PRINTER|PUNCH"
+                    + "|CARD|TABLE|EXIT|SEQUENTIAL|RETAIN|DEFER|ASA|BUFNO|WORKAREA|EXTENDED"
+                    + "|SYS[0-9]+|F|V|U|FB|VB|VBS)\\b.*)?\\s*$");
+    private static final Pattern EASYTRIEVE_JOB = Pattern.compile(
+            "^\\s*JOB(\\s+(INPUT|NAME|START|FINISH|COMMIT|ENVIRONMENT|ACTIVITY|TERMINAL)\\b.*)?"
+                    + "\\s*\\.?\\s*$");
+
+    /** The COBOL phrases that begin with FILE and are no Easytrieve FILE statement. */
+    private static final Pattern COBOL_FILE_PHRASE =
+            Pattern.compile("^\\s*FILE\\s+(SECTION|STATUS|CONTROL)\\b");
+
+    /**
+     * What an Easytrieve source opens with when it is not a FILE statement: the PARM statement of a
+     * program, or the prototype of a macro member, which starts in column 1 (an assembler macro
+     * definition writes the word in the operation field, never there).
+     */
+    private static final Pattern EASYTRIEVE_PARM =
+            Pattern.compile("^\\s*PARM\\s+\\S", Pattern.CASE_INSENSITIVE);
+    private static final Pattern EASYTRIEVE_MACRO =
+            Pattern.compile("^MACRO(\\s|$)", Pattern.CASE_INSENSITIVE);
 
     /**
      * The keyword that names a COBOL main body. Distinguishing it from a copybook is unified
@@ -139,6 +190,10 @@ final class SourceClassifier {
         String text = decode(content);
         Boolean firstSignificantIsLevelNumber = null;
         boolean firstSignificantIsSqlStatement = false;
+        boolean opensLikeEasytrieve = false;
+        boolean opensWithMacroPrototype = false;
+        boolean easytrieveFile = false;
+        boolean easytrieveJob = false;
         int from = 0;
         int blockCommentEnd = 0;
         while (from <= text.length()) {
@@ -161,6 +216,16 @@ final class SourceClassifier {
                     firstSignificantIsLevelNumber =
                             LEVEL_NUMBER.matcher(FixedFormatColumns.body(line)).find();
                     firstSignificantIsSqlStatement = SQL_STATEMENT.matcher(line).find();
+                    opensLikeEasytrieve = EASYTRIEVE_PARM.matcher(line).find();
+                    opensWithMacroPrototype = EASYTRIEVE_MACRO.matcher(line).find();
+                }
+                if (isSignificant(line)) {
+                    // Columns 1 to 72, as the language reads a line: 73 onwards is the sequence
+                    // number, and the two statements are written in upper case.
+                    String statement = line.length() > 72 ? line.substring(0, 72) : line;
+                    easytrieveFile |= EASYTRIEVE_FILE.matcher(statement).find()
+                            && !COBOL_FILE_PHRASE.matcher(statement).find();
+                    easytrieveJob |= EASYTRIEVE_JOB.matcher(statement).find();
                 }
             }
             if (breakAt < 0) {
@@ -171,6 +236,13 @@ final class SourceClassifier {
         // If the keyword naming a COBOL main body never appears through to the end, and the first significant line starts with a level number, it is a copybook.
         if (Boolean.TRUE.equals(firstSignificantIsLevelNumber)) {
             return Verdict.of(AssetKind.COPYBOOK);
+        }
+        // An Easytrieve source that wrote none of its unmistakable statements: a FILE and a JOB
+        // between them, a PARM in front of either, or the prototype of a macro member.
+        if ((easytrieveFile && easytrieveJob)
+                || (opensLikeEasytrieve && (easytrieveFile || easytrieveJob))
+                || opensWithMacroPrototype) {
+            return Verdict.of(AssetKind.EASYTRIEVE);
         }
         // The same reading for an SQL script, and one signal more: SET and CALL open an IDCAMS
         // control card and a batch script as readily as a statement, so the file also has to end a
@@ -217,8 +289,17 @@ final class SourceClassifier {
         if (BMS_MACRO.matcher(line).find()) {
             return Verdict.of(AssetKind.BMS);
         }
+        if (DBD_MACRO.matcher(line).find()) {
+            return Verdict.of(AssetKind.IMS_DBD);
+        }
+        if (PSB_MACRO.matcher(line).find()) {
+            return Verdict.of(AssetKind.IMS_PSB);
+        }
         if (COBOL_MARKER.matcher(FixedFormatColumns.body(line)).find()) {
             return Verdict.of(AssetKind.COBOL);
+        }
+        if (EASYTRIEVE_STATEMENT.matcher(line).find()) {
+            return Verdict.of(AssetKind.EASYTRIEVE);
         }
         return Verdict.UNDECIDED;
     }

@@ -25,13 +25,18 @@ public record Rules(Command command) implements Step {
     @Override
     public void apply(SourceSet s) {
         AnalysisContext context = contextOf(s);
-        Set<String> scripts = scriptFiles(s);
+        Set<String> scripts = filesOf(s, AssetKind.SQL);
+        Set<String> easytrieve = filesOf(s, AssetKind.EASYTRIEVE);
         List<Finding> into = s.ruleFindings(command);
         for (Rule rule : s.rulesFor(command)) {
             boolean judgesScripts = rule.meta().targets().contains(AssetKind.SQL);
+            boolean judgesEasytrieve = rule.meta().targets().contains(AssetKind.EASYTRIEVE);
             FixProducer producer = rule.fix().orElse(null);
             for (Finding finding : rule.evaluate(context)) {
                 if (!judgesScripts && scripts.contains(finding.location().file())) {
+                    continue;
+                }
+                if (!judgesEasytrieve && easytrieve.contains(finding.location().file())) {
                     continue;
                 }
                 into.add(producer == null ? finding : withFix(finding, producer, context));
@@ -40,14 +45,15 @@ public record Rules(Command command) implements Step {
     }
 
     /**
-     * The SQL scripts of the walk, by the path a finding's location names. A rule states the asset
-     * kinds it judges, and every rule that reads the SQL statements sees a script's statements
-     * beside a program's, because the two stand in one list. Dropping the findings that land on a
-     * script here keeps that scoping in one place instead of in every rule.
+     * The files of one kind, by the path a finding's location names. A rule states the asset kinds
+     * it judges, and every rule that reads the SQL statements sees the statements of a script and
+     * of an Easytrieve program beside those of a COBOL program, because they stand in one list.
+     * Dropping the findings that land on a kind the rule does not target here keeps that scoping
+     * in one place instead of in every rule.
      */
-    private static Set<String> scriptFiles(SourceSet s) {
+    private static Set<String> filesOf(SourceSet s, AssetKind kind) {
         Set<String> files = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-        for (SourceUnit unit : s.unitsOf(AssetKind.SQL)) {
+        for (SourceUnit unit : s.unitsOf(kind)) {
             files.add(unit.absPath().toString());
             files.add(unit.relPath());
         }

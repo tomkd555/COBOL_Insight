@@ -31,6 +31,10 @@ function toEntry(value: unknown): RuleCatalogEntry | null {
     id,
     name: asString(prop(value, "name")) ?? "",
     category: asString(prop(value, "category")) ?? "",
+    // The engine sends the name it shows (Db2, ユーティリティ) beside its own constant; an engine
+    // older than the field sends neither, and the rule is then listed under its category.
+    technology: asString(prop(value, "technologyLabel")) ?? asString(prop(value, "technology")) ?? "",
+    symptom: asString(prop(value, "symptom")) ?? "",
     severity: asString(prop(value, "severity")) ?? "MEDIUM",
     hasFix: prop(value, "hasFix") === true,
     source: prop(value, "source") === "user" ? "user" : "builtin",

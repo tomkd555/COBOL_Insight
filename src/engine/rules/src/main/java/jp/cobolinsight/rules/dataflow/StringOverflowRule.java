@@ -11,7 +11,9 @@ import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
@@ -43,7 +45,9 @@ public final class StringOverflowRule implements Rule {
                     + "|(?i)\\bTALLYING\\s+IN\\s+[\\p{L}\\p{N}$#_-]+");
 
     private static final RuleMeta META =
-            RuleMeta.named("R016", "STRING/UNSTRING 文の受け取り側項目のあふれ", "データ移動")
+            RuleMeta.named("R016", "STRING/UNSTRING 文の受け取り側項目のあふれ", RuleCategory.INTEGRITY)
+            .technology(Technology.COBOL)
+            .symptom("文字列の欠落")
                     .summary("STRING の連結結果が受け取り側項目に収まらない、または UNSTRING の"
                             + "送り出し側項目が受け取り側項目群に収まらない構成を検出します。")
                     .rationale("収まらない分が切り捨てられ、"

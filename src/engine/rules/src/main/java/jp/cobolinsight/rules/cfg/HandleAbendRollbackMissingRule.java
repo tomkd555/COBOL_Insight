@@ -5,7 +5,9 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.EmbeddedBlock;
 import jp.cobolinsight.core.semantic.EmbeddedBlockKind;
@@ -37,7 +39,9 @@ import java.util.Set;
 public final class HandleAbendRollbackMissingRule implements Rule {
 
     private static final RuleMeta META =
-            RuleMeta.named("R043", "SYNCPOINT ROLLBACK のない HANDLE ABEND の出口", "CICS")
+            RuleMeta.named("R043", "SYNCPOINT ROLLBACK のない HANDLE ABEND の出口", RuleCategory.INTEGRITY)
+            .technology(Technology.CICS)
+            .symptom("中途半端な更新の確定")
                     .summary("EXEC CICS HANDLE ABEND の LABEL が示す段落のうち、"
                             + "取り消しも異常終了もしないものを検出します。")
                     .rationale("異常終了までの更新が取り消されないまま同期点に達し、"

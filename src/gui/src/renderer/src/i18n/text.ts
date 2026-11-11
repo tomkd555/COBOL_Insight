@@ -22,6 +22,10 @@ const RULE_TARGETS: Readonly<Record<string, string>> = {
   COPYBOOK: "コピー句",
   JCL: "JCL",
   BMS: "BMS",
+  SQL: "SQLスクリプト",
+  EASYTRIEVE: "Easytrieve",
+  IMS_DBD: "IMS DBD",
+  IMS_PSB: "IMS PSB",
 };
 
 /** The labels of the flow kinds, which the source view's legend and the call graph's trace tree share. */
@@ -120,6 +124,8 @@ export const text = {
     jcl: "JCL",
     bms: "BMS",
     sql: "SQLスクリプト",
+    easytrieve: "Easytrieve",
+    ims: "IMS（DBD・PSB）",
     other: "その他",
   },
 
@@ -314,6 +320,9 @@ export const text = {
       DB2_TABLE: "Db2表",
       TRANSACTION: "トランザクション",
       BMS_MAP: "BMSマップ",
+      IMS_PSB: "IMS PSB",
+      IMS_DATABASE: "IMSデータベース",
+      MQ_QUEUE: "MQキュー",
       EXTERNAL_UTILITY: "外部ユーティリティ",
       UNRESOLVED: "未解決",
       UNANALYZABLE: "解析不能",
@@ -448,6 +457,7 @@ export const text = {
     severityLabel: (id: string): string => `${id} の重大度`,
     severityDefault: "既定",
     detailSummary: "検出する内容",
+    detailSymptom: "障害の現れ方",
     detailRationale: "なぜ問題か",
     detailDetection: "検出条件",
     detailRemedy: "直し方",

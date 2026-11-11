@@ -4,6 +4,10 @@ import jp.cobolinsight.core.bms.BmsMapset;
 import jp.cobolinsight.core.callgraph.CallGraph;
 import jp.cobolinsight.core.cfg.ControlFlowGraphs;
 import jp.cobolinsight.core.dataflow.DataFlowFacts;
+import jp.cobolinsight.core.easytrieve.EasytrieveProgram;
+import jp.cobolinsight.core.ims.ImsDbd;
+import jp.cobolinsight.core.ims.ImsPsb;
+import jp.cobolinsight.core.spi.MiddlewareAssets;
 import jp.cobolinsight.core.finding.Finding;
 import jp.cobolinsight.core.jcl.JclJobModel;
 import jp.cobolinsight.core.rule.Command;
@@ -84,6 +88,13 @@ public final class SourceSet {
     private final Map<String, List<JclJobModel>> jobsByPath = new TreeMap<>();
     private final Map<String, List<BmsMapset>> mapsetsByPath = new TreeMap<>();
     private final Map<String, List<SqlStatementModel>> sqlByPath = new TreeMap<>();
+    /**
+     * The Easytrieve programs of each file: the one program of an Easytrieve member, or the
+     * in-stream programs of the steps of a JCL file, in step order.
+     */
+    private final Map<String, List<EasytrieveProgram>> easytrieveByPath = new TreeMap<>();
+    private final Map<String, List<ImsDbd>> dbdsByPath = new TreeMap<>();
+    private final Map<String, List<ImsPsb>> psbsByPath = new TreeMap<>();
     /** The routines the SQL scripts of the walk define, in the order the scripts write them. */
     private final List<SqlRoutineDefinition> sqlRoutines = new ArrayList<>();
     /** Assets whose bytes could not be decoded or parsed, and why. Isolated nodes in the graph. */
@@ -227,6 +238,52 @@ public final class SourceSet {
         return sqlByPath;
     }
 
+    public Map<String, List<EasytrieveProgram>> easytrieveByPath() {
+        return easytrieveByPath;
+    }
+
+    public List<EasytrieveProgram> easytrievePrograms() {
+        List<EasytrieveProgram> all = new ArrayList<>();
+        easytrieveByPath.values().forEach(all::addAll);
+        return all;
+    }
+
+    public Map<String, List<ImsDbd>> dbdsByPath() {
+        return dbdsByPath;
+    }
+
+    public Map<String, List<ImsPsb>> psbsByPath() {
+        return psbsByPath;
+    }
+
+    /** What the rules and the linker read of the Easytrieve programs and the IMS generations. */
+    public MiddlewareAssets middlewareAssets() {
+        List<ImsDbd> dbds = new ArrayList<>();
+        dbdsByPath.values().forEach(dbds::addAll);
+        List<ImsPsb> psbs = new ArrayList<>();
+        psbsByPath.values().forEach(psbs::addAll);
+        return new MiddlewareAssets(easytrievePrograms(), dbds, psbs);
+    }
+
+    /**
+     * The SQL statements of the Easytrieve programs, keyed by program name, which is how the
+     * linker asks for the tables a program touches. An in-stream program is left out: its tables
+     * are booked on the step that runs it.
+     */
+    public Map<String, List<SqlStatementModel>> sqlByEasytrieveProgram() {
+        Map<String, List<SqlStatementModel>> byProgram = new TreeMap<>();
+        for (SourceUnit unit : unitsOf(AssetKind.EASYTRIEVE)) {
+            List<SqlStatementModel> statements = sqlByPath.get(unit.relPath());
+            List<EasytrieveProgram> programs = easytrieveByPath.get(unit.relPath());
+            if (statements != null && !statements.isEmpty() && programs != null
+                    && !programs.isEmpty()) {
+                byProgram.computeIfAbsent(programs.get(0).name(), key -> new ArrayList<>())
+                        .addAll(statements);
+            }
+        }
+        return byProgram;
+    }
+
     /** SQL statements grouped by PROGRAM-ID, which is how the linker asks for them. */
     public Map<String, List<SqlStatementModel>> sqlByProgramId() {
         Map<String, List<SqlStatementModel>> byProgramId = new TreeMap<>();
@@ -336,6 +393,7 @@ public final class SourceSet {
         Map<Class<?>, Object> all = new LinkedHashMap<>(artifacts);
         all.put(ControlFlowGraphs.class, graphs);
         all.put(DataFlowFacts.class, facts);
+        all.put(MiddlewareAssets.class, middlewareAssets());
         return all;
     }
 }

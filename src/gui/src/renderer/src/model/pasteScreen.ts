@@ -1070,6 +1070,7 @@ const PLAIN: ScreenPaste = {
   conflicts: 0,
   unnumbered: 0,
   hidden: 0,
+  kinds: [],
 };
 
 /**
@@ -1082,8 +1083,9 @@ export function normalizeScreenPaste(text: string, forced?: PanelKind): ScreenPa
 
   const head: string[] = [];
   const titled: Segment[] = [];
-  for (const row of all) {
-    const title = titleOf(row);
+  for (const [index, row] of all.entries()) {
+    // The rows around a title row decide whether it is one, so it is asked with the whole text.
+    const title = titleOf(all, index);
     if (title !== null) {
       dropPanelHead(titled.length === 0 ? head : (titled[titled.length - 1] as Segment).rows, tally);
       titled.push({ ...title, rows: [] });
@@ -1193,5 +1195,7 @@ export function normalizeScreenPaste(text: string, forced?: PanelKind): ScreenPa
     conflicts: merged.conflicts,
     unnumbered: tally.unnumbered,
     hidden,
+    // A Map keeps its keys in the order they were first set, which is the order the kinds appear.
+    kinds: [...blocks.keys()],
   };
 }

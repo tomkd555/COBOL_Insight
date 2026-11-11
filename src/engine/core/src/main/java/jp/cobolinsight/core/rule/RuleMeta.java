@@ -11,8 +11,13 @@ import java.util.Set;
  * CLI {@code rules} subcommand, the SARIF rule table and the GUI catalogue all read it from here.
  *
  * <p>Examples ({@code badExample}, {@code goodExample}) may be empty because some rules have no
- * short contrasting pair. Every other text field is required and rejected while blank, so a rule
+ * short contrasting pair, and so may {@code symptom}, because not every defect has a code an
+ * operator would recognise. Every other text field is required and rejected while blank, so a rule
  * without a description cannot be added.
+ *
+ * <p>{@code category} says what goes wrong in production ({@link RuleCategory}) and
+ * {@code technology} which language or middleware the rule is about; the two together are how the
+ * catalogue is filtered.
  */
 public record RuleMeta(
         String id,
@@ -28,7 +33,9 @@ public record RuleMeta(
         boolean defaultEnabled,
         Set<Command> commands,
         Set<AssetKind> targets,
-        Set<Needs> needs) {
+        Set<Needs> needs,
+        Technology technology,
+        String symptom) {
 
     public RuleMeta {
         id = requireText(id, "id");
@@ -46,6 +53,53 @@ public record RuleMeta(
         commands = Set.copyOf(commands);
         targets = Set.copyOf(targets);
         needs = Set.copyOf(needs);
+        if (technology == null) {
+            technology = technologyOf(targets);
+        }
+        symptom = symptom == null ? "" : symptom.strip();
+    }
+
+    /** A rule that states neither its technology nor a symptom: what was declared before both existed. */
+    public RuleMeta(String id, String name, String category, String summary, String rationale,
+            String detection, String remedy, String badExample, String goodExample,
+            Severity defaultSeverity, boolean defaultEnabled, Set<Command> commands,
+            Set<AssetKind> targets, Set<Needs> needs) {
+        this(id, name, category, summary, rationale, detection, remedy, badExample, goodExample,
+                defaultSeverity, defaultEnabled, commands, targets, needs, null, "");
+    }
+
+    /**
+     * The technology a rule that names none is about, read off the asset kinds it targets. A rule
+     * that targets COBOL beside another kind is taken for a COBOL rule, because every rule about a
+     * middleware states its technology itself.
+     */
+    private static Technology technologyOf(Set<AssetKind> targets) {
+        if (targets.contains(AssetKind.COBOL) || targets.contains(AssetKind.COPYBOOK)) {
+            return Technology.COBOL;
+        }
+        if (targets.contains(AssetKind.JCL)) {
+            return Technology.JCL;
+        }
+        if (targets.contains(AssetKind.EASYTRIEVE)) {
+            return Technology.EASYTRIEVE;
+        }
+        if (targets.contains(AssetKind.SQL)) {
+            return Technology.DB2;
+        }
+        if (targets.contains(AssetKind.BMS)) {
+            return Technology.CICS;
+        }
+        if (targets.contains(AssetKind.IMS_DBD) || targets.contains(AssetKind.IMS_PSB)) {
+            return Technology.IMS;
+        }
+        return Technology.COBOL;
+    }
+
+    /** The same rule at another severity, which is what a severity override of the rules file makes. */
+    public RuleMeta withSeverity(Severity severity) {
+        return new RuleMeta(id, name, category, summary, rationale, detection, remedy, badExample,
+                goodExample, severity, defaultEnabled, commands, targets, needs, technology,
+                symptom);
     }
 
     /** Whether both halves of a contrasting example are present; one half alone is no contrast. */
@@ -85,6 +139,8 @@ public record RuleMeta(
         private Set<Command> commands = Set.of();
         private Set<AssetKind> targets = Set.of();
         private Set<Needs> needs = Set.of();
+        private Technology technology;
+        private String symptom = "";
 
         private Builder(String id, String name, String category) {
             this.id = id;
@@ -163,10 +219,25 @@ public record RuleMeta(
             return this;
         }
 
+        /** The language or middleware the rule is about. Left out, the targets decide it. */
+        public Builder technology(Technology value) {
+            this.technology = value;
+            return this;
+        }
+
+        /**
+         * How the defect shows itself in production, in the words of the message or code an
+         * operator sees: an abend code, an SQLCODE, a JCL message. Empty when it has no such name.
+         */
+        public Builder symptom(String value) {
+            this.symptom = value;
+            return this;
+        }
+
         public RuleMeta build() {
             return new RuleMeta(id, name, category, summary, rationale, detection, remedy,
                     badExample, goodExample, defaultSeverity, defaultEnabled, commands, targets,
-                    needs);
+                    needs, technology, symptom);
         }
     }
 }

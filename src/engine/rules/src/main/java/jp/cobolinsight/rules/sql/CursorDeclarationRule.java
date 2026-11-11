@@ -5,7 +5,9 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.spi.AnalysisContext;
 import jp.cobolinsight.core.sql.CursorSignals;
@@ -24,7 +26,9 @@ import java.util.List;
 public final class CursorDeclarationRule implements Rule {
 
     private static final RuleMeta META =
-            RuleMeta.named("S004", "読み取り専用指定のないカーソル宣言", "性能")
+            RuleMeta.named("S004", "読み取り専用指定のないカーソル宣言", RuleCategory.PERFORMANCE)
+            .technology(Technology.DB2)
+            .symptom("不要なロック・ブロックフェッチ不可")
                     .summary("更新を伴わないのに FOR READ ONLY・FOR FETCH ONLY の"
                             + "いずれも指定しないカーソル宣言を検出します。")
                     .rationale("更新可能カーソルとして扱われるため、"

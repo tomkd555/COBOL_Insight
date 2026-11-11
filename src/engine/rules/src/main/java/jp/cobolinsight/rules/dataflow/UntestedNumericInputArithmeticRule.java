@@ -7,7 +7,9 @@ import jp.cobolinsight.core.picture.Usage;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.CompoundStatement;
 import jp.cobolinsight.core.semantic.DataItem;
@@ -49,7 +51,9 @@ public final class UntestedNumericInputArithmeticRule implements Rule {
     private static final Pattern RELATION_OP = Pattern.compile("<>|>=|<=|[><=]");
 
     private static final RuleMeta META = RuleMeta
-            .named("R049", "字類検査を経ない入力数字項目の演算", "データ移動")
+            .named("R049", "字類検査を経ない入力数字項目の演算", RuleCategory.ABEND)
+            .technology(Technology.COBOL)
+            .symptom("S0C7")
             .summary("ファイル節または連絡節の USAGE DISPLAY 数字項目のうち、"
                     + "NUMERIC で検査せずに算術文または数値の比較条件に使っているものを検出します。")
             .rationale("レコードまたは呼び出し元から受け取った値がそのまま演算や比較に使われ、"

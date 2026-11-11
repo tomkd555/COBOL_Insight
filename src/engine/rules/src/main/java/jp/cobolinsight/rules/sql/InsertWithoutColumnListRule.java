@@ -5,7 +5,9 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.spi.AnalysisContext;
 import jp.cobolinsight.core.sql.SqlStatementKind;
@@ -26,7 +28,9 @@ import java.util.List;
 public final class InsertWithoutColumnListRule implements Rule {
 
     private static final RuleMeta META =
-            RuleMeta.named("R059", "列名を書かない INSERT", "可読性・保守性")
+            RuleMeta.named("R059", "列名を書かない INSERT", RuleCategory.MAINTAINABILITY)
+            .technology(Technology.DB2)
+            .symptom("列追加後の SQLCODE -117")
             .summary("挿入する列の一覧を書かない INSERT 文を検出します。")
             .rationale("値が表の列の順番で対応づけられるため、"
                     + "表に列を足しただけで別の列に値が入ります。")
@@ -45,7 +49,7 @@ public final class InsertWithoutColumnListRule implements Rule {
                     """)
             .severity(Severity.LOW)
             .commands(Command.LINT)
-            .targets(AssetKind.COBOL, AssetKind.SQL)
+            .targets(AssetKind.COBOL, AssetKind.SQL, AssetKind.EASYTRIEVE)
             .needs(Needs.SQL)
             .build();
 

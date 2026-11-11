@@ -14,6 +14,7 @@ import jp.cobolinsight.core.jcl.JclUtilityFacts.BindRequest;
 import jp.cobolinsight.core.jcl.JclUtilityFacts.DatasetAccess;
 import jp.cobolinsight.core.jcl.JclUtilityFacts.DatasetUse;
 import jp.cobolinsight.core.jcl.JclUtilityFacts.ProgramRun;
+import jp.cobolinsight.core.jcl.JclUtilityFacts.ResourceDefinition;
 import jp.cobolinsight.core.jcl.JclUtilityFacts.TableUse;
 
 /**
@@ -22,7 +23,9 @@ import jp.cobolinsight.core.jcl.JclUtilityFacts.TableUse;
  * <p>The program the step runs chooses the interpreter, and the program is the EXEC target after
  * the PROC expansion has settled it. A TSO launcher is the exception: the launcher is the target
  * and the program that does the work stands on a {@code RUN PROGRAM} card of SYSTSIN, so which
- * interpreter reads SYSIN is decided only once SYSTSIN has been read.
+ * interpreter reads SYSIN is decided only once SYSTSIN has been read. An IMS region controller is
+ * the other: the application it runs, and the PSB it runs it with, stand in the PARM of the EXEC
+ * statement rather than on any card.
  */
 public final class InStreamFacts {
 
@@ -53,8 +56,13 @@ public final class InStreamFacts {
         List<DatasetUse> datasetUses = new ArrayList<>();
         List<TableUse> tableUses = new ArrayList<>();
         Map<String, DatasetAccess> ddRoles = new LinkedHashMap<>();
+        List<ResourceDefinition> definitions = new ArrayList<>();
 
-        if (TsoCards.isLauncher(program)) {
+        if (ImsRegion.isRegionController(program)) {
+            ImsRegion.read(step).ifPresent(runs::add);
+        } else if (Csdup.PROGRAM.equals(program)) {
+            Csdup.read(UtilityDdRoles.cards(step, Csdup.CONTROL_DD), definitions);
+        } else if (TsoCards.isLauncher(program)) {
             TsoCards.read(UtilityDdRoles.cards(step, TsoCards.CONTROL_DD), runs, binds,
                     datasetUses, ddRoles);
             for (ProgramRun run : runs) {
@@ -78,6 +86,6 @@ public final class InStreamFacts {
         // The cards had the first word on the DD statements they name; the table and the DISP of
         // each remaining DD say what the step does with the rest.
         UtilityDdRoles.apply(program, step, ddRoles);
-        return new JclUtilityFacts(runs, binds, datasetUses, tableUses, ddRoles);
+        return new JclUtilityFacts(runs, binds, datasetUses, tableUses, ddRoles, definitions);
     }
 }

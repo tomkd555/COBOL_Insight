@@ -8,7 +8,9 @@ import jp.cobolinsight.core.jcl.JclStep;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.spi.AnalysisContext;
 
@@ -29,7 +31,9 @@ public final class JclDispositionRule implements Rule {
     private static final Set<String> KEPT = Set.of("CATLG", "KEEP");
 
     private static final RuleMeta META =
-            RuleMeta.named("R032", "JCL 新規データセットの異常終了時の処分未指定", "JCL制御")
+            RuleMeta.named("R032", "JCL 新規データセットの異常終了時の処分未指定", RuleCategory.OPERATION)
+            .technology(Technology.JCL)
+            .symptom("再実行時の重複データセット（IEF253I）")
             .summary("新規に割り当てるデータセットの DISP で、異常終了時の処分が未指定か"
                     + "CATLG・KEEP になっているものを検出します。")
             .rationale("ステップが異常終了するとデータセットがカタログされたまま残り、"

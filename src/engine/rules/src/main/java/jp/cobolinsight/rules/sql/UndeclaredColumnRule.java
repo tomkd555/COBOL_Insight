@@ -5,7 +5,9 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.spi.AnalysisContext;
 import jp.cobolinsight.core.sql.SqlColumnRef;
@@ -58,7 +60,9 @@ public final class UndeclaredColumnRule implements Rule {
             "(?i)\\bAS\\s+([\\p{L}\\p{N}$#@_]+)\\s*$");
 
     private static final RuleMeta META =
-            RuleMeta.named("R057", "宣言にない列の参照", "SQL")
+            RuleMeta.named("R057", "宣言にない列の参照", RuleCategory.ABEND)
+            .technology(Technology.DB2)
+            .symptom("SQLCODE -206（BIND エラー）")
             .summary("DECLARE TABLE・CREATE TABLE の列にない列名を参照する"
                     + "埋込みSQL文を検出します。")
             .rationale("プリコンパイルは通り、BIND か実行時に SQLCODE -206 で失敗します。")

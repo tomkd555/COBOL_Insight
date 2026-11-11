@@ -8,8 +8,12 @@ import jp.cobolinsight.core.callgraph.CallGraphNode;
 import jp.cobolinsight.core.callgraph.EdgeKind;
 import jp.cobolinsight.core.callgraph.NodeKind;
 import jp.cobolinsight.core.callgraph.Resolution;
+import jp.cobolinsight.core.easytrieve.EasytrieveFile;
+import jp.cobolinsight.core.easytrieve.EasytrieveProgram;
 import jp.cobolinsight.core.finding.Finding;
 import jp.cobolinsight.core.finding.FindingLevel;
+import jp.cobolinsight.core.ims.ImsDbd;
+import jp.cobolinsight.core.ims.ImsPsb;
 import jp.cobolinsight.core.jcl.JclDataset;
 import jp.cobolinsight.core.jcl.JclDdStatement;
 import jp.cobolinsight.core.jcl.JclExecKind;
@@ -106,6 +110,53 @@ public final class CallGraphLinker {
         return Set.copyOf(names);
     }
 
+    /** The resource listing the CALL targets that are entry points of a system service. */
+    private static final String SERVICES_RESOURCE = "services.txt";
+
+    /** Service entry point, or a prefix written {@code PREFIX*}, to the middleware that owns it. */
+    private static final Map<String, String> SYSTEM_SERVICES = readServices();
+
+    private static Map<String, String> readServices() {
+        Map<String, String> services = new TreeMap<>();
+        try (InputStream in = CallGraphLinker.class.getResourceAsStream(SERVICES_RESOURCE)) {
+            if (in == null) {
+                throw new IllegalStateException("missing resource: " + SERVICES_RESOURCE);
+            }
+            BufferedReader reader =
+                    new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
+            for (String line = reader.readLine(); line != null; line = reader.readLine()) {
+                String entry = line.strip();
+                int equals = entry.indexOf('=');
+                if (!entry.isEmpty() && !entry.startsWith("#") && equals > 0) {
+                    services.put(entry.substring(0, equals).strip().toUpperCase(Locale.ROOT),
+                            entry.substring(equals + 1).strip());
+                }
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("failed to read " + SERVICES_RESOURCE, e);
+        }
+        return Map.copyOf(services);
+    }
+
+    /**
+     * The middleware or runtime that owns a CALL target, empty for an application program: IMS for
+     * {@code CBLTDLI}, MQ for {@code MQGET}, LE for {@code CEEDAYS} and so on.
+     */
+    public static Optional<String> systemServiceOf(String target) {
+        String name = target.toUpperCase(Locale.ROOT);
+        String owner = SYSTEM_SERVICES.get(name);
+        if (owner != null) {
+            return Optional.of(owner);
+        }
+        for (Map.Entry<String, String> entry : SYSTEM_SERVICES.entrySet()) {
+            String key = entry.getKey();
+            if (key.endsWith("*") && name.startsWith(key.substring(0, key.length() - 1))) {
+                return Optional.of(entry.getValue());
+            }
+        }
+        return Optional.empty();
+    }
+
     /** DD names that designate a load library. Excluded from being the target of a dataset-reference edge. */
     private static final Set<String> LIBRARY_DD_NAMES = Set.of("STEPLIB", "JOBLIB");
 
@@ -122,6 +173,16 @@ public final class CallGraphLinker {
     private static final String TRANSACTION_ID_PREFIX = "transaction:";
     private static final String BMS_MAP_ID_PREFIX = "bmsmap:";
     private static final String DB2_TABLE_ID_PREFIX = "db2:";
+    private static final String SERVICE_ID_PREFIX = "service:";
+    private static final String IMS_PSB_ID_PREFIX = "imspsb:";
+    private static final String IMS_DATABASE_ID_PREFIX = "imsdb:";
+    private static final String MQ_QUEUE_ID_PREFIX = "mqqueue:";
+
+    /** {@code MOVE x TO …OBJECTNAME}: the queue name put into an MQ object descriptor. */
+    private static final Pattern MQ_OBJECT_NAME = Pattern.compile(
+            "^MOVE\\s+(\\S+)\\s+TO\\s+\\S*OBJECTNAME\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern MQ_OPEN_CALL = Pattern.compile(
+            "^CALL\\s+['\"]MQ(OPEN|PUT1)['\"]", Pattern.CASE_INSENSITIVE);
 
     private static final Pattern MOVE_LITERAL = Pattern.compile(
             "^MOVE\\s+(?:'([^']*)'|\"([^\"]*)\")\\s+TO\\s+(.+)$",
@@ -147,6 +208,10 @@ public final class CallGraphLinker {
     private final Map<String, SourceRange> transactionRanges = new TreeMap<>();
     /** The routines the SQL scripts define, by their name without the schema qualifier, uppercased. */
     private final Set<String> knownRoutines = new TreeSet<>();
+    /** The Easytrieve members by name (uppercased), for the files a step running one allocates. */
+    private final Map<String, EasytrieveProgram> easytrieveByProgram = new TreeMap<>();
+    /** Transaction to program, from the definition table and the DFHCSDUP steps of the jobs. */
+    private final Map<String, String> programByTransaction = new TreeMap<>();
 
     private CallGraphLinker(LinkerInput input) {
         this.input = input;
@@ -172,12 +237,31 @@ public final class CallGraphLinker {
                         qualified));
             }
         }
+        for (EasytrieveProgram program : input.middleware().easytrievePrograms()) {
+            if (program.macroMember() || program.inStream()) {
+                // A macro is part of the programs that invoke it, and an in-stream program is part
+                // of its step: neither is something a job could execute by name.
+                continue;
+            }
+            String programName = program.name().toUpperCase(Locale.ROOT);
+            if (knownPrograms.add(programName)) {
+                easytrieveByProgram.put(programName, program);
+                putNode(new CallGraphNode(programId(programName), NodeKind.PROGRAM, programName,
+                        Map.of("language", "EASYTRIEVE")));
+            }
+        }
+        programByTransaction.putAll(resourceDefinedTransactions());
+        // The definition table is the site's own statement, so it has the last word.
+        programByTransaction.putAll(input.programByTransactionId());
         // Before the rest: a node keeps the attributes of whoever created it, and what a script
         // declares about a table or a routine is more than any reference to it says.
         linkSqlScripts();
+        linkIms();
         linkJobs();
         linkCalls();
+        linkEasytrieve();
         linkCics();
+        linkMq();
         resolveTransactions();
         linkDb2Tables();
         findings.sort(Comparator.comparing((Finding f) -> f.location().file())
@@ -294,7 +378,11 @@ public final class CallGraphLinker {
     private Map<String, String> ddNamesOfProgram(String target) {
         CobolSemanticModel model = modelsByProgram.get(target.toUpperCase(Locale.ROOT));
         if (model == null) {
-            return Map.of();
+            // An Easytrieve member states the same thing through its FILE statements, whose
+            // names are the DD names.
+            EasytrieveProgram easytrieve =
+                    easytrieveByProgram.get(target.toUpperCase(Locale.ROOT));
+            return easytrieve == null ? Map.of() : new TreeMap<>(easytrieve.fileAccess());
         }
         Map<String, Set<FileAccess>> modesByDdName = new TreeMap<>();
         for (FileDefinition file : model.files()) {
@@ -357,10 +445,22 @@ public final class CallGraphLinker {
             Map<String, String> attributes = new TreeMap<>();
             attributes.put("launcher", step.target().toUpperCase(Locale.ROOT));
             run.plan().ifPresent(plan -> attributes.put("plan", plan));
+            if (!run.environment().isEmpty()) {
+                attributes.put("environment", run.environment());
+            }
+            run.psb().ifPresent(psb -> attributes.put("psb", psb));
             // The card may name a utility (DSNTEP2 under IKJEFT01) as readily as an
             // application, and it is the same kind of target an EXEC PGM= names.
-            addEdge(stepNodeId, executionTargetNode(run.program()), EdgeKind.EXECUTION,
-                    Resolution.CONSTANT, line, attributes);
+            String programNode = executionTargetNode(run.program());
+            addEdge(stepNodeId, programNode, EdgeKind.EXECUTION, Resolution.CONSTANT, line,
+                    attributes);
+            // The PSB is what the region starts the program with: the step names it, and it is
+            // through it that the program reaches its databases.
+            run.psb().ifPresent(psb -> {
+                String psbNode = psbNode(psb);
+                addEdge(stepNodeId, psbNode, EdgeKind.REFERENCE, Resolution.CONSTANT, line);
+                addEdge(programNode, psbNode, EdgeKind.REFERENCE, Resolution.CONSTANT, line);
+            });
         }
         for (JclUtilityFacts.BindRequest bind : facts.binds()) {
             Map<String, String> attributes = Map.of(
@@ -430,7 +530,7 @@ public final class CallGraphLinker {
             String callerId = programId(model.programId().toUpperCase(Locale.ROOT));
             for (CallRelation call : model.calls()) {
                 if (call.kind() == CallKind.STATIC) {
-                    addEdge(callerId, ensureProgramNode(call.target().toUpperCase(Locale.ROOT)),
+                    addEdge(callerId, callTargetNode(call.target()),
                             EdgeKind.CALL, Resolution.CONSTANT, call.range().start().line());
                     continue;
                 }
@@ -450,7 +550,7 @@ public final class CallGraphLinker {
                 }
                 for (String candidate : candidates) {
                     CallGraphEdge edge = addEdge(callerId,
-                            ensureProgramNode(candidate.toUpperCase(Locale.ROOT)), EdgeKind.CALL,
+                            callTargetNode(candidate), EdgeKind.CALL,
                             Resolution.CONSTANT, call.range().start().line());
                     dynamicCallVariables.computeIfAbsent(edge, k -> new TreeSet<>())
                             .add(variable);
@@ -462,6 +562,170 @@ public final class CallGraphLinker {
                 }
             }
         }
+    }
+
+    /**
+     * The node a CALL's target names: the program, or, for an entry point of IMS, MQ, Db2, CICS or
+     * the language run-time, a node for the service. Such an entry point is no program of the
+     * estate, and typing it as one would have every DL/I and MQI call read as a missing source.
+     * A name the walk holds a program of is that program, whatever the name looks like.
+     */
+    private String callTargetNode(String target) {
+        String name = target.toUpperCase(Locale.ROOT);
+        Optional<String> owner =
+                knownPrograms.contains(name) ? Optional.empty() : systemServiceOf(name);
+        if (owner.isEmpty()) {
+            return ensureProgramNode(name);
+        }
+        String id = SERVICE_ID_PREFIX + name;
+        putNode(new CallGraphNode(id, NodeKind.EXTERNAL_UTILITY, name,
+                Map.of("utility", name, "service", owner.get())));
+        return id;
+    }
+
+    // ---- Easytrieve: calls and the tables an SQL file names ----
+
+    private void linkEasytrieve() {
+        easytrieveByProgram.forEach((programName, program) -> {
+            String callerId = programId(programName);
+            for (EasytrieveProgram.Call call : program.calls()) {
+                if (call.literal()) {
+                    addEdge(callerId, callTargetNode(call.target()), EdgeKind.CALL,
+                            Resolution.CONSTANT, call.position().line());
+                }
+            }
+            for (EasytrieveFile file : program.files()) {
+                for (String table : file.tables()) {
+                    addEdge(callerId, db2TableNode(table), EdgeKind.REFERENCE,
+                            Resolution.CONSTANT, file.position().line(),
+                            Map.of(ACCESS_ATTRIBUTE, "R"));
+                }
+            }
+        });
+    }
+
+    // ---- IMS: PSBs, the databases they name ----
+
+    /**
+     * A node for every PSB and every database the generations describe, and a reference edge from
+     * each PSB to the databases its PCBs name, with whether the processing options let the program
+     * change the database on the edge.
+     */
+    private void linkIms() {
+        for (ImsDbd dbd : input.middleware().imsDbds()) {
+            Map<String, String> attributes = new TreeMap<>();
+            if (!dbd.access().isEmpty()) {
+                attributes.put("organisation", dbd.access());
+            }
+            attributes.put("segments", String.valueOf(dbd.segments().size()));
+            putNode(new CallGraphNode(IMS_DATABASE_ID_PREFIX + dbd.name().toUpperCase(Locale.ROOT),
+                    NodeKind.IMS_DATABASE, dbd.name(), attributes));
+        }
+        for (ImsPsb psb : input.middleware().imsPsbs()) {
+            String psbId = IMS_PSB_ID_PREFIX + psb.name().toUpperCase(Locale.ROOT);
+            putNode(new CallGraphNode(psbId, NodeKind.IMS_PSB, psb.name(),
+                    psb.language().isEmpty() ? Map.of() : Map.of("language", psb.language())));
+            for (ImsPsb.Pcb pcb : psb.pcbs()) {
+                pcb.dbdName().ifPresent(dbdName -> addEdge(psbId, imsDatabaseNode(dbdName),
+                        EdgeKind.REFERENCE, Resolution.CONSTANT, pcb.position().line(),
+                        Map.of(ACCESS_ATTRIBUTE, pcb.updates()
+                                ? DatasetAccess.UPDATE.name() : DatasetAccess.READ.name())));
+            }
+        }
+    }
+
+    private String psbNode(String psb) {
+        String id = IMS_PSB_ID_PREFIX + psb.toUpperCase(Locale.ROOT);
+        putNode(new CallGraphNode(id, NodeKind.IMS_PSB, psb.toUpperCase(Locale.ROOT),
+                Map.of("external", "true")));
+        return id;
+    }
+
+    private String imsDatabaseNode(String dbdName) {
+        String id = IMS_DATABASE_ID_PREFIX + dbdName.toUpperCase(Locale.ROOT);
+        putNode(new CallGraphNode(id, NodeKind.IMS_DATABASE, dbdName.toUpperCase(Locale.ROOT),
+                Map.of("external", "true")));
+        return id;
+    }
+
+    // ---- MQ: the queues a program opens by a name the source writes ----
+
+    /**
+     * A reference edge from a program that opens a queue to the queue, for every name the program
+     * moves into the object descriptor: a literal, or a data item whose constant values the MOVE
+     * and VALUE clauses of the program give. A name that reaches the descriptor from outside the
+     * program is not something the source states, and no node is made for it.
+     */
+    private void linkMq() {
+        for (CobolSemanticModel model : input.cobolModels()) {
+            List<SimpleStatement> moves = new ArrayList<>();
+            boolean[] opens = {false};
+            for (Procedure procedure : model.procedures()) {
+                jp.cobolinsight.core.semantic.Statements.walk(procedure.statements(), statement -> {
+                    if (!(statement instanceof SimpleStatement simple)) {
+                        return;
+                    }
+                    String text = simple.text().strip();
+                    if (MQ_OPEN_CALL.matcher(text).find()) {
+                        opens[0] = true;
+                    } else if (MQ_OBJECT_NAME.matcher(text).find()) {
+                        moves.add(simple);
+                    }
+                });
+            }
+            if (!opens[0] || moves.isEmpty()) {
+                continue;
+            }
+            String callerId = programId(model.programId().toUpperCase(Locale.ROOT));
+            Map<String, Set<String>> constantsByVariable = collectMoveConstants(model);
+            for (SimpleStatement move : moves) {
+                Matcher matcher = MQ_OBJECT_NAME.matcher(move.text().strip());
+                if (!matcher.find()) {
+                    continue;
+                }
+                String source = matcher.group(1);
+                Matcher literal = QUOTED_LITERAL.matcher(source);
+                Set<String> names = literal.matches()
+                        ? Set.of(literal.group(1) != null ? literal.group(1) : literal.group(2))
+                        : constantsByVariable.getOrDefault(source.toUpperCase(Locale.ROOT),
+                                Set.of());
+                for (String name : names) {
+                    String queue = name.strip();
+                    if (queue.isEmpty()) {
+                        continue;
+                    }
+                    String id = MQ_QUEUE_ID_PREFIX + queue;
+                    putNode(new CallGraphNode(id, NodeKind.MQ_QUEUE, queue));
+                    addEdge(callerId, id, EdgeKind.REFERENCE, Resolution.CONSTANT,
+                            move.range().start().line());
+                }
+            }
+        }
+    }
+
+    /**
+     * Transaction to program, from the DEFINE TRANSACTION commands of the DFHCSDUP steps: the CICS
+     * system definition says which program a transaction starts. Each defined transaction gets its
+     * node and its edge to the program here, whether or not a program of the walk names it.
+     */
+    private Map<String, String> resourceDefinedTransactions() {
+        Map<String, String> defined = new TreeMap<>();
+        for (JclJobModel job : input.jobs()) {
+            for (JclStep step : job.steps()) {
+                step.utility().ifPresent(facts -> {
+                    for (JclUtilityFacts.ResourceDefinition definition
+                            : facts.resourceDefinitions()) {
+                        String program = definition.attributes().get("PROGRAM");
+                        if (definition.type().startsWith("TRANS") && program != null
+                                && !program.isBlank()) {
+                            defined.putIfAbsent(definition.name(),
+                                    program.toUpperCase(Locale.ROOT));
+                        }
+                    }
+                });
+            }
+        }
+        return defined;
     }
 
     /**
@@ -621,9 +885,19 @@ public final class CallGraphLinker {
 
     /** Resolves each transaction ID encountered to a program via the definition table, and draws a resolution edge. */
     private void resolveTransactions() {
+        // A transaction the system definition names is an entry point of the estate even when no
+        // program of the walk starts it: a terminal does.
+        resourceDefinedTransactions().forEach((transId, program) -> {
+            if (!transactionRanges.containsKey(transId)) {
+                String id = TRANSACTION_ID_PREFIX + transId;
+                putNode(new CallGraphNode(id, NodeKind.TRANSACTION, transId));
+                addEdge(id, ensureProgramNode(programByTransaction.get(transId)),
+                        EdgeKind.TRANSACTION_TRANSITION, Resolution.CONSTANT);
+            }
+        });
         for (Map.Entry<String, SourceRange> entry : transactionRanges.entrySet()) {
             String transId = entry.getKey();
-            String programName = input.programByTransactionId().get(transId);
+            String programName = programByTransaction.get(transId);
             if (programName == null) {
                 findings.add(Finding.of(TRANSACTION_UNRESOLVED_RULE_ID, FindingLevel.NOTE,
                         "トランザクションID " + transId + " をプログラムへ解決できない(定義表に無い)",

@@ -15,7 +15,9 @@ import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
@@ -59,7 +61,9 @@ public final class FileStatusUncheckedRule implements Rule {
     private static final Set<String> IO_VERBS = Set.of("READ", "WRITE", "REWRITE", "DELETE");
 
     private static final RuleMeta META =
-            RuleMeta.named("R017", "入出力状態（FILE STATUS）未検査", "例外処理")
+            RuleMeta.named("R017", "入出力状態（FILE STATUS）未検査", RuleCategory.INTEGRITY)
+            .technology(Technology.COBOL)
+            .symptom("入出力エラーの見逃し")
             .summary("入出力文の後、同じファイルの次の入出力文に達するまでに"
                     + "入出力状態を検査しない箇所を検出します。")
             .rationale("入出力の失敗を検知しないまま後続が進み、"

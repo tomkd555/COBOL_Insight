@@ -14,7 +14,9 @@ import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
@@ -44,7 +46,9 @@ public final class DynamicSqlTaintRule implements Rule {
                     + "(DATE|TIME|DAY|DAY-OF-WEEK|DAY-OF-YEAR|TIMER|WHEN-COMPILED|YYYYMMDD|YYYYDDD)\\b");
 
     private static final RuleMeta META =
-            RuleMeta.named("R020", "動的SQL文への外部入力の未検証組み込み", "SQL")
+            RuleMeta.named("R020", "動的SQL文への外部入力の未検証組み込み", RuleCategory.SECURITY)
+            .technology(Technology.DB2)
+            .symptom("SQL インジェクション")
                     .summary("外部入力に由来する値を、検証も置換もせずに組み立てた文字列として"
                             + "EXECUTE IMMEDIATE・PREPARE に渡す箇所を検出します。")
                     .rationale("入力に SQL の断片を混ぜられると問い合わせの意味が変わり、"

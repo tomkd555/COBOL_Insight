@@ -7,7 +7,9 @@ import jp.cobolinsight.core.semantic.Procedure;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.spi.AnalysisContext;
 
@@ -25,7 +27,9 @@ import java.util.Map;
  */
 public final class DuplicateProcedureNameRule implements Rule {
 
-    private static final RuleMeta META = RuleMeta.named("R023", "段落名・節名の重複", "制御フロー")
+    private static final RuleMeta META = RuleMeta.named("R023", "段落名・節名の重複", RuleCategory.INTEGRITY)
+            .technology(Technology.COBOL)
+            .symptom("意図しない段落の実行")
             .summary("同一プログラム内で同じ名前の段落または節を"
                     + "重ねて宣言している箇所を検出します。")
             .rationale("PERFORM 文や GO TO 文の移行先が一意に定まらず、"

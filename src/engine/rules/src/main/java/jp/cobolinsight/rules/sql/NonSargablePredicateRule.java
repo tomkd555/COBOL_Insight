@@ -5,7 +5,9 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.spi.AnalysisContext;
 import jp.cobolinsight.core.sql.SqlStatementModel;
@@ -26,7 +28,9 @@ import java.util.List;
  */
 public final class NonSargablePredicateRule implements Rule {
 
-    private static final RuleMeta META = RuleMeta.named("S002", "索引を使えない述語", "性能")
+    private static final RuleMeta META = RuleMeta.named("S002", "索引を使えない述語", RuleCategory.PERFORMANCE)
+            .technology(Technology.DB2)
+            .symptom("表スペース走査")
             .summary("列を式・関数・CAST で包んだ述語や、先頭が % の LIKE を検出します。")
             .rationale("索引による絞り込みができず全表走査になるため、"
                     + "処理時間が表の件数に比例して伸びます。")
@@ -44,7 +48,7 @@ public final class NonSargablePredicateRule implements Rule {
                     """)
             .severity(Severity.HIGH)
             .commands(Command.SQL_LINT)
-            .targets(AssetKind.COBOL, AssetKind.SQL)
+            .targets(AssetKind.COBOL, AssetKind.SQL, AssetKind.EASYTRIEVE)
             .needs(Needs.SQL)
             .build();
 

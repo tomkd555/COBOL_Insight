@@ -26,7 +26,13 @@ public enum AssetKind {
     /** JCL. */
     JCL(".jcl"),
     /** An SQL script: DDL, a native SQL PL procedure or trigger, SPUFI or DSNTEP2 input. */
-    SQL(".sql", ".ddl", ".spufi", ".dml");
+    SQL(".sql", ".ddl", ".spufi", ".dml"),
+    /** An Easytrieve Plus program or macro member. */
+    EASYTRIEVE(".ezt", ".ezy", ".ezp", ".easy"),
+    /** An IMS database description: the DBDGEN macro source. */
+    IMS_DBD(".dbd"),
+    /** An IMS program specification block: the PSBGEN macro source. */
+    IMS_PSB(".psb");
 
     private final List<String> extensions;
 

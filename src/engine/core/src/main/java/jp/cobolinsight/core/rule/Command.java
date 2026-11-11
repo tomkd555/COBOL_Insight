@@ -5,9 +5,12 @@ package jp.cobolinsight.core.rule;
  * {@link RuleMeta#commands()}, and a command asks the rule set only for its own members.
  */
 public enum Command {
-    /** {@code lint}: bug detection over COBOL, copybooks and BMS. */
+    /**
+     * {@code lint}: defect detection over every asset kind — COBOL and copybooks, JCL and the
+     * control statements of its steps, SQL scripts, BMS, Easytrieve and the IMS generations.
+     */
     LINT,
-    /** {@code lint}'s SQL advice side: advice on embedded SQL. */
+    /** {@code lint}'s SQL advice side: advice on the SQL of programs and scripts. */
     SQL_LINT,
     /** {@code fix}: rules whose findings carry a fix. */
     FIX

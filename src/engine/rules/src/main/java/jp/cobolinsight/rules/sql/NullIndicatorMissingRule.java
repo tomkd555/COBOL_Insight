@@ -5,7 +5,9 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.EmbeddedBlock;
 import jp.cobolinsight.core.source.AssetKind;
@@ -30,7 +32,9 @@ import java.util.Set;
 public final class NullIndicatorMissingRule implements Rule {
 
     private static final RuleMeta META = RuleMeta
-            .named("R037", "NULL になり得る列を受けるホスト変数の標識指定漏れ", "SQL")
+            .named("R037", "NULL になり得る列を受けるホスト変数の標識指定漏れ", RuleCategory.ABEND)
+            .technology(Technology.DB2)
+            .symptom("SQLCODE -305")
             .summary("NULL になり得る列を、標識の指定がないホスト変数で受け取る"
                     + "埋込みSQL文を検出します。")
             .rationale("NULL の行に当たると SQLCODE が -305 になり、"

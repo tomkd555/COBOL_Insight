@@ -10,7 +10,9 @@ import jp.cobolinsight.core.semantic.EmbeddedBlockKind;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
@@ -29,7 +31,9 @@ public final class UndefinedBmsMapReferenceRule implements Rule {
 
     private static final Pattern MAP_OPERAND = Pattern.compile("(?i)\\bMAP\\s*\\(");
 
-    private static final RuleMeta META = RuleMeta.named("R031", "存在しない BMS マップの参照", "CICS")
+    private static final RuleMeta META = RuleMeta.named("R031", "存在しない BMS マップの参照", RuleCategory.ABEND)
+            .technology(Technology.CICS)
+            .symptom("APCT・MAPFAIL")
             .summary("BMS のマップ定義にないマップセット・マップを参照する"
                     + "EXEC CICS SEND MAP・RECEIVE MAP を検出します。")
             .rationale("定義のないマップを指す送受信は実行時に失敗し、"

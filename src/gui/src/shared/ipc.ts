@@ -260,7 +260,12 @@ export interface SaveSourceRequest {
 export interface RuleCatalogEntry {
   id: string;
   name: string;
+  /** What goes wrong in production when the finding is left alone (異常終了, データ不整合, …). */
   category: string;
+  /** The language or middleware the rule is about, as the engine names it (COBOL, JCL, Db2, …). */
+  technology: string;
+  /** How the defect shows itself in production (an abend code, an SQLCODE); empty when it has none. */
+  symptom: string;
   /** Engine severity (HIGH/MEDIUM/LOW/ADVISORY). */
   severity: string;
   /** Whether the rule can produce a fix diff. */
@@ -271,7 +276,7 @@ export interface RuleCatalogEntry {
   enabled: boolean;
   /** Which subcommands run this rule (lint, sql-lint, ...). */
   commands: string[];
-  /** Which asset kinds the rule inspects (COBOL/COPYBOOK/JCL/BMS). */
+  /** Which asset kinds the rule inspects (COBOL/COPYBOOK/JCL/BMS/SQL/EASYTRIEVE/IMS_DBD/IMS_PSB). */
   targets: string[];
   /** What it detects. */
   summary: string;
@@ -342,7 +347,11 @@ export interface RelatedLocation {
 /** One node of the call graph (NODE table). */
 export interface GraphNode {
   id: number;
-  /** NODE.type (JOB/STEP/PROGRAM/JCL/COPYBOOK/BMS/DATASET/DB2_TABLE and so on). */
+  /**
+   * NODE.type (JOB/STEP/PROGRAM/JCL/COPYBOOK/BMS/DATASET/DB2_TABLE/IMS_PSB/IMS_DATABASE/MQ_QUEUE and
+   * so on). The row of a JCL file that holds a job is read as JOB, and the row of an Easytrieve
+   * program the graph links as PROGRAM (see readGraph).
+   */
   type: string;
   label: string;
 }

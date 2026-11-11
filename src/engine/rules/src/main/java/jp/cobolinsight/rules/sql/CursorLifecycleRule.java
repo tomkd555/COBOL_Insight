@@ -8,7 +8,9 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.CompoundStatement;
 import jp.cobolinsight.core.semantic.SimpleStatement;
@@ -86,7 +88,9 @@ public final class CursorLifecycleRule implements Rule {
     }
 
     private static final RuleMeta META =
-            RuleMeta.named("R055", "順序の誤ったカーソルの操作", "SQL")
+            RuleMeta.named("R055", "順序の誤ったカーソルの操作", RuleCategory.ABEND)
+            .technology(Technology.DB2)
+            .symptom("SQLCODE -501・-502・-507・-510")
             .summary("OPEN していないカーソルの FETCH・CLOSE、開いたままの OPEN、"
                     + "OPEN されない宣言、ROLLBACK 後の FETCH、"
                     + "読み取り専用で宣言したカーソルへの位置づけ更新・削除を検出します。")

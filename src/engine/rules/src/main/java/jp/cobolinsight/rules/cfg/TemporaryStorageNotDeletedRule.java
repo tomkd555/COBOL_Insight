@@ -5,7 +5,9 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.EmbeddedBlock;
 import jp.cobolinsight.core.source.AssetKind;
@@ -35,7 +37,9 @@ public final class TemporaryStorageNotDeletedRule implements Rule {
             "(?i)\\b(?:QUEUE|QNAME)\\s*\\(\\s*(?:'([^']*)'|\"([^\"]*)\")\\s*\\)");
 
     private static final RuleMeta META =
-            RuleMeta.named("R045", "DELETEQ されない一時記憶キュー", "CICS")
+            RuleMeta.named("R045", "DELETEQ されない一時記憶キュー", RuleCategory.PERFORMANCE)
+            .technology(Technology.CICS)
+            .symptom("補助記憶の枯渇")
                     .summary("どのプログラムも DELETEQ TS で削除しない名前の"
                             + "一時記憶キューへの WRITEQ TS を検出します。")
                     .rationale("キューが一時記憶データセットに残り続け、"

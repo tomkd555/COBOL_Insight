@@ -12,7 +12,9 @@ import jp.cobolinsight.core.jcl.JclReferbackMiss;
 import jp.cobolinsight.core.jcl.JclStep;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
@@ -54,7 +56,9 @@ import java.util.regex.Pattern;
 public final class JclUndefinedReferenceRule implements Rule {
 
     private static final RuleMeta META =
-            RuleMeta.named("R050", "解決できない JCL の参照", "JCL制御")
+            RuleMeta.named("R050", "解決できない JCL の参照", RuleCategory.ABEND)
+            .technology(Technology.JCL)
+            .symptom("JCL エラー")
             .summary("値を与えられていない記号、相手のない上書き、参照先のない後方参照を"
                     + "ERROR で、見つからないメンバーと展開されなかった PROC 呼び出しを"
                     + "NOTE で検出します。")

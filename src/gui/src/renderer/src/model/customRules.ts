@@ -22,7 +22,14 @@ const ID_PATTERN = /^U[0-9A-Za-z_-]{1,15}$/;
 export const CUSTOM_SEVERITIES: readonly string[] = ["HIGH", "MEDIUM", "LOW", "ADVISORY"];
 
 /** The asset kinds a custom rule can examine. */
-export const CUSTOM_TARGETS: readonly string[] = ["COBOL", "COPYBOOK", "JCL", "BMS"];
+export const CUSTOM_TARGETS: readonly string[] = [
+  "COBOL",
+  "COPYBOOK",
+  "JCL",
+  "BMS",
+  "SQL",
+  "EASYTRIEVE",
+];
 
 /** The subcommands a custom rule can run under. */
 export const CUSTOM_COMMANDS: readonly string[] = ["LINT", "SQL_LINT", "FIX"];

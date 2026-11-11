@@ -10,7 +10,9 @@ import jp.cobolinsight.core.jcl.JclUtilityFacts;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.FileDefinition;
 import jp.cobolinsight.core.source.AssetKind;
@@ -48,7 +50,9 @@ public final class JclMissingDdForProgramRule implements Rule {
     private static final Set<String> LIBRARIES = Set.of("JOBLIB", "STEPLIB");
 
     private static final RuleMeta META =
-            RuleMeta.named("R052", "プログラムが開く DD の割り当て漏れ", "JCL制御")
+            RuleMeta.named("R052", "プログラムが開く DD の割り当て漏れ", RuleCategory.ABEND)
+            .technology(Technology.JCL)
+            .symptom("入出力状態 35・96（DD 文なし）")
             .summary("プログラムの SELECT 文が指す DD 名を、"
                     + "そのプログラムを実行するステップが割り当てていないものを検出します。")
             .rationale("OPEN が失敗し、"

@@ -12,7 +12,9 @@ import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
@@ -49,7 +51,9 @@ public final class IdenticalOperandsRule implements Rule {
     private static final String WORD_BOUNDARY_AFTER = "(?![\\p{L}\\p{N}$#_-])";
 
     private static final RuleMeta META =
-            RuleMeta.named("R025", "二項演算子の両辺が同一の式", "データフロー")
+            RuleMeta.named("R025", "二項演算子の両辺が同一の式", RuleCategory.INTEGRITY)
+            .technology(Technology.COBOL)
+            .symptom("常に真・常に偽の条件")
                     .summary("条件式の両辺が同じ、または COMPUTE 文の右辺が A - A・A / A の"
                             + "形になっている箇所を検出します。")
                     .rationale("条件が常に真か常に偽になり、演算の結果は定数になります。"

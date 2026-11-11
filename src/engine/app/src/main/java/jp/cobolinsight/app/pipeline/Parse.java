@@ -85,6 +85,7 @@ public final class Parse implements Step {
         JclParser jcl = EngineWiring.jclParser();
         BmsSourceParser bms = EngineWiring.bmsParser();
         JclMembers members = new JclMembers(s);
+        MiddlewareParse middleware = new MiddlewareParse(s);
         // What an earlier scan into the same project file parsed, for every asset whose inputs
         // are unchanged. A result taken from it goes through the same steps a fresh one does.
         ParseCache cache = ParseCache.open(s);
@@ -101,9 +102,12 @@ public final class Parse implements Step {
             }
             switch (unit.kind()) {
                 case COBOL -> parseCobol(s, cobol, unit, decoded, cache);
-                case JCL -> parseJcl(s, jcl, unit, decoded, members, reported, cache);
+                case JCL -> parseJcl(s, jcl, unit, decoded, members, reported, cache, middleware);
                 case BMS -> parseBms(s, bms, unit, decoded);
                 case SQL -> parseSqlScript(s, unit, decoded, cache);
+                case EASYTRIEVE -> middleware.parseEasytrieve(unit, decoded);
+                case IMS_DBD -> middleware.parseDbd(unit, decoded);
+                case IMS_PSB -> middleware.parsePsb(unit, decoded);
                 case COPYBOOK -> {
                     // Copybooks are analysed through the programs that copy them; on their own they
                     // contribute only their text.
@@ -133,7 +137,8 @@ public final class Parse implements Step {
 
     private static void parseJcl(SourceSet s, JclParser parser, SourceUnit unit,
             DecodedSource decoded, JclMembers members,
-            Set<Map.Entry<String, Finding>> reported, ParseCache cache) {
+            Set<Map.Entry<String, Finding>> reported, ParseCache cache,
+            MiddlewareParse middleware) {
         if (parser.isMember(decoded)) {
             // A catalogued PROC or an INCLUDE member found in the folder: its steps belong to the
             // jobs that call it, and it is read on its own only if no job called it.
@@ -157,7 +162,10 @@ public final class Parse implements Step {
         // kept, so the analysis loses that one statement and nothing else.
         jobs.stream().flatMap(job -> job.diagnostics().stream())
                 .forEach(finding -> record(s, members, unit.relPath(), finding, reported));
-        s.jobsByPath().put(unit.relPath(), jobs);
+        // An Easytrieve program handed to the compiler in-stream is read here, where its step is:
+        // what it states goes onto the step, after the cache, which holds the JCL alone.
+        s.jobsByPath().put(unit.relPath(),
+                middleware.withInStreamEasytrieve(unit, decoded, jobs));
     }
 
     /**

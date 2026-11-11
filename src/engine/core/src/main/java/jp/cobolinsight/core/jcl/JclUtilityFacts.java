@@ -12,24 +12,39 @@ import java.util.Optional;
  * as input. A step running an ordinary program carries nothing but {@code ddRoles}, which the DISP
  * of each DD alone decides; a utility step carries what its own cards state on top.
  *
- * @param programRuns the programs the step's cards run, the DSN {@code RUN PROGRAM} form included
+ * @param programRuns the programs the step runs without naming them on EXEC PGM=: the DSN
+ *                    {@code RUN PROGRAM} form, the application an IMS region controller is given
+ *                    in its PARM, the programs an in-stream Easytrieve program calls
  * @param binds the BIND and REBIND requests the cards make
  * @param datasetUses data sets the cards name directly, without a DD statement
  * @param tableUses Db2 tables the cards name
  * @param ddRoles how the step uses each of its DD statements, by DD name
+ * @param resourceDefinitions the CICS resources a DFHCSDUP step defines
  */
 public record JclUtilityFacts(List<ProgramRun> programRuns, List<BindRequest> binds,
         List<DatasetUse> datasetUses, List<TableUse> tableUses,
-        Map<String, DatasetAccess> ddRoles) {
+        Map<String, DatasetAccess> ddRoles, List<ResourceDefinition> resourceDefinitions) {
 
     /** How a step uses a data set, a table or a DD. */
     public enum DatasetAccess {
         READ, WRITE, UPDATE, CREATE, DELETE, UNKNOWN
     }
 
-    /** One program the step's cards run, with the plan, parameters and library named with it. */
+    /**
+     * One program the step runs, with the plan, parameters and library named with it.
+     * {@code environment} says what runs it: {@link #DSN} for the Db2 command processor,
+     * {@link #TSO} for a TSO CALL, {@code IMS-DLI}, {@code IMS-DBB} or {@code IMS-BMP} for an IMS
+     * region, {@link #EASYTRIEVE} for a CALL of an in-stream Easytrieve program. {@code psb} is the
+     * PSB an IMS region is started with.
+     */
     public record ProgramRun(String program, Optional<String> plan, Optional<String> parms,
-            Optional<String> library) {
+            Optional<String> library, String environment, Optional<String> psb) {
+
+        public static final String DSN = "DSN";
+        public static final String TSO = "TSO";
+        public static final String EASYTRIEVE = "EASYTRIEVE";
+        /** The prefix of the three IMS region types. */
+        public static final String IMS_PREFIX = "IMS-";
 
         public ProgramRun {
             if (program == null || program.isBlank()) {
@@ -38,6 +53,37 @@ public record JclUtilityFacts(List<ProgramRun> programRuns, List<BindRequest> bi
             Objects.requireNonNull(plan, "plan");
             Objects.requireNonNull(parms, "parms");
             Objects.requireNonNull(library, "library");
+            Objects.requireNonNull(environment, "environment");
+            Objects.requireNonNull(psb, "psb");
+        }
+
+        /** A run that states nothing of its environment: the shape built before the field existed. */
+        public ProgramRun(String program, Optional<String> plan, Optional<String> parms,
+                Optional<String> library) {
+            this(program, plan, parms, library, plan.isPresent() ? DSN : "", Optional.empty());
+        }
+
+        /** Whether the program runs in an IMS region, and so reaches Db2 and DL/I through it. */
+        public boolean underIms() {
+            return environment.startsWith(IMS_PREFIX);
+        }
+    }
+
+    /**
+     * One resource a DFHCSDUP step defines. {@code type} is the resource type as the DEFINE writes
+     * it ({@code TRANSACTION}, {@code PROGRAM}, {@code FILE}, {@code MAPSET} …), {@code name} the
+     * resource, and {@code attributes} every other keyword of the definition.
+     */
+    public record ResourceDefinition(String type, String name, Map<String, String> attributes) {
+
+        public ResourceDefinition {
+            if (type == null || type.isBlank()) {
+                throw new IllegalArgumentException("type must not be blank");
+            }
+            if (name == null || name.isBlank()) {
+                throw new IllegalArgumentException("name must not be blank");
+            }
+            attributes = Collections.unmodifiableMap(new LinkedHashMap<>(attributes));
         }
     }
 
@@ -92,11 +138,19 @@ public record JclUtilityFacts(List<ProgramRun> programRuns, List<BindRequest> bi
         datasetUses = List.copyOf(datasetUses);
         tableUses = List.copyOf(tableUses);
         ddRoles = Collections.unmodifiableMap(new LinkedHashMap<>(ddRoles));
+        resourceDefinitions = List.copyOf(resourceDefinitions);
+    }
+
+    /** Facts of a step that defines no CICS resource: the shape built before the field existed. */
+    public JclUtilityFacts(List<ProgramRun> programRuns, List<BindRequest> binds,
+            List<DatasetUse> datasetUses, List<TableUse> tableUses,
+            Map<String, DatasetAccess> ddRoles) {
+        this(programRuns, binds, datasetUses, tableUses, ddRoles, List.of());
     }
 
     /** Whether the step's cards said nothing at all, DD roles included. */
     public boolean isEmpty() {
         return programRuns.isEmpty() && binds.isEmpty() && datasetUses.isEmpty()
-                && tableUses.isEmpty() && ddRoles.isEmpty();
+                && tableUses.isEmpty() && ddRoles.isEmpty() && resourceDefinitions.isEmpty();
     }
 }

@@ -12,17 +12,23 @@ import type { RuleCatalogEntry } from "../../../shared/ipc";
 import type { RuleOverride, RulesFile } from "../../../shared/rulesFile";
 
 export interface RuleGroup {
+  /** The heading the group is listed under: a technology, or the category of a user-defined rule. */
   readonly category: string;
   readonly rules: readonly RuleCatalogEntry[];
 }
 
-/** Whether the rule answers the search, matched over its id, its name and its summary. */
+/**
+ * Whether the rule answers the search, matched over its id, its name, its summary, its technology,
+ * its category and its symptom — so "S0C7", "Db2" and "異常終了" each find the rules they name.
+ */
 export function matchesQuery(entry: RuleCatalogEntry, query: string): boolean {
   const needle = query.trim().toLowerCase();
   if (needle === "") {
     return true;
   }
-  return `${entry.id} ${entry.name} ${entry.summary}`.toLowerCase().includes(needle);
+  return `${entry.id} ${entry.name} ${entry.summary} ${entry.technology} ${entry.category} ${entry.symptom}`
+    .toLowerCase()
+    .includes(needle);
 }
 
 export function filterRules(
@@ -33,15 +39,27 @@ export function filterRules(
 }
 
 /**
- * Groups the rules by category, keeping the order the engine listed them in: it sorts by id, so the
- * built-in ranges stay together and the user-defined rules follow.
+ * The heading a rule is listed under. A built-in rule goes under the technology it is about, which is
+ * how the person who owns the JCL, or the Db2 access, looks for the rules that concern them; what
+ * goes wrong (the category) is shown on the row. A user-defined rule keeps its own category, and so
+ * does any rule of an engine that names no technology.
+ */
+export function headingOf(entry: RuleCatalogEntry): string {
+  return entry.source === "user" || entry.technology === "" ? entry.category : entry.technology;
+}
+
+/**
+ * Groups the rules by {@link headingOf}, in the order each heading first appears and with the rules
+ * in the order the engine listed them: it sorts by id, so the user-defined rules follow the built-in
+ * ones.
  */
 export function groupByCategory(entries: readonly RuleCatalogEntry[]): RuleGroup[] {
   const groups = new Map<string, RuleCatalogEntry[]>();
   for (const entry of entries) {
-    const bucket = groups.get(entry.category);
+    const heading = headingOf(entry);
+    const bucket = groups.get(heading);
     if (bucket === undefined) {
-      groups.set(entry.category, [entry]);
+      groups.set(heading, [entry]);
     } else {
       bucket.push(entry);
     }

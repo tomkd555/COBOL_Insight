@@ -8,7 +8,9 @@ import jp.cobolinsight.core.semantic.EmbeddedBlockKind;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
@@ -35,7 +37,9 @@ public final class CursorNotClosedRule implements Rule {
     private static final Pattern OPEN = Pattern.compile("(?i)^\\s*OPEN\\s+([\\p{L}\\p{N}_-]+)");
     private static final Pattern CLOSE = Pattern.compile("(?i)^\\s*CLOSE\\s+([\\p{L}\\p{N}_-]+)");
 
-    private static final RuleMeta META = RuleMeta.named("R019", "SQL カーソルの CLOSE 漏れ", "SQL")
+    private static final RuleMeta META = RuleMeta.named("R019", "SQL カーソルの CLOSE 漏れ", RuleCategory.PERFORMANCE)
+            .technology(Technology.DB2)
+            .symptom("カーソルと資源の保持")
             .summary("DECLARE して OPEN したが CLOSE しないカーソルを検出します。")
             .rationale("接続資源とロックを保持し続けるため、"
                     + "同時実行数の多い環境で資源の枯渇と待ちを招きます。")

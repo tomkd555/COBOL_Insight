@@ -5,7 +5,9 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.spi.AnalysisContext;
 import jp.cobolinsight.core.sql.SqlStatementModel;
@@ -20,7 +22,9 @@ import java.util.List;
  */
 public final class SelectStarRule implements Rule {
 
-    private static final RuleMeta META = RuleMeta.named("S001", "列を明示しない SELECT *", "可読性・保守性")
+    private static final RuleMeta META = RuleMeta.named("S001", "列を明示しない SELECT *", RuleCategory.MAINTAINABILITY)
+            .technology(Technology.DB2)
+            .symptom("列追加後の受け取り不一致")
             .summary("SELECT 句に * を使う問い合わせを検出します。")
             .rationale("表に列を足しただけで転送量と受け側の構造が変わります。"
                     + "必要のない列まで読むため入出力も増えます。")
@@ -35,7 +39,7 @@ public final class SelectStarRule implements Rule {
                     """)
             .severity(Severity.MEDIUM)
             .commands(Command.SQL_LINT)
-            .targets(AssetKind.COBOL, AssetKind.SQL)
+            .targets(AssetKind.COBOL, AssetKind.SQL, AssetKind.EASYTRIEVE)
             .needs(Needs.SQL)
             .build();
 

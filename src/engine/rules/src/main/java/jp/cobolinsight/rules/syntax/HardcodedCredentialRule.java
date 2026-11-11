@@ -5,7 +5,9 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
@@ -32,7 +34,9 @@ public final class HardcodedCredentialRule implements Rule {
                     + "(?![A-Za-z0-9])");
     private static final Pattern STRING_LITERAL = Pattern.compile("'([^']*)'|\"([^\"]*)\"");
 
-    private static final RuleMeta META = RuleMeta.named("R026", "原始プログラムに直接書かれた資格情報", "セキュリティ")
+    private static final RuleMeta META = RuleMeta.named("R026", "原始プログラムに直接書かれた資格情報", RuleCategory.SECURITY)
+            .technology(Technology.COBOL)
+            .symptom("資格情報の漏えい")
             .summary("パスワード・API キー・トークンを表す項目と同じ行に、"
                     + "文字定数が直接書かれている箇所を検出します。")
             .rationale("原始プログラムを読める者が資格情報をそのまま得られます。"

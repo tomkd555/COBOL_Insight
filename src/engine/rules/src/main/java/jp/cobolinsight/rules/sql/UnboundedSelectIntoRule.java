@@ -5,7 +5,9 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.spi.AnalysisContext;
 import jp.cobolinsight.core.sql.SqlStatementKind;
@@ -45,7 +47,9 @@ public final class UnboundedSelectIntoRule implements Rule {
     private static final String ONE_ROW_TABLE = "SYSDUMMY1";
 
     private static final RuleMeta META =
-            RuleMeta.named("R056", "1 行に絞られない SELECT INTO", "SQL")
+            RuleMeta.named("R056", "1 行に絞られない SELECT INTO", RuleCategory.ABEND)
+            .technology(Technology.DB2)
+            .symptom("SQLCODE -811")
             .summary("WHERE 句も集約関数も FETCH FIRST … ROWS ONLY も持たない "
                     + "SELECT INTO を検出します。")
             .rationale("該当する行が 2 行以上あると SQLCODE -811 で失敗し、"

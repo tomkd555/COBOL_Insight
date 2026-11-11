@@ -8,7 +8,9 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.CompoundStatement;
 import jp.cobolinsight.core.semantic.EmbeddedBlock;
@@ -54,7 +56,9 @@ public final class MapfailUncheckedRule implements Rule {
             Pattern.compile("(?i)(?<![\\p{L}\\p{N}-])(MAPFAIL|ERROR)\\s*\\(");
 
     private static final RuleMeta META =
-            RuleMeta.named("R044", "MAPFAIL を検査しない RECEIVE MAP", "CICS")
+            RuleMeta.named("R044", "MAPFAIL を検査しない RECEIVE MAP", RuleCategory.ABEND)
+            .technology(Technology.CICS)
+            .symptom("MAPFAIL（AEI9）")
                     .summary("応答コードを受け取りながら MAPFAIL と比較しない"
                             + "EXEC CICS RECEIVE MAP を検出します。")
                     .rationale("入力のない画面から受け取ると受け取り領域が前回のまま残り、"

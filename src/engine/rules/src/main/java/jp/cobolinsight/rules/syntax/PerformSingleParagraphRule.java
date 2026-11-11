@@ -11,7 +11,9 @@ import jp.cobolinsight.core.semantic.ProcedureNames;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.spi.AnalysisContext;
 
@@ -28,7 +30,8 @@ import java.util.List;
  */
 public final class PerformSingleParagraphRule implements Rule {
 
-    private static final RuleMeta META = RuleMeta.named("R008", "THRU 句のない PERFORM 文", "制御フロー")
+    private static final RuleMeta META = RuleMeta.named("R008", "THRU 句のない PERFORM 文", RuleCategory.MAINTAINABILITY)
+            .technology(Technology.COBOL)
             .summary("THRU 句で終端を明示せず、単一の段落名だけを指定した PERFORM 文を検出します。")
             .rationale("処理の追加で段落を分けたとき、範囲の終端が書かれていないため、"
                     + "呼び出し側の直し漏れで新しい段落が実行されません。")

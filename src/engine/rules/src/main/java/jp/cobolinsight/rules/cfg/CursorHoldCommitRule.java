@@ -9,7 +9,9 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.EmbeddedBlock;
 import jp.cobolinsight.core.semantic.EmbeddedBlockKind;
@@ -48,7 +50,9 @@ public final class CursorHoldCommitRule implements Rule {
     private static final Pattern END_OF_WORK = Pattern.compile("(?i)^(COMMIT|ROLLBACK)\\b");
 
     private static final RuleMeta META = RuleMeta
-            .named("R039", "WITH HOLD のないカーソルを開いたままの COMMIT", "SQL")
+            .named("R039", "WITH HOLD のないカーソルを開いたままの COMMIT", RuleCategory.ABEND)
+            .technology(Technology.DB2)
+            .symptom("SQLCODE -501")
             .summary("WITH HOLD を付けずに宣言したカーソルを開いたまま COMMIT する"
                     + "経路を検出します。")
             .rationale("同期点でカーソルが閉じられるため、"

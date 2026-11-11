@@ -5,7 +5,9 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.jcl.JclJobModel;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.spi.AnalysisContext;
 
@@ -26,7 +28,9 @@ import java.util.Locale;
 public final class JclJobOperatorParameterRule implements Rule {
 
     private static final RuleMeta META =
-            RuleMeta.named("R053", "JOB 文に残った RESTART・TYPRUN", "JCL制御")
+            RuleMeta.named("R053", "JOB 文に残った RESTART・TYPRUN", RuleCategory.OPERATION)
+            .technology(Technology.JCL)
+            .symptom("意図しない再始動・実行されないジョブ")
             .summary("JOB 文に RESTART・TYPRUN が指定されているものを検出します。")
             .rationale("一時的な運用のための指定がそのまま残ると、"
                     + "先頭のステップが飛ばされたり、業務処理を実行しません。")

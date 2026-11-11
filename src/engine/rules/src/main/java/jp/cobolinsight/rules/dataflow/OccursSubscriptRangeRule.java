@@ -15,7 +15,9 @@ import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
@@ -42,7 +44,9 @@ import jp.cobolinsight.rules.cfg.CfgSupport;
 public final class OccursSubscriptRangeRule implements Rule {
 
     private static final RuleMeta META =
-            RuleMeta.named("R005", "添字の OCCURS 範囲外参照", "添字・指標")
+            RuleMeta.named("R005", "添字の OCCURS 範囲外参照", RuleCategory.ABEND)
+            .technology(Technology.COBOL)
+            .symptom("S0C4・記憶域の破壊")
                     .summary("添字の取り得る値が表の上限を超えるか 0 以下になり得る参照を検出します。")
                     .rationale("表の外の記憶域を読み書きするため、"
                             + "隣接する項目を壊すか、実行時に領域違反で異常終了します。")

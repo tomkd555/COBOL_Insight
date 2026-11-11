@@ -14,7 +14,9 @@ import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
@@ -40,7 +42,9 @@ public final class UnsignedNegativeResultRule implements Rule {
     private static final Set<String> ARITHMETIC_VERBS = Set.of("SUBTRACT", "COMPUTE");
 
     private static final RuleMeta META =
-            RuleMeta.named("R028", "符号なし項目への負の結果の格納", "データ移動")
+            RuleMeta.named("R028", "符号なし項目への負の結果の格納", RuleCategory.INTEGRITY)
+            .technology(Technology.COBOL)
+            .symptom("符号の欠落")
                     .summary("PICTURE に S を持たない項目に、"
                             + "負になり得る演算結果を格納する箇所を検出します。")
                     .rationale("符号なし項目は符号を保持しないため、"
