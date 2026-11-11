@@ -29,7 +29,7 @@ queues, CICS transactions and BMS maps.
 
 ## Rules
 
-`lint` evaluates 112 built-in rules. Each rule states the technology it is about, what goes wrong
+`lint` evaluates 110 built-in rules. Each rule states the technology it is about, what goes wrong
 in production when the finding is ignored (its category), and how the defect shows itself — an
 abend code, an SQLCODE, a JCL message — so the catalogue can be filtered by any of the three.
 `rules` prints the catalogue as JSON, with the detection condition and the remedy of every rule.
@@ -37,8 +37,8 @@ abend code, an SQLCODE, a JCL message — so the catalogue can be filtered by an
 | Technology | Rules | Examples |
 | --- | --- | --- |
 | COBOL | 31 | uninitialised items, S0C7 from unchecked or cleared numeric items, subscripts out of range, unchecked FILE STATUS, STOP RUN in a called program |
-| Db2 | 29 | unchecked SQLCODE, cursor lifecycle, `-811`/`-305` conditions, COMMIT under CICS or IMS, host variable count mismatch, cartesian joins, LOAD `LOG NO` without an image copy, BIND options |
-| JCL | 18 | GDG `(+1)` read back as `(0)`, temporary data sets not passed, DISP omitted or left to fail a rerun, invalid data set names, PARM over 100 characters, missing DD for a program |
+| Db2 | 28 | unchecked SQLCODE, cursor lifecycle, `-811`/`-305` conditions, COMMIT under CICS or IMS, host variable count mismatch, cartesian joins, LOAD `LOG NO` without an image copy, BIND options |
+| JCL | 17 | GDG `(+1)` read back as `(0)`, temporary data sets not passed, DISP omitted or left to fail a rerun, invalid data set names, PARM over 100 characters, missing DD for a program |
 | CICS | 13 | unchecked RESP, missing RETURN, COMMAREA length, COBOL file I/O in a CICS program, STARTBR without ENDBR, READ UPDATE never released |
 | Easytrieve | 10 | `JOB INPUT NULL` without STOP, fields beyond the record length, GET without an EOF test, unchecked SQLCODE, missing DD |
 | MQ | 5 | unchecked completion and reason codes, MsgId/CorrelId not reset in a get loop, implicit syncpoint |

@@ -84,14 +84,12 @@ import jp.cobolinsight.rules.ims.DliStatusUncheckedRule;
 import jp.cobolinsight.rules.ims.PsbSegmentUndefinedRule;
 import jp.cobolinsight.rules.jcl.DatasetNameInvalidRule;
 import jp.cobolinsight.rules.jcl.Db2BindOptionRule;
-import jp.cobolinsight.rules.jcl.Db2ProgramWithoutAttachRule;
 import jp.cobolinsight.rules.jcl.Db2UtilityCopyPendingRule;
 import jp.cobolinsight.rules.jcl.DispOmittedRule;
 import jp.cobolinsight.rules.jcl.DuplicateStepNameRule;
 import jp.cobolinsight.rules.jcl.GdgCurrentAfterCreateRule;
 import jp.cobolinsight.rules.jcl.IdcamsDeleteReturnCodeRule;
 import jp.cobolinsight.rules.jcl.Iefbr14OldDeleteRule;
-import jp.cobolinsight.rules.jcl.NewDatasetNeverDeletedRule;
 import jp.cobolinsight.rules.jcl.ParmTooLongRule;
 import jp.cobolinsight.rules.jcl.SameDatasetInOutRule;
 import jp.cobolinsight.rules.jcl.SharedOutputFileRule;
@@ -192,7 +190,6 @@ public final class BuiltinRules {
                 new InsertWithoutColumnListRule(),
                 // JCL and the utilities a step runs
                 new GdgCurrentAfterCreateRule(),
-                new NewDatasetNeverDeletedRule(),
                 new TempDatasetNotPassedRule(),
                 new Iefbr14OldDeleteRule(),
                 new UtilityRequiredDdRule(),
@@ -203,7 +200,6 @@ public final class BuiltinRules {
                 new TimeUnlimitedRule(),
                 new DuplicateStepNameRule(),
                 new SharedOutputFileRule(),
-                new Db2ProgramWithoutAttachRule(),
                 new IdcamsDeleteReturnCodeRule(),
                 new Db2UtilityCopyPendingRule(),
                 new Db2BindOptionRule(),
