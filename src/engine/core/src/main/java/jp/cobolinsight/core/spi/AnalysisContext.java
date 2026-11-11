@@ -2,6 +2,9 @@ package jp.cobolinsight.core.spi;
 
 import jp.cobolinsight.core.bms.BmsMapset;
 import jp.cobolinsight.core.callgraph.CallGraph;
+import jp.cobolinsight.core.easytrieve.EasytrieveProgram;
+import jp.cobolinsight.core.ims.ImsDbd;
+import jp.cobolinsight.core.ims.ImsPsb;
 import jp.cobolinsight.core.jcl.JclJobModel;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.sql.SqlStatementModel;
@@ -30,6 +33,22 @@ public interface AnalysisContext {
 
     /** Retrieves an ancillary artifact keyed by type. Returns empty for an unregistered type. */
     <T> Optional<T> artifact(Class<T> type);
+
+    /** The Easytrieve programs of the run, members and in-stream programs alike; macro members too. */
+    default List<EasytrieveProgram> easytrievePrograms() {
+        return artifact(MiddlewareAssets.class).orElse(MiddlewareAssets.NONE)
+                .easytrievePrograms();
+    }
+
+    /** The IMS database descriptions of the run. */
+    default List<ImsDbd> imsDbds() {
+        return artifact(MiddlewareAssets.class).orElse(MiddlewareAssets.NONE).imsDbds();
+    }
+
+    /** The IMS program specification blocks of the run. */
+    default List<ImsPsb> imsPsbs() {
+        return artifact(MiddlewareAssets.class).orElse(MiddlewareAssets.NONE).imsPsbs();
+    }
 
     /** Each key in artifacts must match the type of its value. */
     static AnalysisContext of(List<CobolSemanticModel> cobolPrograms, List<JclJobModel> jclJobs,

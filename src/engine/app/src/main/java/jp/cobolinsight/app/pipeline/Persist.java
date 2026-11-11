@@ -205,6 +205,7 @@ public final class Persist implements Step {
                 writeJcl(targets);
                 writeBms(targets);
                 writeSqlScripts(targets);
+                writeMiddleware(targets);
                 writeCallGraph();
             });
             // The parse results go beside the project file once it holds the rows made from them,
@@ -828,6 +829,10 @@ public final class Persist implements Step {
             run.plan().ifPresent(plan -> writer.name("plan").value(plan));
             run.parms().ifPresent(parms -> writer.name("parms").value(parms));
             run.library().ifPresent(library -> writer.name("library").value(library));
+            if (!run.environment().isEmpty()) {
+                writer.name("environment").value(run.environment());
+            }
+            run.psb().ifPresent(psb -> writer.name("psb").value(psb));
             writer.endObject();
         }
         writer.endArray().name("binds").beginArray();
@@ -851,7 +856,18 @@ public final class Persist implements Step {
         }
         writer.endArray().name("ddRoles").beginObject();
         facts.ddRoles().forEach((ddName, access) -> writer.name(ddName).value(access.name()));
-        writer.endObject().endObject();
+        writer.endObject();
+        if (!facts.resourceDefinitions().isEmpty()) {
+            writer.name("resourceDefinitions").beginArray();
+            for (JclUtilityFacts.ResourceDefinition definition : facts.resourceDefinitions()) {
+                writer.beginObject().name("type").value(definition.type())
+                        .name("name").value(definition.name());
+                writeStringMap(writer, "attributes", definition.attributes());
+                writer.endObject();
+            }
+            writer.endArray();
+        }
+        writer.endObject();
     }
 
     /** A DD's parameters, the DSN and DISP read apart, and how many in-stream lines it carries. */
@@ -922,6 +938,42 @@ public final class Persist implements Step {
         }
     }
 
+    /**
+     * An Easytrieve member and the SQL statements it holds, and the IMS generations. Each is a
+     * file of its own kind: the node carries the kind and the name a reader knows the asset by —
+     * the member name of a program, the database or PSB name a generation gives. The SQL of an
+     * Easytrieve program is written without a PROGRAM row, as a script's is, because the PROGRAM
+     * and PARAGRAPH tables describe COBOL.
+     */
+    private void writeMiddleware(List<SourceUnit> targets) {
+        for (SourceUnit unit : targets) {
+            if (!set.decoded().containsKey(unit.relPath())) {
+                continue;
+            }
+            long id = idByRel.get(unit.relPath());
+            switch (unit.kind()) {
+                case EASYTRIEVE -> {
+                    // A program is known by its member name, which is what a step executes; a
+                    // macro member is no program, and keeps its file name.
+                    String label = set.easytrieveByPath().getOrDefault(unit.relPath(), List.of())
+                            .stream().filter(program -> !program.macroMember()).findFirst()
+                            .map(program -> program.name()).orElse(unit.fileName());
+                    upsertNode(new NodeRecord(id, nodeTypeOf(unit.kind()), label));
+                    writeSqlStatements(id, null,
+                            set.sqlByPath().getOrDefault(unit.relPath(), List.of()));
+                }
+                case IMS_DBD -> upsertNode(new NodeRecord(id, nodeTypeOf(unit.kind()),
+                        set.dbdsByPath().getOrDefault(unit.relPath(), List.of()).stream()
+                                .findFirst().map(dbd -> dbd.name()).orElse(unit.fileName())));
+                case IMS_PSB -> upsertNode(new NodeRecord(id, nodeTypeOf(unit.kind()),
+                        set.psbsByPath().getOrDefault(unit.relPath(), List.of()).stream()
+                                .findFirst().map(psb -> psb.name()).orElse(unit.fileName())));
+                default -> {
+                }
+            }
+        }
+    }
+
     // ---- the call graph layer ----
 
     /**
@@ -949,6 +1001,14 @@ public final class Persist implements Step {
         Map<String, Long> programSourceIdByName = new HashMap<>();
         set.programsByPath().forEach((relPath, model) -> programSourceIdByName
                 .put(model.programId().toUpperCase(Locale.ROOT), idByRel.get(relPath)));
+        // An Easytrieve member is a program under its member name; a COBOL program of the same
+        // name keeps the row, as it keeps the node. An in-stream program has no row of its own.
+        for (SourceUnit unit : set.unitsOf(AssetKind.EASYTRIEVE)) {
+            set.easytrieveByPath().getOrDefault(unit.relPath(), List.of()).stream()
+                    .filter(program -> !program.macroMember() && !program.inStream())
+                    .forEach(program -> programSourceIdByName.putIfAbsent(
+                            program.name().toUpperCase(Locale.ROOT), idByRel.get(unit.relPath())));
+        }
         // Only the first job of a file can reuse its SOURCE row; the rest are graph-layer nodes.
         Map<String, Long> jobSourceIdByName = new HashMap<>();
         set.jobsByPath().forEach((relPath, jobs) -> {
@@ -956,6 +1016,15 @@ public final class Persist implements Step {
                 jobSourceIdByName.putIfAbsent(jobs.get(0).jobName(), idByRel.get(relPath));
             }
         });
+        // A PSB or a database generation of the walk is the node the graph names it by.
+        Map<String, Long> psbSourceIdByName = new HashMap<>();
+        set.psbsByPath().forEach((relPath, psbs) -> psbs.stream().findFirst().ifPresent(psb ->
+                psbSourceIdByName.putIfAbsent(psb.name().toUpperCase(Locale.ROOT),
+                        idByRel.get(relPath))));
+        Map<String, Long> dbdSourceIdByName = new HashMap<>();
+        set.dbdsByPath().forEach((relPath, dbds) -> dbds.stream().findFirst().ifPresent(dbd ->
+                dbdSourceIdByName.putIfAbsent(dbd.name().toUpperCase(Locale.ROOT),
+                        idByRel.get(relPath))));
         Map<String, Long> sourceBackedByGraphNodeId = new HashMap<>();
         for (CallGraphNode node : result.graph().nodes()) {
             Long sourceBacked = switch (node.kind()) {
@@ -965,6 +1034,8 @@ public final class Persist implements Step {
                 case PROGRAM -> node.id().startsWith(CallGraphLinker.PROGRAM_ID_PREFIX)
                         ? programSourceIdByName.get(node.label()) : null;
                 case JOB -> jobSourceIdByName.get(node.label());
+                case IMS_PSB -> psbSourceIdByName.get(node.label().toUpperCase(Locale.ROOT));
+                case IMS_DATABASE -> dbdSourceIdByName.get(node.label().toUpperCase(Locale.ROOT));
                 case UNANALYZABLE -> idByRel.get(node.attributes().get("path"));
                 default -> null;
             };
@@ -1085,6 +1156,11 @@ public final class Persist implements Step {
             case COPYBOOK -> "COPYBOOK";
             case JCL -> "JCL";
             case SQL -> "SQL";
+            case EASYTRIEVE -> "EASYTRIEVE";
+            // The two IMS generations carry the kind of the graph node they stand for, so the
+            // asset and its node in the call graph are one row of one type.
+            case IMS_DBD -> "IMS_DATABASE";
+            case IMS_PSB -> "IMS_PSB";
         };
     }
 

@@ -7,6 +7,7 @@ import jp.cobolinsight.core.callgraph.CallGraph;
 import jp.cobolinsight.core.callgraph.CallGraphNode;
 import jp.cobolinsight.core.callgraph.NodeKind;
 import jp.cobolinsight.core.rule.Needs;
+import jp.cobolinsight.core.sql.SqlStatementModel;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -33,10 +34,15 @@ public final class Link implements Step {
         if (!s.requires(Needs.CALL_GRAPH)) {
             return;
         }
+        // An Easytrieve member is a program under its member name; its SQL stands beside that of
+        // the COBOL programs, and a COBOL program of the same name keeps its own.
+        Map<String, List<SqlStatementModel>> sqlByProgram = new TreeMap<>(s.sqlByProgramId());
+        s.sqlByEasytrieveProgram().forEach(sqlByProgram::putIfAbsent);
         LinkResult linked = CallGraphLinker.link(new LinkerInput(s.programs(), s.jobs(),
-                s.mapsets(), s.sqlByProgramId(),
+                s.mapsets(), sqlByProgram,
                 readTransactionTable(s.discovery().transactionTables()),
-                s.sqlByScript(), s.sqlRoutines(), !s.options().scope().isEmpty()));
+                s.sqlByScript(), s.sqlRoutines(), !s.options().scope().isEmpty(),
+                s.middlewareAssets()));
         LinkResult result = new LinkResult(withUnanalyzableNodes(linked.graph(), s.unanalyzable()),
                 linked.findings(), linked.dynamicCallVariables());
         s.callGraph(result.graph());

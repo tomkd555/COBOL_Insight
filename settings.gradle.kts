@@ -26,6 +26,8 @@ val engineModules = listOf(
     "jcl-frontend",
     "sql-frontend",
     "bms-frontend",
+    "easytrieve-frontend",
+    "ims-frontend",
     "analysis",
     "rules",
     "transpile",

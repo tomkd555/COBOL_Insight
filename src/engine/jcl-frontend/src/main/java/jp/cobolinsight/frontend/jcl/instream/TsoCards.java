@@ -81,7 +81,8 @@ final class TsoCards {
                         Optional.ofNullable(keywords.get("PLAN")),
                         Optional.ofNullable(keywords.containsKey("PARMS")
                                 ? keywords.get("PARMS") : keywords.get("PARM")),
-                        Optional.ofNullable(keywords.get("LIB"))));
+                        Optional.ofNullable(keywords.get("LIB")), ProgramRun.DSN,
+                        Optional.empty()));
                 continue;
             }
             Matcher bind = BIND.matcher(card);
@@ -100,9 +101,11 @@ final class TsoCards {
                 Matcher named = LIBRARY_MEMBER.matcher(call.group(1).strip());
                 runs.add(named.matches()
                         ? new ProgramRun(named.group(2).strip(), Optional.empty(),
-                                Optional.ofNullable(call.group(2)), Optional.of(named.group(1)))
+                                Optional.ofNullable(call.group(2)), Optional.of(named.group(1)),
+                                ProgramRun.TSO, Optional.empty())
                         : new ProgramRun(call.group(1).strip(), Optional.empty(),
-                                Optional.ofNullable(call.group(2)), Optional.empty()));
+                                Optional.ofNullable(call.group(2)), Optional.empty(),
+                                ProgramRun.TSO, Optional.empty()));
                 continue;
             }
             Matcher allocate = ALLOCATE.matcher(card);

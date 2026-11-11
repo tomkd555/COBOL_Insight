@@ -20,6 +20,8 @@ dependencies {
     implementation(project(":engine:jcl-frontend"))
     implementation(project(":engine:sql-frontend"))
     implementation(project(":engine:bms-frontend"))
+    implementation(project(":engine:easytrieve-frontend"))
+    implementation(project(":engine:ims-frontend"))
     implementation("info.picocli:picocli:4.7.7")
     implementation("org.xerial:sqlite-jdbc:3.53.2.0")
 }

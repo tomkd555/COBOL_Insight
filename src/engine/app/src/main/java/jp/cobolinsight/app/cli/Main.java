@@ -12,7 +12,7 @@ import java.nio.charset.StandardCharsets;
 
 /** The main entry point for the group of picocli subcommands. */
 @Command(name = "cobol-insight", mixinStandardHelpOptions = true, versionProvider = Main.Version.class,
-        description = "COBOL資産の統合解析ツール",
+        description = "メインフレーム資産（COBOL・JCL・Db2・CICS・IMS・MQ・Easytrieve）の統合解析ツール",
         subcommands = {ScanCommand.class, LintCommand.class,
                 ReportCommand.class, TranspileCommand.class,
                 FixCommand.class, RulesCommand.class, SaveCommand.class,

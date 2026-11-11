@@ -114,7 +114,9 @@ public final class SourceDiscovery {
                         + "COBOL 本体なら IDENTIFICATION DIVISION、コピー句ならレベル番号で始まる"
                         + "項目定義、JCL なら // で始まる行、BMS なら DFHMSD を含むか確認してください。"
                         + "SQL スクリプトなら、最初の注記でない行を CREATE や SELECT で始めて、"
-                        + "文の終わりに ; を置いてください: "
+                        + "文の終わりに ; を置いてください。"
+                        + "Easytrieve なら FILE 文と JOB 文、IMS なら DBD・PCB マクロを含むか"
+                        + "確認してください: "
                         + String.join(", ", undecided));
             }
             if (!mismatches.isEmpty()) {
@@ -145,6 +147,9 @@ public final class SourceDiscovery {
                 case COPYBOOK -> "コピー句";
                 case JCL -> "JCL";
                 case SQL -> "SQL スクリプト";
+                case EASYTRIEVE -> "Easytrieve";
+                case IMS_DBD -> "IMS DBD";
+                case IMS_PSB -> "IMS PSB";
             };
         }
     }

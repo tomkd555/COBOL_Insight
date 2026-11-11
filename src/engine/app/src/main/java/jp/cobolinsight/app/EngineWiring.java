@@ -8,6 +8,8 @@ import jp.cobolinsight.core.spi.JclParser;
 import jp.cobolinsight.core.spi.SqlParser;
 import jp.cobolinsight.frontend.bms.BmsSourceParser;
 import jp.cobolinsight.frontend.cobol.Che4zCobolParser;
+import jp.cobolinsight.frontend.easytrieve.EasytrieveSourceParser;
+import jp.cobolinsight.frontend.ims.ImsSourceParser;
 import jp.cobolinsight.frontend.jcl.MapaJclParser;
 import jp.cobolinsight.frontend.sql.Db2zSqlParser;
 
@@ -39,6 +41,14 @@ public final class EngineWiring {
 
     public static BmsSourceParser bmsParser() {
         return new BmsSourceParser();
+    }
+
+    public static EasytrieveSourceParser easytrieveParser() {
+        return new EasytrieveSourceParser();
+    }
+
+    public static ImsSourceParser imsParser() {
+        return new ImsSourceParser();
     }
 
     /** The verifier that reparses a fixed source, wired to the same frontend as the analysis. */

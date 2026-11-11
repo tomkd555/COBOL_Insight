@@ -1,12 +1,16 @@
 package jp.cobolinsight.core.callgraph;
 
-/** The 11 node kinds of the call graph. */
+/** The node kinds of the call graph. */
 public enum NodeKind {
     /** A JCL JOB unit. */
     JOB,
     /** A JCL EXEC step unit. */
     STEP,
-    /** A COBOL program (PROGRAM-ID). */
+    /**
+     * A program: a COBOL program (PROGRAM-ID), an Easytrieve member (its {@code language} attribute
+     * says so), a routine an SQL script defines, or a load module nothing in the walk is the source
+     * of.
+     */
     PROGRAM,
     /** A COBOL paragraph or section. */
     PARAGRAPH,
@@ -22,6 +26,12 @@ public enum NodeKind {
     TRANSACTION,
     /** A BMS mapset or map. */
     BMS_MAP,
+    /** An IMS program specification block: what an IMS region starts a program with. */
+    IMS_PSB,
+    /** An IMS database, named by its DBD. */
+    IMS_DATABASE,
+    /** An IBM MQ queue a program opens by a name written in the source. */
+    MQ_QUEUE,
     /**
      * An asset whose call relationships could not be read because decoding or parsing failed
      * (holds the relative path and failure reason in its attributes). Since its call relationships

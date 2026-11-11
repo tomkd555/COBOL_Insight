@@ -1,0 +1,76 @@
+# CALL targets that are entry points of a system service rather than application programs, each
+# with the middleware or runtime that owns it. One NAME=OWNER per line; a name ending in * stands
+# for every name with that prefix; a line starting with # is a comment. A CALL of one of these
+# becomes an EXTERNAL_UTILITY node, so it is not reported as a program missing from the assets.
+
+# IMS DL/I language interfaces
+CBLTDLI=IMS
+AIBTDLI=IMS
+CEETDLI=IMS
+AERTDLI=IMS
+ASMTDLI=IMS
+PLITDLI=IMS
+DFSLI000=IMS
+
+# IBM MQ: the MQI calls
+MQCONN=MQ
+MQCONNX=MQ
+MQDISC=MQ
+MQOPEN=MQ
+MQCLOSE=MQ
+MQGET=MQ
+MQPUT=MQ
+MQPUT1=MQ
+MQINQ=MQ
+MQSET=MQ
+MQBEGIN=MQ
+MQCMIT=MQ
+MQBACK=MQ
+MQSUB=MQ
+MQSUBRQ=MQ
+MQCB=MQ
+MQCTL=MQ
+MQSTAT=MQ
+MQCRTMH=MQ
+MQDLTMH=MQ
+MQSETMP=MQ
+MQINQMP=MQ
+MQDLTMP=MQ
+MQBUFMH=MQ
+MQMHBUF=MQ
+CSQ*=MQ
+
+# Db2: the attachment facilities and the message formatters
+DSNALI=DB2
+DSNRLI=DB2
+DSNELI=DB2
+DSNHLI=DB2
+DSNHLI2=DB2
+DSNTIAR=DB2
+DSNTIAC=DB2
+DSNTIR=DB2
+DSNACCOR=DB2
+DSNACCOX=DB2
+DSNUTILS=DB2
+DSNUTILU=DB2
+
+# CICS
+DFH*=CICS
+
+# Language Environment callable services and the COBOL run-time
+CEE*=LE
+IGZ*=LE
+ILBO*=LE
+
+# z/OS services
+CSNB*=ICSF
+CSNE*=ICSF
+IRR*=RACF
+EZASOKET=TCPIP
+EZACIC*=TCPIP
+BPX1*=USS
+IEFBR14=ZOS
+IDCAMS=ZOS
+SORT=SORT
+ICEMAN=SORT
+ICETOOL=SORT
