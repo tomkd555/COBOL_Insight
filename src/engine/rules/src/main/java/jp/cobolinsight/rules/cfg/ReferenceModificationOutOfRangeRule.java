@@ -5,7 +5,9 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.DataItem;
 import jp.cobolinsight.core.semantic.Procedure;
@@ -34,7 +36,9 @@ public final class ReferenceModificationOutOfRangeRule implements Rule {
             "([\\p{L}\\p{N}$#_-]*\\p{L}[\\p{L}\\p{N}$#_-]*)\\s*\\(\\s*(\\d+)\\s*:\\s*(\\d+)\\s*\\)");
 
     private static final RuleMeta META =
-            RuleMeta.named("R042", "項目長を超える部分参照", "データ定義")
+            RuleMeta.named("R042", "項目長を超える部分参照", RuleCategory.ABEND)
+            .technology(Technology.COBOL)
+            .symptom("S0C4・記憶域の破壊")
                     .summary("項目の長さを超える範囲を指す部分参照を検出します。")
                     .rationale("定義されていない領域を読み書きし、"
                             + "隣接する項目を壊すか値の定まらない領域を読みます。")

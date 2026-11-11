@@ -7,7 +7,9 @@ import jp.cobolinsight.core.jcl.JclStep;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.spi.AnalysisContext;
 
@@ -34,7 +36,9 @@ public final class JclFinalStepSkippedOnSuccessRule implements Rule {
             "\\(\\s*(\\d+)\\s*,\\s*(EQ|NE|LT|LE|GT|GE)\\s*(?:,[^)]*)?\\)");
 
     private static final RuleMeta META =
-            RuleMeta.named("R046", "正常終了時に実行されない最終ステップ", "JCL制御")
+            RuleMeta.named("R046", "正常終了時に実行されない最終ステップ", RuleCategory.OPERATION)
+            .technology(Technology.JCL)
+            .symptom("最終ステップの不実行")
             .summary("ジョブの最終ステップの COND パラメーターのうち、先行ステップの"
                     + "戻りコードがすべて 0 のときに真になるものを検出します。")
             .rationale("先行ステップがすべて正常終了しても最終ステップが読み飛ばされ、"

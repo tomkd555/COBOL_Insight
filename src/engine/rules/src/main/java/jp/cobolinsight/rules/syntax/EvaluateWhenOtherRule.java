@@ -9,7 +9,9 @@ import jp.cobolinsight.core.semantic.StatementBlock;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.spi.AnalysisContext;
 
@@ -25,7 +27,9 @@ import java.util.List;
  */
 public final class EvaluateWhenOtherRule implements Rule {
 
-    private static final RuleMeta META = RuleMeta.named("R013", "EVALUATE 文の WHEN OTHER 句欠如", "制御フロー")
+    private static final RuleMeta META = RuleMeta.named("R013", "EVALUATE 文の WHEN OTHER 句欠如", RuleCategory.INTEGRITY)
+            .technology(Technology.COBOL)
+            .symptom("想定外の値の素通り")
             .summary("WHEN OTHER 句を持たない EVALUATE 文を検出します。")
             .rationale("どの WHEN 句にも一致しない値は処理を受けずに通り抜け、"
                     + "想定外の入力は記録も通知もないまま無視されます。")

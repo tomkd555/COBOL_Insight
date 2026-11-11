@@ -7,7 +7,9 @@ import jp.cobolinsight.core.jcl.JclStep;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.spi.AnalysisContext;
 
@@ -37,7 +39,9 @@ public final class JclUndefinedStepReferenceRule implements Rule {
             "(?i)([A-Z0-9$#@]+)\\.(?:ABENDCC|ABEND|RUN|RC)\\b");
 
     private static final RuleMeta META =
-            RuleMeta.named("R047", "未定義ステップを参照する COND・IF", "JCL制御")
+            RuleMeta.named("R047", "未定義ステップを参照する COND・IF", RuleCategory.ABEND)
+            .technology(Technology.JCL)
+            .symptom("JCL エラー")
             .summary("COND パラメーターや IF 条件式が参照するステップ名のうち、"
                     + "そのジョブの先行するステップに定義されていないものを検出します。")
             .rationale("参照先のステップが実在しないため、戻りコードの検査が働かず、"

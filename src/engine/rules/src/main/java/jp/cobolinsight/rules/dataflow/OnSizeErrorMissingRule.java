@@ -17,7 +17,9 @@ import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.source.SourceRange;
@@ -57,7 +59,9 @@ public final class OnSizeErrorMissingRule implements Rule {
             "ROUNDED", "GIVING", "TO", "FROM", "BY", "INTO", "REMAINDER", "ON", "SIZE", "ERROR",
             "CORRESPONDING", "CORR", "NOT");
 
-    private static final RuleMeta META = RuleMeta.named("R004", "ON SIZE ERROR 句の欠如", "例外処理")
+    private static final RuleMeta META = RuleMeta.named("R004", "ON SIZE ERROR 句の欠如", RuleCategory.INTEGRITY)
+            .technology(Technology.COBOL)
+            .symptom("けたあふれ（上位けたの欠落）")
             .summary("結果が受け取り側項目のけた数を超え得るのに ON SIZE ERROR 句を持たない"
                     + "算術文を検出します。")
             .rationale("けたあふれが起きても検知されず、上位けたを失った値が"

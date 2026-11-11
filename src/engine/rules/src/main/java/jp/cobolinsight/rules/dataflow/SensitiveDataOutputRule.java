@@ -14,7 +14,9 @@ import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
@@ -38,7 +40,9 @@ public final class SensitiveDataOutputRule implements Rule {
     private static final Set<String> OUTPUT_VERBS = Set.of("DISPLAY", "WRITE", "CALL");
 
     private static final RuleMeta META =
-            RuleMeta.named("R027", "機密データ項目のマスキングなし出力", "セキュリティ")
+            RuleMeta.named("R027", "機密データ項目のマスキングなし出力", RuleCategory.SECURITY)
+            .technology(Technology.COBOL)
+            .symptom("機密情報の漏えい")
                     .summary("機密項目の値を、マスキングも暗号化も経ずに"
                             + "表示・帳票・ログへ渡す箇所を検出します。")
                     .rationale("個人番号や口座番号が画面・帳票・ログに残り、"

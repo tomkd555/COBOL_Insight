@@ -8,7 +8,9 @@ import jp.cobolinsight.core.semantic.DataItem;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.spi.AnalysisContext;
 import jp.cobolinsight.rules.SourceTextIndex;
@@ -49,7 +51,8 @@ public final class UnusedDataItemRule implements Rule {
     private static final Pattern COPY_NAME = Pattern.compile(
             "(?i)(?<![\\p{L}\\p{N}-])COPY\\s+([\\p{L}\\p{N}][\\p{L}\\p{N}-]*)");
 
-    private static final RuleMeta META = RuleMeta.named("R002", "未使用データ項目", "データフロー")
+    private static final RuleMeta META = RuleMeta.named("R002", "未使用データ項目", RuleCategory.MAINTAINABILITY)
+            .technology(Technology.COBOL)
             .summary("作業場所節・局所記憶節で宣言され、"
                     + "手続き部のどの文からも参照されないデータ項目を検出します。")
             .rationale("使われない宣言は記憶域を占めるだけでなく、"

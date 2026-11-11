@@ -5,7 +5,9 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.spi.AnalysisContext;
 import jp.cobolinsight.core.sql.SqlStatementKind;
@@ -27,7 +29,9 @@ import java.util.List;
 public final class UnqualifiedUpdateRule implements Rule {
 
     private static final RuleMeta META =
-            RuleMeta.named("R054", "WHERE 句のない UPDATE・DELETE", "SQL")
+            RuleMeta.named("R054", "WHERE 句のない UPDATE・DELETE", RuleCategory.INTEGRITY)
+            .technology(Technology.DB2)
+            .symptom("全行の更新・削除")
             .summary("WHERE 句を持たない UPDATE 文・DELETE 文を検出します。")
             .rationale("表のすべての行が対象になり、"
                     + "再実行しても元の値には戻りません。")
@@ -45,7 +49,7 @@ public final class UnqualifiedUpdateRule implements Rule {
                     """)
             .severity(Severity.HIGH)
             .commands(Command.LINT)
-            .targets(AssetKind.COBOL, AssetKind.SQL)
+            .targets(AssetKind.COBOL, AssetKind.SQL, AssetKind.EASYTRIEVE)
             .needs(Needs.SQL)
             .build();
 

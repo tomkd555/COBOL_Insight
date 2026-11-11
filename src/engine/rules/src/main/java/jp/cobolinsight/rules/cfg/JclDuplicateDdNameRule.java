@@ -7,7 +7,9 @@ import jp.cobolinsight.core.jcl.JclJobModel;
 import jp.cobolinsight.core.jcl.JclStep;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.spi.AnalysisContext;
 
@@ -26,7 +28,9 @@ import java.util.Set;
 public final class JclDuplicateDdNameRule implements Rule {
 
     private static final RuleMeta META =
-            RuleMeta.named("R051", "ステップ内の DD 名の重複", "JCL制御")
+            RuleMeta.named("R051", "ステップ内の DD 名の重複", RuleCategory.INTEGRITY)
+            .technology(Technology.JCL)
+            .symptom("2 つ目の DD の無視")
             .summary("同じステップに同じ DD 名の DD 文が 2 つ以上書かれているものを"
                     + "検出します。")
             .rationale("プログラムが開くのは最初に書いた DD だけで、"

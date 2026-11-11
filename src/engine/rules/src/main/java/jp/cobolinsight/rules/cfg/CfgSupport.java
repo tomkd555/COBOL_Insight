@@ -44,17 +44,17 @@ public final class CfgSupport {
     private CfgSupport() {
     }
 
-    static String upper(String s) {
+    public static String upper(String s) {
         return s == null ? "" : s.toUpperCase(Locale.ROOT);
     }
 
     /** Pre-order traversal, in definition order, of statements and the nested bodies of their compound statements. */
-    static void walk(List<Statement> statements, Consumer<Statement> visitor) {
+    public static void walk(List<Statement> statements, Consumer<Statement> visitor) {
         Statements.walk(statements, visitor);
     }
 
     /** Returns the procedure that contains target (by instance identity, including nested statements). Null if none does. */
-    static Procedure containingProcedure(CobolSemanticModel model, Statement target) {
+    public static Procedure containingProcedure(CobolSemanticModel model, Statement target) {
         for (Procedure procedure : model.procedures()) {
             if (containsStatement(procedure.statements(), target)) {
                 return procedure;
@@ -149,7 +149,7 @@ public final class CfgSupport {
     }
 
     /** The body of an EXEC CICS command: the wrapper stripped, uppercased, layout collapsed to single spaces. */
-    static String cicsBody(String blockText) {
+    public static String cicsBody(String blockText) {
         String text = upper(blockText).replaceAll("\\s+", " ").trim();
         int exec = text.indexOf("EXEC CICS");
         return exec < 0 ? text : text.substring(exec + "EXEC CICS".length()).trim();
@@ -198,7 +198,7 @@ public final class CfgSupport {
      * REDEFINES descendant counts none, because it overlaps the item it redefines. Empty when any
      * descendant's PICTURE will not parse.
      */
-    static Optional<Integer> byteLength(DataItem item) {
+    public static Optional<Integer> byteLength(DataItem item) {
         if (item.picture().isPresent()) {
             try {
                 return Optional.of(PictureType
@@ -225,7 +225,7 @@ public final class CfgSupport {
     }
 
     /** The first item of the program with this name, searched depth-first through the group items. */
-    static Optional<DataItem> itemNamed(CobolSemanticModel model, String name) {
+    public static Optional<DataItem> itemNamed(CobolSemanticModel model, String name) {
         return itemNamed(model.dataItems(), upper(name));
     }
 
@@ -252,7 +252,7 @@ public final class CfgSupport {
      * The text a statement puts a data name in: the statement itself for a simple one, the
      * condition and the branch labels for a compound one.
      */
-    static String referenceText(Statement statement) {
+    public static String referenceText(Statement statement) {
         if (statement instanceof SimpleStatement simple) {
             return simple.text();
         }

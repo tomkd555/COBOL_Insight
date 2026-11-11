@@ -19,7 +19,9 @@ import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.source.SourceRange;
@@ -89,7 +91,9 @@ public final class CicsResponseUncheckedRule implements Rule {
     }
 
     private static final RuleMeta META =
-            RuleMeta.named("R021", "CICS 応答コード（RESP・RESP2）未検査", "例外処理")
+            RuleMeta.named("R021", "CICS 応答コード（RESP・RESP2）未検査", RuleCategory.ABEND)
+            .technology(Technology.CICS)
+            .symptom("AEIx 異常終了・応答の見逃し")
                     .summary("RESP・RESP2 を指定しない EXEC CICS コマンドと、RESP を受け取っても"
                             + "次の CICS コマンドまでに検査しないコマンドを検出します。")
                     .rationale("応答コードを検査しないため、資源の不在や排他の失敗を"

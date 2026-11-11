@@ -24,7 +24,9 @@ import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
@@ -50,7 +52,8 @@ import java.util.Set;
  */
 public final class UnreachableCodeRule implements Rule {
 
-    private static final RuleMeta META = RuleMeta.named("R011", "到達不能コード", "制御フロー")
+    private static final RuleMeta META = RuleMeta.named("R011", "到達不能コード", RuleCategory.MAINTAINABILITY)
+            .technology(Technology.COBOL)
             .summary("制御が到達しない文と、どこからも呼び出されない段落を検出します。")
             .rationale("実行されない記述が残ると、読む者が生きた処理と取り違え、"
                     + "実行されない場所に改修を加えます。")

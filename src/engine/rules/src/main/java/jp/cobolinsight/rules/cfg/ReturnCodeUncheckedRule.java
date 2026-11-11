@@ -14,7 +14,9 @@ import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
@@ -34,14 +36,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class ReturnCodeUncheckedRule implements Rule {
 
     private static final RuleMeta META = RuleMeta
-            .named("R029", "呼び出し先プログラムの戻りコード（RETURN-CODE）未検査", "制御フロー")
+            .named("R029", "呼び出し先プログラムの戻りコード（RETURN-CODE）未検査", RuleCategory.INTEGRITY)
+            .technology(Technology.COBOL)
+            .symptom("呼び出し先の失敗の見逃し")
             .summary("RETURN-CODE を使う設計のプログラムで、"
                     + "その検査を伴わない CALL 文を検出します。")
             .rationale("呼び出し先の失敗に気づかないまま後続が進みます。")
             .detection("CALL 文の後、次の CALL 文または終端に達するまでの前方経路で"
                     + "RETURN-CODE を条件で参照しないものを検出します。"
                     + "同じプログラムの他の箇所に RETURN-CODE の参照があることを前提とし、"
-                    + "RETURN-CODE をどこでも参照しないプログラムは対象外です。")
+                    + "RETURN-CODE をどこでも参照しないプログラムは対象外です。"
+                    + "CBLTDLI・MQGET・DSNTIAR・CEE で始まる呼び出しなど、結果を引数や"
+                    + "状態コードで返すミドルウェアと言語実行系の入口点の CALL も対象外です。")
             .remedy("CALL 文の直後に RETURN-CODE を検査し、正常値以外を異常として"
                     + "処理してください。")
             .example("""
@@ -112,11 +118,27 @@ public final class ReturnCodeUncheckedRule implements Rule {
                 .orElse("CALL 文の後で");
     }
 
+    /** The literal a CALL names, when it names one. */
+    private static final java.util.regex.Pattern LITERAL_TARGET = java.util.regex.Pattern.compile(
+            "(?is)^CALL\\s+['\"]([^'\"]+)['\"]");
+
+    /**
+     * A CALL of an application program. An entry point of IMS, MQ, Db2, CICS or the language
+     * run-time reports its outcome in a parameter or a status area of its own and leaves
+     * RETURN-CODE alone, so asking for RETURN-CODE after it would be asking for the wrong thing.
+     */
     private static boolean isCall(CfgNode node) {
         return node.statement()
                 .map(statement -> statement instanceof SimpleStatement simple
-                        && "CALL".equals(CfgSupport.upper(simple.verb())))
+                        && "CALL".equals(CfgSupport.upper(simple.verb()))
+                        && !callsSystemService(simple))
                 .orElse(false);
+    }
+
+    private static boolean callsSystemService(SimpleStatement call) {
+        java.util.regex.Matcher target = LITERAL_TARGET.matcher(call.text().strip());
+        return target.find() && jp.cobolinsight.analysis.linker.CallGraphLinker
+                .systemServiceOf(target.group(1)).isPresent();
     }
 
     private static boolean referencesReturnCodeInCondition(CfgNode node) {

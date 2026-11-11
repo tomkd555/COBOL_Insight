@@ -63,6 +63,56 @@ import jp.cobolinsight.rules.syntax.EvaluateWhenOtherRule;
 import jp.cobolinsight.rules.syntax.HardcodedCredentialRule;
 import jp.cobolinsight.rules.syntax.PerformSingleParagraphRule;
 import jp.cobolinsight.rules.syntax.UnusedDataItemRule;
+import jp.cobolinsight.rules.cfg.StopRunInSubprogramRule;
+import jp.cobolinsight.rules.cics.CicsBrowseNotEndedRule;
+import jp.cobolinsight.rules.cics.CicsNativeIoRule;
+import jp.cobolinsight.rules.cics.CicsReadUpdateNotReleasedRule;
+import jp.cobolinsight.rules.cics.CicsSharedStorageNotFreedRule;
+import jp.cobolinsight.rules.dataflow.GroupClearedNumericRule;
+import jp.cobolinsight.rules.easytrieve.FieldBeyondRecordRule;
+import jp.cobolinsight.rules.easytrieve.FileWithoutDdRule;
+import jp.cobolinsight.rules.easytrieve.GetWithoutEofRule;
+import jp.cobolinsight.rules.easytrieve.MacroNotFoundRule;
+import jp.cobolinsight.rules.easytrieve.NullInputWithoutStopRule;
+import jp.cobolinsight.rules.easytrieve.NumericInputUncheckedRule;
+import jp.cobolinsight.rules.easytrieve.PasswordLiteralRule;
+import jp.cobolinsight.rules.easytrieve.SqlcodeUncheckedRule;
+import jp.cobolinsight.rules.easytrieve.TableSizeDefaultRule;
+import jp.cobolinsight.rules.easytrieve.UnusedProcedureRule;
+import jp.cobolinsight.rules.ims.BmpCheckpointMissingRule;
+import jp.cobolinsight.rules.ims.DliStatusUncheckedRule;
+import jp.cobolinsight.rules.ims.PsbSegmentUndefinedRule;
+import jp.cobolinsight.rules.jcl.DatasetNameInvalidRule;
+import jp.cobolinsight.rules.jcl.Db2BindOptionRule;
+import jp.cobolinsight.rules.jcl.Db2ProgramWithoutAttachRule;
+import jp.cobolinsight.rules.jcl.Db2UtilityCopyPendingRule;
+import jp.cobolinsight.rules.jcl.DispOmittedRule;
+import jp.cobolinsight.rules.jcl.DuplicateStepNameRule;
+import jp.cobolinsight.rules.jcl.GdgCurrentAfterCreateRule;
+import jp.cobolinsight.rules.jcl.IdcamsDeleteReturnCodeRule;
+import jp.cobolinsight.rules.jcl.Iefbr14OldDeleteRule;
+import jp.cobolinsight.rules.jcl.NewDatasetNeverDeletedRule;
+import jp.cobolinsight.rules.jcl.ParmTooLongRule;
+import jp.cobolinsight.rules.jcl.SameDatasetInOutRule;
+import jp.cobolinsight.rules.jcl.SharedOutputFileRule;
+import jp.cobolinsight.rules.jcl.TempDatasetNotPassedRule;
+import jp.cobolinsight.rules.jcl.TimeUnlimitedRule;
+import jp.cobolinsight.rules.jcl.UtilityRequiredDdRule;
+import jp.cobolinsight.rules.mq.MqHandleNotReleasedRule;
+import jp.cobolinsight.rules.mq.MqMessageIdNotResetRule;
+import jp.cobolinsight.rules.mq.MqReasonUncheckedRule;
+import jp.cobolinsight.rules.mq.MqSyncpointNotExplicitRule;
+import jp.cobolinsight.rules.mq.MqUnlimitedWaitUnderCicsRule;
+import jp.cobolinsight.rules.sql.CartesianJoinRule;
+import jp.cobolinsight.rules.sql.CommitUnderMonitorRule;
+import jp.cobolinsight.rules.sql.DdlInProgramRule;
+import jp.cobolinsight.rules.sql.FetchFirstWithoutOrderRule;
+import jp.cobolinsight.rules.sql.GrantToPublicRule;
+import jp.cobolinsight.rules.sql.ImplicitTableSpaceRule;
+import jp.cobolinsight.rules.sql.IntoCountMismatchRule;
+import jp.cobolinsight.rules.sql.LockTableExclusiveRule;
+import jp.cobolinsight.rules.sql.NotInSubqueryRule;
+import jp.cobolinsight.rules.sql.UnionWithoutAllRule;
 
 import java.util.List;
 
@@ -139,6 +189,63 @@ public final class BuiltinRules {
                 new UnboundedSelectIntoRule(),
                 new UndeclaredColumnRule(),
                 new SchemaQualifiedTableRule(),
-                new InsertWithoutColumnListRule());
+                new InsertWithoutColumnListRule(),
+                // JCL and the utilities a step runs
+                new GdgCurrentAfterCreateRule(),
+                new NewDatasetNeverDeletedRule(),
+                new TempDatasetNotPassedRule(),
+                new Iefbr14OldDeleteRule(),
+                new UtilityRequiredDdRule(),
+                new ParmTooLongRule(),
+                new DatasetNameInvalidRule(),
+                new DispOmittedRule(),
+                new SameDatasetInOutRule(),
+                new TimeUnlimitedRule(),
+                new DuplicateStepNameRule(),
+                new SharedOutputFileRule(),
+                new Db2ProgramWithoutAttachRule(),
+                new IdcamsDeleteReturnCodeRule(),
+                new Db2UtilityCopyPendingRule(),
+                new Db2BindOptionRule(),
+                // Db2
+                new CommitUnderMonitorRule(),
+                new IntoCountMismatchRule(),
+                new DdlInProgramRule(),
+                new LockTableExclusiveRule(),
+                new CartesianJoinRule(),
+                new FetchFirstWithoutOrderRule(),
+                new NotInSubqueryRule(),
+                new GrantToPublicRule(),
+                new ImplicitTableSpaceRule(),
+                new UnionWithoutAllRule(),
+                // CICS
+                new CicsNativeIoRule(),
+                new CicsBrowseNotEndedRule(),
+                new CicsSharedStorageNotFreedRule(),
+                new CicsReadUpdateNotReleasedRule(),
+                // IMS
+                new DliStatusUncheckedRule(),
+                new PsbSegmentUndefinedRule(),
+                new BmpCheckpointMissingRule(),
+                // MQ
+                new MqReasonUncheckedRule(),
+                new MqMessageIdNotResetRule(),
+                new MqSyncpointNotExplicitRule(),
+                new MqHandleNotReleasedRule(),
+                new MqUnlimitedWaitUnderCicsRule(),
+                // Easytrieve
+                new NullInputWithoutStopRule(),
+                new FieldBeyondRecordRule(),
+                new FileWithoutDdRule(),
+                new NumericInputUncheckedRule(),
+                new GetWithoutEofRule(),
+                new SqlcodeUncheckedRule(),
+                new PasswordLiteralRule(),
+                new TableSizeDefaultRule(),
+                new UnusedProcedureRule(),
+                new MacroNotFoundRule(),
+                // COBOL
+                new StopRunInSubprogramRule(),
+                new GroupClearedNumericRule());
     }
 }

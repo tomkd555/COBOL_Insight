@@ -11,7 +11,9 @@ import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
@@ -35,7 +37,9 @@ import java.util.Set;
 public final class CicsReturnMissingRule implements Rule {
 
     private static final RuleMeta META =
-            RuleMeta.named("R022", "CICS RETURN 文欠如による疑似会話の途絶", "制御フロー")
+            RuleMeta.named("R022", "CICS RETURN 文欠如による疑似会話の途絶", RuleCategory.ABEND)
+            .technology(Technology.CICS)
+            .symptom("疑似会話の途絶")
                     .summary("EXEC CICS RETURN を 1 つも持たないまま終端に達する"
                             + "CICS プログラムを検出します。")
                     .rationale("プログラムが制御を CICS に戻さないため、次の入力を受け付ける状態が"

@@ -23,7 +23,9 @@ import jp.cobolinsight.core.semantic.Statements;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.CopyInlineExpansion;
 import jp.cobolinsight.core.source.SourcePosition;
@@ -63,7 +65,9 @@ import java.util.Set;
  */
 public final class SqlCodeUncheckedRule implements Rule {
 
-    private static final RuleMeta META = RuleMeta.named("R018", "SQLCODE・SQLSTATE 未検査", "例外処理")
+    private static final RuleMeta META = RuleMeta.named("R018", "SQLCODE・SQLSTATE 未検査", RuleCategory.INTEGRITY)
+            .technology(Technology.DB2)
+            .symptom("SQL エラーの見逃し")
             .summary("INSERT・UPDATE・DELETE・SELECT INTO・FETCH の後、次の埋込みSQL文までに"
                     + "SQLCODE・SQLSTATE を検査しない箇所を検出します。")
             .rationale("更新の失敗や該当行なしを検知せずに後続が進み、"

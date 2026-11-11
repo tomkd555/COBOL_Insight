@@ -12,7 +12,9 @@ import jp.cobolinsight.core.jcl.JclStep;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.semantic.CallKind;
 import jp.cobolinsight.core.semantic.CallRelation;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
@@ -57,7 +59,8 @@ public final class UnanalyzedProgramCallRule implements Rule {
             Set.of(EdgeKind.EXECUTION, EdgeKind.CALL, EdgeKind.TRANSACTION_TRANSITION);
 
     private static final RuleMeta META =
-            RuleMeta.named("R048", "解析対象にないプログラムの呼び出し", "呼び出し関係")
+            RuleMeta.named("R048", "解析対象にないプログラムの呼び出し", RuleCategory.MAINTAINABILITY)
+            .technology(Technology.COBOL)
             .summary("実行・CALL・トランザクション遷移の呼び出し先のうち、解析対象の"
                     + "フォルダーに原始プログラムがないプログラムを検出します。")
             .rationale("呼び出し先の中身を検査できないため、そのプログラムに関わる不具合は"
@@ -75,7 +78,7 @@ public final class UnanalyzedProgramCallRule implements Rule {
                     """)
             .severity(Severity.LOW)
             .commands(Command.LINT)
-            .targets(AssetKind.COBOL, AssetKind.JCL)
+            .targets(AssetKind.COBOL, AssetKind.JCL, AssetKind.EASYTRIEVE)
             .needs(Needs.CALL_GRAPH)
             .build();
 
@@ -109,6 +112,11 @@ public final class UnanalyzedProgramCallRule implements Rule {
             programFiles.put(model.programId().toUpperCase(Locale.ROOT), model.sourceFile());
             programs.putIfAbsent(model.programId().toUpperCase(Locale.ROOT), model);
         }
+        // An Easytrieve member calls programs too; the call stands in the member's own file.
+        context.easytrievePrograms().stream()
+                .filter(program -> !program.macroMember() && !program.inStream())
+                .forEach(program -> programFiles.putIfAbsent(
+                        program.name().toUpperCase(Locale.ROOT), program.sourceFile()));
         List<Finding> findings = new ArrayList<>();
         for (CallGraphEdge edge : graph.edges()) {
             if (!WATCHED_KINDS.contains(edge.kind()) || edge.line() == null) {

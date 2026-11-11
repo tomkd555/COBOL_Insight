@@ -5,7 +5,9 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.CompoundStatement;
 import jp.cobolinsight.core.semantic.ControlKind;
@@ -48,7 +50,9 @@ public final class UncommittedUpdateLoopRule implements Rule {
     private static final Set<String> DML = Set.of("UPDATE", "INSERT", "DELETE");
 
     private static final RuleMeta META = RuleMeta
-            .named("R040", "COMMIT のない更新の繰り返し", "SQL")
+            .named("R040", "COMMIT のない更新の繰り返し", RuleCategory.OPERATION)
+            .technology(Technology.DB2)
+            .symptom("ロック保持・長時間のバックアウト（SQLCODE -911・-904）")
             .summary("繰り返しの中で更新しながら COMMIT を一度も実行しない"
                     + "バッチプログラムを検出します。")
             .rationale("行ロックがステップの終わりまで解放されず、"

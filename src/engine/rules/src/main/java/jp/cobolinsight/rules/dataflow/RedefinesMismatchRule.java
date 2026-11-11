@@ -7,7 +7,9 @@ import jp.cobolinsight.core.semantic.DataItem;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
@@ -26,7 +28,9 @@ import java.util.List;
 public final class RedefinesMismatchRule implements Rule {
 
     private static final RuleMeta META =
-            RuleMeta.named("R015", "REDEFINES による項目長の不一致", "データ定義")
+            RuleMeta.named("R015", "REDEFINES による項目長の不一致", RuleCategory.INTEGRITY)
+            .technology(Technology.COBOL)
+            .symptom("隣接項目の破壊")
                     .summary("REDEFINES で再定義した項目群の総バイト長が"
                             + "元の項目より大きい構成を検出します。")
                     .rationale("再定義側への書き込みが元の項目の領域を越え、隣接する項目を壊します。")

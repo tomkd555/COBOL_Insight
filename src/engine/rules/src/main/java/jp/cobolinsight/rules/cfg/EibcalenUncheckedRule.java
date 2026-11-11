@@ -6,7 +6,9 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.DataItem;
 import jp.cobolinsight.core.semantic.Procedure;
@@ -38,7 +40,9 @@ public final class EibcalenUncheckedRule implements Rule {
     private static final Pattern EIBCALEN = CfgSupport.wordPattern("EIBCALEN");
 
     private static final RuleMeta META =
-            RuleMeta.named("R035", "EIBCALEN 未検査の DFHCOMMAREA 参照", "CICS")
+            RuleMeta.named("R035", "EIBCALEN 未検査の DFHCOMMAREA 参照", RuleCategory.ABEND)
+            .technology(Technology.CICS)
+            .symptom("ASRA（S0C4）")
                     .summary("EIBCALEN を検査しないまま DFHCOMMAREA を参照する"
                             + "疑似会話プログラムを検出します。")
                     .rationale("初回起動では連絡域が渡されないため、"

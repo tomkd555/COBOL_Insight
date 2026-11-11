@@ -9,7 +9,9 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.semantic.CallKind;
 import jp.cobolinsight.core.semantic.CallRelation;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
@@ -56,7 +58,9 @@ public final class CallUsingLengthMismatchRule implements Rule {
     private static final Set<String> USING_MARKER = Set.of("BY", "REFERENCE", "CONTENT", "VALUE");
 
     private static final RuleMeta META = RuleMeta
-            .named("R041", "CALL の USING と呼び出し先の LINKAGE の長さ不一致", "呼び出し関係")
+            .named("R041", "CALL の USING と呼び出し先の LINKAGE の長さ不一致", RuleCategory.ABEND)
+            .technology(Technology.COBOL)
+            .symptom("S0C4・記憶域の破壊")
             .summary("CALL 文の USING の作用対象を、呼び出し先の PROCEDURE DIVISION USING が並べる"
                     + "連絡節項目と個数・長さで突き合わせ、一致しないものを検出します。")
             .rationale("個数が合わなければ呼び出し先の連絡節項目の一部に何も転記されず、"

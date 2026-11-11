@@ -8,7 +8,9 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.DataItem;
 import jp.cobolinsight.core.semantic.Procedure;
@@ -37,7 +39,9 @@ public final class UndefinedSymbolicMapItemRule implements Rule {
     private static final String SUFFIXES = "LFAIO";
 
     private static final RuleMeta META = RuleMeta
-            .named("R033", "BMS マップに定義のないシンボリックマップ項目の参照", "CICS")
+            .named("R033", "BMS マップに定義のないシンボリックマップ項目の参照", RuleCategory.ABEND)
+            .technology(Technology.CICS)
+            .symptom("翻訳エラー・画面項目の不一致")
             .summary("マップに対応する項目がないシンボリックマップの項目を参照する"
                     + "文を検出します。")
             .rationale("マップが埋めない領域を読み書きするため、画面には現れず、"

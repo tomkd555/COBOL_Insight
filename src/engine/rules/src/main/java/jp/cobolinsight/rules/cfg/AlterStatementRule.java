@@ -8,7 +8,9 @@ import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
@@ -23,7 +25,8 @@ import java.util.List;
  */
 public final class AlterStatementRule implements Rule {
 
-    private static final RuleMeta META = RuleMeta.named("R010", "静的に追えない ALTER 文", "制御フロー")
+    private static final RuleMeta META = RuleMeta.named("R010", "静的に追えない ALTER 文", RuleCategory.MAINTAINABILITY)
+            .technology(Technology.COBOL)
             .summary("手続き部の ALTER 文をすべて検出します。")
             .rationale("ALTER 文は GO TO 文の移行先を実行時に書き換えるため、"
                     + "原始プログラムを読んでも制御の流れを追えず、静的解析も移行先を"

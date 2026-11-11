@@ -7,7 +7,9 @@ import jp.cobolinsight.core.picture.PictureType;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.Procedure;
 import jp.cobolinsight.core.semantic.SimpleStatement;
@@ -34,7 +36,9 @@ import java.util.regex.Matcher;
 public final class NumericClassUncheckedMoveRule implements Rule {
 
     private static final RuleMeta META = RuleMeta
-            .named("R034", "字類検査を経ない数字項目への転記・演算", "データ移動")
+            .named("R034", "字類検査を経ない数字項目への転記・演算", RuleCategory.ABEND)
+            .technology(Technology.COBOL)
+            .symptom("S0C7")
             .summary("英字項目・英数字項目から数字項目への MOVE 文のうち、"
                     + "送り出し側項目を NUMERIC で検査していないものを検出します。")
             .rationale("数字として扱えない値が転記され、プログラムが実行時に異常終了するか、"

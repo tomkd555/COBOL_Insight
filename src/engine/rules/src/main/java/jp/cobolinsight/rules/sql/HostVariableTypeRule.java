@@ -8,7 +8,9 @@ import jp.cobolinsight.core.picture.Usage;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.DataItem;
 import jp.cobolinsight.core.semantic.EmbeddedBlock;
@@ -37,7 +39,9 @@ import java.util.Set;
 public final class HostVariableTypeRule implements Rule {
 
     private static final RuleMeta META = RuleMeta
-            .named("R038", "DCLGEN の列と型の合わないホスト変数", "SQL")
+            .named("R038", "DCLGEN の列と型の合わないホスト変数", RuleCategory.INTEGRITY)
+            .technology(Technology.DB2)
+            .symptom("値の切り捨て・変換エラー（SQLCODE -302・-311）")
             .summary("DCLGEN が生成する対応と合わない PICTURE のホスト変数を"
                     + "埋込みSQL文から検出します。")
             .rationale("受け取り側項目が短ければ値が切り捨てられ、"

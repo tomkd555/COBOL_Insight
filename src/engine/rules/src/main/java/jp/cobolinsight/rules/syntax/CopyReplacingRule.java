@@ -6,7 +6,9 @@ import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
@@ -52,7 +54,9 @@ public final class CopyReplacingRule implements Rule {
      */
     private static final int MAX_STATEMENT_LINES = 20;
 
-    private static final RuleMeta META = RuleMeta.named("R024", "COPY REPLACING による置換漏れ", "データ定義")
+    private static final RuleMeta META = RuleMeta.named("R024", "COPY REPLACING による置換漏れ", RuleCategory.INTEGRITY)
+            .technology(Technology.COBOL)
+            .symptom("置換されない項目名")
             .summary("COPY 文の REPLACING で指定した置換対象が、取り込むコピー句に"
                     + "一度も現れない箇所を検出します。")
             .rationale("置換が起きないため、取り込んだ項目の名前が意図した名前にならず、"

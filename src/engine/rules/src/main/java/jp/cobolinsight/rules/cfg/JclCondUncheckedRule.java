@@ -8,7 +8,9 @@ import jp.cobolinsight.core.jcl.JclStep;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.spi.AnalysisContext;
 
@@ -35,17 +37,20 @@ import java.util.Set;
 public final class JclCondUncheckedRule implements Rule {
 
     private static final RuleMeta META =
-            RuleMeta.named("R030", "JCL ステップ間の COND パラメーター未指定", "JCL制御")
-            .summary("ジョブの 2 番目以降のステップで COND パラメーターを持たないものを"
-                    + "検出します。")
-            .rationale("先行ステップが異常終了しても後続が実行され、"
-                    + "不完全なデータのまま処理が進みます。")
+            RuleMeta.named("R030", "戻りコードを判定しないステップ", RuleCategory.OPERATION)
+            .technology(Technology.JCL)
+            .symptom("異常な戻りコードの後の続行")
+            .summary("ジョブの 2 番目以降のステップのうち、COND パラメーターも IF も"
+                    + "持たないものを、ジョブごとにまとめて検出します。")
+            .rationale("先行ステップが 8 や 12 の戻りコードで終わっても、異常終了でない限り"
+                    + "後続のステップは実行され、不完全なデータのまま処理が進みます。")
             .detection("ジョブの EXEC ステップのうち、COND パラメーターを持たず、"
                     + "IF/THEN/ELSE/ENDIF にも囲まれていないものを検出します。"
                     + "先行ステップのない先頭のステップは対象外です。"
                     + "PROC の中のステップは PROC の中で検査し、EXEC に付けた COND は"
                     + "その PROC のすべてのステップに及ぶものとして扱います。"
-                    + "COND のない EXEC で呼び出した PROC については、その EXEC だけを報告します。")
+                    + "COND のない EXEC で呼び出した PROC については、その EXEC だけを数えます。"
+                    + "報告はジョブにつき 1 件で、該当するステップを本文に挙げます。")
             .remedy("COND パラメーターを付けるか、IF/THEN/ELSE で先行ステップの戻りコードを"
                     + "検査してから実行してください。")
             .example("""
@@ -68,6 +73,9 @@ public final class JclCondUncheckedRule implements Rule {
         List<Finding> findings = new ArrayList<>();
         Set<String> reportedAt = new HashSet<>();
         for (JclJobModel job : context.jclJobs()) {
+            // One finding stands for the job: a job that judges no return code at all would
+            // otherwise report every one of its steps, and the reader has one decision to make.
+            List<JclStep> unguarded = new ArrayList<>();
             // PROC calls seen so far, by step name; a step named call.xxx was expanded from call.
             Map<String, JclStep> calls = new LinkedHashMap<>();
             Set<String> reportedCalls = new HashSet<>();
@@ -99,17 +107,28 @@ public final class JclCondUncheckedRule implements Rule {
                 }
                 reportedCalls.add(step.name());
                 if (reportedAt.add(step.position().file() + ":" + step.position().line())) {
-                    findings.add(finding(step));
+                    unguarded.add(step);
                 }
+            }
+            if (!unguarded.isEmpty()) {
+                findings.add(finding(job, unguarded));
             }
         }
         return findings;
     }
 
-    private static Finding finding(JclStep step) {
+    /** How many step names a message spells out before it says how many more there are. */
+    private static final int NAMED_STEPS = 5;
+
+    private static Finding finding(JclJobModel job, List<JclStep> steps) {
+        String names = String.join("・", steps.stream().limit(NAMED_STEPS)
+                .map(JclStep::name).toList());
+        if (steps.size() > NAMED_STEPS) {
+            names += " ほか " + (steps.size() - NAMED_STEPS) + " ステップ";
+        }
         return Finding.of(META.id(), META.defaultSeverity().toLevel(),
-                step.name() + " に COND パラメーターがありません。"
-                        + "先行ステップの異常終了後も実行されます。",
-                step.position());
+                "ジョブ " + job.jobName() + " の " + names + " は COND パラメーターも IF も"
+                        + "持ちません。先行ステップが異常な戻りコードで終わっても実行されます。",
+                steps.get(0).position());
     }
 }

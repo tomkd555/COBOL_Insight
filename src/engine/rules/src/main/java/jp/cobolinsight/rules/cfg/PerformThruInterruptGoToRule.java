@@ -11,7 +11,9 @@ import jp.cobolinsight.core.semantic.ProcedureNames;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
@@ -30,7 +32,9 @@ import java.util.Optional;
 public final class PerformThruInterruptGoToRule implements Rule {
 
     private static final RuleMeta META = RuleMeta
-            .named("R007", "PERFORM THRU の入口を経由しない GO TO 文", "制御フロー")
+            .named("R007", "PERFORM THRU の入口を経由しない GO TO 文", RuleCategory.ABEND)
+            .technology(Technology.COBOL)
+            .symptom("制御の暴走")
             .summary("PERFORM THRU の範囲に、入口の段落を経由せず"
                     + "範囲外から GO TO 文で入る箇所を検出します。")
             .rationale("入口の段落が担う初期化を飛ばして途中から実行するため、"

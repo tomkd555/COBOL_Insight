@@ -150,12 +150,7 @@ public final class RuleSet {
         Releveled(Rule delegate, Severity severity) {
             this.delegate = delegate;
             this.severity = severity;
-            RuleMeta original = delegate.meta();
-            this.meta = new RuleMeta(original.id(), original.name(), original.category(),
-                    original.summary(), original.rationale(), original.detection(),
-                    original.remedy(), original.badExample(), original.goodExample(), severity,
-                    original.defaultEnabled(), original.commands(), original.targets(),
-                    original.needs());
+            this.meta = delegate.meta().withSeverity(severity);
         }
 
         @Override

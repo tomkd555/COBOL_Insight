@@ -7,7 +7,9 @@ import jp.cobolinsight.core.finding.Severity;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.semantic.CobolSemanticModel;
 import jp.cobolinsight.core.semantic.EmbeddedBlock;
 import jp.cobolinsight.core.semantic.EmbeddedBlockKind;
@@ -41,7 +43,9 @@ public final class CommareaLengthMismatchRule implements Rule {
     private static final String PROGRAM_PREFIX = "program:";
 
     private static final RuleMeta META =
-            RuleMeta.named("R036", "DFHCOMMAREA と渡される COMMAREA の長さ不一致", "CICS")
+            RuleMeta.named("R036", "DFHCOMMAREA と渡される COMMAREA の長さ不一致", RuleCategory.ABEND)
+            .technology(Technology.CICS)
+            .symptom("ASRA・記憶域の破壊")
                     .summary("呼び出し先の DFHCOMMAREA より短い COMMAREA を渡す"
                             + "LINK・XCTL・RETURN TRANSID を検出します。")
                     .rationale("渡された長さを超える部分には何も転記されないため、"

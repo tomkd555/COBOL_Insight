@@ -9,7 +9,9 @@ import jp.cobolinsight.core.semantic.ProcedureNames;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
@@ -29,7 +31,8 @@ import java.util.Optional;
 public final class GoToStructureDeviationRule implements Rule {
 
     private static final RuleMeta META =
-            RuleMeta.named("R009", "節をまたぐ GO TO 文", "制御フロー")
+            RuleMeta.named("R009", "節をまたぐ GO TO 文", RuleCategory.MAINTAINABILITY)
+            .technology(Technology.COBOL)
                     .summary("節をまたぐ GO TO 文を検出します。")
                     .rationale("節で処理を区切る構成が崩れ、"
                             + "制御の流れを節の内側だけでは追えなくなります。")

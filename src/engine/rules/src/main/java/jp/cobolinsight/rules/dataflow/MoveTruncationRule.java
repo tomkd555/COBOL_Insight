@@ -15,7 +15,9 @@ import jp.cobolinsight.core.semantic.Statement;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.rules.cfg.CfgSupport;
@@ -42,7 +44,9 @@ public final class MoveTruncationRule implements Rule {
     private static final Pattern NAME_TOKEN =
             Pattern.compile("[\\p{L}\\p{N}$#_-]*\\p{L}[\\p{L}\\p{N}$#_-]*");
 
-    private static final RuleMeta META = RuleMeta.named("R003", "MOVE 文による切り捨て", "データ移動")
+    private static final RuleMeta META = RuleMeta.named("R003", "MOVE 文による切り捨て", RuleCategory.INTEGRITY)
+            .technology(Technology.COBOL)
+            .symptom("けた落ち・文字の欠落")
             .summary("受け取り側項目のけた数または文字長が送り出し側項目より小さい MOVE 文を検出します。")
             .rationale("数字項目では上位けたが、英数字項目では右端の文字が切り捨てられます。"
                     + "実行時エラーにはならないため、金額や識別子が別の値のまま処理が進みます。")

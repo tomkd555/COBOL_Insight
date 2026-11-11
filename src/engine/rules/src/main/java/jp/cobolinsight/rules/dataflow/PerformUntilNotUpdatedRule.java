@@ -15,10 +15,13 @@ import jp.cobolinsight.core.semantic.ProcedureMap;
 import jp.cobolinsight.core.semantic.ProcedureNames;
 import jp.cobolinsight.core.semantic.SimpleStatement;
 import jp.cobolinsight.core.semantic.Statement;
+import jp.cobolinsight.core.semantic.StatementBlock;
 import jp.cobolinsight.core.rule.Command;
 import jp.cobolinsight.core.rule.Needs;
 import jp.cobolinsight.core.rule.Rule;
+import jp.cobolinsight.core.rule.RuleCategory;
 import jp.cobolinsight.core.rule.RuleMeta;
+import jp.cobolinsight.core.rule.Technology;
 import jp.cobolinsight.core.source.AssetKind;
 import jp.cobolinsight.core.source.SourcePosition;
 import jp.cobolinsight.core.spi.AnalysisContext;
@@ -60,7 +63,9 @@ public final class PerformUntilNotUpdatedRule implements Rule {
             "LOW-VALUE", "LOW-VALUES", "QUOTE", "QUOTES", "NULL", "NULLS", "TRUE", "FALSE", "ALL");
 
     private static final RuleMeta META = RuleMeta
-            .named("R012", "終了条件が更新されない PERFORM UNTIL", "制御フロー")
+            .named("R012", "終了条件が更新されない PERFORM UNTIL", RuleCategory.ABEND)
+            .technology(Technology.COBOL)
+            .symptom("無限ループ（S322）")
             .summary("終了条件に使うデータ項目がループ本体のどこでも更新されない"
                     + "PERFORM UNTIL 文を検出します。")
             .rationale("条件が変わらないためループから抜けられず、処理が止まります。")
@@ -128,6 +133,8 @@ public final class PerformUntilNotUpdatedRule implements Rule {
             Set<CfgNode> performed = performedBody(names, procedureMap, cfg, statement);
             if (!performed.isEmpty()) {
                 body = performed;
+            } else if (statement instanceof CompoundStatement inline) {
+                body = withPerformedRanges(names, procedureMap, cfg, body, inline);
             }
             Set<String> updated = updatedInBody(df, body, support);
             String file = statement.range().start().file();
@@ -219,8 +226,44 @@ public final class PerformUntilNotUpdatedRule implements Rule {
         if (!(header instanceof SimpleStatement)) {
             return Set.of();
         }
+        return performedRanges(names, procedureMap, cfg, procedureMap.performsOf(header));
+    }
+
+    /**
+     * The body of an inline loop with the statements written inside it, and the ranges those
+     * statements perform, added to it. The paragraph that reads the next record is performed once
+     * before the loop and once inside it — the priming read every sequential program is built on —
+     * so the header dominates none of its statements, and a fall-through edge out of it can take
+     * the PERFORM that calls it out of the dominated set as well. What stands between PERFORM and
+     * END-PERFORM, and what that performs, is what the loop runs, wherever else it is run from.
+     */
+    private static Set<CfgNode> withPerformedRanges(ProcedureNames names,
+            ProcedureMap procedureMap, ControlFlowGraph cfg, Set<CfgNode> body,
+            CompoundStatement loop) {
+        Set<Statement> written = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (StatementBlock block : loop.blocks()) {
+            jp.cobolinsight.core.semantic.Statements.walk(block.statements(), written::add);
+        }
+        List<PerformRelation> performs = new ArrayList<>();
+        for (Statement statement : written) {
+            performs.addAll(procedureMap.performsOf(statement));
+        }
+        Set<CfgNode> widened = Collections.newSetFromMap(new IdentityHashMap<>());
+        widened.addAll(body);
+        for (CfgNode node : cfg.nodes()) {
+            if (node.statement().filter(written::contains).isPresent()) {
+                widened.add(node);
+            }
+        }
+        widened.addAll(performedRanges(names, procedureMap, cfg, performs));
+        return widened;
+    }
+
+    /** The nodes of the ranges the given PERFORMs run, and of every range those perform in turn. */
+    private static Set<CfgNode> performedRanges(ProcedureNames names, ProcedureMap procedureMap,
+            ControlFlowGraph cfg, List<PerformRelation> performs) {
         Set<Integer> performed = new LinkedHashSet<>();
-        Deque<PerformRelation> pending = new ArrayDeque<>(procedureMap.performsOf(header));
+        Deque<PerformRelation> pending = new ArrayDeque<>(performs);
         while (!pending.isEmpty()) {
             PerformRelation perform = pending.removeFirst();
             names.rangeOf(perform, procedureMap.sectionOf(perform)).ifPresent(range -> {
